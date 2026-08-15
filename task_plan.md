@@ -62,7 +62,7 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Errors encountered
 
-- GitHub authentication was initially invalid. A network-enabled check on 2026-08-15 confirmed the active `dtjgp` keyring login with repository/workflow scopes; `dtjgp/TheRSS` still did not exist, so creation/push awaits the explicit visibility choice.
+- GitHub authentication was initially invalid. A network-enabled check on 2026-08-15 confirmed the active `dtjgp` keyring login with repository/workflow scopes. Resolved after the user selected public visibility: `dtjgp/TheRSS` was created, `main` was pushed, and CI was verified.
 - Initial `npm install` failed because `electron-vite@5.0.0` supports Vite 5–7 while the unqualified latest Vite was 8.2.1. Resolve by pinning the latest compatible Vite 7 release; do not bypass peer checks with `--force`.
 - The first sandboxed development launch could not bind `::1:5173`; the approved local launch succeeded outside the network sandbox.
 - npm 11 installed the Electron package without its desktop binary. Add `scripts/ensure-electron.mjs` to `postinstall`, explicitly allow the required `better-sqlite3`/`esbuild` scripts, deny the unused Windows installer script, and verify a real Electron launch.
