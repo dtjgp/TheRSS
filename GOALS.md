@@ -1,6 +1,6 @@
 # TheRSS Goals
 
-## Active goal: Initial version
+## Completed goal: Initial version
 
 ### Objective
 
@@ -33,6 +33,14 @@ Publish a runnable initial version of TheRSS that gives one research user a pers
 ### Stop condition
 
 The goal is complete only when every explicit founding requirement has current executable or remote evidence, all release gates pass, and no required capability remains documented as planned-only.
+
+### Completion evidence (2026-08-15)
+
+- Public repository: <https://github.com/dtjgp/TheRSS>
+- Local and remote `main` initially matched at `c41e63dce75eee258f9325ef20e23d5ad25a7380`.
+- Initial publication CI passed: <https://github.com/dtjgp/TheRSS/actions/runs/31894821844>.
+- `npm run update:local` completed the remote pull, locked install, release gates, database backup, packaging, and recoverable application replacement.
+- The requirement-by-requirement local evidence remains recorded in `docs/REQUIREMENTS_TRACEABILITY.md`.
 
 ## Later goals
 

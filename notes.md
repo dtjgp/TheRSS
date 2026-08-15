@@ -83,3 +83,13 @@ TheRSS wins by combining deterministic, provenance-preserving discovery with a d
 - Electron `safeStorage` encryption/decryption passed, `npm audit --audit-level=high` reported zero vulnerabilities, and tracked-file secret-pattern review found no credentials.
 - `npm run install:local` backed up the existing SQLite database, retained the previous application, installed the current build, and the packaged-app smoke passed.
 - The local worktree was clean at commit `85577a0` before this audit writeback. GitHub publication and CI remain the only founding-goal evidence not yet available.
+
+## 2026-08-15 publication evidence
+
+- The user explicitly selected public visibility. The repository was created at <https://github.com/dtjgp/TheRSS> with `main` as its default branch.
+- Initial local and remote `main` matched at `c41e63dce75eee258f9325ef20e23d5ad25a7380`.
+- GitHub Actions run <https://github.com/dtjgp/TheRSS/actions/runs/31894821844> passed `npm ci`, `npm run check`, and `npm audit --audit-level=high`.
+- A real `npm run update:local` completed from the new remote and preserved the database/application rollback artifacts.
+- The first CI run warned that v4 GitHub Actions used deprecated Node.js 20; the workflow was updated to the official current `actions/checkout@v7` and `actions/setup-node@v7` lines.
+- The local update used Node.js 24.13 and emitted a non-blocking `jsdom` engine warning; project setup now documents Node.js 24.15+ or 26. The full test, coverage, build, packaging, and install gates still passed.
+- The personal beta remains intentionally unsigned and currently uses Electron's default icon. Signing/notarization and release branding remain later public-distribution work, not founding-goal requirements.

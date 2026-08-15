@@ -16,10 +16,10 @@ TheRSS 是一个本地优先的学术信息收件箱：它把 arXiv 论文和 Gi
 
 ## 立即运行
 
-要求：macOS、Node.js 24、npm。
+要求：macOS、Node.js 24.15 以上或 Node.js 26、npm。
 
 ```bash
-git clone <repository-url> TheRSS
+git clone https://github.com/dtjgp/TheRSS.git TheRSS
 cd TheRSS
 npm ci
 npm run dev

@@ -24,7 +24,7 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 - [x] Phase 4: Implement Codex/Claude/DeepSeek agent integration.
 - [x] Phase 5: Implement fast local packaging/update workflow and release gates.
 - [x] Phase 6: Complete security, quality, runtime, and requirement-by-requirement verification, including once-per-day startup refresh.
-- [ ] Phase 7: Create the GitHub repository, push the verified initial version, and record release evidence.
+- [x] Phase 7: Create the GitHub repository, push the verified initial version, and record release evidence.
 
 ## Product milestones
 
@@ -58,6 +58,7 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 - Pin Electron tooling to the compatible Vite 7 / React plugin 5 / TypeScript 5 line instead of unqualified latest versions.
 - When an interest profile exists, refresh once on the first app open of the dashboard day if no refresh has completed that day. Keep manual refresh available and retain the last inbox if startup refresh fails.
 - Persist a SHA-256 hash of the exact discovery fields sent for analysis, and distinguish a successful empty source response from a non-empty success.
+- Publish the initial repository publicly at `https://github.com/dtjgp/TheRSS` as explicitly selected by the user.
 
 ## Errors encountered
 
@@ -71,4 +72,4 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Status
 
-**Phases 0–6 complete locally; Phase 7 pending.** The installed beta now refreshes once on the first configured open of each local day, preserves its last good inbox on failure, distinguishes no-results, and retains source-snapshot hashes in analysis provenance. The 2026-08-15 final local audit passed all quality, E2E, live-source, MCP, safeStorage, package, and dependency gates. GitHub authentication is verified; repository creation, push, remote commit verification, and CI await the public/private visibility choice.
+**Phases 0–7 complete.** The installed beta refreshes once on the first configured open of each local day, preserves its last good inbox on failure, distinguishes no-results, and retains source-snapshot hashes in analysis provenance. The 2026-08-15 final local audit passed all quality, E2E, live-source, MCP, safeStorage, package, and dependency gates. The public repository is available at `https://github.com/dtjgp/TheRSS`; remote commit identity and the initial CI run were verified, and `npm run update:local` passed against the real remote.

@@ -64,4 +64,4 @@ Paper promotion to a knowledge system is a separate, confirmation-gated workflow
 
 ## Implementation status
 
-The v0.1 personal-beta capability is implemented locally. Its executable evidence and remaining GitHub publication blocker are tracked in `docs/REQUIREMENTS_TRACEABILITY.md` and `task_plan.md`.
+The v0.1 initial version is implemented, installed, and published at <https://github.com/dtjgp/TheRSS>. Its local, remote-update, and CI evidence is tracked in `docs/REQUIREMENTS_TRACEABILITY.md`, `GOALS.md`, and `task_plan.md`.
