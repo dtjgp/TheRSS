@@ -1,5 +1,7 @@
 import { existsSync } from 'node:fs'
+import { log } from 'node:console'
 import { dirname, join } from 'node:path'
+import { execPath } from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 
@@ -13,8 +15,8 @@ if (!existsSync(binaryMarker)) {
     throw new Error('Electron package is missing. Run npm install again.')
   }
 
-  console.log('Installing the pinned Electron desktop runtime…')
-  execFileSync(process.execPath, [installer], {
+  log('Installing the pinned Electron desktop runtime…')
+  execFileSync(execPath, [installer], {
     cwd: projectRoot,
     stdio: 'inherit'
   })

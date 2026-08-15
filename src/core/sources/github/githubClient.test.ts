@@ -110,4 +110,19 @@ describe('GitHub Interest Radar client', () => {
       )
     ).rejects.toThrow('GitHub request failed with status 403')
   })
+
+  it('rejects an oversized GitHub response before JSON parsing', async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify(payload)))
+
+    await expect(
+      fetchGitHubRadarItems(
+        { ...interest, topics: [] },
+        {
+          fetcher,
+          now: new Date('2026-08-15T00:00:00Z'),
+          maxResponseBytes: 32
+        }
+      )
+    ).rejects.toThrow('GitHub response exceeds the 32 byte safety limit')
+  })
 })

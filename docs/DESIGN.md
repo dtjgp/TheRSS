@@ -27,7 +27,7 @@ See `PRODUCT.md`. In particular: no general news reader, cloud account system, a
 | --------------- | ------------------------------------- | ---------------------------------------------------------------------------------------- |
 | Desktop         | Electron                              | Mature local Node integration, packaging, MCP process support, and rapid renderer reload |
 | UI              | React + TypeScript + Vite             | Typed, testable, fast iteration                                                          |
-| Storage         | SQLite + FTS5                         | Local durability, transactions, explainable queries, no server                           |
+| Storage         | SQLite                                | Local durability, transactions, explainable queries, no server                           |
 | Validation      | Zod                                   | Runtime validation at external and IPC boundaries                                        |
 | Tests           | Vitest + Testing Library + Playwright | Unit, integration, renderer, and critical desktop flow coverage                          |
 | Agent interface | MCP over stdio                        | One tool contract consumable by Codex and Claude Code                                    |
@@ -77,9 +77,8 @@ Electron main/application services
 - Use `export.arxiv.org/api/query` Atom results.
 - Build queries from explicit category and keyword settings.
 - Sort by submitted or updated date descending.
-- Cache one response per canonical query per UTC day.
-- Space consecutive requests by at least three seconds.
-- Retain arXiv ID/version, title, authors, abstract, categories, published/updated timestamps, DOI/journal reference when present, abstract URL, and PDF URL.
+- The initial client sends one bounded combined query per manual refresh; daily caching and a cross-request cooldown are follow-up hardening before background refresh.
+- Retain arXiv ID/version, title, authors, abstract, categories, published/updated timestamps, and abstract URL. DOI/journal reference and PDF URL enrichment are deferred.
 - Never claim the abstract verifies full-paper methods or results.
 
 Official reference: <https://info.arxiv.org/help/api/user-manual.html>
@@ -90,7 +89,7 @@ GitHub does not expose a stable official API for the website's Trending ranking.
 
 - keyword matches in name, description, topics, and optionally README metadata;
 - `topic`, `language`, `created`, `pushed`, `stars`, `archived:false`, and `fork:false` qualifiers;
-- authenticated search when the user configures GitHub credentials, with an unauthenticated public fallback;
+- unauthenticated public search in the initial UI; the core adapter accepts an optional token, but credential settings are deferred;
 - visible scoring inputs: interest match, recency, stars, and activity;
 - no claim that the result reproduces GitHub Trending.
 
@@ -114,35 +113,25 @@ Every ranked item stores a list of `MatchReason` records so the UI can explain i
 
 ## Data model
 
-Initial entities:
+Initial persisted entities:
 
 - `InterestProfile`
-- `InterestRule`
-- `SourceSubscription`
 - `DiscoveryItem`
-- `MatchReason`
-- `InboxEntry`
-- `RefreshRun`
-- `ModelProfile` (non-secret metadata only)
-- `AnalysisRequest`
+- `SourceRun`
+- `ModelProvider` (metadata plus OS-encrypted credential ciphertext)
 - `AnalysisArtifact`
 
-Stable external IDs are unique per `(source, external_id)`. Source snapshots carry a content hash so derived analysis can be marked stale.
+Stable item IDs are derived from source identity. Content hashes and stale-analysis detection are deferred.
 
 ## Agent contract
 
 Read-only tools enabled by default:
 
 - `list_today_items`
-- `search_items`
 - `get_item`
-- `list_analysis_requests`
 - `get_analysis_context`
 
-Confirmation-gated write tools:
-
-- `submit_analysis_result`
-- `update_triage_state`
+The initial server intentionally exposes no write tools. Confirmation-gated analysis submission, triage changes, and knowledge-system exports require a later design review.
 
 MCP support is documented by both Codex and Claude Code:
 
@@ -156,7 +145,7 @@ Initial protocols:
 - OpenAI-compatible (including DeepSeek-compatible base URL/model selection)
 - Anthropic-compatible
 
-Provider metadata is stored in SQLite; secret material is encrypted through the OS-backed secret service. Analysis artifacts store provider profile ID, model, prompt version, input source hash, timestamp, usage when available, and status.
+Provider metadata and encrypted credential ciphertext are stored in SQLite; plaintext encryption/decryption occurs only in Electron main through the OS-backed secret service. Analysis artifacts store provider profile ID/name, model, prompt version, content, timestamp, and token usage internally. Content hashes, stale state, and request status are deferred.
 
 ## Security and privacy
 
@@ -167,11 +156,11 @@ Provider metadata is stored in SQLite; secret material is encrypted through the 
 - Network requests use explicit timeouts, response-size bounds, and safe redirects.
 - SQL is parameterized.
 - Secrets are never returned through ordinary read APIs.
-- MCP write tools require an explicit opt-in plus exact confirmation argument.
+- The initial MCP surface is structurally read-only and opens SQLite in read-only mode.
 
 ## Failure and recovery
 
-- Each source refresh records `running`, `succeeded`, `partial`, `no_results`, or `failed`.
+- Each configured source refresh records `refreshing`, `healthy`, or `failed`; an overall refresh can therefore expose partial source health.
 - A failed refresh retains the last verified inbox and surfaces diagnostics.
 - Database migrations are transactional and backed up before packaged-app upgrades.
 - Model/agent failure does not block deterministic discovery.

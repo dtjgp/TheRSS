@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { InterestProfile } from '../../core/interests/interestProfile'
 import type { DashboardItem, DashboardSnapshot, TheRSSApi } from '../../shared/api'
+import type {
+  AnalysisArtifact,
+  ModelProtocol,
+  ModelProviderInput,
+  ModelProviderSummary
+} from '../../shared/models'
 
 interface AppProps {
   readonly api: TheRSSApi
@@ -17,11 +23,15 @@ function SourceMark({ source }: { readonly source: DashboardItem['source'] }) {
 function SignalCard({
   item,
   index,
-  onTriage
+  onTriage,
+  onAnalyze,
+  isAnalyzing
 }: {
   readonly item: DashboardItem
   readonly index: number
   readonly onTriage: (id: string, state: 'saved' | 'dismissed') => Promise<void>
+  readonly onAnalyze: (id: string) => Promise<void>
+  readonly isAnalyzing: boolean
 }) {
   const [isUpdating, setIsUpdating] = useState(false)
 
@@ -62,8 +72,14 @@ function SignalCard({
         >
           {item.triageState === 'saved' ? 'Saved' : 'Save'}
         </button>
-        <button type="button" className="text-button">
-          Analyze
+        <button
+          type="button"
+          className="text-button"
+          aria-label="Analyze signal"
+          disabled={isAnalyzing}
+          onClick={() => void onAnalyze(item.id)}
+        >
+          {isAnalyzing ? 'Analyzing…' : 'Analyze'}
         </button>
         <button
           type="button"
@@ -287,11 +303,191 @@ function InterestEditor({
   )
 }
 
+interface ModelDraft {
+  readonly name: string
+  readonly protocol: ModelProtocol
+  readonly baseUrl: string
+  readonly model: string
+  readonly apiKey: string
+}
+
+const emptyModelDraft: ModelDraft = {
+  name: '',
+  protocol: 'openai-compatible',
+  baseUrl: '',
+  model: '',
+  apiKey: ''
+}
+
+function draftFromProvider(provider: ModelProviderSummary): ModelDraft {
+  return {
+    name: provider.name,
+    protocol: provider.protocol,
+    baseUrl: provider.baseUrl,
+    model: provider.model,
+    apiKey: ''
+  }
+}
+
+function ModelEditor({ api }: { readonly api: TheRSSApi }) {
+  const [draft, setDraft] = useState<ModelDraft>(emptyModelDraft)
+  const [provider, setProvider] = useState<ModelProviderSummary | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isActive = true
+    api.getModelProvider().then((current) => {
+      if (isActive && current) {
+        setProvider(current)
+        setDraft(draftFromProvider(current))
+      }
+    })
+    return () => {
+      isActive = false
+    }
+  }, [api])
+
+  const setField = <Key extends keyof ModelDraft>(field: Key, value: ModelDraft[Key]) => {
+    setDraft((current) => ({ ...current, [field]: value }))
+  }
+
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setIsSaving(true)
+    setError(null)
+    const input: ModelProviderInput = {
+      name: draft.name,
+      protocol: draft.protocol,
+      baseUrl: draft.baseUrl,
+      model: draft.model,
+      ...(draft.apiKey.trim() ? { apiKey: draft.apiKey } : {})
+    }
+    try {
+      const saved = await api.saveModelProvider(input)
+      setProvider(saved)
+      setDraft(draftFromProvider(saved))
+    } catch {
+      setError('Provider settings were rejected. Use remote HTTPS or local loopback HTTP.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <section className="model-editor">
+      <div className="model-editor__heading">
+        <p className="eyebrow">MODEL DESK</p>
+        <h1>Bring your own analysis model.</h1>
+        <p>
+          OpenAI-compatible covers DeepSeek and local servers; Anthropic-compatible covers Claude
+          APIs. The API key is encrypted with the operating system and is never returned here.
+        </p>
+      </div>
+      <form onSubmit={(event) => void save(event)}>
+        <label className="field">
+          <span>Provider name</span>
+          <input
+            aria-label="Provider name"
+            value={draft.name}
+            onChange={(event) => setField('name', event.target.value)}
+            placeholder="DeepSeek, Anthropic, or Local"
+            required
+          />
+        </label>
+        <label className="field">
+          <span>Protocol</span>
+          <select
+            aria-label="Provider protocol"
+            value={draft.protocol}
+            onChange={(event) => setField('protocol', event.target.value as ModelProtocol)}
+          >
+            <option value="openai-compatible">OpenAI-compatible</option>
+            <option value="anthropic-compatible">Anthropic-compatible</option>
+          </select>
+        </label>
+        <label className="field field--wide">
+          <span>Base URL</span>
+          <input
+            aria-label="Provider base URL"
+            value={draft.baseUrl}
+            onChange={(event) => setField('baseUrl', event.target.value)}
+            placeholder="https://api.deepseek.com or http://127.0.0.1:11434/v1"
+            required
+          />
+        </label>
+        <label className="field">
+          <span>Model</span>
+          <input
+            aria-label="Model name"
+            value={draft.model}
+            onChange={(event) => setField('model', event.target.value)}
+            placeholder="deepseek-chat"
+            required
+          />
+        </label>
+        <label className="field">
+          <span>
+            API key {provider?.hasCredential ? '(leave blank to keep)' : '(optional locally)'}
+          </span>
+          <input
+            aria-label="API key"
+            type="password"
+            value={draft.apiKey}
+            onChange={(event) => setField('apiKey', event.target.value)}
+            autoComplete="off"
+          />
+        </label>
+        {provider?.hasCredential && (
+          <div className="credential-status">Credential protected by macOS</div>
+        )}
+        {error && <div className="form-error">{error}</div>}
+        <button type="submit" className="primary-button" disabled={isSaving}>
+          {isSaving ? 'Protecting settings…' : 'Save model provider'}
+        </button>
+      </form>
+      <aside className="agent-note">
+        <span>AGENT BRIDGE</span>
+        <strong>Codex · Claude Code · DeepSeek harness</strong>
+        <p>
+          These tools share one local, read-only MCP interface. Model API analysis works
+          independently, so agent setup never blocks the daily inbox.
+        </p>
+      </aside>
+    </section>
+  )
+}
+
+function AnalysisPanel({ artifact }: { readonly artifact: AnalysisArtifact }) {
+  return (
+    <aside className="analysis-panel" aria-label="Model analysis">
+      <div className="analysis-panel__meta">
+        <span>MODEL ANALYSIS</span>
+        <strong>
+          {artifact.providerName} · {artifact.model}
+        </strong>
+        <span>{new Date(artifact.createdAt).toLocaleString()}</span>
+      </div>
+      <div className="analysis-panel__content">{artifact.content}</div>
+      <p>
+        Evidence boundary: generated from discovery metadata; full-paper or source-code claims
+        remain unverified.
+      </p>
+    </aside>
+  )
+}
+
 export function App({ api }: AppProps) {
   const [dashboard, setDashboard] = useState<DashboardSnapshot | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [activeView, setActiveView] = useState<'today' | 'interests'>('today')
+  const [activeView, setActiveView] = useState<'today' | 'interests' | 'models'>('today')
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'arxiv' | 'github'>('all')
+  const [analysis, setAnalysis] = useState<AnalysisArtifact | null>(null)
+  const [analyzingItemId, setAnalyzingItemId] = useState<string | null>(null)
+
+  const visibleItems =
+    dashboard?.items.filter((item) => sourceFilter === 'all' || item.source === sourceFilter) ?? []
 
   useEffect(() => {
     let isActive = true
@@ -331,6 +527,21 @@ export function App({ api }: AppProps) {
     [api]
   )
 
+  const analyzeItem = useCallback(
+    async (id: string) => {
+      setAnalyzingItemId(id)
+      setError(null)
+      try {
+        setAnalysis(await api.analyzeItem(id))
+      } catch {
+        setError('Analysis failed. Configure or check the selected model provider.')
+      } finally {
+        setAnalyzingItemId(null)
+      }
+    },
+    [api]
+  )
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -359,10 +570,14 @@ export function App({ api }: AppProps) {
           >
             <span>03</span> Interests
           </button>
-          <button type="button" className="nav-item">
+          <button
+            type="button"
+            className={`nav-item ${activeView === 'models' ? 'nav-item--active' : ''}`}
+            onClick={() => setActiveView('models')}
+          >
             <span>04</span> Models &amp; Agents
           </button>
-          <button type="button" className="nav-item">
+          <button type="button" className="nav-item" disabled>
             <span>05</span> Diagnostics
           </button>
         </nav>
@@ -401,6 +616,7 @@ export function App({ api }: AppProps) {
             }}
           />
         )}
+        {activeView === 'models' && <ModelEditor api={api} />}
         {activeView === 'today' && dashboard && !dashboard.profileName && (
           <Onboarding onConfigure={() => setActiveView('interests')} />
         )}
@@ -424,16 +640,58 @@ export function App({ api }: AppProps) {
               </div>
             </div>
 
+            <div className="source-filters" aria-label="Filter daily signal by source">
+              <button
+                type="button"
+                aria-label="Show all sources"
+                aria-pressed={sourceFilter === 'all'}
+                onClick={() => setSourceFilter('all')}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                aria-label="Show arXiv only"
+                aria-pressed={sourceFilter === 'arxiv'}
+                onClick={() => setSourceFilter('arxiv')}
+              >
+                arXiv
+              </button>
+              <button
+                type="button"
+                aria-label="Show GitHub only"
+                aria-pressed={sourceFilter === 'github'}
+                onClick={() => setSourceFilter('github')}
+              >
+                GitHub
+              </button>
+            </div>
+
+            {analysis && <AnalysisPanel artifact={analysis} />}
+
             {dashboard.items.length === 0 ? (
               <div className="quiet-state">
                 <span>0 SIGNALS</span>
                 <h2>Your radar is configured.</h2>
                 <p>Refresh the sources to assemble today’s paper and repository shortlist.</p>
               </div>
+            ) : visibleItems.length === 0 ? (
+              <div className="quiet-state quiet-state--filtered">
+                <span>0 MATCHES</span>
+                <h2>No signals from this source.</h2>
+                <p>Choose another source or return to the complete daily edition.</p>
+              </div>
             ) : (
               <div className="signal-grid">
-                {dashboard.items.map((item, index) => (
-                  <SignalCard key={item.id} item={item} index={index} onTriage={updateTriage} />
+                {visibleItems.map((item, index) => (
+                  <SignalCard
+                    key={item.id}
+                    item={item}
+                    index={index}
+                    onTriage={updateTriage}
+                    onAnalyze={analyzeItem}
+                    isAnalyzing={analyzingItemId === item.id}
+                  />
                 ))}
               </div>
             )}

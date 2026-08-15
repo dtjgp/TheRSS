@@ -21,7 +21,7 @@ Deliverables:
 - GitHub Interest Radar adapter;
 - normalization, deduplication, deterministic ranking, and match reasons;
 - SQLite persistence and Today UI;
-- triage states and refresh diagnostics.
+- triage states and persisted source health.
 
 Exit gate: fixture-driven critical E2E and >=80% owned-code coverage.
 
@@ -32,11 +32,11 @@ Deliverables:
 - provider profile management;
 - encrypted secret storage;
 - OpenAI-compatible/DeepSeek and Anthropic adapters;
-- analysis request/artifact lifecycle;
+- direct, user-initiated analysis artifact lifecycle;
 - MCP server for Codex and Claude Code;
-- in-app provenance and stale-result display.
+- in-app provider/model/prompt-version provenance and evidence boundary.
 
-Exit gate: secret, endpoint, mock-provider, MCP, failure, and provenance tests pass.
+Exit gate: secret, endpoint, mock-provider, read-only MCP, failure, and provenance tests pass. Stale-result detection remains later hardening.
 
 ## M3 — Personal beta
 
@@ -44,9 +44,9 @@ Deliverables:
 
 - local packaged app;
 - hot reload and one-command developer setup;
-- separate dev bundle/data identity;
+- separately named installed beta (`TheRSS Dev.app`) using the durable TheRSS data directory;
 - backup, migration, install/update, and rollback script;
-- diagnostics and release checklist.
+- documented verification and recovery checklist.
 
 Exit gate: package launches, critical smoke passes, and a test update preserves user data.
 
@@ -66,6 +66,8 @@ Exit gate: pushed commit exists remotely and CI reports the required checks.
 - Official GitHub Trending HTML adapter.
 - Learned recommendations.
 - Zotero/llm-wiki promotion.
+- Full-text search, content hashes, and stale-analysis detection.
+- Source response caching/cooldown required before background refresh.
 - Background helper while the app is closed.
 - Signed/notarized public self-updates.
 - Mobile and multi-user features.

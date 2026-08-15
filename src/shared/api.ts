@@ -1,3 +1,6 @@
+import type { InterestProfile } from '../core/interests/interestProfile'
+import type { AnalysisArtifact, ModelProviderInput, ModelProviderSummary } from './models'
+
 export type SourceHealth = 'idle' | 'refreshing' | 'healthy' | 'partial' | 'failed'
 export type TriageState = 'new' | 'viewed' | 'saved' | 'dismissed'
 
@@ -36,5 +39,8 @@ export interface TheRSSApi {
   saveInterestProfile(profile: InterestProfile): Promise<DashboardSnapshot>
   refresh(): Promise<DashboardSnapshot>
   setTriageState(id: string, state: TriageState): Promise<DashboardSnapshot>
+  getModelProvider(): Promise<ModelProviderSummary | null>
+  saveModelProvider(input: ModelProviderInput): Promise<ModelProviderSummary>
+  analyzeItem(id: string): Promise<AnalysisArtifact>
+  getLatestAnalysis(id: string): Promise<AnalysisArtifact | null>
 }
-import type { InterestProfile } from '../core/interests/interestProfile'

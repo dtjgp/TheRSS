@@ -35,7 +35,7 @@
 - Ensure renderer cannot call undeclared IPC channels.
 - Ensure secret values never appear in settings DTOs, logs, database dumps, or analysis artifacts.
 - Treat prompt-injection text from abstracts/READMEs as content, never instructions.
-- Require confirmation for MCP state changes.
+- Assert that the initial MCP tool list contains no state-changing operation.
 - Preserve the last good inbox after source failure or malformed responses.
 
 ## Vulnerability reporting

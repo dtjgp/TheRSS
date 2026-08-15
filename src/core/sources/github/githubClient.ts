@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { GitHubInterest } from '../../interests/interestProfile'
+import { readBoundedText } from '../../security/boundedResponse'
 import type { DiscoveryItem } from '../../../shared/discovery'
 import { buildGitHubRadarQueries } from './githubQuery'
 
@@ -11,6 +12,7 @@ interface FetchGitHubOptions {
   readonly now?: Date
   readonly token?: string | undefined
   readonly maxQueries?: number
+  readonly maxResponseBytes?: number
 }
 
 const repositorySchema = z.object({
@@ -86,7 +88,12 @@ export async function fetchGitHubRadarItems(
       throw new Error(`GitHub request failed with status ${response.status}`)
     }
 
-    for (const item of parseGitHubSearchResponse(await response.json())) {
+    const responseText = await readBoundedText(
+      response,
+      options.maxResponseBytes ?? 5_000_000,
+      'GitHub'
+    )
+    for (const item of parseGitHubSearchResponse(JSON.parse(responseText) as unknown)) {
       uniqueItems.set(item.id, item)
     }
   }

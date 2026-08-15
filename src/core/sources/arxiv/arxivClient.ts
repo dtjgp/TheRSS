@@ -1,6 +1,7 @@
 import { XMLParser } from 'fast-xml-parser'
 import { z } from 'zod'
 import type { ArxivInterest } from '../../interests/interestProfile'
+import { readBoundedText } from '../../security/boundedResponse'
 import type { DiscoveryItem } from '../../../shared/discovery'
 import { buildArxivQueryUrl } from './arxivQuery'
 
@@ -9,6 +10,7 @@ const ARXIV_USER_AGENT = 'TheRSS/0.1 (local academic discovery client)'
 interface FetchArxivOptions {
   readonly fetcher?: typeof fetch
   readonly maxResults?: number
+  readonly maxResponseBytes?: number
 }
 
 const parsedItemSchema = z.object({
@@ -117,5 +119,7 @@ export async function fetchArxivItems(
     throw new Error(`arXiv request failed with status ${response.status}`)
   }
 
-  return parseArxivFeed(await response.text())
+  return parseArxivFeed(
+    await readBoundedText(response, options.maxResponseBytes ?? 10_000_000, 'arXiv')
+  )
 }

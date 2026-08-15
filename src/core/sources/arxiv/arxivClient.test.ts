@@ -69,6 +69,14 @@ describe('arXiv client', () => {
     )
   })
 
+  it('rejects an oversized arXiv response before parsing it', async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(atomFeed))
+
+    await expect(fetchArxivItems(interest, { fetcher, maxResponseBytes: 32 })).rejects.toThrow(
+      'arXiv response exceeds the 32 byte safety limit'
+    )
+  })
+
   it('accepts an Atom feed with no entries', () => {
     expect(parseArxivFeed('<feed xmlns="http://www.w3.org/2005/Atom"></feed>')).toEqual([])
   })

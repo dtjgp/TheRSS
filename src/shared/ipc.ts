@@ -3,5 +3,9 @@ export const IPC_CHANNELS = {
   refresh: 'dashboard:refresh',
   getInterestProfile: 'interests:get',
   saveInterestProfile: 'interests:save',
-  setTriageState: 'triage:set'
+  setTriageState: 'triage:set',
+  getModelProvider: 'models:get-provider',
+  saveModelProvider: 'models:save-provider',
+  analyzeItem: 'analysis:run',
+  getLatestAnalysis: 'analysis:get-latest'
 } as const

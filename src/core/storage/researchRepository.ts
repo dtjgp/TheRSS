@@ -2,6 +2,8 @@ import type Database from 'better-sqlite3'
 import { interestProfileSchema, type InterestProfile } from '../interests/interestProfile'
 import type { RankedDiscoveryItem } from '../../shared/discovery'
 import type { DashboardItem, DashboardSnapshot, SourceHealth, TriageState } from '../../shared/api'
+import type { ModelProtocol, ModelProviderSummary } from '../../shared/models'
+import type { AnalysisArtifact } from '../../shared/models'
 
 const TRIAGE_STATES = new Set<TriageState>(['new', 'viewed', 'saved', 'dismissed'])
 const SOURCE_HEALTH = new Set<SourceHealth>(['idle', 'refreshing', 'healthy', 'partial', 'failed'])
@@ -24,6 +26,37 @@ interface SourceRunRow {
   completed_at: string
 }
 
+export interface StoredModelProvider {
+  readonly id: string
+  readonly name: string
+  readonly protocol: ModelProtocol
+  readonly baseUrl: string
+  readonly model: string
+  readonly secretCiphertext: Buffer | null
+  readonly updatedAt: string
+}
+
+interface ModelProviderRow {
+  id: string
+  name: string
+  protocol: ModelProtocol
+  base_url: string
+  model: string
+  secret_ciphertext: Buffer | null
+  updated_at: string
+}
+
+interface AnalysisArtifactRow {
+  id: string
+  item_id: string
+  provider_id: string
+  provider_name: string
+  model: string
+  prompt_version: string
+  content: string
+  created_at: string
+}
+
 function parseStringList(value: string): string[] {
   const parsed: unknown = JSON.parse(value)
   if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === 'string')) {
@@ -35,9 +68,9 @@ function parseStringList(value: string): string[] {
 export class ResearchRepository {
   readonly #database: Database.Database
 
-  constructor(database: Database.Database) {
+  constructor(database: Database.Database, options: { readonly migrate?: boolean } = {}) {
     this.#database = database
-    this.#migrate()
+    if (options.migrate !== false) this.#migrate()
   }
 
   #migrate(): void {
@@ -82,6 +115,33 @@ export class ResearchRepository {
         completed_at TEXT NOT NULL,
         error_message TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS model_provider (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        protocol TEXT NOT NULL
+          CHECK (protocol IN ('openai-compatible', 'anthropic-compatible')),
+        base_url TEXT NOT NULL,
+        model TEXT NOT NULL,
+        secret_ciphertext BLOB,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS analysis_artifact (
+        id TEXT PRIMARY KEY,
+        item_id TEXT NOT NULL REFERENCES discovery_item(id) ON DELETE CASCADE,
+        provider_id TEXT NOT NULL,
+        provider_name TEXT NOT NULL,
+        model TEXT NOT NULL,
+        prompt_version TEXT NOT NULL,
+        content TEXT NOT NULL,
+        input_tokens INTEGER,
+        output_tokens INTEGER,
+        created_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS analysis_artifact_by_item
+        ON analysis_artifact(item_id, created_at DESC);
     `)
   }
 
@@ -197,6 +257,30 @@ export class ResearchRepository {
     }))
   }
 
+  getDiscoveryItem(id: string): DashboardItem | null {
+    const row = this.#database
+      .prepare(
+        `SELECT id, source, title, summary, url, published_at, score,
+                triage_state, reasons_json
+         FROM discovery_item WHERE id = ?`
+      )
+      .get(id) as DashboardRow | undefined
+
+    return row
+      ? {
+          id: row.id,
+          source: row.source,
+          title: row.title,
+          summary: row.summary,
+          url: row.url,
+          publishedAt: row.published_at,
+          score: row.score,
+          triageState: row.triage_state,
+          reasons: parseStringList(row.reasons_json)
+        }
+      : null
+  }
+
   recordSourceRun(
     source: 'arxiv' | 'github',
     status: SourceHealth,
@@ -217,6 +301,111 @@ export class ResearchRepository {
            error_message = excluded.error_message`
       )
       .run(source, status, completedAt, errorMessage)
+  }
+
+  saveModelProvider(
+    profile: Omit<ModelProviderSummary, 'hasCredential'>,
+    secretCiphertext: Buffer | undefined
+  ): StoredModelProvider {
+    this.#database
+      .prepare(
+        `INSERT INTO model_provider(
+           id, name, protocol, base_url, model, secret_ciphertext, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           name = excluded.name,
+           protocol = excluded.protocol,
+           base_url = excluded.base_url,
+           model = excluded.model,
+           secret_ciphertext = COALESCE(
+             excluded.secret_ciphertext,
+             model_provider.secret_ciphertext
+           ),
+           updated_at = excluded.updated_at`
+      )
+      .run(
+        profile.id,
+        profile.name,
+        profile.protocol,
+        profile.baseUrl,
+        profile.model,
+        secretCiphertext ?? null,
+        profile.updatedAt
+      )
+
+    return this.getModelProvider(profile.id)!
+  }
+
+  getModelProvider(id = 'default'): StoredModelProvider | null {
+    const row = this.#database
+      .prepare(
+        `SELECT id, name, protocol, base_url, model, secret_ciphertext, updated_at
+         FROM model_provider WHERE id = ?`
+      )
+      .get(id) as ModelProviderRow | undefined
+
+    return row
+      ? {
+          id: row.id,
+          name: row.name,
+          protocol: row.protocol,
+          baseUrl: row.base_url,
+          model: row.model,
+          secretCiphertext: row.secret_ciphertext,
+          updatedAt: row.updated_at
+        }
+      : null
+  }
+
+  saveAnalysis(
+    artifact: AnalysisArtifact,
+    usage: { readonly inputTokens: number | null; readonly outputTokens: number | null }
+  ): void {
+    this.#database
+      .prepare(
+        `INSERT INTO analysis_artifact(
+           id, item_id, provider_id, provider_name, model, prompt_version,
+           content, input_tokens, output_tokens, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        artifact.id,
+        artifact.itemId,
+        artifact.providerId,
+        artifact.providerName,
+        artifact.model,
+        artifact.promptVersion,
+        artifact.content,
+        usage.inputTokens,
+        usage.outputTokens,
+        artifact.createdAt
+      )
+  }
+
+  getLatestAnalysis(itemId: string): AnalysisArtifact | null {
+    const row = this.#database
+      .prepare(
+        `SELECT id, item_id, provider_id, provider_name, model, prompt_version,
+                content, created_at
+         FROM analysis_artifact
+         WHERE item_id = ?
+         ORDER BY created_at DESC, id DESC
+         LIMIT 1`
+      )
+      .get(itemId) as AnalysisArtifactRow | undefined
+
+    return row
+      ? {
+          id: row.id,
+          itemId: row.item_id,
+          providerId: row.provider_id,
+          providerName: row.provider_name,
+          model: row.model,
+          promptVersion: row.prompt_version,
+          content: row.content,
+          createdAt: row.created_at
+        }
+      : null
   }
 
   getDashboardSnapshot(now = new Date()): DashboardSnapshot {

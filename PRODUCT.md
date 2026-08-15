@@ -21,14 +21,13 @@ TheRSS enables a single research user to open one local application each day and
 - Agent writes and external exports require explicit confirmation.
 - The initial release must not depend on a paid Apple Developer Program membership.
 
-## Primary surfaces
+## Current initial surfaces
 
 1. **Today** — ranked daily inbox with paper/repository filters and match explanations.
-2. **Discover** — manual refresh, source health, and broader search.
-3. **Interests** — arXiv categories, keywords, exclusions, GitHub languages/topics, and weights.
-4. **Item detail** — source metadata, abstract/README summary, analysis artifacts, and handoff actions.
-5. **Models & Agents** — provider profiles, connection tests, task routing, and agent availability.
-6. **Diagnostics & Updates** — fetch history, failures, version, migrations, and local update controls.
+2. **Interests** — arXiv categories, keywords, exclusions, GitHub languages and topics.
+3. **Models & Agents** — one model provider profile plus documented read-only MCP setup.
+
+Discover, dedicated item detail, diagnostics, source weighting, provider connection tests, and in-app update controls remain later surfaces. The current version refreshes from Today and performs local updates from the documented command line.
 
 ## Lifecycle
 
@@ -61,6 +60,6 @@ Paper promotion to a knowledge system is a separate, confirmation-gated workflow
 - Whether the first user interface is a standalone desktop shell only or also exposes an Obsidian companion view.
 - Whether repository trend scoring should include social velocity signals that require authenticated GitHub requests.
 
-## Handoff
+## Implementation status
 
-The capability is ready for architecture review. The next artifact must resolve source adapters, storage, ranking, agent interfaces, secret storage, desktop shell, testing, and update channels before feature implementation.
+The v0.1 personal-beta capability is implemented locally. Its executable evidence and remaining GitHub publication blocker are tracked in `docs/REQUIREMENTS_TRACEABILITY.md` and `task_plan.md`.
