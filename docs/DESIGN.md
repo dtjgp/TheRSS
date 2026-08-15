@@ -23,15 +23,15 @@ See `PRODUCT.md`. In particular: no general news reader, cloud account system, a
 
 ## Chosen stack
 
-| Layer | Choice | Rationale |
-|---|---|---|
-| Desktop | Electron | Mature local Node integration, packaging, MCP process support, and rapid renderer reload |
-| UI | React + TypeScript + Vite | Typed, testable, fast iteration |
-| Storage | SQLite + FTS5 | Local durability, transactions, explainable queries, no server |
-| Validation | Zod | Runtime validation at external and IPC boundaries |
-| Tests | Vitest + Testing Library + Playwright | Unit, integration, renderer, and critical desktop flow coverage |
-| Agent interface | MCP over stdio | One tool contract consumable by Codex and Claude Code |
-| Packaging | Electron Builder/compatible packaging | Local `.app` builds now; signed updater path later |
+| Layer           | Choice                                | Rationale                                                                                |
+| --------------- | ------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Desktop         | Electron                              | Mature local Node integration, packaging, MCP process support, and rapid renderer reload |
+| UI              | React + TypeScript + Vite             | Typed, testable, fast iteration                                                          |
+| Storage         | SQLite + FTS5                         | Local durability, transactions, explainable queries, no server                           |
+| Validation      | Zod                                   | Runtime validation at external and IPC boundaries                                        |
+| Tests           | Vitest + Testing Library + Playwright | Unit, integration, renderer, and critical desktop flow coverage                          |
+| Agent interface | MCP over stdio                        | One tool contract consumable by Codex and Claude Code                                    |
+| Packaging       | Electron Builder/compatible packaging | Local `.app` builds now; signed updater path later                                       |
 
 ## Alternatives considered
 

@@ -17,8 +17,8 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Phases
 
-- [ ] Phase 0: Establish product governance and evidence-backed engineering plan.
-- [ ] Phase 1: Scaffold the app, test harness, CI, and local developer workflow.
+- [x] Phase 0: Establish product governance and evidence-backed engineering plan.
+- [x] Phase 1: Scaffold the app, test harness, CI, and local developer workflow.
 - [ ] Phase 2: Implement interests, arXiv discovery, GitHub discovery, ranking, and daily inbox.
 - [ ] Phase 3: Implement configurable model providers and analysis artifacts.
 - [ ] Phase 4: Implement Codex/Claude/DeepSeek agent integration.
@@ -28,13 +28,13 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Product milestones
 
-| Milestone | User-visible outcome | Exit gate |
-|---|---|---|
-| M0 — Foundation | Scope, architecture, risks, and launch gates are explicit | PRD/design/roadmap reviewed against the request |
-| M1 — Discovery loop | Daily arXiv and GitHub items can be collected, matched, ranked, and triaged | Unit + integration + first critical E2E pass |
-| M2 — Analysis loop | A selected item can be analyzed by a configured model or handed to an agent | Secret-handling and provenance tests pass |
-| M3 — Personal beta | The app runs locally with fast updates and recoverable data migrations | Package/smoke/update checks pass |
-| M4 — Published initial version | Repository and CI are available on GitHub | Remote commit and CI state verified |
+| Milestone                      | User-visible outcome                                                        | Exit gate                                       |
+| ------------------------------ | --------------------------------------------------------------------------- | ----------------------------------------------- |
+| M0 — Foundation                | Scope, architecture, risks, and launch gates are explicit                   | PRD/design/roadmap reviewed against the request |
+| M1 — Discovery loop            | Daily arXiv and GitHub items can be collected, matched, ranked, and triaged | Unit + integration + first critical E2E pass    |
+| M2 — Analysis loop             | A selected item can be analyzed by a configured model or handed to an agent | Secret-handling and provenance tests pass       |
+| M3 — Personal beta             | The app runs locally with fast updates and recoverable data migrations      | Package/smoke/update checks pass                |
+| M4 — Published initial version | Repository and CI are available on GitHub                                   | Remote commit and CI state verified             |
 
 ## Key questions
 
@@ -61,7 +61,9 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 - `gh auth status` reports an invalid token for the active `dtjgp` account. Continue local work; re-authenticate before repository creation/push.
 - Initial `npm install` failed because `electron-vite@5.0.0` supports Vite 5–7 while the unqualified latest Vite was 8.2.1. Resolve by pinning the latest compatible Vite 7 release; do not bypass peer checks with `--force`.
+- The first sandboxed development launch could not bind `::1:5173`; the approved local launch succeeded outside the network sandbox.
+- npm 11 installed the Electron package without its desktop binary. Add `scripts/ensure-electron.mjs` to `postinstall`, explicitly allow the required `better-sqlite3`/`esbuild` scripts, deny the unused Windows installer script, and verify a real Electron launch.
 
 ## Status
 
-**Currently in Phase 0** — creating the project contract, verifying external platform constraints, and choosing the initial architecture before scaffolding code.
+**Currently in Phase 2** — the local database, interest editor, source adapters, explainable ranking, Today view, and triage loop are implemented. Source filtering, live-source smoke evidence, and the critical E2E remain before M1 closes.

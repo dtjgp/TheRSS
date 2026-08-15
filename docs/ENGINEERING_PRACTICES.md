@@ -37,16 +37,16 @@ A change is acceptable when it measurably improves the product/codebase and pass
 
 ### Quality gates
 
-| Gate | Per change | Release |
-|---|---:|---:|
-| Formatting/lint | Required | Required |
-| Type checking | Required | Required |
-| Relevant unit/integration tests | Required | Required |
-| Global coverage >= 80% | Monitored | Required |
-| Critical E2E | When flow changes | Required |
-| Dependency audit | When dependencies change | Required |
-| Security review | When boundary changes | Required |
-| Package/smoke/update validation | When packaging changes | Required |
+| Gate                            |               Per change |  Release |
+| ------------------------------- | -----------------------: | -------: |
+| Formatting/lint                 |                 Required | Required |
+| Type checking                   |                 Required | Required |
+| Relevant unit/integration tests |                 Required | Required |
+| Global coverage >= 80%          |                Monitored | Required |
+| Critical E2E                    |        When flow changes | Required |
+| Dependency audit                | When dependencies change | Required |
+| Security review                 |    When boundary changes | Required |
+| Package/smoke/update validation |   When packaging changes | Required |
 
 ### Planning and status
 
