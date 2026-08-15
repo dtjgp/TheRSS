@@ -8,7 +8,7 @@ TheRSS 是一个本地优先的学术信息收件箱：它把 arXiv 论文和 Gi
 
 - 配置 arXiv 分类、关键词和排除词。
 - 配置 GitHub 关键词、topic 和编程语言；结果明确称为 **GitHub Interest Radar**，不冒充 GitHub 官方 Trending。
-- 手动刷新两类来源，得到去重、确定性排序的 Today 列表。
+- 已配置兴趣后，每个本机日历日第一次打开会自动刷新两类来源；也可手动重试，得到去重、确定性排序的 Today 列表。
 - 查看每个候选项的匹配原因，按来源筛选，并保存或忽略。
 - 配置 OpenAI-compatible（包括兼容的 DeepSeek 端点）或 Anthropic-compatible 模型并生成带来源信息的分析记录。
 - 通过只读 Model Context Protocol（MCP）服务向 Codex、Claude Code 或其他兼容客户端开放本地候选项。
@@ -33,6 +33,8 @@ npm run dev
 4. 回到 **Today**，对候选项点击 **Analyze**。
 
 API key 不会返回给渲染进程，也不会以明文写入 SQLite；应用使用 Electron `safeStorage` 加密后保存密文。远程模型地址必须使用 HTTPS，只有回环地址可使用 HTTP。
+
+完成首次配置后，后续每天打开应用会在当天尚未刷新时自动更新一次；同一天重复打开不会产生重复启动请求。如果自动刷新失败，旧收件箱仍会保留，可用 **Refresh sources** 手动重试。
 
 ## 模型配置示例
 

@@ -15,7 +15,7 @@ TheRSS enables a single research user to open one local application each day and
 
 - Single-user and local-first for the initial release.
 - arXiv abstracts, feed content, GitHub metadata, and model output are discovery/derived evidence.
-- No API key is committed, logged, exported to llm-wiki, or stored in the ordinary SQLite database.
+- No plaintext API key is committed, logged, exported to llm-wiki, returned to the renderer/MCP, or stored in SQLite. Only OS-backed encrypted ciphertext may be persisted.
 - External HTML and feed data are untrusted and must be parsed, bounded, and sanitized.
 - User interests and ranking reasons are inspectable and editable.
 - Agent writes and external exports require explicit confirmation.
@@ -28,6 +28,8 @@ TheRSS enables a single research user to open one local application each day and
 3. **Models & Agents** — one model provider profile plus documented read-only MCP setup.
 
 Discover, dedicated item detail, diagnostics, source weighting, provider connection tests, and in-app update controls remain later surfaces. The current version refreshes from Today and performs local updates from the documented command line.
+
+When an interest profile exists, Today automatically refreshes once on the first open of each local calendar day. Manual refresh remains available for retries; a failed automatic refresh preserves the last verified inbox.
 
 ## Lifecycle
 

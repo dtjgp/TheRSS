@@ -62,6 +62,13 @@
 
 TheRSS wins by combining deterministic, provenance-preserving discovery with a deliberate handoff to stronger analysis tools. It should not attempt to replace Zotero, Obsidian, llm-wiki, Codex, or Claude Code.
 
+## Completion-audit findings
+
+- The first local beta required manual refresh after every new day, which did not fully prove the promise that opening the app yields the day's signal. The accepted behavior is one automatic refresh on the first configured open of each local calendar day, same-day suppression, manual retry, and preservation of the last verified inbox on failure.
+- Initial analysis artifacts identified the item, model, provider, prompt version, and time but not the exact source snapshot. They now require a SHA-256 hash over every discovery field included in the prompt so later metadata changes cannot silently blur provenance.
+- A successful empty source response was previously labeled the same as a non-empty success. The persisted result count now derives an explicit `no_results` dashboard state without changing the legacy status constraint.
+- A process exit during `refreshing` previously left a current-day timestamp that could suppress the next startup attempt. Only terminal source states now contribute to `lastRefreshAt`, so an interrupted refresh is retried on the next open.
+
 ## Environment findings
 
 - Node `v26.7.0`, npm `11.19.0`, Git `2.55.0`, GitHub CLI `2.97.0`, Apple Silicon macOS `26.6.2`, and Xcode are present.

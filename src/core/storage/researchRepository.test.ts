@@ -55,6 +55,40 @@ function createRepository(): ResearchRepository {
 }
 
 describe('ResearchRepository', () => {
+  it('adds provenance and result-count columns to an existing initial database', () => {
+    const database = new Database(':memory:')
+    database.exec(`
+      CREATE TABLE analysis_artifact (
+        id TEXT PRIMARY KEY,
+        item_id TEXT NOT NULL,
+        provider_id TEXT NOT NULL,
+        provider_name TEXT NOT NULL,
+        model TEXT NOT NULL,
+        prompt_version TEXT NOT NULL,
+        content TEXT NOT NULL,
+        input_tokens INTEGER,
+        output_tokens INTEGER,
+        created_at TEXT NOT NULL
+      );
+      CREATE TABLE source_run (
+        source TEXT PRIMARY KEY CHECK (source IN ('arxiv', 'github')),
+        status TEXT NOT NULL CHECK (status IN ('idle', 'refreshing', 'healthy', 'partial', 'failed')),
+        completed_at TEXT NOT NULL,
+        error_message TEXT
+      );
+    `)
+
+    const repository = new ResearchRepository(database)
+    const analysisColumns = database.pragma('table_info(analysis_artifact)') as Array<{
+      name: string
+    }>
+    const sourceRunColumns = database.pragma('table_info(source_run)') as Array<{ name: string }>
+
+    expect(analysisColumns.map((column) => column.name)).toContain('source_hash')
+    expect(sourceRunColumns.map((column) => column.name)).toContain('result_count')
+    repository.close()
+  })
+
   it('persists one validated interest profile', () => {
     const repository = createRepository()
 
@@ -142,6 +176,34 @@ describe('ResearchRepository', () => {
       sourceHealth: { arxiv: 'healthy', github: 'idle' },
       counts: { total: 2, arxiv: 1, github: 1, unread: 1 }
     })
+    repository.close()
+  })
+
+  it('does not treat an interrupted refreshing run as a completed daily refresh', () => {
+    const repository = createRepository()
+    repository.saveInterestProfile(profile, '2026-08-15T09:00:00.000Z')
+    repository.recordSourceRun('arxiv', 'refreshing', '2026-08-15T10:00:00.000Z')
+
+    expect(
+      repository.getDashboardSnapshot(new Date('2026-08-15T10:05:00.000Z')).lastRefreshAt
+    ).toBeNull()
+
+    repository.recordSourceRun('arxiv', 'failed', '2026-08-15T10:06:00.000Z', 'offline')
+    expect(
+      repository.getDashboardSnapshot(new Date('2026-08-15T10:07:00.000Z')).lastRefreshAt
+    ).toBe('2026-08-15T10:06:00.000Z')
+    repository.close()
+  })
+
+  it('retries when one configured source completes before another is interrupted', () => {
+    const repository = createRepository()
+    repository.saveInterestProfile(profile, '2026-08-15T09:00:00.000Z')
+    repository.recordSourceRun('arxiv', 'healthy', '2026-08-15T10:00:00.000Z', null, 2)
+    repository.recordSourceRun('github', 'refreshing', '2026-08-15T10:00:00.000Z')
+
+    expect(
+      repository.getDashboardSnapshot(new Date('2026-08-15T10:05:00.000Z')).lastRefreshAt
+    ).toBeNull()
     repository.close()
   })
 

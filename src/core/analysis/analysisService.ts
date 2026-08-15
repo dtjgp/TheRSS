@@ -4,6 +4,7 @@ import { analyzeWithModel, type ModelAnalysisResponse } from '../models/modelGat
 import type { ModelExecutionProfile, ProviderService } from '../models/providerService'
 import type { ResearchRepository } from '../storage/researchRepository'
 import type { DashboardItem } from '../../shared/api'
+import { hashAnalysisSource } from './sourceSnapshot'
 
 const PROMPT_VERSION = 'discovery-analysis-v1'
 
@@ -45,6 +46,7 @@ export class AnalysisService {
       providerName: provider.name,
       model: provider.model,
       promptVersion: PROMPT_VERSION,
+      sourceHash: hashAnalysisSource(item),
       content: response.content,
       createdAt: (options.now ?? new Date()).toISOString()
     }

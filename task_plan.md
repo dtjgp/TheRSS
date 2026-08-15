@@ -23,7 +23,7 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 - [x] Phase 3: Implement configurable model providers and analysis artifacts.
 - [x] Phase 4: Implement Codex/Claude/DeepSeek agent integration.
 - [x] Phase 5: Implement fast local packaging/update workflow and release gates.
-- [x] Phase 6: Complete security, quality, runtime, and requirement-by-requirement verification.
+- [x] Phase 6: Complete security, quality, runtime, and requirement-by-requirement verification, including once-per-day startup refresh.
 - [ ] Phase 7: Create the GitHub repository, push the verified initial version, and record release evidence.
 
 ## Product milestones
@@ -56,6 +56,8 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 - Implement `GitHub Interest Radar` from official repository search instead of claiming to reproduce the website's undocumented Trending ranking.
 - Use one MCP contract for Codex, Claude Code, and compatible harnesses.
 - Pin Electron tooling to the compatible Vite 7 / React plugin 5 / TypeScript 5 line instead of unqualified latest versions.
+- When an interest profile exists, refresh once on the first app open of the dashboard day if no refresh has completed that day. Keep manual refresh available and retain the last inbox if startup refresh fails.
+- Persist a SHA-256 hash of the exact discovery fields sent for analysis, and distinguish a successful empty source response from a non-empty success.
 
 ## Errors encountered
 
@@ -69,4 +71,4 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Status
 
-**Phases 0–6 complete locally; Phase 7 pending.** The v0.1 discovery, model-analysis, read-only MCP, and recoverable installed-beta loops pass their release gates. `npm run update:local` is implemented but cannot complete its `git pull --ff-only` path until a remote exists. GitHub publication remains blocked by the invalid local `gh` credential and the repository visibility choice.
+**Phases 0–6 complete locally; Phase 7 pending.** The installed beta now refreshes once on the first configured open of each local day, preserves its last good inbox on failure, distinguishes no-results, and retains source-snapshot hashes in analysis provenance. All local release gates pass. GitHub publication remains blocked by the invalid local `gh` credential and the repository visibility choice.

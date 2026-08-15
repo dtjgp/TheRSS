@@ -62,7 +62,7 @@ describe('DiscoveryService', () => {
       score: 62,
       reasons: ['Title matches “structured pruning”', 'arXiv category cs.LG', 'Published 1 day ago']
     })
-    expect(dashboard.sourceHealth).toEqual({ arxiv: 'healthy', github: 'healthy' })
+    expect(dashboard.sourceHealth).toEqual({ arxiv: 'healthy', github: 'no_results' })
     repository.close()
   })
 

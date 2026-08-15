@@ -80,7 +80,7 @@ export class DiscoveryService {
       const source = jobs[index]!.source
       if (result.status === 'fulfilled') {
         rankedItems.push(...result.value.map((item) => rankDiscoveryItem(item, profile, now)))
-        this.#repository.recordSourceRun(source, 'healthy', completedAt)
+        this.#repository.recordSourceRun(source, 'healthy', completedAt, null, result.value.length)
       } else {
         this.#repository.recordSourceRun(
           source,

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { DashboardSnapshot, TheRSSApi } from '../../shared/api'
@@ -10,7 +10,7 @@ import { App } from './App'
 const emptyDashboard: DashboardSnapshot = {
   date: '2026-08-15',
   profileName: null,
-  lastRefreshAt: null,
+  lastRefreshAt: '2026-08-15T08:00:00.000Z',
   sourceHealth: {
     arxiv: 'idle',
     github: 'idle'
@@ -50,11 +50,13 @@ function createApi(snapshot: DashboardSnapshot): TheRSSApi {
 
 describe('App', () => {
   it('presents a focused onboarding state when no interest profile exists', async () => {
-    render(<App api={createApi(emptyDashboard)} />)
+    const api = createApi({ ...emptyDashboard, lastRefreshAt: null })
+    render(<App api={api} />)
 
     expect(await screen.findByRole('heading', { name: 'Build your research radar' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Set research interests' })).toBeVisible()
     expect(screen.getByText('TheRSS')).toBeVisible()
+    expect(api.refresh).not.toHaveBeenCalled()
   })
 
   it('shows explainable paper and repository recommendations', async () => {
@@ -145,6 +147,71 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Refresh sources' }))
 
     expect(api.refresh).toHaveBeenCalledOnce()
+  })
+
+  it('refreshes automatically when the configured radar has not run on the dashboard day', async () => {
+    const staleDashboard: DashboardSnapshot = {
+      ...emptyDashboard,
+      profileName: 'Edge intelligence',
+      lastRefreshAt: '2026-08-14T18:00:00.000Z',
+      counts: { total: 1, arxiv: 1, github: 0, unread: 1 },
+      items: [
+        {
+          id: 'arxiv:old',
+          source: 'arxiv',
+          title: 'Previous daily signal',
+          summary: 'The last verified inbox remains visible while refreshing.',
+          url: 'https://arxiv.org/abs/old',
+          publishedAt: '2026-08-14T00:00:00.000Z',
+          score: 10,
+          triageState: 'new',
+          reasons: ['Previous match']
+        }
+      ]
+    }
+    const refreshedDashboard: DashboardSnapshot = {
+      ...staleDashboard,
+      lastRefreshAt: '2026-08-15T08:05:00.000Z',
+      items: [{ ...staleDashboard.items[0]!, title: 'Fresh daily signal' }]
+    }
+    const api = createApi(staleDashboard)
+    vi.mocked(api.refresh).mockResolvedValue(refreshedDashboard)
+
+    render(<App api={api} />)
+
+    await waitFor(() => expect(api.refresh).toHaveBeenCalledOnce())
+    expect(await screen.findByText('Fresh daily signal')).toBeVisible()
+  })
+
+  it('keeps the last verified inbox when the automatic daily refresh fails', async () => {
+    const staleDashboard: DashboardSnapshot = {
+      ...emptyDashboard,
+      profileName: 'Edge intelligence',
+      lastRefreshAt: '2026-08-14T18:00:00.000Z',
+      counts: { total: 1, arxiv: 1, github: 0, unread: 1 },
+      items: [
+        {
+          id: 'arxiv:old',
+          source: 'arxiv',
+          title: 'Last verified signal',
+          summary: 'Preserved after a source failure.',
+          url: 'https://arxiv.org/abs/old',
+          publishedAt: '2026-08-14T00:00:00.000Z',
+          score: 10,
+          triageState: 'new',
+          reasons: ['Previous match']
+        }
+      ]
+    }
+    const api = createApi(staleDashboard)
+    vi.mocked(api.refresh).mockRejectedValue(new Error('offline'))
+
+    render(<App api={api} />)
+
+    expect(await screen.findByText('Last verified signal')).toBeVisible()
+    expect(
+      await screen.findByText('Refresh failed. Your previous inbox is still available.')
+    ).toBeVisible()
   })
 
   it('configures the first research radar from onboarding', async () => {
@@ -269,6 +336,7 @@ describe('App', () => {
       providerName: 'DeepSeek',
       model: 'deepseek-chat',
       promptVersion: 'discovery-analysis-v1',
+      sourceHash: 'edc71265ddad97262e686e86523de7ae647accbd0ca09853baa3ec2aef42bec2',
       content: '## Research fit\nHighly relevant to structured pruning.',
       createdAt: '2026-08-15T12:00:00.000Z'
     }
@@ -282,5 +350,6 @@ describe('App', () => {
     expect(api.analyzeItem).toHaveBeenCalledWith('arxiv:2608.00001')
     expect(await screen.findByText(/Highly relevant to structured pruning/)).toBeVisible()
     expect(screen.getByText('DeepSeek · deepseek-chat')).toBeVisible()
+    expect(screen.getByText(/source edc71265ddad/)).toBeVisible()
   })
 })

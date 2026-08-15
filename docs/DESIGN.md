@@ -77,7 +77,7 @@ Electron main/application services
 - Use `export.arxiv.org/api/query` Atom results.
 - Build queries from explicit category and keyword settings.
 - Sort by submitted or updated date descending.
-- The initial client sends one bounded combined query per manual refresh; daily caching and a cross-request cooldown are follow-up hardening before background refresh.
+- The initial client sends one bounded combined query on the first eligible app open per local day or on explicit manual refresh; cross-request caching/cooldown remains required before background refresh.
 - Retain arXiv ID/version, title, authors, abstract, categories, published/updated timestamps, and abstract URL. DOI/journal reference and PDF URL enrichment are deferred.
 - Never claim the abstract verifies full-paper methods or results.
 
@@ -121,7 +121,7 @@ Initial persisted entities:
 - `ModelProvider` (metadata plus OS-encrypted credential ciphertext)
 - `AnalysisArtifact`
 
-Stable item IDs are derived from source identity. Content hashes and stale-analysis detection are deferred.
+Stable item IDs are derived from source identity. Every model analysis stores a SHA-256 hash of the exact discovery fields included in its prompt; automatic stale-analysis labeling is deferred.
 
 ## Agent contract
 
@@ -145,7 +145,7 @@ Initial protocols:
 - OpenAI-compatible (including DeepSeek-compatible base URL/model selection)
 - Anthropic-compatible
 
-Provider metadata and encrypted credential ciphertext are stored in SQLite; plaintext encryption/decryption occurs only in Electron main through the OS-backed secret service. Analysis artifacts store provider profile ID/name, model, prompt version, content, timestamp, and token usage internally. Content hashes, stale state, and request status are deferred.
+Provider metadata and encrypted credential ciphertext are stored in SQLite; plaintext encryption/decryption occurs only in Electron main through the OS-backed secret service. Analysis artifacts store provider profile ID/name, model, prompt version, source-snapshot hash, content, timestamp, and token usage internally. Stale state and request status are deferred.
 
 ## Security and privacy
 
@@ -160,8 +160,9 @@ Provider metadata and encrypted credential ciphertext are stored in SQLite; plai
 
 ## Failure and recovery
 
-- Each configured source refresh records `refreshing`, `healthy`, or `failed`; an overall refresh can therefore expose partial source health.
+- Each configured source refresh records `refreshing`, `healthy`, explicit `no_results`, or `failed`; mixed source outcomes therefore remain distinguishable.
 - A failed refresh retains the last verified inbox and surfaces diagnostics.
+- An interrupted `refreshing` record is not counted as the day's completed attempt, so the next app open retries it.
 - Database migrations are transactional and backed up before packaged-app upgrades.
 - Model/agent failure does not block deterministic discovery.
 
@@ -178,7 +179,7 @@ Electron requires a signed macOS application for automatic updates: <https://www
 - Unit: query construction, parsing, normalization, scoring, state transitions, URL/security validation.
 - Integration: SQLite migrations/repositories, refresh orchestration with fixture HTTP, provider adapters with mock servers, MCP tool contract.
 - UI: accessible filtering, match explanations, triage, settings validation, failure states.
-- E2E: first-run interest setup -> refresh fixtures -> daily inbox -> selected-item analysis request.
+- E2E: first-run interest setup -> reopen -> automatic daily fixture refresh -> inbox -> selected-item analysis request.
 - Opt-in smoke: bounded live arXiv and GitHub requests; never part of deterministic CI.
 
 ## Launch plan

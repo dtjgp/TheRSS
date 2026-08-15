@@ -21,6 +21,7 @@ Deliverables:
 - GitHub Interest Radar adapter;
 - normalization, deduplication, deterministic ranking, and match reasons;
 - SQLite persistence and Today UI;
+- once-per-local-day startup refresh with last-good-inbox fallback;
 - triage states and persisted source health.
 
 Exit gate: fixture-driven critical E2E and >=80% owned-code coverage.
@@ -34,7 +35,7 @@ Deliverables:
 - OpenAI-compatible/DeepSeek and Anthropic adapters;
 - direct, user-initiated analysis artifact lifecycle;
 - MCP server for Codex and Claude Code;
-- in-app provider/model/prompt-version provenance and evidence boundary.
+- in-app provider/model/prompt-version/source-hash provenance and evidence boundary.
 
 Exit gate: secret, endpoint, mock-provider, read-only MCP, failure, and provenance tests pass. Stale-result detection remains later hardening.
 
@@ -66,7 +67,7 @@ Exit gate: pushed commit exists remotely and CI reports the required checks.
 - Official GitHub Trending HTML adapter.
 - Learned recommendations.
 - Zotero/llm-wiki promotion.
-- Full-text search, content hashes, and stale-analysis detection.
+- Full-text search and stale-analysis detection.
 - Source response caching/cooldown required before background refresh.
 - Background helper while the app is closed.
 - Signed/notarized public self-updates.

@@ -38,7 +38,7 @@ Before non-trivial work, read:
 - Treat feeds, repository metadata, README content, model endpoints, model output, and agent output as untrusted input.
 - Never render remote HTML directly. Convert to bounded plain text or sanitize with an allowlist.
 - Never hardcode or log API keys, tokens, credentials, prompts containing secrets, or decrypted secret values.
-- Store encrypted secrets separately from the ordinary application database, using Electron `safeStorage` on supported platforms.
+- Never store plaintext secrets in the application database. Electron main may store `safeStorage` ciphertext in SQLite because the decryption key remains OS-managed; renderer, MCP, logs, exports, and source control never receive plaintext.
 - Custom endpoints must be `https:` or explicitly allowed loopback `http:` URLs. Reject file, data, and other schemes.
 - GitHub authentication is optional for public discovery. Never embed a developer token in a distributable build.
 

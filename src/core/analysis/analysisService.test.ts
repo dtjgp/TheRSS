@@ -81,6 +81,7 @@ describe('AnalysisService', () => {
       providerName: 'Local model',
       model: 'research-model',
       promptVersion: 'discovery-analysis-v1',
+      sourceHash: 'edc71265ddad97262e686e86523de7ae647accbd0ca09853baa3ec2aef42bec2',
       content: '## Research fit\nHighly relevant.',
       createdAt: '2026-08-15T12:00:00.000Z'
     })

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { InterestProfile } from '../../core/interests/interestProfile'
 import type { DashboardItem, DashboardSnapshot, TheRSSApi } from '../../shared/api'
+import { isTimestampOnLocalDate } from '../../shared/date'
 import type {
   AnalysisArtifact,
   ModelProtocol,
@@ -10,6 +11,13 @@ import type {
 
 interface AppProps {
   readonly api: TheRSSApi
+}
+
+function shouldRefreshOnLaunch(snapshot: DashboardSnapshot): boolean {
+  return (
+    snapshot.profileName !== null &&
+    (!snapshot.lastRefreshAt || !isTimestampOnLocalDate(snapshot.lastRefreshAt, snapshot.date))
+  )
 }
 
 function SourceMark({ source }: { readonly source: DashboardItem['source'] }) {
@@ -467,6 +475,9 @@ function AnalysisPanel({ artifact }: { readonly artifact: AnalysisArtifact }) {
           {artifact.providerName} · {artifact.model}
         </strong>
         <span>{new Date(artifact.createdAt).toLocaleString()}</span>
+        <span>
+          prompt {artifact.promptVersion} · source {artifact.sourceHash.slice(0, 12)}
+        </span>
       </div>
       <div className="analysis-panel__content">{artifact.content}</div>
       <p>
@@ -489,21 +500,6 @@ export function App({ api }: AppProps) {
   const visibleItems =
     dashboard?.items.filter((item) => sourceFilter === 'all' || item.source === sourceFilter) ?? []
 
-  useEffect(() => {
-    let isActive = true
-    api
-      .getDashboard()
-      .then((snapshot) => {
-        if (isActive) setDashboard(snapshot)
-      })
-      .catch(() => {
-        if (isActive) setError('The local research index could not be opened.')
-      })
-    return () => {
-      isActive = false
-    }
-  }, [api])
-
   const refresh = useCallback(async () => {
     setIsRefreshing(true)
     setError(null)
@@ -515,6 +511,23 @@ export function App({ api }: AppProps) {
       setIsRefreshing(false)
     }
   }, [api])
+
+  useEffect(() => {
+    let isActive = true
+    api
+      .getDashboard()
+      .then((snapshot) => {
+        if (!isActive) return
+        setDashboard(snapshot)
+        if (shouldRefreshOnLaunch(snapshot)) void refresh()
+      })
+      .catch(() => {
+        if (isActive) setError('The local research index could not be opened.')
+      })
+    return () => {
+      isActive = false
+    }
+  }, [api, refresh])
 
   const updateTriage = useCallback(
     async (id: string, state: 'saved' | 'dismissed') => {

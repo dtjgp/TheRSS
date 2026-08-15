@@ -25,6 +25,7 @@ export interface AnalysisArtifact {
   readonly providerName: string
   readonly model: string
   readonly promptVersion: string
+  readonly sourceHash: string
   readonly content: string
   readonly createdAt: string
 }

@@ -4,9 +4,17 @@ import type { RankedDiscoveryItem } from '../../shared/discovery'
 import type { DashboardItem, DashboardSnapshot, SourceHealth, TriageState } from '../../shared/api'
 import type { ModelProtocol, ModelProviderSummary } from '../../shared/models'
 import type { AnalysisArtifact } from '../../shared/models'
+import { localDateKey } from '../../shared/date'
 
 const TRIAGE_STATES = new Set<TriageState>(['new', 'viewed', 'saved', 'dismissed'])
-const SOURCE_HEALTH = new Set<SourceHealth>(['idle', 'refreshing', 'healthy', 'partial', 'failed'])
+type PersistedSourceHealth = Exclude<SourceHealth, 'no_results'>
+const SOURCE_HEALTH = new Set<PersistedSourceHealth>([
+  'idle',
+  'refreshing',
+  'healthy',
+  'partial',
+  'failed'
+])
 
 interface DashboardRow {
   id: string
@@ -22,8 +30,9 @@ interface DashboardRow {
 
 interface SourceRunRow {
   source: 'arxiv' | 'github'
-  status: SourceHealth
+  status: PersistedSourceHealth
   completed_at: string
+  result_count: number | null
 }
 
 export interface StoredModelProvider {
@@ -53,6 +62,7 @@ interface AnalysisArtifactRow {
   provider_name: string
   model: string
   prompt_version: string
+  source_hash: string
   content: string
   created_at: string
 }
@@ -76,7 +86,8 @@ export class ResearchRepository {
   #migrate(): void {
     this.#database.pragma('foreign_keys = ON')
     this.#database.pragma('journal_mode = WAL')
-    this.#database.exec(`
+    const migrate = this.#database.transaction(() => {
+      this.#database.exec(`
       CREATE TABLE IF NOT EXISTS interest_profile (
         singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
         profile_json TEXT NOT NULL,
@@ -113,7 +124,8 @@ export class ResearchRepository {
         source TEXT PRIMARY KEY CHECK (source IN ('arxiv', 'github')),
         status TEXT NOT NULL CHECK (status IN ('idle', 'refreshing', 'healthy', 'partial', 'failed')),
         completed_at TEXT NOT NULL,
-        error_message TEXT
+        error_message TEXT,
+        result_count INTEGER
       );
 
       CREATE TABLE IF NOT EXISTS model_provider (
@@ -134,6 +146,7 @@ export class ResearchRepository {
         provider_name TEXT NOT NULL,
         model TEXT NOT NULL,
         prompt_version TEXT NOT NULL,
+        source_hash TEXT NOT NULL,
         content TEXT NOT NULL,
         input_tokens INTEGER,
         output_tokens INTEGER,
@@ -143,6 +156,28 @@ export class ResearchRepository {
       CREATE INDEX IF NOT EXISTS analysis_artifact_by_item
         ON analysis_artifact(item_id, created_at DESC);
     `)
+
+      const analysisColumns = new Set(
+        (this.#database.pragma('table_info(analysis_artifact)') as Array<{ name: string }>).map(
+          (column) => column.name
+        )
+      )
+      if (!analysisColumns.has('source_hash')) {
+        this.#database.exec(
+          "ALTER TABLE analysis_artifact ADD COLUMN source_hash TEXT NOT NULL DEFAULT 'legacy-unavailable'"
+        )
+      }
+
+      const sourceRunColumns = new Set(
+        (this.#database.pragma('table_info(source_run)') as Array<{ name: string }>).map(
+          (column) => column.name
+        )
+      )
+      if (!sourceRunColumns.has('result_count')) {
+        this.#database.exec('ALTER TABLE source_run ADD COLUMN result_count INTEGER')
+      }
+    })
+    migrate()
   }
 
   saveInterestProfile(profile: InterestProfile, updatedAt = new Date().toISOString()): void {
@@ -283,24 +318,29 @@ export class ResearchRepository {
 
   recordSourceRun(
     source: 'arxiv' | 'github',
-    status: SourceHealth,
+    status: PersistedSourceHealth,
     completedAt = new Date().toISOString(),
-    errorMessage: string | null = null
+    errorMessage: string | null = null,
+    resultCount: number | null = null
   ): void {
     if (!SOURCE_HEALTH.has(status)) {
       throw new Error(`Unsupported source health: ${status}`)
     }
+    if (resultCount !== null && (!Number.isInteger(resultCount) || resultCount < 0)) {
+      throw new Error('Source result count must be a non-negative integer')
+    }
 
     this.#database
       .prepare(
-        `INSERT INTO source_run(source, status, completed_at, error_message)
-         VALUES (?, ?, ?, ?)
+        `INSERT INTO source_run(source, status, completed_at, error_message, result_count)
+         VALUES (?, ?, ?, ?, ?)
          ON CONFLICT(source) DO UPDATE SET
            status = excluded.status,
            completed_at = excluded.completed_at,
-           error_message = excluded.error_message`
+           error_message = excluded.error_message,
+           result_count = excluded.result_count`
       )
-      .run(source, status, completedAt, errorMessage)
+      .run(source, status, completedAt, errorMessage, resultCount)
   }
 
   saveModelProvider(
@@ -365,8 +405,8 @@ export class ResearchRepository {
       .prepare(
         `INSERT INTO analysis_artifact(
            id, item_id, provider_id, provider_name, model, prompt_version,
-           content, input_tokens, output_tokens, created_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           source_hash, content, input_tokens, output_tokens, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         artifact.id,
@@ -375,6 +415,7 @@ export class ResearchRepository {
         artifact.providerName,
         artifact.model,
         artifact.promptVersion,
+        artifact.sourceHash,
         artifact.content,
         usage.inputTokens,
         usage.outputTokens,
@@ -386,7 +427,7 @@ export class ResearchRepository {
     const row = this.#database
       .prepare(
         `SELECT id, item_id, provider_id, provider_name, model, prompt_version,
-                content, created_at
+                source_hash, content, created_at
          FROM analysis_artifact
          WHERE item_id = ?
          ORDER BY created_at DESC, id DESC
@@ -402,6 +443,7 @@ export class ResearchRepository {
           providerName: row.provider_name,
           model: row.model,
           promptVersion: row.prompt_version,
+          sourceHash: row.source_hash,
           content: row.content,
           createdAt: row.created_at
         }
@@ -412,16 +454,42 @@ export class ResearchRepository {
     const profile = this.getInterestProfile()
     const items = this.listDashboardItems()
     const sourceRuns = this.#database
-      .prepare('SELECT source, status, completed_at FROM source_run')
+      .prepare('SELECT source, status, completed_at, result_count FROM source_run')
       .all() as SourceRunRow[]
-    const sourceHealth: DashboardSnapshot['sourceHealth'] = {
-      arxiv: sourceRuns.find((run) => run.source === 'arxiv')?.status ?? 'idle',
-      github: sourceRuns.find((run) => run.source === 'github')?.status ?? 'idle'
+    const healthFor = (source: 'arxiv' | 'github'): SourceHealth => {
+      const run = sourceRuns.find((candidate) => candidate.source === source)
+      if (!run) return 'idle'
+      return run.status === 'healthy' && run.result_count === 0 ? 'no_results' : run.status
     }
-    const refreshTimes = sourceRuns.map((run) => run.completed_at).sort()
+    const sourceHealth: DashboardSnapshot['sourceHealth'] = {
+      arxiv: healthFor('arxiv'),
+      github: healthFor('github')
+    }
+    const configuredSources = new Set<'arxiv' | 'github'>()
+    if (profile && profile.arxiv.categories.length + profile.arxiv.keywords.length > 0) {
+      configuredSources.add('arxiv')
+    }
+    if (
+      profile &&
+      profile.github.keywords.length +
+        profile.github.topics.length +
+        profile.github.languages.length >
+        0
+    ) {
+      configuredSources.add('github')
+    }
+    const hasInterruptedConfiguredSource = sourceRuns.some(
+      (run) => configuredSources.has(run.source) && run.status === 'refreshing'
+    )
+    const refreshTimes = hasInterruptedConfiguredSource
+      ? []
+      : sourceRuns
+          .filter((run) => run.status !== 'idle' && run.status !== 'refreshing')
+          .map((run) => run.completed_at)
+          .sort()
 
     return {
-      date: now.toISOString().slice(0, 10),
+      date: localDateKey(now),
       profileName: profile?.name ?? null,
       lastRefreshAt: refreshTimes.at(-1) ?? null,
       sourceHealth,

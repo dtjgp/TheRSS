@@ -1,7 +1,7 @@
 import type { InterestProfile } from '../core/interests/interestProfile'
 import type { AnalysisArtifact, ModelProviderInput, ModelProviderSummary } from './models'
 
-export type SourceHealth = 'idle' | 'refreshing' | 'healthy' | 'partial' | 'failed'
+export type SourceHealth = 'idle' | 'refreshing' | 'healthy' | 'no_results' | 'partial' | 'failed'
 export type TriageState = 'new' | 'viewed' | 'saved' | 'dismissed'
 
 export interface DashboardItem {

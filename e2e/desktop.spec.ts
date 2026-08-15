@@ -28,7 +28,7 @@ test('first-run discovery, triage, provider setup, and analysis', async () => {
     await page.getByRole('textbox', { name: 'GitHub topics' }).fill('model-compression')
     await page.getByRole('button', { name: 'Save research radar' }).click()
 
-    await page.getByRole('button', { name: 'Refresh sources' }).click()
+    await page.reload()
     await expect(page.getByText('Structured pruning for edge deployment')).toBeVisible()
     await expect(page.getByText('TheRSS/fixture')).toBeVisible()
 
