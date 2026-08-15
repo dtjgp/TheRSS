@@ -61,7 +61,7 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Errors encountered
 
-- `gh auth status` reports an invalid token for the active `dtjgp` account. Continue local work; re-authenticate before repository creation/push.
+- GitHub authentication was initially invalid. A network-enabled check on 2026-08-15 confirmed the active `dtjgp` keyring login with repository/workflow scopes; `dtjgp/TheRSS` still did not exist, so creation/push awaits the explicit visibility choice.
 - Initial `npm install` failed because `electron-vite@5.0.0` supports Vite 5–7 while the unqualified latest Vite was 8.2.1. Resolve by pinning the latest compatible Vite 7 release; do not bypass peer checks with `--force`.
 - The first sandboxed development launch could not bind `::1:5173`; the approved local launch succeeded outside the network sandbox.
 - npm 11 installed the Electron package without its desktop binary. Add `scripts/ensure-electron.mjs` to `postinstall`, explicitly allow the required `better-sqlite3`/`esbuild` scripts, deny the unused Windows installer script, and verify a real Electron launch.
@@ -71,4 +71,4 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Status
 
-**Phases 0–6 complete locally; Phase 7 pending.** The installed beta now refreshes once on the first configured open of each local day, preserves its last good inbox on failure, distinguishes no-results, and retains source-snapshot hashes in analysis provenance. All local release gates pass. GitHub publication remains blocked by the invalid local `gh` credential and the repository visibility choice.
+**Phases 0–6 complete locally; Phase 7 pending.** The installed beta now refreshes once on the first configured open of each local day, preserves its last good inbox on failure, distinguishes no-results, and retains source-snapshot hashes in analysis provenance. The 2026-08-15 final local audit passed all quality, E2E, live-source, MCP, safeStorage, package, and dependency gates. GitHub authentication is verified; repository creation, push, remote commit verification, and CI await the public/private visibility choice.

@@ -72,4 +72,14 @@ TheRSS wins by combining deterministic, provenance-preserving discovery with a d
 ## Environment findings
 
 - Node `v26.7.0`, npm `11.19.0`, Git `2.55.0`, GitHub CLI `2.97.0`, Apple Silicon macOS `26.6.2`, and Xcode are present.
-- `gh auth status` reports that the active `dtjgp` token is invalid. Local implementation can continue, but GitHub repository creation/push will require re-authentication or another authorized GitHub connector.
+- On 2026-08-15, a network-enabled `gh auth status` confirmed an active keyring login for `dtjgp` with `repo` and `workflow` scopes. `dtjgp/TheRSS` did not yet exist; repository creation still requires an explicit public/private visibility choice.
+
+## 2026-08-15 final local release audit
+
+- `npm run check` passed: 17 test files and 72 tests passed; global coverage was 93.17% statements, 82% branches, 97.24% functions, and 94.8% lines.
+- The Electron critical-path E2E passed with desktop execution permission. The restricted-sandbox `SIGABRT`/`EPERM` launch failure was environmental and reproduced the already documented sandbox boundary.
+- Live source smoke passed with arXiv=3 and GitHub=25.
+- The MCP stdio smoke passed all three read-only tools and verified source-hash provenance without secret fields.
+- Electron `safeStorage` encryption/decryption passed, `npm audit --audit-level=high` reported zero vulnerabilities, and tracked-file secret-pattern review found no credentials.
+- `npm run install:local` backed up the existing SQLite database, retained the previous application, installed the current build, and the packaged-app smoke passed.
+- The local worktree was clean at commit `85577a0` before this audit writeback. GitHub publication and CI remain the only founding-goal evidence not yet available.
