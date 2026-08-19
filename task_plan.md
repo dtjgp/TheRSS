@@ -681,14 +681,15 @@ GitHub `main` without force-pushing or losing remote history.
 - [x] Update and format the GitHub README.
 - [x] Re-run the full quality, Electron E2E, live-source, security, and package gates.
 - [x] Install the local beta with database and previous-app retention, then smoke the installed app.
-- [ ] Inspect and stage the authorized full worktree, scan added content for credentials, and commit.
-- [ ] Reconcile the patch-equivalent feature/main histories, push `main`, and verify local/remote SHA equality.
+- [x] Inspect and stage the authorized full worktree, scan added content for credentials, and commit.
+- [x] Reconcile the patch-equivalent feature/main histories, publish through the protected-branch PR,
+      and verify local/remote SHA equality.
 
 ### Status
 
-**Phase 28 in progress.** Remote `main` and the current feature branch have different commit IDs but
-identical base trees; publication will use a fast-forwarded local `main` plus the new verified commit.
-The installed app and release `app.asar` share SHA-256
+**Phase 28 complete.** The product commit was published through protected-branch PR #6 after its
+required `quality` check passed; GitHub `main` recorded it as `7227547`. The installed app and
+release `app.asar` share SHA-256
 `305c54ee53aa23f2dfa3c63af270c54edad95ece982e7fc4908b01e7b5ccf78e`. The database backup is
 `~/Library/Application Support/therss/backups/therss-2026-08-19T21-25-28-902Z.sqlite`; the previous
 app is retained at `~/Applications/TheRSS Dev.backup-2026-08-19T21-25-28-902Z.app`.
