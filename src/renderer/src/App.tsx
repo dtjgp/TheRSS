@@ -1,126 +1,101 @@
 import { useCallback, useEffect, useState } from 'react'
+import {
+  BarChart3,
+  Bot,
+  Compass,
+  Inbox,
+  Library,
+  PanelLeftClose,
+  PanelLeftOpen,
+  RefreshCw,
+  Settings2,
+  Star
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { InterestProfile } from '../../core/interests/interestProfile'
-import type { DashboardItem, DashboardSnapshot, TheRSSApi } from '../../shared/api'
+import type { DashboardSnapshot, SourceHealth, TheRSSApi, TriageState } from '../../shared/api'
 import { isTimestampOnLocalDate } from '../../shared/date'
 import type {
   AnalysisArtifact,
+  AnalysisRunner,
+  LocalAgentStatus,
   ModelProtocol,
   ModelProviderInput,
   ModelProviderSummary
 } from '../../shared/models'
+import { Onboarding } from './AppSections'
+import { DiscoverView } from './DiscoverView'
+import { DataAnalyticsView } from './DataAnalyticsView'
+import { DailyStream } from './DailyStream'
+import { SignalWorkspace } from './SignalWorkspace'
+import { SourceCatalogView } from './SourceCatalogView'
+import type { DiscoverySource } from '../../shared/discovery'
+import { ACTIVE_TODAY_SOURCE_IDS, sourceDisplayName } from '../../shared/sourceIdentity'
 
 interface AppProps {
   readonly api: TheRSSApi
+}
+
+type AppView = 'today' | 'saved' | 'discover' | 'interests' | 'models' | 'analytics' | 'sources'
+
+interface NavigationItem {
+  readonly view: AppView
+  readonly index: string
+  readonly label: string
+  readonly icon: LucideIcon
+}
+
+const navigationItems: readonly NavigationItem[] = [
+  { view: 'today', index: '01', label: 'Today', icon: Inbox },
+  { view: 'saved', index: '02', label: 'Saved', icon: Star },
+  { view: 'discover', index: '03', label: 'Discover', icon: Compass },
+  { view: 'interests', index: '04', label: 'Interests', icon: Settings2 },
+  { view: 'models', index: '05', label: 'Models & Agents', icon: Bot },
+  { view: 'analytics', index: '06', label: 'Data Analytics', icon: BarChart3 },
+  { view: 'sources', index: '07', label: 'Sources', icon: Library }
+]
+
+const sourceHealthLabels: Readonly<Record<SourceHealth, string>> = {
+  idle: 'Idle',
+  refreshing: 'Refreshing',
+  healthy: 'Healthy',
+  no_results: 'No results',
+  partial: 'Partial',
+  failed: 'Failed'
+}
+
+interface LastTriageAction {
+  readonly id: string
+  readonly title: string
+  readonly previousState: TriageState
+  readonly nextState: TriageState
+}
+
+function getSourceHealthSummary(snapshot: DashboardSnapshot | null): {
+  readonly label: string
+  readonly tone: 'ready' | 'working' | 'attention' | 'idle'
+} {
+  if (!snapshot) return { label: 'Opening local index', tone: 'idle' }
+  const states = Object.values(snapshot.sourceHealth)
+  if (states.some((state) => state === 'failed' || state === 'partial')) {
+    return { label: 'Source attention needed', tone: 'attention' }
+  }
+  if (states.some((state) => state === 'refreshing')) {
+    return { label: 'Refreshing sources', tone: 'working' }
+  }
+  if (states.every((state) => state === 'healthy' || state === 'no_results')) {
+    return { label: 'Sources ready', tone: 'ready' }
+  }
+  if (states.some((state) => state === 'healthy' || state === 'no_results')) {
+    return { label: 'Some sources pending', tone: 'idle' }
+  }
+  return { label: 'Local index ready', tone: 'idle' }
 }
 
 function shouldRefreshOnLaunch(snapshot: DashboardSnapshot): boolean {
   return (
     snapshot.profileName !== null &&
     (!snapshot.lastRefreshAt || !isTimestampOnLocalDate(snapshot.lastRefreshAt, snapshot.date))
-  )
-}
-
-function SourceMark({ source }: { readonly source: DashboardItem['source'] }) {
-  return (
-    <span className={`source-mark source-mark--${source}`}>
-      {source === 'arxiv' ? 'ARXIV' : 'GITHUB'}
-    </span>
-  )
-}
-
-function SignalCard({
-  item,
-  index,
-  onTriage,
-  onAnalyze,
-  isAnalyzing
-}: {
-  readonly item: DashboardItem
-  readonly index: number
-  readonly onTriage: (id: string, state: 'saved' | 'dismissed') => Promise<void>
-  readonly onAnalyze: (id: string) => Promise<void>
-  readonly isAnalyzing: boolean
-}) {
-  const [isUpdating, setIsUpdating] = useState(false)
-
-  const updateTriage = async (state: 'saved' | 'dismissed') => {
-    setIsUpdating(true)
-    try {
-      await onTriage(item.id, state)
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
-  return (
-    <article className="signal-card" style={{ '--card-index': index } as React.CSSProperties}>
-      <div className="signal-card__meta">
-        <SourceMark source={item.source} />
-        <span>{new Date(item.publishedAt).toLocaleDateString()}</span>
-        <span className="signal-card__score">signal {item.score}</span>
-      </div>
-      <h2>
-        <a href={item.url} target="_blank" rel="noreferrer">
-          {item.title}
-        </a>
-      </h2>
-      <p>{item.summary}</p>
-      <div className="reason-list" aria-label="Match reasons">
-        {item.reasons.map((reason) => (
-          <span key={reason}>{reason}</span>
-        ))}
-      </div>
-      <div className="signal-card__actions">
-        <button
-          type="button"
-          className="text-button"
-          aria-label={item.triageState === 'saved' ? 'Saved' : 'Save signal'}
-          disabled={isUpdating || item.triageState === 'saved'}
-          onClick={() => void updateTriage('saved')}
-        >
-          {item.triageState === 'saved' ? 'Saved' : 'Save'}
-        </button>
-        <button
-          type="button"
-          className="text-button"
-          aria-label="Analyze signal"
-          disabled={isAnalyzing}
-          onClick={() => void onAnalyze(item.id)}
-        >
-          {isAnalyzing ? 'Analyzing…' : 'Analyze'}
-        </button>
-        <button
-          type="button"
-          className="text-button text-button--muted"
-          aria-label="Dismiss signal"
-          disabled={isUpdating}
-          onClick={() => void updateTriage('dismissed')}
-        >
-          Dismiss
-        </button>
-      </div>
-    </article>
-  )
-}
-
-function Onboarding({ onConfigure }: { readonly onConfigure: () => void }) {
-  return (
-    <section className="onboarding">
-      <p className="eyebrow">FIRST SIGNAL</p>
-      <h1>Build your research radar</h1>
-      <p>
-        Choose the arXiv fields, research phrases, GitHub topics, and languages that deserve your
-        attention. TheRSS will keep the ranking explainable.
-      </p>
-      <button type="button" className="primary-button" onClick={onConfigure}>
-        Set research interests
-      </button>
-      <div className="onboarding__sources" aria-label="Supported sources">
-        <span>arXiv Atom</span>
-        <span>GitHub Interest Radar</span>
-        <span>Local-first</span>
-      </div>
-    </section>
   )
 }
 
@@ -302,7 +277,11 @@ function InterestEditor({
             />
           </label>
         </fieldset>
-        {error && <div className="form-error">{error}</div>}
+        {error && (
+          <div className="form-error" role="alert">
+            {error}
+          </div>
+        )}
         <button type="submit" className="primary-button" disabled={isSaving}>
           {isSaving ? 'Saving radar…' : 'Save research radar'}
         </button>
@@ -337,7 +316,13 @@ function draftFromProvider(provider: ModelProviderSummary): ModelDraft {
   }
 }
 
-function ModelEditor({ api }: { readonly api: TheRSSApi }) {
+function ModelEditor({
+  api,
+  localAgents
+}: {
+  readonly api: TheRSSApi
+  readonly localAgents: readonly LocalAgentStatus[]
+}) {
   const [draft, setDraft] = useState<ModelDraft>(emptyModelDraft)
   const [provider, setProvider] = useState<ModelProviderSummary | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -449,7 +434,11 @@ function ModelEditor({ api }: { readonly api: TheRSSApi }) {
         {provider?.hasCredential && (
           <div className="credential-status">Credential protected by macOS</div>
         )}
-        {error && <div className="form-error">{error}</div>}
+        {error && (
+          <div className="form-error" role="alert">
+            {error}
+          </div>
+        )}
         <button type="submit" className="primary-button" disabled={isSaving}>
           {isSaving ? 'Protecting settings…' : 'Save model provider'}
         </button>
@@ -458,33 +447,21 @@ function ModelEditor({ api }: { readonly api: TheRSSApi }) {
         <span>AGENT BRIDGE</span>
         <strong>Codex · Claude Code · DeepSeek harness</strong>
         <p>
-          These tools share one local, read-only MCP interface. Model API analysis works
-          independently, so agent setup never blocks the daily inbox.
+          The Analyze action can launch either detected CLI in a bounded, non-interactive session.
+          The read-only MCP interface remains available for agent-led exploration.
         </p>
+        <div className="agent-status-list" aria-label="Local agent status">
+          {localAgents.map((agent) => (
+            <span
+              key={agent.runner}
+              className={`agent-status agent-status--${agent.available ? 'ready' : 'missing'}`}
+            >
+              {agent.label}: {agent.available ? 'detected' : 'not detected'}
+            </span>
+          ))}
+        </div>
       </aside>
     </section>
-  )
-}
-
-function AnalysisPanel({ artifact }: { readonly artifact: AnalysisArtifact }) {
-  return (
-    <aside className="analysis-panel" aria-label="Model analysis">
-      <div className="analysis-panel__meta">
-        <span>MODEL ANALYSIS</span>
-        <strong>
-          {artifact.providerName} · {artifact.model}
-        </strong>
-        <span>{new Date(artifact.createdAt).toLocaleString()}</span>
-        <span>
-          prompt {artifact.promptVersion} · source {artifact.sourceHash.slice(0, 12)}
-        </span>
-      </div>
-      <div className="analysis-panel__content">{artifact.content}</div>
-      <p>
-        Evidence boundary: generated from discovery metadata; full-paper or source-code claims
-        remain unverified.
-      </p>
-    </aside>
   )
 }
 
@@ -492,13 +469,53 @@ export function App({ api }: AppProps) {
   const [dashboard, setDashboard] = useState<DashboardSnapshot | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [activeView, setActiveView] = useState<'today' | 'interests' | 'models'>('today')
-  const [sourceFilter, setSourceFilter] = useState<'all' | 'arxiv' | 'github'>('all')
+  const [activeView, setActiveView] = useState<AppView>('today')
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [sourceFilter, setSourceFilter] = useState<'all' | DiscoverySource>('all')
+  const [analysisRunner, setAnalysisRunner] = useState<AnalysisRunner>('model-provider')
+  const [localAgents, setLocalAgents] = useState<readonly LocalAgentStatus[]>([])
   const [analysis, setAnalysis] = useState<AnalysisArtifact | null>(null)
   const [analyzingItemId, setAnalyzingItemId] = useState<string | null>(null)
+  const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null)
+  const [lastTriageAction, setLastTriageAction] = useState<LastTriageAction | null>(null)
+  const [isTriageToastVisible, setIsTriageToastVisible] = useState(false)
 
-  const visibleItems =
-    dashboard?.items.filter((item) => sourceFilter === 'all' || item.source === sourceFilter) ?? []
+  const navigate = useCallback((view: AppView) => {
+    setActiveView(view)
+    setIsTriageToastVisible(false)
+  }, [])
+
+  const viewItems =
+    activeView === 'saved'
+      ? dashboard?.savedItems.length
+        ? dashboard.savedItems
+        : (dashboard?.items.filter((item) => item.triageState === 'saved') ?? [])
+      : (dashboard?.items ?? [])
+  const visibleItems = viewItems.filter(
+    (item) => sourceFilter === 'all' || item.source === sourceFilter
+  )
+  const viewCounts = {
+    arxiv: viewItems.filter((item) => item.source === 'arxiv').length,
+    github: viewItems.filter((item) => item.source === 'github').length,
+    other: viewItems.filter((item) => item.source !== 'arxiv' && item.source !== 'github').length,
+    unread: viewItems.filter((item) => item.triageState === 'new').length
+  }
+  const additionalSources = ACTIVE_TODAY_SOURCE_IDS.filter(
+    (source) => source !== 'arxiv' && source !== 'github'
+  )
+  const additionalReadyCount = dashboard
+    ? additionalSources.filter((source) => {
+        const status = dashboard.sourceHealth[source]
+        return status === 'healthy' || status === 'no_results'
+      }).length
+    : 0
+  const additionalAttentionCount = dashboard
+    ? additionalSources.filter((source) => {
+        const status = dashboard.sourceHealth[source]
+        return status === 'partial' || status === 'failed'
+      }).length
+    : 0
+  const sourceHealthSummary = getSourceHealthSummary(dashboard)
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true)
@@ -529,186 +546,458 @@ export function App({ api }: AppProps) {
     }
   }, [api, refresh])
 
+  useEffect(() => {
+    let isActive = true
+    api
+      .getLocalAgentStatuses()
+      .then((statuses) => {
+        if (isActive) setLocalAgents(statuses)
+      })
+      .catch(() => {
+        if (isActive) setLocalAgents([])
+      })
+    return () => {
+      isActive = false
+    }
+  }, [api])
+
   const updateTriage = useCallback(
-    async (id: string, state: 'saved' | 'dismissed') => {
+    async (id: string, state: TriageState) => {
+      setError(null)
+      const item = [...(dashboard?.items ?? []), ...(dashboard?.savedItems ?? [])].find(
+        (candidate) => candidate.id === id
+      )
       try {
         setDashboard(await api.setTriageState(id, state))
+        const isPassiveRead = item?.triageState === 'new' && state === 'viewed'
+        if (item && item.triageState !== state && !isPassiveRead) {
+          setLastTriageAction({
+            id,
+            title: item.title,
+            previousState: item.triageState,
+            nextState: state
+          })
+          setIsTriageToastVisible(true)
+        }
       } catch {
-        setError('The item state could not be saved. The local index was not changed.')
+        setError('The item state could not be updated. The local index was not changed.')
       }
     },
-    [api]
+    [api, dashboard]
   )
+
+  const openDailyStreamItem = useCallback(
+    (item: DashboardSnapshot['items'][number]) => {
+      setSourceFilter('all')
+      setSelectedSignalId(item.id)
+      if (item.triageState === 'new') void updateTriage(item.id, 'viewed')
+    },
+    [updateTriage]
+  )
+
+  const undoLastTriage = useCallback(async () => {
+    if (!lastTriageAction) return
+    setError(null)
+    try {
+      setDashboard(await api.setTriageState(lastTriageAction.id, lastTriageAction.previousState))
+      setLastTriageAction(null)
+      setIsTriageToastVisible(false)
+    } catch {
+      setError('Undo failed. The latest item state is still active.')
+    }
+  }, [api, lastTriageAction])
+
+  useEffect(() => {
+    if (!lastTriageAction || !isTriageToastVisible) return
+    const timeout = window.setTimeout(() => setIsTriageToastVisible(false), 6_000)
+    return () => window.clearTimeout(timeout)
+  }, [isTriageToastVisible, lastTriageAction])
+
+  useEffect(() => {
+    const handleUndoShortcut = (event: KeyboardEvent) => {
+      if (
+        !lastTriageAction ||
+        event.key.toLowerCase() !== 'z' ||
+        !event.metaKey ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        (event.target instanceof HTMLElement &&
+          (event.target instanceof HTMLInputElement ||
+            event.target instanceof HTMLSelectElement ||
+            event.target instanceof HTMLTextAreaElement ||
+            event.target.isContentEditable))
+      ) {
+        return
+      }
+      event.preventDefault()
+      void undoLastTriage()
+    }
+    window.addEventListener('keydown', handleUndoShortcut)
+    return () => window.removeEventListener('keydown', handleUndoShortcut)
+  }, [lastTriageAction, undoLastTriage])
 
   const analyzeItem = useCallback(
     async (id: string) => {
       setAnalyzingItemId(id)
       setError(null)
       try {
-        setAnalysis(await api.analyzeItem(id))
+        setAnalysis(await api.analyzeItem(id, analysisRunner))
       } catch {
-        setError('Analysis failed. Configure or check the selected model provider.')
+        setError(
+          analysisRunner === 'model-provider'
+            ? 'Analysis failed. Configure or check the selected model provider.'
+            : `Analysis failed. Confirm ${analysisRunner === 'codex' ? 'Codex CLI' : 'Claude Code'} is installed and signed in.`
+        )
       } finally {
         setAnalyzingItemId(null)
       }
     },
-    [api]
+    [analysisRunner, api]
+  )
+
+  useEffect(() => {
+    if (!selectedSignalId || (activeView !== 'today' && activeView !== 'saved')) return
+    let isActive = true
+    api
+      .getLatestAnalysis(selectedSignalId)
+      .then((artifact) => {
+        if (isActive && artifact?.itemId === selectedSignalId) setAnalysis(artifact)
+      })
+      .catch(() => {
+        if (isActive) setError('The latest saved analysis could not be opened.')
+      })
+    return () => {
+      isActive = false
+    }
+  }, [activeView, api, selectedSignalId])
+
+  useEffect(
+    () =>
+      api.onAppCommand((command) => {
+        switch (command) {
+          case 'open-settings':
+            navigate('interests')
+            return
+          case 'show-today':
+            navigate('today')
+            return
+          case 'show-saved':
+            navigate('saved')
+            return
+          case 'show-discover':
+            navigate('discover')
+            return
+          case 'toggle-sidebar':
+            setIsSidebarCollapsed((current) => !current)
+            return
+          case 'refresh-sources':
+            if (dashboard?.profileName) void refresh()
+            return
+          case 'undo-triage':
+            void undoLastTriage()
+            return
+        }
+
+        if (!selectedSignalId || (activeView !== 'today' && activeView !== 'saved')) return
+        const selectedItem = [...(dashboard?.items ?? []), ...(dashboard?.savedItems ?? [])].find(
+          (item) => item.id === selectedSignalId
+        )
+        if (!selectedItem) return
+
+        if (command === 'save-selected') {
+          void updateTriage(
+            selectedItem.id,
+            selectedItem.triageState === 'saved' ? 'viewed' : 'saved'
+          )
+        } else if (command === 'dismiss-selected') {
+          void updateTriage(selectedItem.id, 'dismissed')
+        } else if (command === 'analyze-selected') {
+          void analyzeItem(selectedItem.id)
+        }
+      }),
+    [
+      activeView,
+      analyzeItem,
+      api,
+      dashboard,
+      navigate,
+      refresh,
+      selectedSignalId,
+      undoLastTriage,
+      updateTriage
+    ]
   )
 
   return (
-    <div className="app-shell">
+    <div
+      className={`app-shell ${isSidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}`}
+      data-view={activeView}
+    >
       <aside className="sidebar">
         <div className="brand-lockup">
           <span className="brand-lockup__index">TR</span>
-          <div>
+          <div className="brand-lockup__copy">
             <strong>TheRSS</strong>
             <span>research signal desk</span>
           </div>
         </div>
         <nav aria-label="Primary navigation">
-          <button
-            type="button"
-            className={`nav-item ${activeView === 'today' ? 'nav-item--active' : ''}`}
-            onClick={() => setActiveView('today')}
-          >
-            <span>01</span> Today
-          </button>
-          <button type="button" className="nav-item" disabled>
-            <span>02</span> Discover
-          </button>
-          <button
-            type="button"
-            className={`nav-item ${activeView === 'interests' ? 'nav-item--active' : ''}`}
-            onClick={() => setActiveView('interests')}
-          >
-            <span>03</span> Interests
-          </button>
-          <button
-            type="button"
-            className={`nav-item ${activeView === 'models' ? 'nav-item--active' : ''}`}
-            onClick={() => setActiveView('models')}
-          >
-            <span>04</span> Models &amp; Agents
-          </button>
-          <button type="button" className="nav-item" disabled>
-            <span>05</span> Diagnostics
-          </button>
+          {navigationItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.view}
+                type="button"
+                className={`nav-item ${activeView === item.view ? 'nav-item--active' : ''}`}
+                aria-current={activeView === item.view ? 'page' : undefined}
+                aria-label={`${item.index} ${item.label}`}
+                title={isSidebarCollapsed ? item.label : undefined}
+                onClick={() => navigate(item.view)}
+              >
+                <Icon className="nav-item__icon" aria-hidden="true" size={17} strokeWidth={1.8} />
+                <span className="nav-item__label">{item.label}</span>
+              </button>
+            )
+          })}
         </nav>
-        <div className="sidebar__footer">
-          <span className="status-dot" />
-          local index
+        <div className="sidebar__footer" title={sourceHealthSummary.label}>
+          <span className={`status-dot status-dot--${sourceHealthSummary.tone}`} />
+          <span>{sourceHealthSummary.label}</span>
         </div>
       </aside>
 
       <main>
         <header className="topbar">
-          <div>
-            <span className="dateline">{dashboard?.date ?? 'Loading local index…'}</span>
-            <span className="profile-name">{dashboard?.profileName ?? 'No profile'}</span>
+          <div className="topbar__leading">
+            <button
+              type="button"
+              className="toolbar-button"
+              aria-label={isSidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+              aria-pressed={isSidebarCollapsed}
+              onClick={() => setIsSidebarCollapsed((current) => !current)}
+            >
+              {isSidebarCollapsed ? (
+                <PanelLeftOpen aria-hidden="true" size={17} strokeWidth={1.8} />
+              ) : (
+                <PanelLeftClose aria-hidden="true" size={17} strokeWidth={1.8} />
+              )}
+            </button>
+            <div className="topbar__identity">
+              <span className="profile-name">{dashboard?.profileName ?? 'No profile'}</span>
+              <span className="dateline">{dashboard?.date ?? 'Loading local index…'}</span>
+            </div>
           </div>
-          {dashboard?.profileName && (
+          {(activeView === 'today' || activeView === 'saved') && dashboard?.profileName && (
             <button
               type="button"
               className="refresh-button"
               onClick={refresh}
               disabled={isRefreshing}
             >
+              <RefreshCw aria-hidden="true" size={15} strokeWidth={1.9} />
               {isRefreshing ? 'Refreshing…' : 'Refresh sources'}
             </button>
           )}
         </header>
 
-        {error && <div className="error-banner">{error}</div>}
-        {!dashboard && !error && <div className="loading-state">Compiling today’s signal…</div>}
+        {error && (
+          <div className="error-banner" role="alert">
+            {error}
+          </div>
+        )}
+        {!dashboard && !error && (
+          <div className="loading-state" role="status">
+            Compiling today’s signal…
+          </div>
+        )}
         {activeView === 'interests' && (
           <InterestEditor
             api={api}
             onSaved={(snapshot) => {
               setDashboard(snapshot)
-              setActiveView('today')
+              navigate('today')
             }}
           />
         )}
-        {activeView === 'models' && <ModelEditor api={api} />}
-        {activeView === 'today' && dashboard && !dashboard.profileName && (
-          <Onboarding onConfigure={() => setActiveView('interests')} />
+        {activeView === 'models' && <ModelEditor api={api} localAgents={localAgents} />}
+        {activeView === 'discover' && (
+          <DiscoverView api={api} localAgents={localAgents} onDashboardChange={setDashboard} />
         )}
-        {activeView === 'today' && dashboard?.profileName && (
-          <section className="today-view">
-            <div className="today-view__heading">
-              <div>
-                <p className="eyebrow">DAILY EDITION</p>
-                <h1>Today's research signal</h1>
+        {activeView === 'analytics' && <DataAnalyticsView api={api} />}
+        {activeView === 'sources' && (
+          <SourceCatalogView api={api} hasInterestProfile={Boolean(dashboard?.profileName)} />
+        )}
+        {activeView === 'today' && dashboard && !dashboard.profileName && (
+          <Onboarding onConfigure={() => navigate('interests')} />
+        )}
+        {dashboard &&
+          ((activeView === 'today' && dashboard.profileName) || activeView === 'saved') && (
+            <section className="today-view">
+              <div className="today-view__heading">
+                <div>
+                  <p className="eyebrow">
+                    {activeView === 'saved' ? 'RESEARCH SHELF' : 'DAILY EDITION'}
+                  </p>
+                  <h1>
+                    {activeView === 'saved' ? 'Saved research signals' : "Today's research signal"}
+                  </h1>
+                </div>
+                <div className="signal-counts" aria-label="Inbox counts">
+                  <span>
+                    <strong>{viewCounts.arxiv}</strong> papers
+                  </span>
+                  <span>
+                    <strong>{viewCounts.github}</strong> repos
+                  </span>
+                  <span>
+                    <strong>{viewCounts.other}</strong> other
+                  </span>
+                  <span>
+                    <strong>{viewCounts.unread}</strong> unread
+                  </span>
+                </div>
               </div>
-              <div className="signal-counts" aria-label="Inbox counts">
-                <span>
-                  <strong>{dashboard.counts.arxiv}</strong> papers
-                </span>
-                <span>
-                  <strong>{dashboard.counts.github}</strong> repos
-                </span>
-                <span>
-                  <strong>{dashboard.counts.unread}</strong> unread
-                </span>
-              </div>
-            </div>
 
-            <div className="source-filters" aria-label="Filter daily signal by source">
-              <button
-                type="button"
-                aria-label="Show all sources"
-                aria-pressed={sourceFilter === 'all'}
-                onClick={() => setSourceFilter('all')}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                aria-label="Show arXiv only"
-                aria-pressed={sourceFilter === 'arxiv'}
-                onClick={() => setSourceFilter('arxiv')}
-              >
-                arXiv
-              </button>
-              <button
-                type="button"
-                aria-label="Show GitHub only"
-                aria-pressed={sourceFilter === 'github'}
-                onClick={() => setSourceFilter('github')}
-              >
-                GitHub
-              </button>
-            </div>
+              <div className="inbox-toolbar">
+                <div className="inbox-toolbar__sources">
+                  <div className="source-filters" aria-label="Filter daily signal by source">
+                    <button
+                      type="button"
+                      aria-label="Show all sources"
+                      aria-pressed={sourceFilter === 'all'}
+                      onClick={() => setSourceFilter('all')}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Show arXiv only"
+                      aria-pressed={sourceFilter === 'arxiv'}
+                      onClick={() => setSourceFilter('arxiv')}
+                    >
+                      arXiv
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Show GitHub only"
+                      aria-pressed={sourceFilter === 'github'}
+                      onClick={() => setSourceFilter('github')}
+                    >
+                      GitHub
+                    </button>
+                    <select
+                      aria-label="Show another source"
+                      value={
+                        sourceFilter !== 'all' &&
+                        sourceFilter !== 'arxiv' &&
+                        sourceFilter !== 'github'
+                          ? sourceFilter
+                          : ''
+                      }
+                      onChange={(event) => {
+                        if (event.target.value)
+                          setSourceFilter(event.target.value as DiscoverySource)
+                      }}
+                    >
+                      <option value="">More sources</option>
+                      {additionalSources.map((source) => (
+                        <option key={source} value={source}>
+                          {sourceDisplayName(source)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="source-health" aria-label="Source health">
+                    <span data-health={dashboard.sourceHealth.arxiv}>
+                      arXiv: {sourceHealthLabels[dashboard.sourceHealth.arxiv]}
+                    </span>
+                    <span data-health={dashboard.sourceHealth.github}>
+                      GitHub: {sourceHealthLabels[dashboard.sourceHealth.github]}
+                    </span>
+                    <span data-health={additionalAttentionCount > 0 ? 'partial' : 'healthy'}>
+                      Additional: {additionalReadyCount}/{additionalSources.length} ready
+                      {additionalAttentionCount > 0
+                        ? ` · ${additionalAttentionCount} attention`
+                        : ''}
+                    </span>
+                  </div>
+                </div>
+                <label className="analysis-runner-control">
+                  <span>Analyze with</span>
+                  <select
+                    aria-label="Analysis runner"
+                    value={analysisRunner}
+                    onChange={(event) => setAnalysisRunner(event.target.value as AnalysisRunner)}
+                  >
+                    <option value="model-provider">Model provider</option>
+                    {localAgents.map((agent) => (
+                      <option key={agent.runner} value={agent.runner} disabled={!agent.available}>
+                        {agent.label}
+                        {agent.available ? '' : ' (not detected)'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
 
-            {analysis && <AnalysisPanel artifact={analysis} />}
-
-            {dashboard.items.length === 0 ? (
-              <div className="quiet-state">
-                <span>0 SIGNALS</span>
-                <h2>Your radar is configured.</h2>
-                <p>Refresh the sources to assemble today’s paper and repository shortlist.</p>
-              </div>
-            ) : visibleItems.length === 0 ? (
-              <div className="quiet-state quiet-state--filtered">
-                <span>0 MATCHES</span>
-                <h2>No signals from this source.</h2>
-                <p>Choose another source or return to the complete daily edition.</p>
-              </div>
-            ) : (
-              <div className="signal-grid">
-                {visibleItems.map((item, index) => (
-                  <SignalCard
-                    key={item.id}
-                    item={item}
-                    index={index}
-                    onTriage={updateTriage}
-                    onAnalyze={analyzeItem}
-                    isAnalyzing={analyzingItemId === item.id}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
+              {viewItems.length === 0 ? (
+                <div className="quiet-state">
+                  <span>0 SIGNALS</span>
+                  <h2>
+                    {activeView === 'saved' ? 'No saved signals yet.' : 'Your radar is configured.'}
+                  </h2>
+                  <p>
+                    {activeView === 'saved'
+                      ? 'Save a research signal from Today or Discover and it will appear here.'
+                      : 'Refresh the sources to assemble today’s cross-source research shortlist.'}
+                  </p>
+                </div>
+              ) : (
+                <div
+                  className={`today-stage ${activeView === 'saved' ? 'today-stage--single' : ''}`}
+                >
+                  {visibleItems.length === 0 ? (
+                    <div className="quiet-state quiet-state--filtered">
+                      <span>0 MATCHES</span>
+                      <h2>No signals from this source.</h2>
+                      <p>Choose another source or use the daily stream to open the full edition.</p>
+                    </div>
+                  ) : (
+                    <SignalWorkspace
+                      items={visibleItems}
+                      analysis={analysis}
+                      analyzingItemId={analyzingItemId}
+                      selectedItemId={selectedSignalId}
+                      onTriage={updateTriage}
+                      onAnalyze={analyzeItem}
+                      onSelectionChange={setSelectedSignalId}
+                    />
+                  )}
+                  {activeView === 'today' && (
+                    <DailyStream
+                      items={dashboard.items}
+                      dashboardDate={dashboard.date}
+                      lastRefreshAt={dashboard.lastRefreshAt}
+                      selectedItemId={selectedSignalId}
+                      onSelect={openDailyStreamItem}
+                    />
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+        {lastTriageAction && isTriageToastVisible && (
+          <div className="triage-toast" role="status">
+            <span>
+              {lastTriageAction.nextState === 'dismissed'
+                ? `Dismissed “${lastTriageAction.title}”`
+                : `Updated “${lastTriageAction.title}”`}
+            </span>
+            <button type="button" onClick={() => void undoLastTriage()}>
+              Undo
+            </button>
+          </div>
         )}
       </main>
     </div>

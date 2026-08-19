@@ -42,15 +42,32 @@ export function buildArxivSearchExpression(interest: ArxivInterest): string {
 }
 
 export function buildArxivQueryUrl(interest: ArxivInterest, maxResults = 50): string {
+  return buildArxivUrl(buildArxivSearchExpression(interest), maxResults)
+}
+
+function buildArxivUrl(searchExpression: string, maxResults: number): string {
   if (!Number.isInteger(maxResults) || maxResults < 1 || maxResults > MAX_RESULTS_PER_REFRESH) {
     throw new Error(`maxResults must be between 1 and ${MAX_RESULTS_PER_REFRESH}`)
   }
 
   const url = new URL(ARXIV_QUERY_ENDPOINT)
-  url.searchParams.set('search_query', buildArxivSearchExpression(interest))
+  url.searchParams.set('search_query', searchExpression)
   url.searchParams.set('start', '0')
   url.searchParams.set('max_results', String(maxResults))
   url.searchParams.set('sortBy', 'submittedDate')
   url.searchParams.set('sortOrder', 'descending')
   return url.toString()
+}
+
+function utcDay(value: Date): string {
+  return [
+    value.getUTCFullYear(),
+    String(value.getUTCMonth() + 1).padStart(2, '0'),
+    String(value.getUTCDate()).padStart(2, '0')
+  ].join('')
+}
+
+export function buildArxivRecentQueryUrl(date: Date, maxResults = MAX_RESULTS_PER_REFRESH): string {
+  const day = utcDay(date)
+  return buildArxivUrl(`submittedDate:[${day}0000 TO ${day}2359]`, maxResults)
 }

@@ -1,22 +1,12 @@
 import { existsSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join, resolve } from 'node:path'
-import { env, platform } from 'node:process'
+import { resolve } from 'node:path'
+import { env } from 'node:process'
 import { error as logError } from 'node:console'
 import Database from 'better-sqlite3'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { ResearchRepository } from '../core/storage/researchRepository'
 import { createTheRssMcpServer } from './server'
-
-function defaultDatabasePath(): string {
-  if (platform === 'darwin') {
-    return join(homedir(), 'Library', 'Application Support', 'TheRSS', 'therss.sqlite')
-  }
-  if (platform === 'win32') {
-    return join(env.APPDATA ?? homedir(), 'TheRSS', 'therss.sqlite')
-  }
-  return join(env.XDG_CONFIG_HOME ?? join(homedir(), '.config'), 'TheRSS', 'therss.sqlite')
-}
+import { defaultDatabasePath } from './databasePath'
 
 const databasePath = resolve(env.THERSS_DB_PATH ?? defaultDatabasePath())
 if (!existsSync(databasePath)) {

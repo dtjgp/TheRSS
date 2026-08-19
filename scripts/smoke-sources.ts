@@ -1,8 +1,8 @@
 import { log } from 'node:console'
-import { fetchArxivItems } from '../src/core/sources/arxiv/arxivClient'
+import { fetchArxivItems, fetchArxivRecentItems } from '../src/core/sources/arxiv/arxivClient'
 import { fetchGitHubRadarItems } from '../src/core/sources/github/githubClient'
 
-const [papers, repositories] = await Promise.all([
+const [papers, recentPapers, repositories] = await Promise.all([
   fetchArxivItems(
     {
       categories: ['cs.LG'],
@@ -11,6 +11,7 @@ const [papers, repositories] = await Promise.all([
     },
     { maxResults: 3 }
   ),
+  fetchArxivRecentItems({ maxResults: 200 }),
   fetchGitHubRadarItems(
     {
       keywords: [],
@@ -25,6 +26,13 @@ if (!papers.every((item) => item.source === 'arxiv' && item.url.startsWith('http
   throw new Error('Live arXiv smoke returned an invalid normalized item')
 }
 if (
+  !recentPapers.every(
+    (item) => item.source === 'arxiv' && item.url.startsWith('https://arxiv.org/')
+  )
+) {
+  throw new Error('Live interest-independent arXiv smoke returned an invalid normalized item')
+}
+if (
   !repositories.every(
     (item) => item.source === 'github' && item.url.startsWith('https://github.com/')
   )
@@ -32,4 +40,6 @@ if (
   throw new Error('Live GitHub smoke returned an invalid normalized item')
 }
 
-log(`Live source smoke passed: arXiv=${papers.length}, GitHub=${repositories.length}`)
+log(
+  `Live source smoke passed: arXiv interest=${papers.length}, arXiv today=${recentPapers.length}, GitHub=${repositories.length}`
+)

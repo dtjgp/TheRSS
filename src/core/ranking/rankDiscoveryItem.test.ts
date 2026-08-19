@@ -20,6 +20,7 @@ const profile: InterestProfile = {
 const baseItem: DiscoveryItem = {
   id: 'arxiv:2608.00001',
   source: 'arxiv',
+  kind: 'paper',
   externalId: '2608.00001',
   title: 'Structured pruning for edge deployment',
   summary: 'A resource-aware method for neural networks.',
@@ -30,7 +31,8 @@ const baseItem: DiscoveryItem = {
   categories: ['cs.LG'],
   topics: [],
   language: null,
-  stars: null
+  stars: null,
+  metrics: {}
 }
 
 describe('rankDiscoveryItem', () => {
@@ -70,6 +72,7 @@ describe('rankDiscoveryItem', () => {
       ...baseItem,
       id: 'github:owner/repo',
       source: 'github',
+      kind: 'repository',
       externalId: 'owner/repo',
       url: 'https://github.com/owner/repo',
       categories: [],
@@ -85,6 +88,31 @@ describe('rankDiscoveryItem', () => {
         expect.objectContaining({ kind: 'topic', value: 'model-compression' }),
         expect.objectContaining({ kind: 'language', value: 'Python' }),
         expect.objectContaining({ kind: 'popularity' })
+      ])
+    )
+  })
+
+  it('uses combined research terms and typed popularity metrics for a configured source', () => {
+    const result = rankDiscoveryItem(
+      {
+        ...baseItem,
+        id: 'folo:64:model:org/model',
+        source: 'folo:64',
+        kind: 'model',
+        externalId: 'org/model',
+        title: 'Edge model compression',
+        url: 'https://huggingface.co/org/model',
+        categories: [],
+        metrics: { downloads: 1_000 }
+      },
+      profile,
+      new Date('2026-08-15T00:00:00Z')
+    )
+
+    expect(result.reasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'keyword', value: 'edge' }),
+        expect.objectContaining({ kind: 'popularity', label: '1,000 downloads' })
       ])
     )
   })

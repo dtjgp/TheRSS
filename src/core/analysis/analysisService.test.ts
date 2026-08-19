@@ -21,6 +21,7 @@ const rankedItem: RankedDiscoveryItem = {
   item: {
     id: 'arxiv:2608.00001',
     source: 'arxiv',
+    kind: 'paper',
     externalId: '2608.00001',
     title: 'Structured pruning for edge deployment',
     summary: 'A resource-aware method.',
@@ -31,7 +32,8 @@ const rankedItem: RankedDiscoveryItem = {
     categories: ['cs.LG'],
     topics: [],
     language: null,
-    stars: null
+    stars: null,
+    metrics: {}
   },
   score: 62,
   excluded: false,
@@ -80,7 +82,7 @@ describe('AnalysisService', () => {
       providerId: 'default',
       providerName: 'Local model',
       model: 'research-model',
-      promptVersion: 'discovery-analysis-v1',
+      promptVersion: 'llm-wiki-paper-l1-v1',
       sourceHash: 'edc71265ddad97262e686e86523de7ae647accbd0ca09853baa3ec2aef42bec2',
       content: '## Research fit\nHighly relevant.',
       createdAt: '2026-08-15T12:00:00.000Z'
@@ -100,6 +102,42 @@ describe('AnalysisService', () => {
 
     await expect(service.analyzeItem('missing')).rejects.toThrow('Unknown discovery item')
     expect(gateway).not.toHaveBeenCalled()
+    repository.close()
+  })
+
+  it('routes a local Codex request without requiring the model provider gateway', async () => {
+    const { repository, providers } = setup()
+    const modelGateway = vi.fn()
+    const localAgentGateway = vi.fn().mockResolvedValue({
+      content: '## Research fit\nCodex found a strong match.',
+      providerId: 'local-agent:codex',
+      providerName: 'Codex CLI',
+      model: 'codex-cli',
+      inputTokens: null,
+      outputTokens: null
+    })
+    const service = new AnalysisService(repository, providers, modelGateway, localAgentGateway)
+
+    const artifact = await service.analyzeItem('arxiv:2608.00001', {
+      runner: 'codex',
+      now: new Date('2026-08-15T12:00:00.000Z'),
+      idFactory: () => 'analysis-codex'
+    })
+
+    expect(artifact).toMatchObject({
+      id: 'analysis-codex',
+      providerId: 'local-agent:codex',
+      providerName: 'Codex CLI',
+      model: 'codex-cli',
+      promptVersion: 'llm-wiki-paper-l1-v1',
+      sourceHash: 'edc71265ddad97262e686e86523de7ae647accbd0ca09853baa3ec2aef42bec2'
+    })
+    expect(modelGateway).not.toHaveBeenCalled()
+    expect(localAgentGateway).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'arxiv:2608.00001' }),
+      'codex'
+    )
+    expect(repository.getLatestAnalysis('arxiv:2608.00001')).toEqual(artifact)
     repository.close()
   })
 })

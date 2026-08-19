@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { ArxivInterest } from '../../interests/interestProfile'
 import { readBoundedText } from '../../security/boundedResponse'
 import type { DiscoveryItem } from '../../../shared/discovery'
-import { buildArxivQueryUrl } from './arxivQuery'
+import { buildArxivQueryUrl, buildArxivRecentQueryUrl } from './arxivQuery'
 
 const ARXIV_USER_AGENT = 'TheRSS/0.1 (local academic discovery client)'
 
@@ -11,11 +11,15 @@ interface FetchArxivOptions {
   readonly fetcher?: typeof fetch
   readonly maxResults?: number
   readonly maxResponseBytes?: number
+  readonly maxAttempts?: number
+  readonly sleep?: (milliseconds: number) => Promise<void>
+  readonly now?: Date
 }
 
 const parsedItemSchema = z.object({
   id: z.string().min(1),
   source: z.literal('arxiv'),
+  kind: z.literal('paper'),
   externalId: z.string().min(1),
   title: z.string().min(1),
   summary: z.string(),
@@ -26,7 +30,8 @@ const parsedItemSchema = z.object({
   categories: z.array(z.string()),
   topics: z.array(z.string()),
   language: z.null(),
-  stars: z.null()
+  stars: z.null(),
+  metrics: z.object({})
 })
 
 function arrayify<T>(value: T | readonly T[] | undefined): readonly T[] {
@@ -85,6 +90,7 @@ export function parseArxivFeed(xml: string): DiscoveryItem[] {
     return parsedItemSchema.parse({
       id: `arxiv:${externalId}`,
       source: 'arxiv',
+      kind: 'paper',
       externalId,
       title: normalizeText(entry.title),
       summary: normalizeText(entry.summary),
@@ -95,7 +101,8 @@ export function parseArxivFeed(xml: string): DiscoveryItem[] {
       categories,
       topics: [],
       language: null,
-      stars: null
+      stars: null,
+      metrics: {}
     })
   })
 }
@@ -104,22 +111,66 @@ export async function fetchArxivItems(
   interest: ArxivInterest,
   options: FetchArxivOptions = {}
 ): Promise<DiscoveryItem[]> {
-  const response = await (options.fetcher ?? fetch)(
-    buildArxivQueryUrl(interest, options.maxResults ?? 50),
-    {
+  return fetchArxivUrl(buildArxivQueryUrl(interest, options.maxResults ?? 50), options)
+}
+
+function retryDelay(response: Response, attempt: number): number {
+  const retryAfter = response.headers.get('retry-after')?.trim()
+  if (retryAfter) {
+    const seconds = Number(retryAfter)
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1_000, 10_000)
+    const dateDelay = Date.parse(retryAfter) - Date.now()
+    if (Number.isFinite(dateDelay) && dateDelay > 0) return Math.min(dateDelay, 10_000)
+  }
+  return Math.min(3_000 * attempt, 10_000)
+}
+
+async function fetchArxivUrl(url: string, options: FetchArxivOptions): Promise<DiscoveryItem[]> {
+  const fetcher = options.fetcher ?? fetch
+  const maxAttempts = options.maxAttempts ?? 3
+  const sleep =
+    options.sleep ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)))
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const response = await fetcher(url, {
       headers: {
         Accept: 'application/atom+xml',
         'User-Agent': ARXIV_USER_AGENT
       },
       signal: AbortSignal.timeout(30_000)
+    })
+
+    if (response.ok) {
+      return parseArxivFeed(
+        await readBoundedText(response, options.maxResponseBytes ?? 10_000_000, 'arXiv')
+      )
     }
-  )
-
-  if (!response.ok) {
-    throw new Error(`arXiv request failed with status ${response.status}`)
+    if (response.status !== 429 || attempt === maxAttempts) {
+      throw new Error(`arXiv request failed with status ${response.status}`)
+    }
+    await sleep(retryDelay(response, attempt))
   }
+  throw new Error('arXiv request failed after bounded retries')
+}
 
-  return parseArxivFeed(
-    await readBoundedText(response, options.maxResponseBytes ?? 10_000_000, 'arXiv')
-  )
+export async function fetchArxivRecentItems(
+  options: FetchArxivOptions = {}
+): Promise<DiscoveryItem[]> {
+  const now = options.now ?? new Date()
+  const sleep =
+    options.sleep ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)))
+  for (let daysAgo = 0; daysAgo < 7; daysAgo += 1) {
+    const requestedDay = new Date(now)
+    requestedDay.setUTCDate(requestedDay.getUTCDate() - daysAgo)
+    const items = await fetchArxivUrl(
+      buildArxivRecentQueryUrl(requestedDay, options.maxResults ?? 200),
+      options
+    )
+    if (items.length > 0) {
+      const requestedDate = requestedDay.toISOString().slice(0, 10)
+      return items.filter((item) => item.publishedAt.startsWith(requestedDate))
+    }
+    if (daysAgo < 6) await sleep(3_000)
+  }
+  return []
 }

@@ -35,17 +35,24 @@ function recencyReason(item: DiscoveryItem, now: Date): MatchReason | null {
   }
 }
 
-function popularityReason(stars: number | null): MatchReason | null {
-  if (stars === null || stars <= 0) {
+function popularityReason(item: DiscoveryItem): MatchReason | null {
+  const popularity = item.stars ?? item.metrics.downloads ?? item.metrics.likes ?? 0
+  if (popularity <= 0) {
     return null
   }
 
-  const weight = Math.min(12, Math.round(Math.log10(stars + 1) * 4))
+  const weight = Math.min(12, Math.round(Math.log10(popularity + 1) * 4))
+  const label =
+    item.stars !== null
+      ? `${popularity.toLocaleString()} GitHub stars`
+      : item.metrics.downloads !== undefined
+        ? `${popularity.toLocaleString()} downloads`
+        : `${popularity.toLocaleString()} likes`
   return {
     kind: 'popularity',
-    value: String(stars),
+    value: String(popularity),
     weight,
-    label: `${stars.toLocaleString()} GitHub stars`
+    label
   }
 }
 
@@ -67,7 +74,12 @@ export function rankDiscoveryItem(
       : []
   )
 
-  const keywords = item.source === 'arxiv' ? profile.arxiv.keywords : profile.github.keywords
+  const keywords =
+    item.source === 'arxiv'
+      ? profile.arxiv.keywords
+      : item.source === 'github'
+        ? profile.github.keywords
+        : [...new Set([...profile.arxiv.keywords, ...profile.github.keywords])]
   const keywordReasons = keywords.flatMap((keyword): MatchReason[] => {
     if (includesText(item.title, keyword)) {
       return [
@@ -139,7 +151,7 @@ export function rankDiscoveryItem(
         ]
       : []
 
-  const optionalReasons = [recencyReason(item, now), popularityReason(item.stars)].filter(
+  const optionalReasons = [recencyReason(item, now), popularityReason(item)].filter(
     (reason): reason is MatchReason => reason !== null
   )
   const reasons = [

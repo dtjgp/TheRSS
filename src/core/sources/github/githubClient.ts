@@ -38,6 +38,7 @@ export function parseGitHubSearchResponse(payload: unknown): DiscoveryItem[] {
   return result.items.map((repository) => ({
     id: `github:${repository.full_name.toLocaleLowerCase()}`,
     source: 'github',
+    kind: 'repository',
     externalId: repository.full_name,
     title: repository.full_name,
     summary: repository.description ?? 'No repository description provided.',
@@ -48,7 +49,8 @@ export function parseGitHubSearchResponse(payload: unknown): DiscoveryItem[] {
     categories: [],
     topics: [...repository.topics],
     language: repository.language,
-    stars: repository.stargazers_count
+    stars: repository.stargazers_count,
+    metrics: {}
   }))
 }
 
