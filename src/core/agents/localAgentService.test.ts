@@ -10,6 +10,8 @@ import {
   type LocalAgentProcessRequest
 } from './localAgentService'
 
+const TEST_WORKING_DIRECTORY = tmpdir()
+
 const item: DashboardItem = {
   id: 'arxiv:2608.00001',
   source: 'arxiv',
@@ -45,7 +47,7 @@ describe('LocalAgentService', () => {
     const service = new LocalAgentService({
       resolveExecutable: vi.fn().mockResolvedValue('/opt/homebrew/bin/codex'),
       execute,
-      workingDirectory: '/private/tmp',
+      workingDirectory: TEST_WORKING_DIRECTORY,
       environment: {
         HOME: '/Users/test',
         PATH: '/untrusted/path',
@@ -81,7 +83,7 @@ describe('LocalAgentService', () => {
     expect(request.stdin).toContain(item.summary)
     expect(request.stdin).toContain('llm-wiki Paper_Note_L1')
     expect(request.stdin).toContain('## 快速决策卡')
-    expect(request.cwd).toBe('/private/tmp')
+    expect(request.cwd).toBe(TEST_WORKING_DIRECTORY)
     expect(request.environment.HOME).toBe('/Users/test')
     expect(request.environment.PATH).toContain('/opt/homebrew/bin')
     expect(request.environment.ANTHROPIC_API_KEY).toBeUndefined()
@@ -92,7 +94,7 @@ describe('LocalAgentService', () => {
     const service = new LocalAgentService({
       resolveExecutable: vi.fn().mockResolvedValue('/Users/test/.local/bin/claude'),
       execute,
-      workingDirectory: '/private/tmp'
+      workingDirectory: TEST_WORKING_DIRECTORY
     })
 
     await service.analyze(item, 'claude')
@@ -115,7 +117,7 @@ describe('LocalAgentService', () => {
     const service = new LocalAgentService({
       resolveExecutable: vi.fn().mockResolvedValue('/opt/homebrew/bin/codex'),
       execute,
-      workingDirectory: '/private/tmp'
+      workingDirectory: TEST_WORKING_DIRECTORY
     })
 
     await expect(
@@ -191,7 +193,7 @@ describe('executeBoundedCommand', () => {
         executable: process.execPath,
         args: ['-e', 'process.stdout.write("ok")'],
         stdin: '',
-        cwd: '/private/tmp',
+        cwd: TEST_WORKING_DIRECTORY,
         timeoutMs: 2_000,
         maxOutputBytes: 100,
         environment: process.env
@@ -205,7 +207,7 @@ describe('executeBoundedCommand', () => {
         executable: process.execPath,
         args: ['-e', 'process.stdout.write("x".repeat(2000))'],
         stdin: '',
-        cwd: '/private/tmp',
+        cwd: TEST_WORKING_DIRECTORY,
         timeoutMs: 2_000,
         maxOutputBytes: 100,
         environment: process.env
@@ -219,7 +221,7 @@ describe('executeBoundedCommand', () => {
         executable: process.execPath,
         args: ['-e', 'setTimeout(() => {}, 2000)'],
         stdin: '',
-        cwd: '/private/tmp',
+        cwd: TEST_WORKING_DIRECTORY,
         timeoutMs: 30,
         maxOutputBytes: 100,
         environment: process.env
@@ -233,7 +235,7 @@ describe('executeBoundedCommand', () => {
         executable: process.execPath,
         args: ['-e', 'process.stderr.write("private diagnostic"); process.exit(7)'],
         stdin: '',
-        cwd: '/private/tmp',
+        cwd: TEST_WORKING_DIRECTORY,
         timeoutMs: 2_000,
         maxOutputBytes: 100,
         environment: process.env
