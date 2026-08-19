@@ -1,20 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import {
-  BarChart3,
-  Bot,
-  Compass,
-  Inbox,
-  Library,
-  PanelLeftClose,
-  PanelLeftOpen,
-  RefreshCw,
-  Settings2,
-  Star
-} from 'lucide-react'
+import { BarChart3, Bot, Compass, Library, PanelLeftClose, PanelLeftOpen, Star } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import type { InterestProfile } from '../../core/interests/interestProfile'
-import type { DashboardSnapshot, SourceHealth, TheRSSApi, TriageState } from '../../shared/api'
-import { isTimestampOnLocalDate } from '../../shared/date'
+import type { DashboardSnapshot, TheRSSApi, TriageState } from '../../shared/api'
 import type {
   AnalysisArtifact,
   AnalysisRunner,
@@ -23,10 +10,8 @@ import type {
   ModelProviderInput,
   ModelProviderSummary
 } from '../../shared/models'
-import { Onboarding } from './AppSections'
 import { DiscoverView } from './DiscoverView'
 import { DataAnalyticsView } from './DataAnalyticsView'
-import { DailyStream } from './DailyStream'
 import { SignalWorkspace } from './SignalWorkspace'
 import { SourceCatalogView } from './SourceCatalogView'
 import type { DiscoverySource } from '../../shared/discovery'
@@ -36,7 +21,7 @@ interface AppProps {
   readonly api: TheRSSApi
 }
 
-type AppView = 'today' | 'saved' | 'discover' | 'interests' | 'models' | 'analytics' | 'sources'
+type AppView = 'discover' | 'saved' | 'models' | 'analytics' | 'sources'
 
 interface NavigationItem {
   readonly view: AppView
@@ -46,23 +31,12 @@ interface NavigationItem {
 }
 
 const navigationItems: readonly NavigationItem[] = [
-  { view: 'today', index: '01', label: 'Today', icon: Inbox },
+  { view: 'discover', index: '01', label: 'Discover', icon: Compass },
   { view: 'saved', index: '02', label: 'Saved', icon: Star },
-  { view: 'discover', index: '03', label: 'Discover', icon: Compass },
-  { view: 'interests', index: '04', label: 'Interests', icon: Settings2 },
-  { view: 'models', index: '05', label: 'Models & Agents', icon: Bot },
-  { view: 'analytics', index: '06', label: 'Data Analytics', icon: BarChart3 },
-  { view: 'sources', index: '07', label: 'Sources', icon: Library }
+  { view: 'models', index: '03', label: 'Models & Agents', icon: Bot },
+  { view: 'analytics', index: '04', label: 'Data Analytics', icon: BarChart3 },
+  { view: 'sources', index: '05', label: 'Sources', icon: Library }
 ]
-
-const sourceHealthLabels: Readonly<Record<SourceHealth, string>> = {
-  idle: 'Idle',
-  refreshing: 'Refreshing',
-  healthy: 'Healthy',
-  no_results: 'No results',
-  partial: 'Partial',
-  failed: 'Failed'
-}
 
 interface LastTriageAction {
   readonly id: string
@@ -90,204 +64,6 @@ function getSourceHealthSummary(snapshot: DashboardSnapshot | null): {
     return { label: 'Some sources pending', tone: 'idle' }
   }
   return { label: 'Local index ready', tone: 'idle' }
-}
-
-function shouldRefreshOnLaunch(snapshot: DashboardSnapshot): boolean {
-  return (
-    snapshot.profileName !== null &&
-    (!snapshot.lastRefreshAt || !isTimestampOnLocalDate(snapshot.lastRefreshAt, snapshot.date))
-  )
-}
-
-function splitRules(value: string): string[] {
-  return value
-    .split(/[\n,]/)
-    .map((rule) => rule.trim())
-    .filter(Boolean)
-}
-
-function joinRules(values: readonly string[]): string {
-  return values.join(', ')
-}
-
-interface InterestDraft {
-  readonly name: string
-  readonly arxivCategories: string
-  readonly arxivKeywords: string
-  readonly arxivExclusions: string
-  readonly githubKeywords: string
-  readonly githubTopics: string
-  readonly githubLanguages: string
-}
-
-const emptyInterestDraft: InterestDraft = {
-  name: '',
-  arxivCategories: '',
-  arxivKeywords: '',
-  arxivExclusions: '',
-  githubKeywords: '',
-  githubTopics: '',
-  githubLanguages: ''
-}
-
-function draftFromProfile(profile: InterestProfile): InterestDraft {
-  return {
-    name: profile.name,
-    arxivCategories: joinRules(profile.arxiv.categories),
-    arxivKeywords: joinRules(profile.arxiv.keywords),
-    arxivExclusions: joinRules(profile.arxiv.excludeKeywords),
-    githubKeywords: joinRules(profile.github.keywords),
-    githubTopics: joinRules(profile.github.topics),
-    githubLanguages: joinRules(profile.github.languages)
-  }
-}
-
-function profileFromDraft(draft: InterestDraft): InterestProfile {
-  return {
-    name: draft.name.trim(),
-    arxiv: {
-      categories: splitRules(draft.arxivCategories),
-      keywords: splitRules(draft.arxivKeywords),
-      excludeKeywords: splitRules(draft.arxivExclusions)
-    },
-    github: {
-      keywords: splitRules(draft.githubKeywords),
-      topics: splitRules(draft.githubTopics),
-      languages: splitRules(draft.githubLanguages)
-    }
-  }
-}
-
-function InterestEditor({
-  api,
-  onSaved
-}: {
-  readonly api: TheRSSApi
-  readonly onSaved: (snapshot: DashboardSnapshot) => void
-}) {
-  const [draft, setDraft] = useState<InterestDraft>(emptyInterestDraft)
-  const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let isActive = true
-    api.getInterestProfile().then((profile) => {
-      if (isActive && profile) setDraft(draftFromProfile(profile))
-    })
-    return () => {
-      isActive = false
-    }
-  }, [api])
-
-  const setField = (field: keyof InterestDraft, value: string) => {
-    setDraft((current) => ({ ...current, [field]: value }))
-  }
-
-  const save = async (event: React.FormEvent) => {
-    event.preventDefault()
-    setIsSaving(true)
-    setError(null)
-    try {
-      onSaved(await api.saveInterestProfile(profileFromDraft(draft)))
-    } catch {
-      setError('The research radar needs a name and at least one discovery rule.')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  return (
-    <section className="interest-editor">
-      <div className="interest-editor__heading">
-        <p className="eyebrow">RESEARCH PROFILE</p>
-        <h1>Teach TheRSS what deserves attention.</h1>
-        <p>
-          Use comma-separated phrases. Rules stay on this Mac and every recommendation keeps its
-          match reasons.
-        </p>
-      </div>
-      <form onSubmit={(event) => void save(event)}>
-        <label className="field field--wide">
-          <span>Profile name</span>
-          <input
-            aria-label="Profile name"
-            value={draft.name}
-            onChange={(event) => setField('name', event.target.value)}
-            placeholder="My research radar"
-            required
-          />
-        </label>
-        <fieldset>
-          <legend>arXiv signal</legend>
-          <label className="field">
-            <span>Categories</span>
-            <input
-              aria-label="arXiv categories"
-              value={draft.arxivCategories}
-              onChange={(event) => setField('arxivCategories', event.target.value)}
-              placeholder="cs.LG, cs.NI, eess.SP"
-            />
-          </label>
-          <label className="field">
-            <span>Keywords</span>
-            <input
-              aria-label="arXiv keywords"
-              value={draft.arxivKeywords}
-              onChange={(event) => setField('arxivKeywords', event.target.value)}
-              placeholder="structured pruning, edge intelligence"
-            />
-          </label>
-          <label className="field field--wide">
-            <span>Exclude phrases</span>
-            <input
-              aria-label="arXiv exclude keywords"
-              value={draft.arxivExclusions}
-              onChange={(event) => setField('arxivExclusions', event.target.value)}
-              placeholder="medical imaging"
-            />
-          </label>
-        </fieldset>
-        <fieldset>
-          <legend>GitHub Interest Radar</legend>
-          <label className="field">
-            <span>Keywords</span>
-            <input
-              aria-label="GitHub keywords"
-              value={draft.githubKeywords}
-              onChange={(event) => setField('githubKeywords', event.target.value)}
-              placeholder="model compression"
-            />
-          </label>
-          <label className="field">
-            <span>Topics</span>
-            <input
-              aria-label="GitHub topics"
-              value={draft.githubTopics}
-              onChange={(event) => setField('githubTopics', event.target.value)}
-              placeholder="model-compression, edge-ai"
-            />
-          </label>
-          <label className="field field--wide">
-            <span>Languages</span>
-            <input
-              aria-label="GitHub languages"
-              value={draft.githubLanguages}
-              onChange={(event) => setField('githubLanguages', event.target.value)}
-              placeholder="Python, TypeScript"
-            />
-          </label>
-        </fieldset>
-        {error && (
-          <div className="form-error" role="alert">
-            {error}
-          </div>
-        )}
-        <button type="submit" className="primary-button" disabled={isSaving}>
-          {isSaving ? 'Saving radar…' : 'Save research radar'}
-        </button>
-      </form>
-    </section>
-  )
 }
 
 interface ModelDraft {
@@ -468,8 +244,7 @@ function ModelEditor({
 export function App({ api }: AppProps) {
   const [dashboard, setDashboard] = useState<DashboardSnapshot | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [activeView, setActiveView] = useState<AppView>('today')
+  const [activeView, setActiveView] = useState<AppView>('discover')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [sourceFilter, setSourceFilter] = useState<'all' | DiscoverySource>('all')
   const [analysisRunner, setAnalysisRunner] = useState<AnalysisRunner>('model-provider')
@@ -485,12 +260,9 @@ export function App({ api }: AppProps) {
     setIsTriageToastVisible(false)
   }, [])
 
-  const viewItems =
-    activeView === 'saved'
-      ? dashboard?.savedItems.length
-        ? dashboard.savedItems
-        : (dashboard?.items.filter((item) => item.triageState === 'saved') ?? [])
-      : (dashboard?.items ?? [])
+  const viewItems = dashboard?.savedItems.length
+    ? dashboard.savedItems
+    : (dashboard?.items.filter((item) => item.triageState === 'saved') ?? [])
   const visibleItems = viewItems.filter(
     (item) => sourceFilter === 'all' || item.source === sourceFilter
   )
@@ -503,31 +275,7 @@ export function App({ api }: AppProps) {
   const additionalSources = ACTIVE_TODAY_SOURCE_IDS.filter(
     (source) => source !== 'arxiv' && source !== 'github'
   )
-  const additionalReadyCount = dashboard
-    ? additionalSources.filter((source) => {
-        const status = dashboard.sourceHealth[source]
-        return status === 'healthy' || status === 'no_results'
-      }).length
-    : 0
-  const additionalAttentionCount = dashboard
-    ? additionalSources.filter((source) => {
-        const status = dashboard.sourceHealth[source]
-        return status === 'partial' || status === 'failed'
-      }).length
-    : 0
   const sourceHealthSummary = getSourceHealthSummary(dashboard)
-
-  const refresh = useCallback(async () => {
-    setIsRefreshing(true)
-    setError(null)
-    try {
-      setDashboard(await api.refresh())
-    } catch {
-      setError('Refresh failed. Your previous inbox is still available.')
-    } finally {
-      setIsRefreshing(false)
-    }
-  }, [api])
 
   useEffect(() => {
     let isActive = true
@@ -536,7 +284,6 @@ export function App({ api }: AppProps) {
       .then((snapshot) => {
         if (!isActive) return
         setDashboard(snapshot)
-        if (shouldRefreshOnLaunch(snapshot)) void refresh()
       })
       .catch(() => {
         if (isActive) setError('The local research index could not be opened.')
@@ -544,7 +291,7 @@ export function App({ api }: AppProps) {
     return () => {
       isActive = false
     }
-  }, [api, refresh])
+  }, [api])
 
   useEffect(() => {
     let isActive = true
@@ -584,15 +331,6 @@ export function App({ api }: AppProps) {
       }
     },
     [api, dashboard]
-  )
-
-  const openDailyStreamItem = useCallback(
-    (item: DashboardSnapshot['items'][number]) => {
-      setSourceFilter('all')
-      setSelectedSignalId(item.id)
-      if (item.triageState === 'new') void updateTriage(item.id, 'viewed')
-    },
-    [updateTriage]
   )
 
   const undoLastTriage = useCallback(async () => {
@@ -657,7 +395,7 @@ export function App({ api }: AppProps) {
   )
 
   useEffect(() => {
-    if (!selectedSignalId || (activeView !== 'today' && activeView !== 'saved')) return
+    if (!selectedSignalId || activeView !== 'saved') return
     let isActive = true
     api
       .getLatestAnalysis(selectedSignalId)
@@ -677,10 +415,7 @@ export function App({ api }: AppProps) {
       api.onAppCommand((command) => {
         switch (command) {
           case 'open-settings':
-            navigate('interests')
-            return
-          case 'show-today':
-            navigate('today')
+            navigate('models')
             return
           case 'show-saved':
             navigate('saved')
@@ -691,15 +426,12 @@ export function App({ api }: AppProps) {
           case 'toggle-sidebar':
             setIsSidebarCollapsed((current) => !current)
             return
-          case 'refresh-sources':
-            if (dashboard?.profileName) void refresh()
-            return
           case 'undo-triage':
             void undoLastTriage()
             return
         }
 
-        if (!selectedSignalId || (activeView !== 'today' && activeView !== 'saved')) return
+        if (!selectedSignalId || activeView !== 'saved') return
         const selectedItem = [...(dashboard?.items ?? []), ...(dashboard?.savedItems ?? [])].find(
           (item) => item.id === selectedSignalId
         )
@@ -722,7 +454,6 @@ export function App({ api }: AppProps) {
       api,
       dashboard,
       navigate,
-      refresh,
       selectedSignalId,
       undoLastTriage,
       updateTriage
@@ -784,21 +515,12 @@ export function App({ api }: AppProps) {
               )}
             </button>
             <div className="topbar__identity">
-              <span className="profile-name">{dashboard?.profileName ?? 'No profile'}</span>
+              <span className="profile-name">
+                {navigationItems.find((item) => item.view === activeView)?.label}
+              </span>
               <span className="dateline">{dashboard?.date ?? 'Loading local index…'}</span>
             </div>
           </div>
-          {(activeView === 'today' || activeView === 'saved') && dashboard?.profileName && (
-            <button
-              type="button"
-              className="refresh-button"
-              onClick={refresh}
-              disabled={isRefreshing}
-            >
-              <RefreshCw aria-hidden="true" size={15} strokeWidth={1.9} />
-              {isRefreshing ? 'Refreshing…' : 'Refresh sources'}
-            </button>
-          )}
         </header>
 
         {error && (
@@ -808,185 +530,138 @@ export function App({ api }: AppProps) {
         )}
         {!dashboard && !error && (
           <div className="loading-state" role="status">
-            Compiling today’s signal…
+            Opening local research index…
           </div>
-        )}
-        {activeView === 'interests' && (
-          <InterestEditor
-            api={api}
-            onSaved={(snapshot) => {
-              setDashboard(snapshot)
-              navigate('today')
-            }}
-          />
         )}
         {activeView === 'models' && <ModelEditor api={api} localAgents={localAgents} />}
         {activeView === 'discover' && (
           <DiscoverView api={api} localAgents={localAgents} onDashboardChange={setDashboard} />
         )}
         {activeView === 'analytics' && <DataAnalyticsView api={api} />}
-        {activeView === 'sources' && (
-          <SourceCatalogView api={api} hasInterestProfile={Boolean(dashboard?.profileName)} />
-        )}
-        {activeView === 'today' && dashboard && !dashboard.profileName && (
-          <Onboarding onConfigure={() => navigate('interests')} />
-        )}
-        {dashboard &&
-          ((activeView === 'today' && dashboard.profileName) || activeView === 'saved') && (
-            <section className="today-view">
-              <div className="today-view__heading">
-                <div>
-                  <p className="eyebrow">
-                    {activeView === 'saved' ? 'RESEARCH SHELF' : 'DAILY EDITION'}
-                  </p>
-                  <h1>
-                    {activeView === 'saved' ? 'Saved research signals' : "Today's research signal"}
-                  </h1>
-                </div>
-                <div className="signal-counts" aria-label="Inbox counts">
-                  <span>
-                    <strong>{viewCounts.arxiv}</strong> papers
-                  </span>
-                  <span>
-                    <strong>{viewCounts.github}</strong> repos
-                  </span>
-                  <span>
-                    <strong>{viewCounts.other}</strong> other
-                  </span>
-                  <span>
-                    <strong>{viewCounts.unread}</strong> unread
-                  </span>
-                </div>
+        {activeView === 'sources' && <SourceCatalogView api={api} />}
+        {dashboard && activeView === 'saved' && (
+          <section className="today-view">
+            <div className="today-view__heading">
+              <div>
+                <p className="eyebrow">RESEARCH SHELF</p>
+                <h1>Saved research signals</h1>
               </div>
+              <div className="signal-counts" aria-label="Inbox counts">
+                <span>
+                  <strong>{viewCounts.arxiv}</strong> papers
+                </span>
+                <span>
+                  <strong>{viewCounts.github}</strong> repos
+                </span>
+                <span>
+                  <strong>{viewCounts.other}</strong> other
+                </span>
+                <span>
+                  <strong>{viewCounts.unread}</strong> unread
+                </span>
+              </div>
+            </div>
 
-              <div className="inbox-toolbar">
-                <div className="inbox-toolbar__sources">
-                  <div className="source-filters" aria-label="Filter daily signal by source">
-                    <button
-                      type="button"
-                      aria-label="Show all sources"
-                      aria-pressed={sourceFilter === 'all'}
-                      onClick={() => setSourceFilter('all')}
-                    >
-                      All
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Show arXiv only"
-                      aria-pressed={sourceFilter === 'arxiv'}
-                      onClick={() => setSourceFilter('arxiv')}
-                    >
-                      arXiv
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Show GitHub only"
-                      aria-pressed={sourceFilter === 'github'}
-                      onClick={() => setSourceFilter('github')}
-                    >
-                      GitHub
-                    </button>
-                    <select
-                      aria-label="Show another source"
-                      value={
-                        sourceFilter !== 'all' &&
-                        sourceFilter !== 'arxiv' &&
-                        sourceFilter !== 'github'
-                          ? sourceFilter
-                          : ''
-                      }
-                      onChange={(event) => {
-                        if (event.target.value)
-                          setSourceFilter(event.target.value as DiscoverySource)
-                      }}
-                    >
-                      <option value="">More sources</option>
-                      {additionalSources.map((source) => (
-                        <option key={source} value={source}>
-                          {sourceDisplayName(source)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="source-health" aria-label="Source health">
-                    <span data-health={dashboard.sourceHealth.arxiv}>
-                      arXiv: {sourceHealthLabels[dashboard.sourceHealth.arxiv]}
-                    </span>
-                    <span data-health={dashboard.sourceHealth.github}>
-                      GitHub: {sourceHealthLabels[dashboard.sourceHealth.github]}
-                    </span>
-                    <span data-health={additionalAttentionCount > 0 ? 'partial' : 'healthy'}>
-                      Additional: {additionalReadyCount}/{additionalSources.length} ready
-                      {additionalAttentionCount > 0
-                        ? ` · ${additionalAttentionCount} attention`
-                        : ''}
-                    </span>
-                  </div>
-                </div>
-                <label className="analysis-runner-control">
-                  <span>Analyze with</span>
-                  <select
-                    aria-label="Analysis runner"
-                    value={analysisRunner}
-                    onChange={(event) => setAnalysisRunner(event.target.value as AnalysisRunner)}
+            <div className="inbox-toolbar">
+              <div className="inbox-toolbar__sources">
+                <div
+                  className="source-filters"
+                  role="group"
+                  aria-label="Filter saved signals by source"
+                >
+                  <button
+                    type="button"
+                    aria-label="Show all sources"
+                    aria-pressed={sourceFilter === 'all'}
+                    onClick={() => setSourceFilter('all')}
                   >
-                    <option value="model-provider">Model provider</option>
-                    {localAgents.map((agent) => (
-                      <option key={agent.runner} value={agent.runner} disabled={!agent.available}>
-                        {agent.label}
-                        {agent.available ? '' : ' (not detected)'}
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Show arXiv only"
+                    aria-pressed={sourceFilter === 'arxiv'}
+                    onClick={() => setSourceFilter('arxiv')}
+                  >
+                    arXiv
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Show GitHub only"
+                    aria-pressed={sourceFilter === 'github'}
+                    onClick={() => setSourceFilter('github')}
+                  >
+                    GitHub
+                  </button>
+                  <select
+                    aria-label="Show another source"
+                    value={
+                      sourceFilter !== 'all' &&
+                      sourceFilter !== 'arxiv' &&
+                      sourceFilter !== 'github'
+                        ? sourceFilter
+                        : ''
+                    }
+                    onChange={(event) => {
+                      if (event.target.value) setSourceFilter(event.target.value as DiscoverySource)
+                    }}
+                  >
+                    <option value="">More sources</option>
+                    {additionalSources.map((source) => (
+                      <option key={source} value={source}>
+                        {sourceDisplayName(source)}
                       </option>
                     ))}
                   </select>
-                </label>
+                </div>
               </div>
-
-              {viewItems.length === 0 ? (
-                <div className="quiet-state">
-                  <span>0 SIGNALS</span>
-                  <h2>
-                    {activeView === 'saved' ? 'No saved signals yet.' : 'Your radar is configured.'}
-                  </h2>
-                  <p>
-                    {activeView === 'saved'
-                      ? 'Save a research signal from Today or Discover and it will appear here.'
-                      : 'Refresh the sources to assemble today’s cross-source research shortlist.'}
-                  </p>
-                </div>
-              ) : (
-                <div
-                  className={`today-stage ${activeView === 'saved' ? 'today-stage--single' : ''}`}
+              <label className="analysis-runner-control">
+                <span>Analyze with</span>
+                <select
+                  aria-label="Analysis runner"
+                  value={analysisRunner}
+                  onChange={(event) => setAnalysisRunner(event.target.value as AnalysisRunner)}
                 >
-                  {visibleItems.length === 0 ? (
-                    <div className="quiet-state quiet-state--filtered">
-                      <span>0 MATCHES</span>
-                      <h2>No signals from this source.</h2>
-                      <p>Choose another source or use the daily stream to open the full edition.</p>
-                    </div>
-                  ) : (
-                    <SignalWorkspace
-                      items={visibleItems}
-                      analysis={analysis}
-                      analyzingItemId={analyzingItemId}
-                      selectedItemId={selectedSignalId}
-                      onTriage={updateTriage}
-                      onAnalyze={analyzeItem}
-                      onSelectionChange={setSelectedSignalId}
-                    />
-                  )}
-                  {activeView === 'today' && (
-                    <DailyStream
-                      items={dashboard.items}
-                      dashboardDate={dashboard.date}
-                      lastRefreshAt={dashboard.lastRefreshAt}
-                      selectedItemId={selectedSignalId}
-                      onSelect={openDailyStreamItem}
-                    />
-                  )}
-                </div>
-              )}
-            </section>
-          )}
+                  <option value="model-provider">Model provider</option>
+                  {localAgents.map((agent) => (
+                    <option key={agent.runner} value={agent.runner} disabled={!agent.available}>
+                      {agent.label}
+                      {agent.available ? '' : ' (not detected)'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {viewItems.length === 0 ? (
+              <div className="quiet-state">
+                <span>0 SIGNALS</span>
+                <h2>No saved signals yet.</h2>
+                <p>Save a Discover result and it will appear here.</p>
+              </div>
+            ) : (
+              <div className="today-stage today-stage--single">
+                {visibleItems.length === 0 ? (
+                  <div className="quiet-state quiet-state--filtered">
+                    <span>0 MATCHES</span>
+                    <h2>No signals from this source.</h2>
+                    <p>Choose another source to see saved records.</p>
+                  </div>
+                ) : (
+                  <SignalWorkspace
+                    items={visibleItems}
+                    analysis={analysis}
+                    analyzingItemId={analyzingItemId}
+                    selectedItemId={selectedSignalId}
+                    onTriage={updateTriage}
+                    onAnalyze={analyzeItem}
+                    onSelectionChange={setSelectedSignalId}
+                  />
+                )}
+              </div>
+            )}
+          </section>
+        )}
         {lastTriageAction && isTriageToastVisible && (
           <div className="triage-toast" role="status">
             <span>

@@ -45,6 +45,23 @@ describe('fetchConfiguredHttpDocument', () => {
     )
   })
 
+  it('decodes the fixed C114 source with its explicit legacy encoding', async () => {
+    const fetcher = vi.fn<typeof fetch>(async (input) => {
+      expect(String(input)).toBe('https://www.c114.com.cn/')
+      return new Response(new Uint8Array([0xb2, 0xe2, 0xca, 0xd4]), {
+        status: 200,
+        headers: { 'Content-Type': 'text/html; charset=gb2312' }
+      })
+    })
+
+    await expect(fetchConfiguredHttpDocument('folo:523', { fetcher })).resolves.toMatchObject({
+      sourceId: 'folo:523',
+      transport: 'html',
+      endpoint: 'https://www.c114.com.cn/',
+      body: '测试'
+    })
+  })
+
   it('retries the NCPSD primary endpoint and then uses its fixed mobile fallback', async () => {
     const fetcher = vi
       .fn<typeof fetch>()

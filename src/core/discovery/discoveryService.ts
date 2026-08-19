@@ -176,9 +176,6 @@ export class DiscoveryService {
         rejectedCount: 0
       }
     } else {
-      if (source === 'folo:2' && !profile) {
-        throw new Error('Configure research interests before searching X')
-      }
       const definition = this.#configuredDefinitions.find((candidate) => candidate.id === source)
       if (!definition) throw new Error(`Source ${source} has no configured retrieval adapter`)
       batch = await this.#fetchConfiguredSource(definition, profile ?? SOURCE_BROWSE_PROFILE, {

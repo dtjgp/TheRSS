@@ -1,8 +1,8 @@
 import { error as logError, log } from 'node:console'
 import { lstat, mkdtemp, rm } from 'node:fs/promises'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { env, platform } from 'node:process'
+import { arch, cwd, env, platform } from 'node:process'
 import { _electron as electron } from '@playwright/test'
 
 if (platform !== 'darwin') {
@@ -11,7 +11,15 @@ if (platform !== 'darwin') {
 
 const executablePath = resolve(
   env.THERSS_APP_EXECUTABLE ??
-    join(homedir(), 'Applications', 'TheRSS Dev.app', 'Contents', 'MacOS', 'TheRSS')
+    join(
+      cwd(),
+      'release',
+      arch === 'arm64' ? 'mac-arm64' : 'mac',
+      'TheRSS.app',
+      'Contents',
+      'MacOS',
+      'TheRSS'
+    )
 )
 const executableStat = await lstat(executablePath)
 if (!executableStat.isFile() || executableStat.isSymbolicLink()) {
@@ -27,7 +35,7 @@ try {
     env: { ...env, THERSS_E2E_FIXTURES: '1' }
   })
   const page = await application.firstWindow()
-  await page.getByRole('heading', { name: 'Build your research radar' }).waitFor({
+  await page.getByRole('heading', { name: 'Search across your full source desk' }).waitFor({
     state: 'visible',
     timeout: 15_000
   })

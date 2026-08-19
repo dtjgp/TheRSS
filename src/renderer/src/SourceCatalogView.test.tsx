@@ -34,58 +34,45 @@ function createSourceApi(
 }
 
 function renderCatalog(
-  api: Pick<TheRSSApi, 'getSourceContent' | 'refreshSourceContent'> = createSourceApi(),
-  hasInterestProfile = true
+  api: Pick<TheRSSApi, 'getSourceContent' | 'refreshSourceContent'> = createSourceApi()
 ) {
-  return render(<SourceCatalogView api={api} hasInterestProfile={hasInterestProfile} />)
+  return render(<SourceCatalogView api={api} />)
 }
 
 describe('SourceCatalogView', () => {
-  it('defaults to content sources and keeps the other 82 entries in Pending integrations', async () => {
-    const user = userEvent.setup()
+  it('shows only the 22 previously live-verified sources', () => {
     renderCatalog()
 
-    expect(screen.getByRole('heading', { name: '105 research sources' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: '22 live-verified research sources' })).toBeVisible()
     const summary = screen.getByRole('group', { name: 'Source catalog summary' })
-    expect(within(summary).getByLabelText('Active adapters')).toHaveTextContent('23')
-    expect(within(summary).getByLabelText('Configured retrieval')).toHaveTextContent('0')
-    expect(within(summary).getByLabelText('RSSHub candidates')).toHaveTextContent('72')
-    expect(within(summary).getByLabelText('Need adapters')).toHaveTextContent('10')
-    expect(screen.getAllByRole('article')).toHaveLength(23)
-    expect(screen.getByRole('button', { name: /Content sources.*23/i })).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    )
-    await user.click(screen.getByRole('button', { name: /Pending integrations.*82/i }))
-    expect(screen.getAllByRole('article')).toHaveLength(82)
-    expect(screen.getByRole('heading', { name: '3GPP Specifications' })).toBeVisible()
-    expect(
-      screen.getByText(/Catalog membership does not mean retrieval is implemented/i)
-    ).toBeVisible()
+    expect(within(summary).getByLabelText('Live-verified sources')).toHaveTextContent('22')
+    expect(screen.getAllByRole('article')).toHaveLength(22)
+    expect(screen.queryByText('X (Twitter)')).not.toBeInTheDocument()
+    expect(screen.queryByText('3GPP Specifications')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Pending integrations/i })).not.toBeInTheDocument()
   })
 
-  it('filters by text, priority, research axis, and acquisition status', async () => {
+  it('filters the retained set by text, priority, and research axis', async () => {
     const user = userEvent.setup()
     renderCatalog()
 
-    await user.click(screen.getByRole('button', { name: /Pending integrations.*82/i }))
-    await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), '3GPP')
+    await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'OpenAI')
     expect(screen.getAllByRole('article')).toHaveLength(1)
-    expect(screen.getByRole('heading', { name: '3GPP Specifications' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'OpenAI' })).toBeVisible()
 
     await user.clear(screen.getByRole('searchbox', { name: 'Search source catalog' }))
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Priority' }), 'C')
-    expect(screen.getAllByRole('article')).toHaveLength(2)
-    expect(screen.getByRole('heading', { name: 'LinkedIn' })).toBeVisible()
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Priority' }), 'A')
+    expect(screen.getAllByRole('article')).toHaveLength(7)
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Priority' }), 'all')
     await user.selectOptions(screen.getByRole('combobox', { name: 'Research axis' }), 'SG')
-    expect(screen.getByText(/sources shown/i)).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'ENTSO-E Transparency Platform' })).toBeVisible()
+    expect(screen.getAllByRole('article')).toHaveLength(9)
+    expect(
+      screen.getByRole('heading', { name: 'National Bureau of Economic Research' })
+    ).toBeVisible()
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Research axis' }), 'all')
-    await user.click(screen.getByRole('button', { name: /Content sources.*23/i }))
-    expect(screen.getAllByRole('article')).toHaveLength(23)
+    expect(screen.getAllByRole('article')).toHaveLength(22)
     expect(screen.getByRole('heading', { name: 'arXiv' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'GitHub' })).toBeVisible()
   })
@@ -99,7 +86,7 @@ describe('SourceCatalogView', () => {
         items: []
       })
     )
-    renderCatalog(api, false)
+    renderCatalog(api)
 
     await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'arXiv')
     await user.click(screen.getByRole('button', { name: 'Browse arXiv recent content' }))
@@ -107,8 +94,22 @@ describe('SourceCatalogView', () => {
     expect(api.getSourceContent).toHaveBeenCalledWith('arxiv')
     expect(api.refreshSourceContent).toHaveBeenCalledWith('arxiv')
     expect(await screen.findByText(/today's newest available arXiv daily batch/i)).toBeVisible()
-    expect(screen.getByText(/not filtered by your Interests/i)).toBeVisible()
+    expect(screen.getByText(/without applying a Discover plan/i)).toBeVisible()
     expect(screen.queryByText(/Configure Interests before refreshing/i)).not.toBeInTheDocument()
+  })
+
+  it('keeps GitHub browsing independent of the retired Interests surface', async () => {
+    const user = userEvent.setup()
+    const api = createSourceApi(sourceSnapshot('github'))
+    renderCatalog(api)
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'GitHub')
+    await user.click(screen.getByRole('button', { name: 'Browse GitHub recent content' }))
+
+    expect(api.getSourceContent).toHaveBeenCalledWith('github')
+    expect(api.refreshSourceContent).not.toHaveBeenCalled()
+    expect(await screen.findByText(/search GitHub from Discover/i)).toBeVisible()
+    expect(screen.queryByText(/Configure Interests/i)).not.toBeInTheDocument()
   })
 
   it('opens an active source inside the app and displays its indexed 30-day content', async () => {
@@ -148,7 +149,7 @@ describe('SourceCatalogView', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Back to source directory' }))
-    expect(screen.getByRole('heading', { name: '105 research sources' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: '22 live-verified research sources' })).toBeVisible()
   })
 
   it('automatically refreshes an empty active non-metered source', async () => {
@@ -205,45 +206,6 @@ describe('SourceCatalogView', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Configured source folo:611 timed out after primary and fallback attempts'
-    )
-  })
-
-  it('keeps X retrieval explicit because an xapi search may be metered', async () => {
-    const user = userEvent.setup()
-    const api = createSourceApi(sourceSnapshot('folo:2'))
-    renderCatalog(api)
-
-    await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'X (Twitter)')
-    await user.click(screen.getByRole('button', { name: 'Browse X (Twitter) recent content' }))
-
-    expect(await screen.findByText(/xapi calls may use account balance/i)).toBeVisible()
-    expect(api.refreshSourceContent).not.toHaveBeenCalled()
-
-    await user.click(screen.getByRole('button', { name: 'Search X via xapi' }))
-    expect(api.refreshSourceContent).toHaveBeenCalledWith('folo:2')
-  })
-
-  it('explains that catalog-only sources do not yet have in-app content', async () => {
-    const user = userEvent.setup()
-    const api = createSourceApi()
-    renderCatalog(api)
-
-    await user.click(screen.getByRole('button', { name: /Pending integrations.*82/i }))
-    await user.type(
-      screen.getByRole('searchbox', { name: 'Search source catalog' }),
-      'International Telecommunication Union'
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: 'Browse International Telecommunication Union (ITU) recent content'
-      })
-    )
-
-    expect(await screen.findByText(/does not yet have an active TheRSS adapter/i)).toBeVisible()
-    expect(api.getSourceContent).not.toHaveBeenCalled()
-    expect(screen.getByRole('link', { name: 'Open official source' })).toHaveAttribute(
-      'href',
-      'https://www.itu.int/en/ITU-T/info/Pages/rss.aspx'
     )
   })
 })

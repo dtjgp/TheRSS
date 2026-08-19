@@ -5,7 +5,11 @@ import type {
   DiscoverySource,
   RankedDiscoveryItem
 } from '../../shared/discovery'
-import type { DiscoverSnapshot } from '../../shared/discover'
+import {
+  DISCOVER_SOURCE_IDS,
+  type DiscoverSnapshot,
+  type DiscoverSourceOutcome
+} from '../../shared/discover'
 import type { AnalyticsSnapshot } from '../../shared/analytics'
 import type {
   DashboardItem,
@@ -98,15 +102,16 @@ interface DiscoverSessionRow {
 }
 
 interface DiscoverSourceRunRow {
-  source: 'arxiv' | 'github'
-  status: DiscoverSnapshot['sourceOutcomes']['arxiv']['status']
+  source: DiscoverySource
+  status: DiscoverSourceOutcome['status']
   result_count: number
   error_message: string | null
 }
 
 interface DiscoverResultRow {
   item_id: string
-  source: 'arxiv' | 'github'
+  source: DiscoverySource
+  item_kind: DiscoveryItemKind
   external_id: string
   title: string
   summary: string
@@ -270,8 +275,9 @@ export class ResearchRepository {
 
       CREATE TABLE IF NOT EXISTS discover_source_run (
         session_id TEXT NOT NULL REFERENCES discover_session(id) ON DELETE CASCADE,
-        source TEXT NOT NULL CHECK (source IN ('arxiv', 'github')),
-        status TEXT NOT NULL CHECK (status IN ('not_searched', 'healthy', 'no_results', 'failed')),
+        source TEXT NOT NULL,
+        status TEXT NOT NULL
+          CHECK (status IN ('not_searched', 'healthy', 'partial', 'no_results', 'failed')),
         result_count INTEGER NOT NULL CHECK (result_count >= 0),
         error_message TEXT,
         PRIMARY KEY(session_id, source)
@@ -280,7 +286,9 @@ export class ResearchRepository {
       CREATE TABLE IF NOT EXISTS discover_result (
         session_id TEXT NOT NULL REFERENCES discover_session(id) ON DELETE CASCADE,
         item_id TEXT NOT NULL,
-        source TEXT NOT NULL CHECK (source IN ('arxiv', 'github')),
+        source TEXT NOT NULL,
+        item_kind TEXT NOT NULL
+          CHECK (item_kind IN ('paper', 'repository', 'article', 'model', 'dataset', 'post')),
         external_id TEXT NOT NULL,
         title TEXT NOT NULL,
         summary TEXT NOT NULL,
@@ -427,6 +435,87 @@ export class ResearchRepository {
               ON source_search_event(completed_at DESC, id DESC);
           `)
         }
+      }
+
+      const discoverSourceRunDefinition = this.#database
+        .prepare(
+          "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'discover_source_run'"
+        )
+        .get() as { sql: string }
+      if (
+        discoverSourceRunDefinition.sql.includes("source IN ('arxiv', 'github')") ||
+        !discoverSourceRunDefinition.sql.includes("'partial'")
+      ) {
+        this.#database.exec(`
+          CREATE TABLE discover_source_run_generic (
+            session_id TEXT NOT NULL REFERENCES discover_session(id) ON DELETE CASCADE,
+            source TEXT NOT NULL,
+            status TEXT NOT NULL
+              CHECK (status IN ('not_searched', 'healthy', 'partial', 'no_results', 'failed')),
+            result_count INTEGER NOT NULL CHECK (result_count >= 0),
+            error_message TEXT,
+            PRIMARY KEY(session_id, source)
+          );
+          INSERT INTO discover_source_run_generic(
+            session_id, source, status, result_count, error_message
+          )
+          SELECT session_id, source, status, result_count, error_message
+          FROM discover_source_run;
+          DROP TABLE discover_source_run;
+          ALTER TABLE discover_source_run_generic RENAME TO discover_source_run;
+        `)
+      }
+
+      const discoverResultColumns = new Set(
+        (this.#database.pragma('table_info(discover_result)') as Array<{ name: string }>).map(
+          (column) => column.name
+        )
+      )
+      const discoverResultDefinition = this.#database
+        .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'discover_result'")
+        .get() as { sql: string }
+      if (
+        !discoverResultColumns.has('item_kind') ||
+        discoverResultDefinition.sql.includes("source IN ('arxiv', 'github')")
+      ) {
+        const itemKindExpression = discoverResultColumns.has('item_kind')
+          ? 'item_kind'
+          : "CASE source WHEN 'arxiv' THEN 'paper' WHEN 'github' THEN 'repository' ELSE 'article' END"
+        this.#database.exec(`
+          CREATE TABLE discover_result_generic (
+            session_id TEXT NOT NULL REFERENCES discover_session(id) ON DELETE CASCADE,
+            item_id TEXT NOT NULL,
+            source TEXT NOT NULL,
+            item_kind TEXT NOT NULL
+              CHECK (item_kind IN ('paper', 'repository', 'article', 'model', 'dataset', 'post')),
+            external_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            url TEXT NOT NULL,
+            published_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            authors_json TEXT NOT NULL,
+            categories_json TEXT NOT NULL,
+            topics_json TEXT NOT NULL,
+            language TEXT,
+            stars INTEGER,
+            score REAL NOT NULL,
+            reasons_json TEXT NOT NULL,
+            result_rank INTEGER NOT NULL CHECK (result_rank >= 0),
+            PRIMARY KEY(session_id, item_id)
+          );
+          INSERT INTO discover_result_generic(
+            session_id, item_id, source, item_kind, external_id, title, summary, url,
+            published_at, updated_at, authors_json, categories_json, topics_json,
+            language, stars, score, reasons_json, result_rank
+          )
+          SELECT session_id, item_id, source, ${itemKindExpression}, external_id, title,
+                 summary, url, published_at, updated_at, authors_json, categories_json,
+                 topics_json, language, stars, score, reasons_json, result_rank
+          FROM discover_result;
+          DROP TABLE discover_result;
+          ALTER TABLE discover_result_generic RENAME TO discover_result;
+        `)
       }
 
       // Account synchronization was withdrawn. Remove any local encrypted credential and
@@ -577,16 +666,20 @@ export class ResearchRepository {
       throw new Error('Dashboard limit must be between 1 and 500')
     }
 
+    const sourcePlaceholders = ACTIVE_TODAY_SOURCE_IDS.map(() => '?').join(', ')
     const rows = this.#database
       .prepare(
         `SELECT id, source, item_kind, title, summary, url, published_at, score,
                 triage_state, reasons_json
          FROM discovery_item
-         WHERE in_daily_inbox = 1 AND excluded = 0 AND triage_state != 'dismissed'
+         WHERE in_daily_inbox = 1
+           AND source IN (${sourcePlaceholders})
+           AND excluded = 0
+           AND triage_state != 'dismissed'
          ORDER BY score DESC, published_at DESC, id ASC
          LIMIT ?`
       )
-      .all(limit) as DashboardRow[]
+      .all(...ACTIVE_TODAY_SOURCE_IDS, limit) as DashboardRow[]
 
     return rows.map((row) => ({
       id: row.id,
@@ -770,24 +863,29 @@ export class ResearchRepository {
            session_id, source, status, result_count, error_message
          ) VALUES (?, ?, ?, ?, ?)`
       )
-      for (const source of ['arxiv', 'github'] as const) {
-        const outcome = snapshot.sourceOutcomes[source]
+      for (const source of DISCOVER_SOURCE_IDS) {
+        const outcome = snapshot.sourceOutcomes[source] ?? {
+          status: 'not_searched',
+          resultCount: 0,
+          error: null
+        }
         saveSource.run(snapshot.id, source, outcome.status, outcome.resultCount, outcome.error)
       }
 
       this.#database.prepare('DELETE FROM discover_result WHERE session_id = ?').run(snapshot.id)
       const saveResult = this.#database.prepare(
         `INSERT INTO discover_result(
-           session_id, item_id, source, external_id, title, summary, url,
+           session_id, item_id, source, item_kind, external_id, title, summary, url,
            published_at, updated_at, authors_json, categories_json, topics_json,
            language, stars, score, reasons_json, result_rank
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       snapshot.items.forEach((item, rank) => {
         saveResult.run(
           snapshot.id,
           item.id,
           item.source,
+          item.kind,
           item.externalId,
           item.title,
           item.summary,
@@ -825,9 +923,11 @@ export class ResearchRepository {
          FROM discover_source_run WHERE session_id = ?`
       )
       .all(session.id) as DiscoverSourceRunRow[]
-    const sourceOutcome = (source: 'arxiv' | 'github') => {
+    const sourceOutcome = (source: DiscoverySource): DiscoverSourceOutcome => {
       const row = sourceRows.find((candidate) => candidate.source === source)
-      if (!row) throw new Error('The local index contains an incomplete Discover source run')
+      if (!row) {
+        return { status: 'not_searched', resultCount: 0, error: null }
+      }
       return {
         status: row.status,
         resultCount: row.result_count,
@@ -837,7 +937,7 @@ export class ResearchRepository {
 
     const resultRows = this.#database
       .prepare(
-        `SELECT r.item_id, r.source, r.external_id, r.title, r.summary, r.url,
+        `SELECT r.item_id, r.source, r.item_kind, r.external_id, r.title, r.summary, r.url,
                 r.published_at, r.updated_at, r.authors_json, r.categories_json,
                 r.topics_json, r.language, r.stars, r.score, r.reasons_json,
                 CASE WHEN d.triage_state = 'saved' THEN 1 ELSE 0 END AS saved
@@ -850,7 +950,7 @@ export class ResearchRepository {
     const items = resultRows.map((row) => ({
       id: row.item_id,
       source: row.source,
-      kind: row.source === 'arxiv' ? ('paper' as const) : ('repository' as const),
+      kind: row.item_kind,
       externalId: row.external_id,
       title: row.title,
       summary: row.summary,
@@ -868,6 +968,22 @@ export class ResearchRepository {
       saved: row.saved === 1
     }))
 
+    const sourceOutcomes = Object.fromEntries(
+      DISCOVER_SOURCE_IDS.map((source) => [source, sourceOutcome(source)])
+    ) as DiscoverSnapshot['sourceOutcomes']
+    const bySource = Object.fromEntries(
+      DISCOVER_SOURCE_IDS.map((source) => [
+        source,
+        items.filter((item) => item.source === source).length
+      ])
+    ) as DiscoverSnapshot['counts']['bySource']
+    const byKind = Object.fromEntries(
+      (['paper', 'repository', 'article', 'model', 'dataset', 'post'] as const).map((kind) => [
+        kind,
+        items.filter((item) => item.kind === kind).length
+      ])
+    ) as DiscoverSnapshot['counts']['byKind']
+
     return {
       id: session.id,
       intent: session.intent,
@@ -876,14 +992,13 @@ export class ResearchRepository {
       createdAt: session.created_at,
       plan: parseDiscoverPlan(session.plan_json),
       provenance: parseDiscoverProvenance(session.provenance_json),
-      sourceOutcomes: {
-        arxiv: sourceOutcome('arxiv'),
-        github: sourceOutcome('github')
-      },
+      sourceOutcomes,
       counts: {
         total: items.length,
         arxiv: items.filter((item) => item.source === 'arxiv').length,
-        github: items.filter((item) => item.source === 'github').length
+        github: items.filter((item) => item.source === 'github').length,
+        byKind,
+        bySource
       },
       items
     }
@@ -896,7 +1011,7 @@ export class ResearchRepository {
   ): void {
     const row = this.#database
       .prepare(
-        `SELECT item_id, source, external_id, title, summary, url, published_at,
+        `SELECT item_id, source, item_kind, external_id, title, summary, url, published_at,
                 updated_at, authors_json, categories_json, topics_json, language,
                 stars, score, reasons_json, 0 AS saved
          FROM discover_result WHERE session_id = ? AND item_id = ?`
@@ -934,7 +1049,7 @@ export class ResearchRepository {
       .run(
         row.item_id,
         row.source,
-        row.source === 'arxiv' ? 'paper' : 'repository',
+        row.item_kind,
         row.external_id,
         row.title,
         row.summary,

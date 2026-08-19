@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ConfiguredHttpDocument } from './configuredHttpClient'
+import { normalizeC114Document } from './c114Normalizer'
 import {
   normalizeConfiguredItem,
   normalizeFeedDocument,
@@ -94,7 +95,65 @@ describe('configured source normalization', () => {
     })
   })
 
-  it('maps Hugging Face and X records into the same typed model', () => {
+  it('normalizes bounded C114 mobile listings without executing remote HTML', () => {
+    const document: ConfiguredHttpDocument = {
+      sourceId: 'folo:523',
+      transport: 'html',
+      endpoint: 'https://m.c114.com.cn/',
+      contentType: 'text/html; charset=gb2312',
+      retrievedAt: '2026-08-19T09:00:00.000Z',
+      body: `<div class="contentList"><div class="titImg">
+        <a href="https://m.c114.com.cn/w126-1301901.html">通信网络与边缘智能新进展</a>
+        <span class="time"><span>8/19</span></span>
+      </div></div><div class="contentList"><div class="titImg">
+        <a href="javascript:alert(1)">不安全记录</a><span class="time"><span>8/19</span></span>
+      </div></div>`
+    }
+
+    expect(normalizeC114Document(document)).toEqual({
+      items: [
+        expect.objectContaining({
+          source: 'folo:523',
+          kind: 'article',
+          title: '通信网络与边缘智能新进展',
+          url: 'https://m.c114.com.cn/w126-1301901.html',
+          publishedAt: '2026-08-19T00:00:00.000Z'
+        })
+      ],
+      rejectedCount: 1
+    })
+  })
+
+  it('normalizes the bounded C114 desktop latest-news list', () => {
+    const document: ConfiguredHttpDocument = {
+      sourceId: 'folo:523',
+      transport: 'html',
+      endpoint: 'https://www.c114.com.cn/',
+      contentType: 'text/html',
+      retrievedAt: '2026-08-19T23:00:00.000Z',
+      body: `<div class="center_list"><a href="https://www.c114.com.cn/news/116/a1315962.html">
+        <img src="cover.jpg" alt="ignored"><div class="text"><div class="title">
+        Anthropic 扩展循环信贷额度</div><div class="time">8/19 22:05</div></div></a></div>
+        <div class="center_list"><a href="javascript:alert(1)"><div class="text">
+        <div class="title">不安全记录</div><div class="time">8/19 20:49</div>
+        </div></a></div>`
+    }
+
+    expect(normalizeC114Document(document)).toEqual({
+      items: [
+        expect.objectContaining({
+          source: 'folo:523',
+          kind: 'article',
+          title: 'Anthropic 扩展循环信贷额度',
+          url: 'https://www.c114.com.cn/news/116/a1315962.html',
+          publishedAt: '2026-08-19T00:00:00.000Z'
+        })
+      ],
+      rejectedCount: 1
+    })
+  })
+
+  it('maps Hugging Face records into the shared typed model', () => {
     const item = normalizeConfiguredItem({
       id: 'huggingface:model:org/model',
       sourceId: 'folo:64',
@@ -122,12 +181,12 @@ describe('configured source normalization', () => {
   it('rejects unsafe or incomplete configured records and filters unsupported metrics', () => {
     const base = {
       id: 'item',
-      sourceId: 'folo:2',
+      sourceId: 'folo:182',
       externalId: '1',
-      kind: 'post' as const,
-      title: 'A valid post',
+      kind: 'article' as const,
+      title: 'A valid article',
       summary: 'Summary',
-      url: 'https://x.com/user/status/1',
+      url: 'https://openai.com/news/1',
       publishedAt: '2026-08-19T08:00:00Z',
       authors: ['Author'],
       tags: [],
@@ -138,7 +197,7 @@ describe('configured source normalization', () => {
       normalizeConfiguredItem({ ...base, title: ['not allowed'] as unknown as string }).title
     ).toBe('not allowed')
     expect(normalizeConfiguredItem({ ...base, externalId: 'x'.repeat(500) }).id).toMatch(
-      /^folo:2:post:sha256:[a-f0-9]{64}$/u
+      /^folo:182:article:sha256:[a-f0-9]{64}$/u
     )
     expect(() => normalizeConfiguredItem({ ...base, sourceId: 'unknown' })).toThrow(
       'is not an active external source'
@@ -151,10 +210,12 @@ describe('configured source normalization', () => {
       'no valid publication date'
     )
     expect(() => normalizeConfiguredItem({ ...base, externalId: '' })).toThrow('has no identifier')
-    expect(normalizeConfiguredItem({ ...base, url: 'http://x.com/1' }).url).toBe('https://x.com/1')
-    expect(() => normalizeConfiguredItem({ ...base, url: 'https://user:secret@x.com/1' })).toThrow(
-      'credential-free HTTPS'
+    expect(normalizeConfiguredItem({ ...base, url: 'http://openai.com/1' }).url).toBe(
+      'https://openai.com/1'
     )
+    expect(() =>
+      normalizeConfiguredItem({ ...base, url: 'https://user:secret@openai.com/1' })
+    ).toThrow('credential-free HTTPS')
   })
 
   it('supports Atom alternate links, structured authors, and RDF feeds', () => {

@@ -56,6 +56,31 @@ interface RawSourceCatalogEntry {
   readonly origin: string
 }
 
+export const RETAINED_SOURCE_CATALOG_IDS = Object.freeze([
+  'official:arxiv',
+  'folo:10',
+  'folo:64',
+  'folo:302',
+  'folo:611',
+  'folo:444',
+  'folo:182',
+  'folo:77',
+  'folo:208',
+  'folo:93',
+  'folo:84',
+  'folo:67',
+  'folo:523',
+  'folo:253',
+  'folo:44',
+  'folo:792',
+  'folo:79',
+  'folo:172',
+  'folo:1104',
+  'folo:177',
+  'folo:257',
+  'folo:312'
+] as const)
+
 function includesValue<const Values extends readonly string[]>(
   values: Values,
   candidate: string
@@ -105,8 +130,20 @@ function parseCatalogEntry(raw: RawSourceCatalogEntry): SourceCatalogEntry {
   })
 }
 
+const parsedCatalog = (sourceCatalogData as readonly RawSourceCatalogEntry[]).map(parseCatalogEntry)
+const catalogById = new Map(parsedCatalog.map((source) => [source.id, source]))
+if (catalogById.size !== parsedCatalog.length)
+  throw new Error('Source catalog has duplicate identities')
+
 export const SOURCE_CATALOG: readonly SourceCatalogEntry[] = Object.freeze(
-  (sourceCatalogData as readonly RawSourceCatalogEntry[]).map(parseCatalogEntry)
+  RETAINED_SOURCE_CATALOG_IDS.map((id) => {
+    const source = catalogById.get(id)
+    if (!source) throw new Error(`Retained source ${id} is missing from the raw catalog`)
+    if (source.acquisition !== 'active') {
+      throw new Error(`Retained source ${id} is not marked as an active adapter`)
+    }
+    return source
+  })
 )
 
 export const SOURCE_CATALOG_STATS = Object.freeze({

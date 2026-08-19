@@ -19,6 +19,7 @@ import { isDiscoverySource } from '../shared/sourceIdentity'
 import { createApplicationMenuTemplate } from './applicationMenu'
 import {
   e2eAnalysis,
+  e2eDiscoverConfiguredArticle,
   e2eDiscoverPaper,
   e2eDiscoverRepository,
   e2eConfiguredArticle,
@@ -97,10 +98,11 @@ function registerIpcHandlers(
   })
   ipcMain.handle(IPC_CHANNELS.searchDiscover, (_event, candidate: unknown) => {
     const githubToken = githubTokenFromEnvironment(env)
-    return discoverService.search(
-      discoverSearchRequestSchema.parse(candidate),
-      githubToken ? { githubToken } : {}
-    )
+    const huggingFaceToken = huggingFaceTokenFromEnvironment(env)
+    return discoverService.search(discoverSearchRequestSchema.parse(candidate), {
+      ...(githubToken ? { githubToken } : {}),
+      ...(huggingFaceToken ? { huggingFaceToken } : {})
+    })
   })
   ipcMain.handle(IPC_CHANNELS.getLatestDiscover, () => repository.getLatestDiscoverSnapshot())
   ipcMain.handle(IPC_CHANNELS.getAnalytics, () => repository.getAnalyticsSnapshot())
@@ -259,7 +261,11 @@ app.whenReady().then(() => {
     ...(useE2eFixtures
       ? {
           fetchArxiv: async () => [e2eDiscoverPaper],
-          fetchGitHub: async () => [e2eDiscoverRepository]
+          fetchGitHub: async () => [e2eDiscoverRepository],
+          fetchConfiguredSource: async (definition) => ({
+            items: definition.id === 'folo:302' ? [e2eDiscoverConfiguredArticle] : [],
+            rejectedCount: 0
+          })
         }
       : {})
   })

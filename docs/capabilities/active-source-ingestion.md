@@ -2,24 +2,23 @@
 
 ## Capability
 
-The single local TheRSS user can refresh Today once and receive one persisted, explainable edition
-containing normalized records from arXiv, GitHub, and all 21 executable configured sources. Each
-source reports an independent terminal outcome, and the user can scan or filter the resulting
-records by their real source identity.
+The single local TheRSS user can run one explicit Discover session against any subset of arXiv,
+GitHub, and all 20 executable configured sources. The session stores normalized, semantically
+matched records plus an independent terminal outcome for every selected source.
 
 ## Constraints
 
-- Today remains a curated research-source inbox, not an arbitrary URL reader. Only code-owned fixed
+- Discover is a curated research-source search, not an arbitrary URL reader. Only code-owned fixed
   source definitions can run.
 - `active` means an adapter crosses the complete retrieval, normalization, ranking, persistence, and
   UI boundary. Reachability alone is insufficient.
-- Feed, HTML, JSON, Hugging Face, and xapi output is untrusted. It is bounded before parsing,
+- Feed, HTML, JSON, and Hugging Face output is untrusted. It is bounded before parsing,
   converted to plain text, and never rendered as remote HTML.
 - Source failures, partial normalization, verified no-results, and successful results remain
   distinct states. A failure must preserve the source's last verified local items.
 - Stable source and item identifiers preserve triage, Saved, analysis provenance, and analytics
   history across upgrades.
-- Secrets remain in Electron main or the external xapi credential store. They are never written to
+- Optional secrets remain in Electron main. They are never written to
   SQLite as plaintext, sent to the renderer/MCP, logged, or embedded in the app.
 - Deterministic automated tests use fixtures. Live retrieval is an explicit smoke gate.
 
@@ -27,16 +26,17 @@ records by their real source identity.
 
 ### Actors and surfaces
 
-- The user triggers manual refresh or the once-per-local-day startup refresh.
+- The user explicitly starts every Discover search; application launch makes no implicit request.
 - Electron main owns network/process execution and passes a typed dashboard snapshot through preload.
-- Today, Saved, Daily Stream, Data Analytics, and read-only MCP consume normalized local records.
-- Discover retains its current arXiv/GitHub plan and execution contract.
+- Discover, Saved, Data Analytics, Sources, and read-only MCP consume normalized local records.
+- arXiv/GitHub perform specialized search; the other deployed sources fetch bounded recent batches
+  and require a local deterministic semantic match before entering results.
 
 ### States and transitions
 
-Each enabled source transitions independently:
+Each selected Discover source ends independently as:
 
-`idle -> refreshing -> healthy | no_results | partial | failed`
+`healthy | no_results | partial | failed`; unselected sources remain `not_searched`.
 
 - `healthy`: a complete bounded response produced one or more normalized records.
 - `no_results`: a complete bounded response produced zero valid records.
@@ -48,34 +48,36 @@ Each enabled source transitions independently:
 - Source identity: `arxiv`, `github`, or stable `folo:<number>`.
 - Item kinds: paper, repository, article, model, dataset, or post.
 - Dashboard health and per-source counts are dynamic records keyed by source ID.
-- A successful source refresh atomically replaces that source's daily membership while retaining
-  Saved items and analysis artifacts.
+- A successful Discover session persists an immutable result snapshot; explicit Saved promotion
+  retains item kind, source identity, and analysis compatibility.
 - Cross-source deduplication is deterministic and provenance-safe; analytics continues to count
   returned source records rather than reconstructing unique discoveries.
 
 ### Migration and rollback
 
-- Rebuild only legacy Today tables that contain the two-source SQLite constraint.
+- Rebuild legacy Discover source/result tables that contain the two-source SQLite constraint and
+  preserve the existing Today/source tables.
 - Copy all rows and backfill source identity/item kind before enabling foreign keys again.
 - Run `foreign_key_check` after migration.
 - Personal-beta installation must create a database backup and retain the previous app for recovery.
 
 ## Non-goals
 
-- Promoting the remaining 72 RSSHub candidates or 10 adapter-required sources.
+- Promoting any deferred raw-catalog candidate beyond the retained 22-source allowlist.
 - Allowing arbitrary user-entered feed URLs.
-- Expanding semantic Discover beyond arXiv/GitHub in this migration.
-- Treating feed summaries, HTML snippets, posts, or model metadata as verified scientific evidence.
+- Full-web or complete-history search for browse-only sources.
+- Treating feed summaries, HTML snippets, or model metadata as verified scientific evidence.
 - Adding cloud accounts, synchronization, background refresh while closed, or paid API requirements.
 
 ## Open questions
 
-- Per-source enable/disable controls and source weights remain later product decisions. This release
-  enables the fixed 21-source set by default.
+- Source weights remain a later product decision. Discover defaults to all 22 retained sources and
+  lets the user explicitly narrow the current session.
 - HTML landing pages may legitimately return `no_results` when no dated structured entries are
   present; live smoke evidence decides whether a source needs a later source-specific extractor.
 
 ## Handoff
 
-Ready for direct implementation through TDD, followed by live-source, packaged-app, and installed-app
-verification.
+Implemented through the typed Discover, configured-source, SQLite, renderer, and fixture-E2E
+boundaries. Deterministic and packaged verification are release gates; live model/source execution
+remains explicit opt-in evidence and must not be inferred from fixtures.

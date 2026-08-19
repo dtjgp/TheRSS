@@ -69,10 +69,14 @@ describe('DataAnalyticsView', () => {
     expect(await screen.findByRole('heading', { name: 'Data Analytics' })).toBeVisible()
     const summary = screen.getByRole('group', { name: 'Analytics summary' })
     expect(within(summary).getByLabelText('Search results')).toHaveTextContent('14')
+    expect(within(summary).getByLabelText('Search results')).toHaveTextContent(
+      '9 legacy Today · 5 Discover'
+    )
     expect(within(summary).getByLabelText('Deep analyses')).toHaveTextContent('2')
     expect(within(summary).getByLabelText('Analyzed papers')).toHaveTextContent('1')
 
     const daily = screen.getByRole('table', { name: 'Daily search and analysis activity' })
+    expect(within(daily).getByRole('columnheader', { name: 'Legacy Today' })).toBeVisible()
     expect(within(daily).getByRole('row', { name: /2026-08-16 8 3 11 1/ })).toBeVisible()
     expect(within(daily).getByRole('row', { name: /2026-08-17 1 2 3 1/ })).toBeVisible()
 
@@ -108,7 +112,7 @@ describe('DataAnalyticsView', () => {
     expect(await screen.findByText('No search activity recorded yet.')).toBeVisible()
     expect(screen.getByText('No deep analyses recorded yet.')).toBeVisible()
     expect(
-      screen.getByText(/Today history starts when this analytics version records it/i)
+      screen.getByText(/Legacy Today history starts when this analytics version records it/i)
     ).toBeVisible()
   })
 

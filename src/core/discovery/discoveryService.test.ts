@@ -344,7 +344,7 @@ describe('DiscoveryService', () => {
     repository.close()
   })
 
-  it('lets arXiv Sources browse without interests but still guards GitHub and X queries', async () => {
+  it('lets arXiv browse without interests, guards GitHub, and rejects retired sources', async () => {
     const repository = new ResearchRepository(new Database(':memory:'))
     const fetchArxivRecent = vi.fn().mockResolvedValue([])
     const service = new DiscoveryService(repository, {
@@ -361,7 +361,7 @@ describe('DiscoveryService', () => {
       'Configure GitHub interests'
     )
     await expect(service.refreshSourceContent('folo:2')).rejects.toThrow(
-      'Configure research interests'
+      'Unsupported discovery source'
     )
     await expect(service.refreshSourceContent('folo:64')).rejects.toThrow(
       'has no configured retrieval adapter'

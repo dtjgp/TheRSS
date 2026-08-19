@@ -6,17 +6,16 @@ import { localDateKey } from '../src/shared/date'
 
 interface SmokeResult {
   readonly sourceId: string
-  readonly status: 'fetched' | 'no_posts' | 'failed' | 'skipped'
+  readonly status: 'fetched' | 'no_posts' | 'failed'
   readonly detail: string
 }
 
-const xQuery = process.env.THERSS_SMOKE_X_QUERY?.trim()
 const now = new Date()
 const profile: InterestProfile = {
   name: 'Configured-source live smoke',
   arxiv: {
     categories: ['cs.AI', 'cs.LG', 'cs.NI', 'eess.SY'],
-    keywords: xQuery ? [xQuery] : ['edge ai', 'model compression', 'energy markets'],
+    keywords: ['edge ai', 'model compression', 'energy markets'],
     excludeKeywords: []
   },
   github: {
@@ -32,9 +31,7 @@ const fetchOptions = {
     : {})
 }
 const results: SmokeResult[] = []
-const definitions = CONFIGURED_SOURCE_DEFINITIONS.filter(
-  (source) => source.transport !== 'xapi' || Boolean(xQuery)
-)
+const definitions = CONFIGURED_SOURCE_DEFINITIONS
 
 for (let offset = 0; offset < definitions.length; offset += 3) {
   const batch = definitions.slice(offset, offset + 3)
@@ -65,14 +62,6 @@ for (let offset = 0; offset < definitions.length; offset += 3) {
       status: result.value.items.length > 0 ? 'fetched' : 'no_posts',
       detail: `${result.value.items.length} normalized; ${todayCount} dated today; latest=${newest?.publishedAt ?? 'none'}; rejected=${result.value.rejectedCount}`
     })
-  })
-}
-
-if (!xQuery) {
-  results.push({
-    sourceId: 'folo:2',
-    status: 'skipped',
-    detail: 'Set THERSS_SMOKE_X_QUERY to opt in to a potentially metered xapi call'
   })
 }
 

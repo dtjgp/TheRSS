@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { discoverSearchRequestSchema } from './discover'
+import { ACTIVE_TODAY_SOURCE_IDS } from './sourceIdentity'
+import { DISCOVER_SOURCE_IDS, discoverSearchRequestSchema } from './discover'
 
 describe('discoverSearchRequestSchema', () => {
   it('trims a semantic intent and accepts each supported runner', () => {
@@ -57,6 +58,32 @@ describe('discoverSearchRequestSchema', () => {
         sources: ['arxiv'],
         endpoint: 'file:///tmp/secret',
         tools: ['shell']
+      })
+    ).toThrow()
+  })
+
+  it('uses the complete active-source registry and accepts any active subset', () => {
+    expect(DISCOVER_SOURCE_IDS).toEqual(ACTIVE_TODAY_SOURCE_IDS)
+    expect(DISCOVER_SOURCE_IDS).toHaveLength(22)
+    expect(Object.isFrozen(DISCOVER_SOURCE_IDS)).toBe(true)
+
+    expect(
+      discoverSearchRequestSchema.parse({
+        intent: 'edge intelligence across research and industry sources',
+        runner: 'codex',
+        sources: ['folo:302', 'folo:64', 'folo:302']
+      })
+    ).toEqual({
+      intent: 'edge intelligence across research and industry sources',
+      runner: 'codex',
+      sources: ['folo:302', 'folo:64']
+    })
+
+    expect(() =>
+      discoverSearchRequestSchema.parse({
+        intent: 'edge intelligence',
+        runner: 'codex',
+        sources: ['folo:999999']
       })
     ).toThrow()
   })

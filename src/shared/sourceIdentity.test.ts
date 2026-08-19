@@ -25,11 +25,11 @@ describe('source identity', () => {
 
   it('accepts only known active ingestion identities', () => {
     expect(isDiscoverySource('arxiv')).toBe(true)
-    expect(isDiscoverySource('folo:2')).toBe(true)
+    expect(isDiscoverySource('folo:2')).toBe(false)
     expect(isDiscoverySource('folo:999999')).toBe(false)
     expect(isDiscoverySource('folo:not-a-number')).toBe(false)
     expect(isDiscoverySource('https://example.com')).toBe(false)
-    expect(ACTIVE_TODAY_SOURCE_IDS).toHaveLength(23)
-    expect(new Set(ACTIVE_TODAY_SOURCE_IDS).size).toBe(23)
+    expect(ACTIVE_TODAY_SOURCE_IDS).toHaveLength(22)
+    expect(new Set(ACTIVE_TODAY_SOURCE_IDS).size).toBe(22)
   })
 })

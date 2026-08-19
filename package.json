@@ -1,7 +1,7 @@
 {
   "name": "therss",
   "version": "0.2.0",
-  "description": "A local-first academic discovery inbox for arXiv papers and GitHub repositories.",
+  "description": "A local-first semantic research discovery desk for 22 verified sources.",
   "type": "module",
   "main": "out/main/index.js",
   "author": "dtjgp",

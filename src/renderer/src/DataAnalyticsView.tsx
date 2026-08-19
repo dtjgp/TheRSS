@@ -43,7 +43,7 @@ function AnalyticsContent({ snapshot }: { readonly snapshot: AnalyticsSnapshot }
         <SummaryCard
           label="Search results"
           value={snapshot.totals.searchResults}
-          detail={`${snapshot.totals.todayResults} Today · ${snapshot.totals.discoverResults} Discover`}
+          detail={`${snapshot.totals.todayResults} legacy Today · ${snapshot.totals.discoverResults} Discover`}
         />
         <SummaryCard
           label="Deep analyses"
@@ -53,7 +53,7 @@ function AnalyticsContent({ snapshot }: { readonly snapshot: AnalyticsSnapshot }
         <SummaryCard
           label="Analyzed papers"
           value={snapshot.totals.analyzedPapers}
-          detail="Distinct arXiv papers with an analysis artifact"
+          detail="Distinct paper records with an analysis artifact"
         />
       </div>
 
@@ -69,7 +69,7 @@ function AnalyticsContent({ snapshot }: { readonly snapshot: AnalyticsSnapshot }
         {snapshot.totals.searchResults === 0 ? (
           <div className="analytics-empty">
             <strong>No search activity recorded yet.</strong>
-            <p>Run Today refresh or a semantic Discover search to start this view.</p>
+            <p>Run a semantic Discover search to start this view.</p>
           </div>
         ) : (
           <div className="analytics-table-wrap">
@@ -77,7 +77,7 @@ function AnalyticsContent({ snapshot }: { readonly snapshot: AnalyticsSnapshot }
               <thead>
                 <tr>
                   <th scope="col">Day</th>
-                  <th scope="col">Today</th>
+                  <th scope="col">Legacy Today</th>
                   <th scope="col">Discover</th>
                   <th scope="col">Total</th>
                   <th scope="col">Deep analyses</th>
@@ -112,7 +112,8 @@ function AnalyticsContent({ snapshot }: { readonly snapshot: AnalyticsSnapshot }
 
         <p className="analytics-boundary">
           Search results are returned records, not unique discoveries; repeated refreshes may
-          include the same result again. Today history starts when this analytics version records it
+          include the same result again. Legacy Today history starts when this analytics version
+          records it
           {snapshot.trackingStartedAt
             ? ` (${new Date(snapshot.trackingStartedAt).toLocaleString()}).`
             : '.'}
@@ -131,7 +132,7 @@ function AnalyticsContent({ snapshot }: { readonly snapshot: AnalyticsSnapshot }
         {snapshot.analyzedItems.length === 0 ? (
           <div className="analytics-empty">
             <strong>No deep analyses recorded yet.</strong>
-            <p>Analyze a paper or repository from Today or Saved to create an auditable record.</p>
+            <p>Analyze a paper or repository from Saved to create an auditable record.</p>
           </div>
         ) : (
           <ol className="analytics-history" aria-label="Deep analysis history">

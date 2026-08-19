@@ -1,5 +1,39 @@
 # TheRSS Goals
 
+## Completed goal: Discover-centered retrieval
+
+### Objective
+
+Replace the overlapping Today/Interests/Discover product surfaces with one explicit Discover
+workflow that uses a configured model, Codex, or Claude Code to plan a bounded search across any
+subset of all 22 retained live-verified sources.
+
+### Observable success criteria
+
+- The app opens directly to Discover and exposes no Today or Interests navigation/menu surface.
+- Discover defaults to the exact 22-source retained registry and supports inspectable source
+  selection without accepting dormant catalog entries.
+- arXiv/GitHub execute specialized queries; the other deployed adapters retrieve bounded recent
+  records and only return deterministic semantic matches.
+- Each selected source records an independent healthy, no-result, or failed outcome; partial
+  sessions preserve successful results.
+- Configured-source result kinds survive SQLite round-trip and Saved promotion.
+- Existing Interest, Today, Saved, analysis, and analytics records remain recoverable.
+
+### Verifiers
+
+- Focused shared/core/storage/renderer tests showing RED then GREEN
+- `npm run check`
+- `npm run test:e2e`
+- rendered Discover, Saved, and Sources inspection
+- `npm run smoke:package`
+
+### Stop condition
+
+The goal is complete when the focused and full gates pass, the rendered desktop flow confirms the
+five-surface navigation and 22-source Discover selector, and any live-provider/source check not run
+is reported as an explicit opt-in boundary.
+
 ## Completed goal: Initial version
 
 ### Objective

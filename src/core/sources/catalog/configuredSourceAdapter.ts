@@ -8,9 +8,9 @@ import {
   type NormalizedSourceBatch
 } from './sourceNormalizer'
 import { fetchHuggingFaceSignals } from '../huggingface/huggingFaceClient'
-import { fetchXSignals } from '../x/xapiClient'
 import { fetchDatedFeedSource } from './datedFeedAdapter'
 import { normalizeNcpssdDocument } from './ncpssdNormalizer'
+import { normalizeC114Document } from './c114Normalizer'
 
 export interface FetchConfiguredSourceOptions {
   readonly now: Date
@@ -20,22 +20,7 @@ export interface FetchConfiguredSourceOptions {
 interface ConfiguredSourceAdapterDependencies {
   readonly fetchHttp?: typeof fetchConfiguredHttpDocument
   readonly fetchHuggingFace?: typeof fetchHuggingFaceSignals
-  readonly fetchX?: typeof fetchXSignals
   readonly fetchDatedFeed?: typeof fetchDatedFeedSource
-}
-
-function xResearchQuery(profile: InterestProfile): string {
-  const inclusions = [
-    ...profile.arxiv.keywords,
-    ...profile.github.keywords,
-    ...profile.github.topics
-  ]
-  const unique = [...new Set(inclusions.map((term) => term.trim()).filter(Boolean))]
-  const positive = unique.slice(0, 12).map((term) => (term.includes(' ') ? `"${term}"` : term))
-  const exclusions = profile.arxiv.excludeKeywords
-    .slice(0, 8)
-    .map((term) => `-${term.includes(' ') ? `"${term}"` : term}`)
-  return `${positive.join(' OR ')} ${exclusions.join(' ')}`.trim().slice(0, 500)
 }
 
 function normalizeItems(
@@ -55,13 +40,12 @@ function normalizeItems(
 
 export async function fetchConfiguredSourceBatch(
   definition: ConfiguredSourceDefinition,
-  profile: InterestProfile,
+  _profile: InterestProfile,
   options: FetchConfiguredSourceOptions,
   dependencies: ConfiguredSourceAdapterDependencies = {}
 ): Promise<NormalizedSourceBatch> {
   const fetchHttp = dependencies.fetchHttp ?? fetchConfiguredHttpDocument
   const fetchHuggingFace = dependencies.fetchHuggingFace ?? fetchHuggingFaceSignals
-  const fetchX = dependencies.fetchX ?? fetchXSignals
   const fetchDatedFeed = dependencies.fetchDatedFeed ?? fetchDatedFeedSource
   if (definition.transport === 'dated_feed') {
     return fetchDatedFeed(definition, { now: options.now })
@@ -72,17 +56,14 @@ export async function fetchConfiguredSourceBatch(
       ? normalizeFeedDocument(document)
       : definition.id === 'folo:611'
         ? normalizeNcpssdDocument(document)
-        : normalizeHtmlDocument(document)
+        : definition.id === 'folo:523'
+          ? normalizeC114Document(document)
+          : normalizeHtmlDocument(document)
   }
-  if (definition.transport === 'huggingface') {
-    return normalizeItems(
-      await fetchHuggingFace({
-        maxItemsPerKind: 10,
-        ...(options.huggingFaceToken ? { token: options.huggingFaceToken } : {})
-      })
-    )
-  }
-  const query = xResearchQuery(profile)
-  if (!query) throw new Error('X retrieval requires at least one keyword or topic')
-  return normalizeItems(await fetchX(query, { count: 20 }))
+  return normalizeItems(
+    await fetchHuggingFace({
+      maxItemsPerKind: 10,
+      ...(options.huggingFaceToken ? { token: options.huggingFaceToken } : {})
+    })
+  )
 }

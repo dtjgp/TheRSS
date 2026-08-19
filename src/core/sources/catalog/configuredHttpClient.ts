@@ -105,7 +105,8 @@ export async function fetchConfiguredHttpDocument(
   const body = await readBoundedText(
     response,
     options.maxResponseBytes ?? 5_000_000,
-    `Configured source ${sourceId}`
+    `Configured source ${sourceId}`,
+    'encoding' in source ? source.encoding : undefined
   )
   if (!body.trim()) throw new Error(`Configured source ${sourceId} returned an empty response`)
 

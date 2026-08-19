@@ -1,5 +1,8 @@
 # ADR 0006: Generalize Today around stable source identities
 
+Status: superseded for user-facing acquisition by ADR 0007. The generic source identity and
+historical Today persistence contracts remain valid.
+
 - Status: Accepted
 - Date: 2026-08-19
 

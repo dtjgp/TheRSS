@@ -24,15 +24,15 @@ const strictHttpSourceIds = [
 ] as const
 
 describe('CONFIGURED_SOURCE_DEFINITIONS', () => {
-  it('contains the 19 newly configured strict HTTP routes plus Hugging Face and X', () => {
-    expect(CONFIGURED_SOURCE_DEFINITIONS).toHaveLength(21)
-    expect(new Set(CONFIGURED_SOURCE_DEFINITIONS.map((source) => source.id)).size).toBe(21)
+  it('contains the 19 live-verified strict HTTP routes plus Hugging Face', () => {
+    expect(CONFIGURED_SOURCE_DEFINITIONS).toHaveLength(20)
+    expect(new Set(CONFIGURED_SOURCE_DEFINITIONS.map((source) => source.id)).size).toBe(20)
     expect(
       CONFIGURED_SOURCE_DEFINITIONS.filter((source) => source.transport === 'feed')
-    ).toHaveLength(16)
+    ).toHaveLength(15)
     expect(
       CONFIGURED_SOURCE_DEFINITIONS.filter((source) => source.transport === 'html')
-    ).toHaveLength(1)
+    ).toHaveLength(2)
     expect(
       CONFIGURED_SOURCE_DEFINITIONS.filter((source) => source.transport === 'dated_feed')
     ).toHaveLength(2)
@@ -72,6 +72,17 @@ describe('CONFIGURED_SOURCE_DEFINITIONS', () => {
       transport: 'feed',
       endpoint: 'https://www.mckinsey.com/insights/rss'
     })
+    expect(getConfiguredSourceDefinition('folo:77')).toMatchObject({
+      transport: 'feed',
+      endpoint: 'https://www.sciencenet.cn/xml/blog.aspx?di=0'
+    })
+    expect(getConfiguredSourceDefinition('folo:523')).toMatchObject({
+      transport: 'html',
+      endpoint: 'https://www.c114.com.cn/',
+      fallbackEndpoint: 'https://m.c114.com.cn/',
+      retryAttempts: 2,
+      encoding: 'gb18030'
+    })
     expect(getConfiguredSourceDefinition('folo:177')).toMatchObject({
       transport: 'dated_feed',
       endpoint: 'https://asia.nikkei.com/rss/feed/nar',
@@ -80,7 +91,7 @@ describe('CONFIGURED_SOURCE_DEFINITIONS', () => {
     })
   })
 
-  it('configures Hugging Face as three public APIs and X as schema-first xapi search', () => {
+  it('configures Hugging Face as three public APIs and excludes deferred X retrieval', () => {
     expect(getConfiguredSourceDefinition('folo:64')).toEqual({
       id: 'folo:64',
       transport: 'huggingface',
@@ -90,12 +101,7 @@ describe('CONFIGURED_SOURCE_DEFINITIONS', () => {
         papers: 'https://huggingface.co/api/daily_papers'
       }
     })
-    expect(getConfiguredSourceDefinition('folo:2')).toEqual({
-      id: 'folo:2',
-      transport: 'xapi',
-      schemaAction: 'twitter.search',
-      searchAction: 'twitter.search'
-    })
+    expect(() => getConfiguredSourceDefinition('folo:2')).toThrow('is not configured')
   })
 
   it('rejects unknown configured source identities', () => {
