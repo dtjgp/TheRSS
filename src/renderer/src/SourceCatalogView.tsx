@@ -16,12 +16,10 @@ import { discoverySourceFromCatalogId } from '../../shared/sourceIdentity'
 
 type PriorityFilter = 'all' | SourcePriority
 type ResearchAxisFilter = 'all' | ResearchAxis
-type DirectoryMode = 'content' | 'pending'
 type SourceCatalogApi = Pick<TheRSSApi, 'getSourceContent' | 'refreshSourceContent'>
 
 interface SourceCatalogViewProps {
   readonly api: SourceCatalogApi
-  readonly hasInterestProfile: boolean
 }
 
 function matchesSearch(source: SourceCatalogEntry, query: string): boolean {
@@ -69,8 +67,8 @@ function SummaryMetric({
   )
 }
 
-function sourceNeedsInterests(sourceId: SourceContentSnapshot['source']): boolean {
-  return sourceId === 'github' || sourceId === 'folo:2'
+function sourceSearchesThroughDiscover(sourceId: SourceContentSnapshot['source']): boolean {
+  return sourceId === 'github'
 }
 
 function sourceErrorMessage(reason: unknown): string {
@@ -87,20 +85,16 @@ function sourceErrorMessage(reason: unknown): string {
 function SourceDetail({
   source,
   api,
-  hasInterestProfile,
   onBack
 }: {
   readonly source: SourceCatalogEntry
   readonly api: SourceCatalogApi
-  readonly hasInterestProfile: boolean
   readonly onBack: () => void
 }) {
   const sourceId = discoverySourceFromCatalogId(source.id)
   const isActive = source.acquisition === 'active' && sourceId !== null
-  const isMeteredX = sourceId === 'folo:2'
   const isArxiv = sourceId === 'arxiv'
-  const canRefresh =
-    isActive && sourceId !== null && (!sourceNeedsInterests(sourceId) || hasInterestProfile)
+  const canRefresh = isActive && sourceId !== null && !sourceSearchesThroughDiscover(sourceId)
   const [snapshot, setSnapshot] = useState<SourceContentSnapshot | null>(null)
   const [isLoading, setIsLoading] = useState(isActive)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -118,7 +112,7 @@ function SourceDetail({
       .then(async (cached) => {
         if (!isCurrent) return
         setSnapshot(cached)
-        const shouldAutoRefresh = cached.items.length === 0 && canRefresh && !isMeteredX
+        const shouldAutoRefresh = cached.items.length === 0 && canRefresh
         if (!shouldAutoRefresh) return
         setIsRefreshing(true)
         try {
@@ -142,7 +136,7 @@ function SourceDetail({
     return () => {
       isCurrent = false
     }
-  }, [api, canRefresh, isActive, isMeteredX, sourceId])
+  }, [api, canRefresh, isActive, sourceId])
 
   const refresh = useCallback(async () => {
     if (!canRefresh || sourceId === null) return
@@ -186,14 +180,10 @@ function SourceDetail({
               className="primary-button"
               disabled={!canRefresh || isRefreshing}
               onClick={() => void refresh()}
-              aria-label={isMeteredX ? 'Search X via xapi' : 'Refresh recent content'}
+              aria-label="Refresh recent content"
             >
               <RefreshCw aria-hidden="true" size={15} />
-              {isRefreshing
-                ? 'Refreshing…'
-                : isMeteredX
-                  ? 'Search X via xapi'
-                  : 'Refresh recent content'}
+              {isRefreshing ? 'Refreshing…' : 'Refresh recent content'}
             </button>
           )}
           <a href={source.url} target="_blank" rel="noreferrer" className="source-detail-link">
@@ -205,7 +195,7 @@ function SourceDetail({
 
       <p className="source-detail-boundary">
         {isArxiv
-          ? "This desk shows today's newest available arXiv daily batch and is not filtered by your Interests. arXiv can timestamp that batch on the previous submission day; Today and Discover keep their separate interest-based ranking."
+          ? "This desk shows today's newest available arXiv daily batch without applying a Discover plan. arXiv can timestamp that batch on the previous submission day; use Discover for intent-based retrieval and ranking."
           : 'TheRSS shows bounded source-provided titles and summaries from the rolling 30 days. Some feeds expose less than 30 days; this view does not claim a complete publisher archive or a verified full article.'}
       </p>
 
@@ -218,21 +208,14 @@ function SourceDetail({
         </div>
       )}
 
-      {isActive && sourceId && sourceNeedsInterests(sourceId) && !hasInterestProfile && (
+      {isActive && sourceId && sourceSearchesThroughDiscover(sourceId) && (
         <div className="source-detail-empty">
-          <strong>Configure Interests before refreshing this source.</strong>
+          <strong>Search GitHub from Discover.</strong>
           <p>
-            The source query needs your bounded research terms. Previously indexed items remain
-            visible.
+            GitHub needs bounded query terms from the current semantic plan. Previously indexed
+            items remain visible here without reviving the retired Interests surface.
           </p>
         </div>
-      )}
-
-      {isMeteredX && hasInterestProfile && (
-        <p className="source-detail-metered">
-          xapi calls may use account balance. X is never searched automatically; use the button
-          above to opt in.
-        </p>
       )}
 
       {error && (
@@ -324,11 +307,10 @@ function SourceDetail({
   )
 }
 
-export function SourceCatalogView({ api, hasInterestProfile }: SourceCatalogViewProps) {
+export function SourceCatalogView({ api }: SourceCatalogViewProps) {
   const [query, setQuery] = useState('')
   const [priority, setPriority] = useState<PriorityFilter>('all')
   const [researchAxis, setResearchAxis] = useState<ResearchAxisFilter>('all')
-  const [directoryMode, setDirectoryMode] = useState<DirectoryMode>('content')
   const [selectedSource, setSelectedSource] = useState<SourceCatalogEntry | null>(null)
 
   const visibleSources = useMemo(() => {
@@ -337,83 +319,37 @@ export function SourceCatalogView({ api, hasInterestProfile }: SourceCatalogView
       (source) =>
         matchesSearch(source, normalizedQuery) &&
         (priority === 'all' || source.priority === priority) &&
-        (researchAxis === 'all' || source.researchAxes.includes(researchAxis)) &&
-        (directoryMode === 'content'
-          ? source.acquisition === 'active'
-          : source.acquisition !== 'active')
+        (researchAxis === 'all' || source.researchAxes.includes(researchAxis))
     )
-  }, [directoryMode, priority, query, researchAxis])
+  }, [priority, query, researchAxis])
 
   if (selectedSource) {
-    return (
-      <SourceDetail
-        source={selectedSource}
-        api={api}
-        hasInterestProfile={hasInterestProfile}
-        onBack={() => setSelectedSource(null)}
-      />
-    )
+    return <SourceDetail source={selectedSource} api={api} onBack={() => setSelectedSource(null)} />
   }
 
   return (
     <section className="source-catalog-view">
       <header className="source-catalog-heading">
         <p className="eyebrow">RESEARCH SOURCE DIRECTORY</p>
-        <h1>{SOURCE_CATALOG_STATS.total} research sources</h1>
+        <h1>{SOURCE_CATALOG_STATS.total} live-verified research sources</h1>
         <p>
-          Select a content source to inspect its locally indexed recent records without leaving
-          TheRSS; arXiv uses its newest available daily batch.
+          Select one of the retained sources to inspect its locally indexed recent records without
+          leaving TheRSS; arXiv uses its newest available daily batch.
         </p>
       </header>
 
       <div className="source-catalog-summary" role="group" aria-label="Source catalog summary">
         <SummaryMetric
-          label="Active adapters"
-          value={SOURCE_CATALOG_STATS.acquisition.active}
-          detail="Today refreshes all active adapters"
-        />
-        <SummaryMetric
-          label="Configured retrieval"
-          value={SOURCE_CATALOG_STATS.acquisition.configured}
-          detail="No staged configured routes remain"
-        />
-        <SummaryMetric
-          label="RSSHub candidates"
-          value={SOURCE_CATALOG_STATS.acquisition.rsshub_candidate}
-          detail="Catalogued routes awaiting adapter verification"
-        />
-        <SummaryMetric
-          label="Need adapters"
-          value={SOURCE_CATALOG_STATS.acquisition.adapter_required}
-          detail="Official sources requiring new integrations"
+          label="Live-verified sources"
+          value={SOURCE_CATALOG_STATS.total}
+          detail="Only sources that passed the previous live retrieval test are active"
         />
       </div>
 
       <p className="source-catalog-boundary">
-        Catalog membership does not mean retrieval is implemented. Active adapters can show recent
-        in-app content; candidate and adapter-required entries remain staged until separately
-        verified.
+        This directory retains only the 22 sources that passed live verification. Other catalog
+        candidates are deferred and hidden from retrieval, Today, and Sources.
       </p>
-
-      <div className="source-directory-mode" role="group" aria-label="Source directory mode">
-        <button
-          type="button"
-          aria-pressed={directoryMode === 'content'}
-          aria-label={`Content sources · ${SOURCE_CATALOG_STATS.acquisition.active}`}
-          onClick={() => setDirectoryMode('content')}
-        >
-          Content sources <span>{SOURCE_CATALOG_STATS.acquisition.active}</span>
-        </button>
-        <button
-          type="button"
-          aria-pressed={directoryMode === 'pending'}
-          aria-label={`Pending integrations · ${SOURCE_CATALOG_STATS.total - SOURCE_CATALOG_STATS.acquisition.active}`}
-          onClick={() => setDirectoryMode('pending')}
-        >
-          Pending integrations{' '}
-          <span>{SOURCE_CATALOG_STATS.total - SOURCE_CATALOG_STATS.acquisition.active}</span>
-        </button>
-      </div>
 
       <div className="source-catalog-controls" aria-label="Filter source catalog">
         <label className="source-catalog-search">

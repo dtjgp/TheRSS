@@ -462,3 +462,233 @@ the hook enabled.
 Publication handoff: commit `d1d06ed` reached `origin/codex/local-first-discovery-suite` with an
 exact remote-ref match, and draft PR #5 targets `main`. The pre-push hook independently reran lint,
 type checking, all 216 tests, and both production builds before accepting the push.
+
+## Phase 24 — Explicit X research watchlist
+
+### Goal
+
+Replace the interest-derived X query with the user-approved, inspectable list of 22 recommended
+research accounts plus `@elonmusk`, while keeping X retrieval bounded and metered.
+
+### Execution
+
+- [x] Add failing watchlist, adapter, source-service, and renderer tests.
+- [x] Add one immutable 23-account watchlist grouped by research area.
+- [x] Build one bounded `twitter.search` query per refresh and request at most 100 latest posts.
+- [x] Make the X source desk independent of Interests and show the tracked handles plus metering
+      boundary before the explicit search action.
+- [x] Update X capability/setup documentation and run focused plus full verification.
+
+### Decisions
+
+- The six groups are for human inspection; all 23 `from:` clauses fit in one 500-character query,
+  so one refresh remains one metered search rather than six.
+- The code-owned watchlist replaces interest-keyword construction for X. Today and Discover
+  interests keep their existing behavior for all other sources.
+- Adding the list does not authorize a live xapi call, package installation, or the separately
+  deferred installed-app `npx` path repair.
+
+### Errors encountered
+
+- The first Electron E2E run failed before assertions at the established restricted macOS GUI
+  boundary (`SIGABRT` and `kill EPERM`). The approved desktop-permission rerun passed; no product
+  change was required.
+
+### Status
+
+**Phase 24 complete.** X now follows the immutable 23-account watchlist and shows all six groups in
+Sources. One refresh builds one 441-character query and requests at most 100 latest posts. The RED
+run failed at the four intended boundaries; the focused suite then passed 26/26. `npm run check`
+passed 42 test files / 218 tests with 91.38% statements, 80.16% branches, 92.78% functions, and
+94.28% lines. Electron E2E passed 1/1, and both the full watchlist and scrolled `@elonmusk`
+screenshots were inspected. No live xapi call, package installation, or installed-app `npx` repair
+was performed.
+
+## Phase 25 — Retain only the 22 live-verified sources
+
+### Goal
+
+Limit the current product to the 22 sources whose 2026-08-19 retrieval was successfully verified;
+remove X and every pending integration from Sources and active refresh scheduling without deleting
+historical catalog metadata or local research records.
+
+### Execution
+
+- [x] Add failing catalog, configured-registry, renderer, and Electron contracts for exactly 22
+      retained sources and no pending/X surface.
+- [x] Add one immutable retained-source allowlist and filter the product catalog to it.
+- [x] Remove X from the executable configured-source registry and Today refresh scheduling.
+- [x] Remove the superseded X watchlist surface and update product/capability/setup documentation.
+- [x] Run focused tests, the full quality gate, Electron E2E, and rendered Sources inspection.
+
+### Decisions
+
+- Preserve the 105-entry raw catalog as dormant versioned metadata because “暂时不再考虑” is not
+  authorization to erase history; expose only the 22 retained entries through `SOURCE_CATALOG`.
+- Preserve SQLite records and source-identity compatibility. Stopping retrieval and hiding the
+  directory entry must not destroy Saved items or historical analytics.
+- The retained set is arXiv, GitHub, Hugging Face, and the 19 credential-free configured sources
+  that produced normalized content in the prior live verification.
+
+### Errors encountered
+
+- The first full gate found one old normalizer test still using retired `folo:2`; moving the generic
+  contract to retained OpenAI exposed that the now-unreachable X client also pulled global branch
+  coverage to 79.9%. Removing the unregistered X client/test raised branch coverage above the 80%
+  gate without weakening retained-source coverage.
+- The first Electron launch hit the established restricted macOS GUI boundary (`SIGABRT` and
+  `kill EPERM`). The approved GUI run then found one stale `Additional: 21/21 ready` assertion;
+  correcting it to the actual 20 configured adapters made the complete 22-source E2E pass.
+
+### Status
+
+**Phase 25 complete.** `SOURCE_CATALOG` and active discovery expose exactly 22 sources (A=7, B=15),
+while the raw 105-entry catalog and saved historical records remain recoverable. X, Pending
+integrations, and all other candidates are absent from Sources and refresh scheduling. The focused
+suite passed 78/78; `npm run check` passed 40 test files / 209 tests with 91.87% statements, 80.23%
+branches, 93.35% functions, and 94.97% lines; production and MCP builds passed. Electron E2E passed
+1/1, and `08-sources.png` plus `08b-source-detail.png` were inspected without layout or content
+boundary regressions. No package installation or live network revalidation was performed.
+
+## Phase 26 — Discover-centered product consolidation
+
+### Goal
+
+Make Discover the single user-facing research retrieval workflow, remove the overlapping Today and
+Interests navigation surfaces, and let one model/agent-expanded intent search any subset of all 22
+retained live-verified sources without reading the retired Interest profile.
+
+### Execution
+
+- [x] Add failing shared, planner, service, persistence, renderer, native-menu, and Electron
+      contracts for the Discover-centered workflow and all-source selection.
+- [x] Extend Discover execution, source outcomes, persisted result kinds, and migration support from
+      the old arXiv/GitHub-only union to all retained source identities.
+- [x] Replace the two-source control with an inspectable 22-source selector that defaults to every
+      deployed source and preserve per-source success, empty, and failure states.
+- [x] Make Discover the initial navigation surface; remove Today and Interests from navigation and
+      native menus while preserving historical SQLite data and Saved records.
+- [x] Update the product/design contract, run focused and full verification, inspect the rendered
+      desktop result, and record any remaining live-source or package boundary.
+
+### Decisions
+
+- The 22-source retained allowlist is the only Discover source registry; raw catalog candidates and
+  X remain excluded.
+- The generated `discover-plan-v1` remains a bounded semantic term plan. arXiv and GitHub execute
+  specialized queries; the other deployed adapters fetch bounded current records and TheRSS applies
+  the same transient plan for deterministic relevance filtering and ranking.
+- Removing Today and Interests is a product-surface change, not authorization to delete the legacy
+  Interest profile, daily inbox, analytics history, or Saved data from SQLite.
+- Discover defaults to all 22 deployed sources, but selection remains explicit and inspectable so a
+  user can avoid an unnecessary source request.
+
+### Errors encountered
+
+- The initial all-project RED run left 28 obsolete `App.test.tsx` assumptions tied to Today,
+  Interests, and automatic refresh. Replacing that test surface with 12 Discover/Saved/settings/
+  analytics/Sources contracts made the renderer suite green without retaining dead product paths.
+- Core review found four blockers: cross-source-only plans, substring false positives such as `ai`
+  in `chair`, all-invalid batches reported as partial, and over-broad Hugging Face token forwarding.
+  RED regressions were added; the final implementation also preserves CJK phrase matching, chunks
+  100+ Saved lookups, and reconciles post-dedup source counts.
+- The first restricted Electron launch failed at the known macOS GUI boundary (`SIGABRT` and
+  `kill EPERM`); the approved desktop run passed.
+- The first package build could not resolve GitHub inside the restricted network boundary. The
+  approved retry downloaded the Electron builder resources and produced the unsigned arm64 app.
+- The original package smoke script targeted an older installed `TheRSS Dev.app`, whose `app.asar`
+  did not match the new release. Its default now targets the freshly built release app; the corrected
+  smoke passed without installing or overwriting the user's app.
+
+### Status
+
+**Phase 26 complete.** Discover is now the default and only user-facing acquisition workflow, with
+an inspectable selector derived from the exact 22 retained source IDs. arXiv/GitHub use their
+specialized bounded queries; the other 20 adapters retrieve bounded recent batches and must pass a
+deterministic semantic match before results enter the session. Dynamic per-source outcomes,
+cross-source deduplication, configured item kinds, Saved promotion, and legacy two-source SQLite
+migration are covered.
+
+`npm run check` passed 42 files / 213 tests with 91.85% statements, 80.83% branches, 93.79%
+functions, and 94.81% lines; both production builds passed. The Discover-first Electron fixture
+passed 1/1 and seven screenshots were inspected across Discover, configured-source filtering,
+Saved, Models, Analytics, and Sources. `npm run package:mac` produced
+`release/mac-arm64/TheRSS.app`, and the corrected release-targeted package smoke passed. No live
+model or 22-source search, app installation, commit, push, or publication was performed.
+
+## Phase 27 — Apple-native Discover refinement and live-source repair
+
+### Goal
+
+Turn the Discover-centered product into a calmer macOS research workspace: repair live source
+routes without weakening TLS, make results the primary post-search content, keep source/plan detail
+inspectable through progressive disclosure, and replace decorative delay with brief truthful
+feedback.
+
+### Execution
+
+- [x] Add RED contracts for safe source-route replacements, compact source disclosure, result-first
+      ordering, bounded result motion, loading feedback, and searchable detail disclosure.
+- [x] Replace only failed routes that have a currently verified credential-free HTTPS alternative;
+      preserve explicit failed state for any source without one.
+- [x] Refine Discover into an editorial-native search surface with compact source summary,
+      result-first hierarchy, and reusable macOS-style detail disclosure.
+- [x] Add honest indeterminate search feedback, reduce card chrome and unbounded stagger, and make
+      Reduced Motion cover transitions as well as keyframe animations.
+- [x] Run focused tests, full coverage/build, live source smoke, Electron E2E, rendered light-mode
+      inspection, and package smoke without installing, committing, or pushing.
+
+### Decisions
+
+- Keep Newsreader for research/content headings; use the system UI stack for navigation, controls,
+  statuses, metadata, and settings.
+- Do not imitate Liquid Glass across the content plane. Vibrancy remains window chrome; content
+  hierarchy uses restrained fills, dividers, and selected rows.
+- Do not fabricate per-source completion percentages. Until typed streaming progress exists, show
+  an accurate indeterminate phase and selected-source count, then expose final per-source outcomes.
+- A replacement source route must pass the same HTTPS, origin, normalization, and bounded-content
+  checks as the existing adapter. Disabling TLS verification is prohibited.
+
+### Errors encountered
+
+- Pre-implementation live smoke passed 20/22 sources. The first configured run timed out for
+  科学网, 麻省理工科技评论, AIbase, and C114; the second recovered MIT Technology Review China
+  and AIbase but again timed out for 科学网 and C114. Direct checks showed the shared `hub.slarker.me`
+  proxy returned no bytes within 35 seconds for both routes.
+- The first post-change configured-source run had transient AIbase and C114 failures. A direct Node
+  request then reached C114 with HTTP 200, and the immediate full rerun passed 20/20 configured
+  sources. The evidence retains both runs instead of hiding the transient failure.
+- The first sandboxed package attempt could not resolve `github.com`; the approved network rerun
+  downloaded the Electron build resource and produced the unsigned macOS directory package.
+
+### Status
+
+**Phase 27 complete.** `npm run check` passed 42 files / 219 tests with 91.51% statements and
+80.56% branches; live retrieval passed all 22 sources on the final run; Electron E2E passed 1/1;
+all seven light-mode captures were inspected; the unsigned, uninstalled macOS package passed its
+isolated startup/preload smoke.
+
+## Phase 28 — Local package update and main publication
+
+### Goal
+
+Update the reversible local development application, bring the public README in line with the
+Discover-centered product and current live-source evidence, and publish the verified worktree to
+GitHub `main` without force-pushing or losing remote history.
+
+### Execution
+
+- [x] Update and format the GitHub README.
+- [x] Re-run the full quality, Electron E2E, live-source, security, and package gates.
+- [x] Install the local beta with database and previous-app retention, then smoke the installed app.
+- [ ] Inspect and stage the authorized full worktree, scan added content for credentials, and commit.
+- [ ] Reconcile the patch-equivalent feature/main histories, push `main`, and verify local/remote SHA equality.
+
+### Status
+
+**Phase 28 in progress.** Remote `main` and the current feature branch have different commit IDs but
+identical base trees; publication will use a fast-forwarded local `main` plus the new verified commit.
+The installed app and release `app.asar` share SHA-256
+`305c54ee53aa23f2dfa3c63af270c54edad95ece982e7fc4908b01e7b5ccf78e`. The database backup is
+`~/Library/Application Support/therss/backups/therss-2026-08-19T21-25-28-902Z.sqlite`; the previous
+app is retained at `~/Applications/TheRSS Dev.backup-2026-08-19T21-25-28-902Z.app`.

@@ -23,4 +23,10 @@ describe('bounded response reader', () => {
       'test source response exceeds the 64 byte safety limit'
     )
   })
+
+  it('decodes bounded legacy source bytes with an explicitly allowed encoding', async () => {
+    const response = new Response(new Uint8Array([0xb2, 0xe2, 0xca, 0xd4]))
+
+    await expect(readBoundedText(response, 64, 'legacy source', 'gb18030')).resolves.toBe('测试')
+  })
 })

@@ -1,21 +1,19 @@
 # Source access setup
 
 This document describes credentials and local setup for configured TheRSS sources. Never commit a
-token, paste it into a source URL, or expose it to renderer code. A configured source is retrievable
-by core code but does not enter Today or Discover until its item model, ranking, storage, and source
-run states are implemented.
+token, paste it into a source URL, or expose it to renderer code. Only the 22 sources whose item
+model, ranking, storage, and source-run states cross the complete product boundary are exposed in
+Discover; deferred catalog candidates remain unavailable.
 
 ## Current status
 
-| Source group                    | Current access                      | Credential              | Product state            |
-| ------------------------------- | ----------------------------------- | ----------------------- | ------------------------ |
-| arXiv                           | Native Atom API                     | None                    | Active in Today/Discover |
-| GitHub public repository search | Official REST API                   | Optional token          | Active in Today/Discover |
-| 15 RSS/Atom/RSSHub feeds        | Fixed HTTPS endpoints               | None                    | Configured retrieval     |
-| 4 landing responses             | Fixed HTTPS endpoints               | None                    | Configured retrieval     |
-| Hugging Face                    | Models, datasets, daily-papers APIs | Optional token          | Configured retrieval     |
-| X                               | Local xapi `twitter.search`         | xapi key; metered calls | Configured retrieval     |
-| ENTSO-E                         | Transparency Platform Web API       | Required security token | Adapter required         |
+| Source group                    | Current access                      | Credential              | Product state      |
+| ------------------------------- | ----------------------------------- | ----------------------- | ------------------ |
+| arXiv                           | Native Atom API                     | None                    | Active in Discover |
+| GitHub public repository search | Official REST API                   | Optional token          | Active in Discover |
+| 19 fixed HTTP routes            | Fixed HTTPS endpoints               | None                    | Active in Discover |
+| Hugging Face                    | Models, datasets, daily-papers APIs | Optional token          | Active in Discover |
+| ENTSO-E                         | Transparency Platform Web API       | Required security token | Deferred           |
 
 ## GitHub
 
@@ -52,8 +50,8 @@ For a personal local installation:
 
    Remove it later with `launchctl unsetenv THERSS_GITHUB_TOKEN` and restart TheRSS.
 
-The Electron main process reads `THERSS_GITHUB_TOKEN` on every Today refresh and Discover search.
-It is not returned to the renderer or written to SQLite.
+The Electron main process reads `THERSS_GITHUB_TOKEN` on every Discover search. It is not returned
+to the renderer or written to SQLite.
 
 Official references: [GitHub token creation](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens),
 [REST API rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api),
@@ -80,28 +78,6 @@ response-size bounds, rate handling, normalized energy-market records, and fixtu
 
 Official reference: [ENTSO-E API token management](https://transparency.entsoe.eu/content/static_content/download?path=%2FStatic+content%2FAPI-Token-Management.pdf).
 
-## X through xapi
-
-xapi remains outside TheRSS's secret store. The adapter invokes it without a shell and always checks
-the current `twitter.search` schema before making the metered search call.
-
-```zsh
-npx -y xapi-to register
-npx -y xapi-to config health
-npx -y xapi-to get twitter.search
-npx -y xapi-to call twitter.search --input '{"raw_query":"edge AI OR 6G OR smart grid","sort_by":"Latest","count":5}'
-```
-
-The key is stored by xapi in `~/.xapi/config.json`, or it may be supplied as `XAPI_KEY`. Do not copy
-that file into TheRSS. Use `npx -y xapi-to balance` before recurring searches because xapi calls are
-metered.
-
-To run the TheRSS live smoke with X enabled:
-
-```zsh
-THERSS_SMOKE_X_QUERY='edge AI OR 6G OR smart grid' npm run smoke:configured-sources
-```
-
 ## Hugging Face
 
 TheRSS now retrieves three distinct public signals rather than treating the blog RSS as the whole
@@ -112,8 +88,9 @@ source:
 - `/api/daily_papers`, with paper title, abstract, authors, and publication time.
 
 Public reads work without a token. A token is optional for higher account rate limits and required
-for gated or private resources. If one is later supplied, use a dedicated fine-grained/read-only
-token and pass it only to Electron main; never hardcode it.
+for gated or private resources. If one is supplied through `THERSS_HUGGINGFACE_TOKEN`, use a
+dedicated fine-grained/read-only token; Electron main passes it only to the fixed Hugging Face
+adapter and never returns or persists it. Never hardcode it.
 
 Official references: [Hub API endpoints](https://huggingface.co/docs/hub/en/api),
 [daily papers API](https://huggingface.co/docs/huggingface_hub/en/package_reference/hf_api#huggingface_hub.HfApi.list_daily_papers),
@@ -121,11 +98,13 @@ and [user access tokens](https://huggingface.co/docs/hub/en/security-tokens).
 
 ## Credential-free configured endpoints
 
-The exact 19 newly configured HTTP endpoints live in
+The exact 19 retained HTTP endpoints live in
 `src/core/sources/catalog/configuredSources.ts`. They were accepted because the 2026-08-19 audit
 found a same-day dated item and retrievable content without an API key, token, login, or paid
-service. NCPSD and C114 were retry-only successes, so transient failure must remain visible rather
-than being silently treated as no posts.
+service. ScienceNet uses its official HTTPS RSS endpoint. C114 uses bounded `gb18030` decoding of
+its fixed HTTPS desktop home page, a fixed mobile fallback, and a source-specific plain-text
+normalizer. NCPSD also retains its fixed mobile fallback; any transient failure must remain visible
+rather than being silently treated as no posts.
 
 Run all credential-free endpoints plus Hugging Face with:
 

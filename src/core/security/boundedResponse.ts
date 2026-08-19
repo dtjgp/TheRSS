@@ -11,7 +11,8 @@ function assertByteLimit(maxBytes: number): void {
 export async function readBoundedText(
   response: Response,
   maxBytes: number,
-  label: string
+  label: string,
+  encoding: 'utf-8' | 'gb18030' = 'utf-8'
 ): Promise<string> {
   assertByteLimit(maxBytes)
 
@@ -27,7 +28,7 @@ export async function readBoundedText(
   }
 
   const reader = response.body.getReader()
-  const decoder = new TextDecoder()
+  const decoder = new TextDecoder(encoding)
   const chunks: string[] = []
   let bytesRead = 0
 

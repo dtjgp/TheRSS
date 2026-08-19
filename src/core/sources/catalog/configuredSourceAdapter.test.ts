@@ -59,6 +59,33 @@ describe('fetchConfiguredSourceBatch', () => {
     expect(html.items[0]).toMatchObject({ source: 'folo:611', kind: 'paper' })
   })
 
+  it('routes C114 HTML through its bounded source-specific normalizer', async () => {
+    const batch = await fetchConfiguredSourceBatch(
+      getConfiguredSourceDefinition('folo:523'),
+      profile,
+      { now },
+      {
+        fetchHttp: vi.fn().mockResolvedValue({
+          sourceId: 'folo:523',
+          transport: 'html',
+          endpoint: 'https://www.c114.com.cn/',
+          contentType: 'text/html',
+          retrievedAt: now.toISOString(),
+          body: `<div class="center_list">
+            <a href="https://www.c114.com.cn/news/116/a1315962.html"><div class="text">
+              <div class="title">通信网络新进展</div><div class="time">8/19 22:05</div>
+            </div></a>
+          </div>`
+        })
+      }
+    )
+
+    expect(batch).toMatchObject({
+      rejectedCount: 0,
+      items: [expect.objectContaining({ source: 'folo:523', title: '通信网络新进展' })]
+    })
+  })
+
   it('routes NBER and Nikkei through dated official-feed enrichment', async () => {
     const fetchDatedFeed = vi.fn().mockResolvedValue({ items: [], rejectedCount: 0 })
 
@@ -115,35 +142,5 @@ describe('fetchConfiguredSourceBatch', () => {
     })
     expect(batch).toMatchObject({ rejectedCount: 1 })
     expect(batch.items).toHaveLength(1)
-  })
-
-  it('builds a bounded latest X query from the research profile', async () => {
-    const fetchX = vi.fn().mockResolvedValue([])
-    await fetchConfiguredSourceBatch(
-      getConfiguredSourceDefinition('folo:2'),
-      profile,
-      { now },
-      { fetchX }
-    )
-
-    expect(fetchX).toHaveBeenCalledWith(
-      '"edge ai" OR "model compression" OR smart-grid -"medical imaging"',
-      { count: 20 }
-    )
-  })
-
-  it('does not issue an unbounded X search without a keyword or topic', async () => {
-    await expect(
-      fetchConfiguredSourceBatch(
-        getConfiguredSourceDefinition('folo:2'),
-        {
-          ...profile,
-          arxiv: { categories: ['cs.LG'], keywords: [], excludeKeywords: [] },
-          github: { keywords: [], topics: [], languages: ['Python'] }
-        },
-        { now },
-        { fetchX: vi.fn() }
-      )
-    ).rejects.toThrow('X retrieval requires at least one keyword or topic')
   })
 })

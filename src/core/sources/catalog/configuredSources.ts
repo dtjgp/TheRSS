@@ -8,6 +8,7 @@ export interface HttpConfiguredSourceDefinition {
   readonly retryOnly?: true
   readonly fallbackEndpoint?: string
   readonly retryAttempts?: number
+  readonly encoding?: 'utf-8' | 'gb18030'
 }
 
 export interface DatedFeedConfiguredSourceDefinition {
@@ -31,18 +32,10 @@ export interface HuggingFaceConfiguredSourceDefinition {
   }
 }
 
-export interface XapiConfiguredSourceDefinition {
-  readonly id: 'folo:2'
-  readonly transport: 'xapi'
-  readonly schemaAction: 'twitter.search'
-  readonly searchAction: 'twitter.search'
-}
-
 export type ConfiguredSourceDefinition =
   | HttpConfiguredSourceDefinition
   | DatedFeedConfiguredSourceDefinition
   | HuggingFaceConfiguredSourceDefinition
-  | XapiConfiguredSourceDefinition
 
 const VERIFIED_ON = '2026-08-19'
 
@@ -81,7 +74,7 @@ const definitions = [
   {
     id: 'folo:77',
     transport: 'feed',
-    endpoint: 'https://hub.slarker.me/sciencenet/blog',
+    endpoint: 'https://www.sciencenet.cn/xml/blog.aspx?di=0',
     verifiedOn: VERIFIED_ON
   },
   {
@@ -110,10 +103,12 @@ const definitions = [
   },
   {
     id: 'folo:523',
-    transport: 'feed',
-    endpoint: 'https://hub.slarker.me/c114/roll',
+    transport: 'html',
+    endpoint: 'https://www.c114.com.cn/',
+    fallbackEndpoint: 'https://m.c114.com.cn/',
+    retryAttempts: 2,
     verifiedOn: VERIFIED_ON,
-    retryOnly: true
+    encoding: 'gb18030'
   },
   {
     id: 'folo:253',
@@ -181,12 +176,6 @@ const definitions = [
       datasets: 'https://huggingface.co/api/datasets',
       papers: 'https://huggingface.co/api/daily_papers'
     }
-  },
-  {
-    id: 'folo:2',
-    transport: 'xapi',
-    schemaAction: 'twitter.search',
-    searchAction: 'twitter.search'
   }
 ] as const satisfies readonly ConfiguredSourceDefinition[]
 

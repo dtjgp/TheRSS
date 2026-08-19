@@ -1,8 +1,11 @@
 import { z } from 'zod'
-import type { DiscoveryItem } from './discovery'
+import type { DiscoveryItem, DiscoveryItemKind, DiscoverySource } from './discovery'
+import { ACTIVE_TODAY_SOURCE_IDS } from './sourceIdentity'
 
 export const discoverRunnerSchema = z.enum(['model-provider', 'codex', 'claude'])
-export const discoverSourceSchema = z.enum(['arxiv', 'github'])
+export const DISCOVER_SOURCE_IDS: readonly DiscoverySource[] = ACTIVE_TODAY_SOURCE_IDS
+const discoverSourceValues = [...DISCOVER_SOURCE_IDS] as [DiscoverySource, ...DiscoverySource[]]
+export const discoverSourceSchema = z.enum(discoverSourceValues)
 
 export const discoverSearchRequestSchema = z
   .object({
@@ -11,7 +14,7 @@ export const discoverSearchRequestSchema = z
     sources: z
       .array(discoverSourceSchema)
       .min(1)
-      .max(2)
+      .max(DISCOVER_SOURCE_IDS.length)
       .transform((sources) => [...new Set(sources)])
   })
   .strict()
@@ -45,7 +48,7 @@ export interface DiscoverPlannerProvenance {
   readonly createdAt: string
 }
 
-export type DiscoverSourceStatus = 'not_searched' | 'healthy' | 'no_results' | 'failed'
+export type DiscoverSourceStatus = 'not_searched' | 'healthy' | 'partial' | 'no_results' | 'failed'
 export type DiscoverStatus = 'completed' | 'partial' | 'no_results' | 'failed'
 
 export interface DiscoverSourceOutcome {
@@ -69,13 +72,14 @@ export interface DiscoverSnapshot {
   readonly plan: DiscoverPlan
   readonly provenance: DiscoverPlannerProvenance
   readonly sourceOutcomes: {
-    readonly arxiv: DiscoverSourceOutcome
-    readonly github: DiscoverSourceOutcome
+    readonly [Source in DiscoverSource]: DiscoverSourceOutcome
   }
   readonly counts: {
     readonly total: number
     readonly arxiv: number
     readonly github: number
+    readonly byKind: Readonly<Record<DiscoveryItemKind, number>>
+    readonly bySource: Readonly<Record<DiscoverSource, number>>
   }
   readonly items: readonly DiscoverResultItem[]
 }

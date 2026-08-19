@@ -18,14 +18,26 @@ database.exec(`
   CREATE TABLE discovery_item (
     id TEXT PRIMARY KEY,
     source TEXT NOT NULL,
+    item_kind TEXT NOT NULL,
+    external_id TEXT NOT NULL,
     title TEXT NOT NULL,
     summary TEXT NOT NULL,
     url TEXT NOT NULL,
     published_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    authors_json TEXT NOT NULL,
+    categories_json TEXT NOT NULL,
+    topics_json TEXT NOT NULL,
+    language TEXT,
+    stars INTEGER,
     score REAL NOT NULL,
-    triage_state TEXT NOT NULL,
+    excluded INTEGER NOT NULL,
     reasons_json TEXT NOT NULL,
-    excluded INTEGER NOT NULL
+    in_daily_inbox INTEGER NOT NULL,
+    triage_state TEXT NOT NULL,
+    triage_updated_at TEXT NOT NULL,
+    first_seen_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL
   );
   CREATE TABLE analysis_artifact (
     id TEXT PRIMARY KEY,
@@ -42,21 +54,35 @@ database.exec(`
 database
   .prepare(
     `INSERT INTO discovery_item(
-      id, source, title, summary, url, published_at, score, triage_state,
-      reasons_json, excluded
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      id, source, item_kind, external_id, title, summary, url, published_at,
+      updated_at, authors_json, categories_json, topics_json, language, stars,
+      score, excluded, reasons_json, in_daily_inbox, triage_state,
+      triage_updated_at, first_seen_at, last_seen_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
   .run(
     'arxiv:smoke',
     'arxiv',
+    'paper',
+    'smoke',
     'TheRSS MCP smoke paper',
     'Deterministic local context.',
     'https://arxiv.org/abs/smoke',
     '2026-08-15T00:00:00.000Z',
+    '2026-08-15T00:00:00.000Z',
+    JSON.stringify(['TheRSS']),
+    JSON.stringify(['cs.AI']),
+    JSON.stringify([]),
+    null,
+    null,
     42,
-    'new',
+    0,
     JSON.stringify(['MCP smoke fixture']),
-    0
+    1,
+    'new',
+    '2026-08-15T00:00:00.000Z',
+    '2026-08-15T00:00:00.000Z',
+    '2026-08-15T00:00:00.000Z'
   )
 database
   .prepare(

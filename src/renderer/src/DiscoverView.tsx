@@ -6,6 +6,8 @@ import type {
   DiscoverSnapshot,
   DiscoverSource
 } from '../../shared/discover'
+import { DISCOVER_SOURCE_IDS } from '../../shared/discover'
+import { sourceDisplayName, sourceStyleToken } from '../../shared/sourceIdentity'
 import type { LocalAgentStatus } from '../../shared/models'
 
 interface DiscoverViewProps {
@@ -14,7 +16,7 @@ interface DiscoverViewProps {
   readonly onDashboardChange: (snapshot: DashboardSnapshot) => void
 }
 
-type DiscoverResultFilter = 'all' | DiscoverSource
+type DiscoverResultFilter = 'all' | 'paper' | 'repository' | 'other'
 
 function statusLabel(snapshot: DiscoverSnapshot): string {
   if (snapshot.status === 'partial') return 'Partial results'
@@ -23,8 +25,17 @@ function statusLabel(snapshot: DiscoverSnapshot): string {
   return 'Search complete'
 }
 
-function sourceLabel(source: DiscoverSource): string {
-  return source === 'arxiv' ? 'arXiv' : 'GitHub'
+function resultKindLabel(item: DiscoverResultItem): string {
+  if (item.kind === 'repository') return 'Repository'
+  return item.kind.charAt(0).toUpperCase() + item.kind.slice(1)
+}
+
+function sourceStatusLabel(status: DiscoverSnapshot['sourceOutcomes'][DiscoverSource]['status']) {
+  if (status === 'not_searched') return 'Not searched'
+  if (status === 'no_results') return 'No results'
+  if (status === 'healthy') return 'Healthy'
+  if (status === 'partial') return 'Partial'
+  return 'Failed'
 }
 
 function ChipGroup({
@@ -63,13 +74,14 @@ function DiscoverCard({
   return (
     <article
       className="signal-card"
-      style={{ '--card-index': index } as React.CSSProperties}
+      style={{ '--card-index': Math.min(index, 5) } as React.CSSProperties}
       data-testid="discover-result"
     >
       <div className="signal-card__meta">
-        <span className={`source-mark source-mark--${item.source}`}>
-          {item.source === 'arxiv' ? 'PAPER' : 'REPO'}
+        <span className={`source-mark source-mark--${sourceStyleToken(item.source)}`}>
+          {sourceDisplayName(item.source)}
         </span>
+        <span>{resultKindLabel(item)}</span>
         <span>{new Date(item.publishedAt).toLocaleDateString()}</span>
         <span className="signal-card__score">signal {item.score}</span>
       </div>
@@ -102,7 +114,8 @@ function DiscoverCard({
 export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverViewProps) {
   const [intent, setIntent] = useState('')
   const [runner, setRunner] = useState<DiscoverRunner>('model-provider')
-  const [sources, setSources] = useState<readonly DiscoverSource[]>(['arxiv', 'github'])
+  const [sources, setSources] = useState<readonly DiscoverSource[]>(DISCOVER_SOURCE_IDS)
+  const [isSourcePickerOpen, setIsSourcePickerOpen] = useState(false)
   const [snapshot, setSnapshot] = useState<DiscoverSnapshot | null>(null)
   const [resultFilter, setResultFilter] = useState<DiscoverResultFilter>('all')
   const [isSearching, setIsSearching] = useState(false)
@@ -115,8 +128,8 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
       .getLatestDiscover()
       .then((latest) => {
         if (active && latest) {
-          const latestSources = (['arxiv', 'github'] as const).filter(
-            (source) => latest.sourceOutcomes[source].status !== 'not_searched'
+          const latestSources = DISCOVER_SOURCE_IDS.filter(
+            (source) => latest.sourceOutcomes[source]?.status !== 'not_searched'
           )
           setSnapshot(latest)
           setIntent(latest.intent)
@@ -138,8 +151,13 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
   const sourceSet = useMemo(() => new Set(sources), [sources])
   const filteredItems = useMemo(
     () =>
-      snapshot?.items.filter((item) => resultFilter === 'all' || item.source === resultFilter) ??
-      [],
+      snapshot?.items.filter((item) => {
+        if (resultFilter === 'all') return true
+        if (resultFilter === 'other') {
+          return item.kind !== 'paper' && item.kind !== 'repository'
+        }
+        return item.kind === resultFilter
+      }) ?? [],
     [resultFilter, snapshot]
   )
 
@@ -151,6 +169,9 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
     )
   }
 
+  const selectAllSources = () => setSources(DISCOVER_SOURCE_IDS)
+  const clearSources = () => setSources([])
+
   const search = async () => {
     setIsSearching(true)
     setError(null)
@@ -158,7 +179,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
       const nextSnapshot = await api.searchDiscover({
         intent: intent.trim(),
         runner,
-        sources: [...sources]
+        sources: DISCOVER_SOURCE_IDS.filter((source) => sourceSet.has(source))
       })
       setSnapshot(nextSnapshot)
       setResultFilter('all')
@@ -202,10 +223,10 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
       <div className="today-view__heading">
         <div>
           <p className="eyebrow">SEMANTIC EXPANSION SEARCH</p>
-          <h1>Explore beyond your standing interests</h1>
+          <h1>Search across your full source desk</h1>
           <p className="discover-copy">
             Codex, Claude Code, or your configured model expands the intent. TheRSS executes the
-            resulting bounded plan against arXiv and GitHub.
+            resulting bounded plan across every active, locally deployed source you select.
           </p>
         </div>
       </div>
@@ -224,24 +245,65 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
             value={intent}
             onChange={(event) => setIntent(event.target.value)}
             placeholder="Find work connecting structured pruning, semantic communications, and edge deployment"
-            rows={4}
+            rows={3}
             maxLength={2_000}
           />
         </label>
         <div className="discover-controls">
-          <fieldset className="discover-source-control">
-            <legend>Search sources</legend>
-            {(['arxiv', 'github'] as const).map((source) => (
-              <label key={source}>
-                <input
-                  type="checkbox"
-                  checked={sourceSet.has(source)}
-                  onChange={() => toggleSource(source)}
-                />
-                Search {sourceLabel(source)}
-              </label>
-            ))}
-          </fieldset>
+          <div className="discover-source-picker">
+            <button
+              type="button"
+              className="discover-source-trigger"
+              aria-label={`Choose sources, ${sources.length} of ${DISCOVER_SOURCE_IDS.length} selected`}
+              aria-expanded={isSourcePickerOpen}
+              aria-controls="discover-source-options"
+              onClick={() => setIsSourcePickerOpen((current) => !current)}
+            >
+              <span>Sources</span>
+              <strong>
+                {sources.length} of {DISCOVER_SOURCE_IDS.length} selected
+              </strong>
+              <span className="discover-source-trigger__chevron" aria-hidden="true">
+                ›
+              </span>
+            </button>
+            {isSourcePickerOpen && (
+              <fieldset
+                id="discover-source-options"
+                className="discover-source-control"
+                aria-label="Search sources"
+              >
+                <legend>
+                  <span>Search sources</span>
+                  <span className="discover-source-control__bulk">
+                    <button
+                      type="button"
+                      onClick={selectAllSources}
+                      aria-label="Select all sources"
+                    >
+                      Select all
+                    </button>
+                    <button type="button" onClick={clearSources} aria-label="Clear all sources">
+                      Clear
+                    </button>
+                  </span>
+                </legend>
+                <div className="discover-source-grid">
+                  {DISCOVER_SOURCE_IDS.map((source) => (
+                    <label key={source} title={sourceDisplayName(source)}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Search ${sourceDisplayName(source)}`}
+                        checked={sourceSet.has(source)}
+                        onChange={() => toggleSource(source)}
+                      />
+                      <span>{sourceDisplayName(source)}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+          </div>
           <label className="analysis-runner-control">
             <span>Search with</span>
             <select
@@ -264,6 +326,20 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
         </div>
       </form>
 
+      {isSearching && (
+        <div
+          className="discover-search-progress"
+          role="status"
+          aria-label="Discover search progress"
+        >
+          <span className="activity-spinner" aria-hidden="true" />
+          <span>
+            <strong>Expanding intent and searching {sources.length} sources…</strong>
+            <span>Results will appear when the bounded source run completes.</span>
+          </span>
+        </div>
+      )}
+
       {error && (
         <div className="error-banner" role="alert">
           {error}
@@ -272,39 +348,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
 
       {snapshot && (
         <div className="discover-results">
-          <section className="discover-plan" aria-label="Discover expansion plan">
-            <div className="discover-plan__status">
-              <span className={`discover-status discover-status--${snapshot.status}`}>
-                {statusLabel(snapshot)}
-              </span>
-              {(['arxiv', 'github'] as const).map((source) => (
-                <span key={source}>
-                  {sourceLabel(source)}: {snapshot.sourceOutcomes[source].status.replace('_', ' ')}
-                </span>
-              ))}
-            </div>
-            <p className="eyebrow">EXPANDED PLAN</p>
-            <h2>{snapshot.plan.intentSummary}</h2>
-            <p>{snapshot.plan.rationale}</p>
-            <div className="discover-chip-groups">
-              <ChipGroup label="arXiv categories" values={snapshot.plan.arxiv.categories} />
-              <ChipGroup label="arXiv keywords" values={snapshot.plan.arxiv.keywords} />
-              <ChipGroup label="GitHub keywords" values={snapshot.plan.github.keywords} />
-              <ChipGroup label="GitHub topics" values={snapshot.plan.github.topics} />
-              <ChipGroup label="Languages" values={snapshot.plan.github.languages} />
-            </div>
-            <div className="discover-provenance">
-              <strong>
-                {snapshot.provenance.providerName} · {snapshot.provenance.model}
-              </strong>
-              <span>
-                {snapshot.provenance.promptVersion} · input{' '}
-                {snapshot.provenance.inputHash.slice(0, 12)}
-              </span>
-            </div>
-          </section>
-
-          <section className="today-view discover-result-list">
+          <section className="today-view discover-result-list" aria-label="Discover results">
             <div className="today-view__heading">
               <div>
                 <p className="eyebrow">DISCOVER RESULTS</p>
@@ -318,8 +362,16 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
                 {(
                   [
                     ['all', 'All', snapshot.counts.total],
-                    ['arxiv', 'Papers', snapshot.counts.arxiv],
-                    ['github', 'GitHub repos', snapshot.counts.github]
+                    ['paper', 'Papers', snapshot.counts.byKind.paper],
+                    ['repository', 'Repositories', snapshot.counts.byKind.repository],
+                    [
+                      'other',
+                      'Other',
+                      snapshot.counts.byKind.article +
+                        snapshot.counts.byKind.model +
+                        snapshot.counts.byKind.dataset +
+                        snapshot.counts.byKind.post
+                    ]
                   ] as const
                 ).map(([filter, label, count]) => (
                   <button
@@ -343,13 +395,22 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
               </div>
             ) : filteredItems.length === 0 ? (
               <div className="quiet-state quiet-state--filtered">
-                <span>0 {resultFilter === 'arxiv' ? 'PAPERS' : 'REPOS'}</span>
+                <span>
+                  0{' '}
+                  {resultFilter === 'paper'
+                    ? 'PAPERS'
+                    : resultFilter === 'repository'
+                      ? 'REPOSITORIES'
+                      : 'OTHER RECORDS'}
+                </span>
                 <h2>
-                  {resultFilter === 'arxiv'
+                  {resultFilter === 'paper'
                     ? 'No papers in this session.'
-                    : 'No GitHub repositories in this session.'}
+                    : resultFilter === 'repository'
+                      ? 'No repositories in this session.'
+                      : 'No other records in this session.'}
                 </h2>
-                <p>Choose All or the other result type to see the records already found.</p>
+                <p>Choose another result type to see the records already found.</p>
               </div>
             ) : (
               <div className="signal-grid">
@@ -370,6 +431,65 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
               full-paper methods, experiments, and repository quality remain unverified.
             </p>
           </section>
+
+          <details
+            className="discover-plan discover-search-details"
+            aria-label="Discover search details"
+          >
+            <summary role="button" aria-label={`Search details, ${statusLabel(snapshot)}`}>
+              <span className={`discover-status discover-status--${snapshot.status}`}>
+                {statusLabel(snapshot)}
+              </span>
+              <span className="discover-search-details__copy">
+                <strong>Search details</strong>
+                <span>Plan, provenance, and {DISCOVER_SOURCE_IDS.length} source outcomes</span>
+              </span>
+            </summary>
+            <div className="discover-search-details__body">
+              <div className="discover-source-outcomes" role="list" aria-label="Source outcomes">
+                {DISCOVER_SOURCE_IDS.map((source) => {
+                  const outcome = snapshot.sourceOutcomes[source]
+                  if (!outcome) return null
+                  return (
+                    <div
+                      key={source}
+                      role="listitem"
+                      title={sourceDisplayName(source)}
+                      className={`discover-source-outcome discover-source-outcome--${outcome.status}`}
+                    >
+                      <strong>{sourceDisplayName(source)}</strong>
+                      <span>{sourceStatusLabel(outcome.status)}</span>
+                      <span>{outcome.resultCount} results</span>
+                      {outcome.error && (
+                        <span className="discover-source-outcome__error">{outcome.error}</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              <div>
+                <p className="eyebrow">EXPANDED PLAN</p>
+                <h2>{snapshot.plan.intentSummary}</h2>
+                <p>{snapshot.plan.rationale}</p>
+              </div>
+              <div className="discover-chip-groups">
+                <ChipGroup label="arXiv categories" values={snapshot.plan.arxiv.categories} />
+                <ChipGroup label="arXiv keywords" values={snapshot.plan.arxiv.keywords} />
+                <ChipGroup label="GitHub keywords" values={snapshot.plan.github.keywords} />
+                <ChipGroup label="GitHub topics" values={snapshot.plan.github.topics} />
+                <ChipGroup label="Languages" values={snapshot.plan.github.languages} />
+              </div>
+              <div className="discover-provenance">
+                <strong>
+                  {snapshot.provenance.providerName} · {snapshot.provenance.model}
+                </strong>
+                <span>
+                  {snapshot.provenance.promptVersion} · input{' '}
+                  {snapshot.provenance.inputHash.slice(0, 12)}
+                </span>
+              </div>
+            </div>
+          </details>
         </div>
       )}
     </section>

@@ -276,3 +276,131 @@ TheRSS wins by combining deterministic, provenance-preserving discovery with a d
 - Final feature evidence: 55 focused tests pass; scoped Prettier, ESLint, production/MCP build, and desktop Electron E2E pass; `test-results/05b-paper-l1-analysis.png` was inspected after the Markdown-renderer correction. The all-repository gate is presently blocked only by separate in-progress Sources/arXiv contract tests (3 formatting files, 12 type errors, 16 coverage-test failures / 191 passes).
 - The referenced Sources/arXiv task later completed those in-progress contracts rather than requiring an independent workaround: its final checkout passes 216 tests and the 80% branch gate, validates 20 non-X configured adapters plus arXiv/GitHub/Hugging Face, and keeps X installation-path work explicitly deferred. The resulting Phase 13–22 worktree is the intended publish scope; ignored generated output remains excluded.
 - Automatic analysis on selection would contradict the current user-initiated analysis promise and could spend provider quota or launch a local process without an explicit action. The UI will expose the L1 behavior while retaining the existing Analyze button/keyboard command.
+
+## 2026-08-19 explicit X research watchlist
+
+- User authorization: add every previously recommended person and add Elon Musk.
+- Exact scope: 23 handles. Do not add the supplemental institution accounts (`@IEEEComSoc`,
+  `@3GPPLive`, `@6G_SNS`), the suspended Emma Strubell account, or Catherine Wolfram's X account.
+- Display groups: model compression/edge/Green AI, 6G, smart grid/energy, agents/RAG/evaluation,
+  behavior/economics, and technology/industry.
+- Retrieval decision: flatten the groups into one query of 23 `from:` clauses. The current query is
+  441 characters before optional parentheses and therefore remains inside the adapter's 500-byte
+  input boundary. Use one metered call with `count: 100` rather than one call per group.
+- X source-only retrieval should no longer require an Interest profile because the query is fixed by
+  the approved watchlist. The UI must still require an explicit click and disclose that the call may
+  use xapi balance.
+- Evidence boundary: no live account/profile/timeline validation is authorized by this configuration
+  change; tests use deterministic runners and fixtures.
+- Final implementation source of truth is `src/shared/xWatchlist.ts`; it validates case-insensitive
+  uniqueness and X handle syntax, freezes all groups/arrays, and constructs the 441-character query.
+- Focused verification passed 26/26 tests. The full gate passed 42 files / 218 tests with 91.38%
+  statements, 80.16% branches, 92.78% functions, and 94.28% lines; production and MCP builds passed.
+- The first restricted Electron launch hit the known macOS `SIGABRT`/`kill EPERM` boundary. The
+  desktop-permission E2E passed 1/1. `08c-x-watchlist.png` and
+  `08d-x-watchlist-elon.png` were inspected; all groups and `@elonmusk` render without overlap.
+- No live xapi call or package/install operation was performed. The installed-app `npx` lookup
+  remains deferred and is still required before packaged X retrieval can be claimed.
+
+## 2026-08-19 retain only live-verified sources
+
+- Latest user direction supersedes the Phase 24 X addition: retain only the 22 sources that were
+  previously verified to return readable content; do not currently consider any other source.
+- Exact retained set: arXiv, GitHub, Hugging Face, 北京智源人工智能研究院, 国家哲学社会科学文献中心,
+  NBER, OpenAI, 科学网, 量子位, MIT Technology Review China, McKinsey, AIbase, C114, CNBC,
+  Hacker News, MDPI, Solidot, TechCrunch, TechPowerUp, Nikkei Asia, The Verge, and WIRED.
+- X was not part of the successful 22 because its live call was skipped and its installed `npx`
+  runtime remained unverified. The X watchlist must therefore leave the current product surface and
+  active refresh registry.
+- Preserve the 105-entry raw catalog and SQLite history as dormant/recoverable data; filter the
+  product-facing catalog through an immutable 22-ID allowlist instead of deleting historical data.
+- Final implementation exposes only those 22 IDs through `SOURCE_CATALOG`, derives the Today
+  identity set from that allowlist, registers 20 configured adapters alongside arXiv/GitHub, and
+  excludes retired-source rows from Today while retaining Saved rows.
+- The Pending directory mode, X watchlist/UI, registered xapi transport, and unused X client were
+  removed. The dormant raw X entry is marked `adapter_required`, so it cannot be scheduled by
+  accident.
+- Focused RED contracts failed at the intended old 105/23/X boundaries and then passed 78/78.
+  `npm run check` passed 40 files / 209 tests with 91.87% statements, 80.23% branches, 93.35%
+  functions, and 94.97% lines; production and MCP builds passed.
+- Electron E2E passed 1/1 after correcting the expected configured-source count to 20.
+  `test-results/08-sources.png` and `test-results/08b-source-detail.png` were inspected: the
+  directory shows 22 cards, A=7/B=15/C=0, no Pending/X surface, and a working in-app detail view.
+- No live source revalidation, package build/install, commit, or push was performed in this phase.
+
+## 2026-08-19 Discover-centered consolidation
+
+- User direction: Today, Discover, and Interests overlap in the current product; Discover should
+  become the broad model/agent-assisted retrieval entry instead of requiring a standing Interest
+  profile.
+- Current mismatch: `SOURCE_CATALOG` and active discovery contain 22 live-verified sources, while
+  `discoverSearchRequestSchema`, `DiscoverService`, SQLite Discover checks, and `DiscoverView` still
+  hard-code only `arxiv | github`.
+- Retrieval boundary: arXiv and GitHub accept specialized transient plan fields. The other 20
+  deployed adapters already expose bounded typed batches; they do not perform remote semantic
+  search, so Discover must apply plan-derived deterministic matching after retrieval and report
+  zero matching results honestly rather than treating every recent feed item as relevant.
+- Preservation boundary: hide/remove Today and Interests as user-facing routes and stop automatic
+  Interest-driven refresh, while retaining legacy tables, APIs, history, and Saved rows unless a
+  later request explicitly authorizes destructive migration.
+- Persistence migration must remove the old arXiv/GitHub `CHECK` constraints from
+  `discover_source_run` and `discover_result`, and persist `item_kind` so Hugging Face models,
+  datasets, papers, and general articles keep their type after reload/save.
+- Final implementation derives `DISCOVER_SOURCE_IDS` from the retained 22-source registry and keeps
+  selection user-controlled. Search-capable arXiv/GitHub receive specialized fields; configured
+  adapters receive only fixed-host requests and browse-only records require a token/phrase-aware
+  semantic reason. CJK phrases retain substring semantics while Latin terms use Unicode boundaries.
+- Per-source states distinguish `healthy`, `no_results`, `partial`, `failed`, and unselected
+  `not_searched`. All-invalid normalization is failed, mixed valid/invalid is partial, and final
+  outcome counts match the deduplicated/capped session results.
+- The SQLite migration is transactional, removes only obsolete Discover two-source checks, adds
+  `item_kind`, fills missing legacy source outcomes as `not_searched`, and preserves legacy Interest,
+  Today, Saved, analytics, and analysis records. Saving a configured result retains its actual kind.
+- Security review narrowed `THERSS_HUGGINGFACE_TOKEN` forwarding to only the Hugging Face transport;
+  renderer, SQLite, and unrelated adapters never receive it.
+- Final deterministic evidence: `npm run check` passed 42 files / 213 tests with 91.85% statements,
+  80.83% branches, 93.79% functions, and 94.81% lines. Electron E2E passed 1/1 with arXiv, GitHub,
+  and a configured BAAI result across all 22 source outcomes; seven rendered screenshots were
+  inspected.
+- The unsigned arm64 build at `release/mac-arm64/TheRSS.app` passed the corrected package smoke.
+  The smoke default was changed from the older installed development app to the newly built release
+  so package evidence cannot be accidentally attributed to stale code. No installation, live
+  source/model request, commit, push, or publication was performed.
+
+## 2026-08-19 Apple-native Discover refinement
+
+- Current-run audit direction: preserve the editorial research identity, but treat Saved's
+  list/detail workspace as the product's native interaction reference. Discover should prioritize
+  results after a search and move the 22-source outcome matrix plus expanded plan behind an
+  inspectable disclosure.
+- Current motion issue: every Discover result receives a 360 ms `card-enter` animation with a
+  55 ms index-based delay. At the 100-result cap, the last item can be delayed by more than five
+  seconds. Reduced Motion shortens keyframe animations but does not currently neutralize CSS
+  transitions.
+- Live verification before implementation: arXiv returned 3 targeted + 200 recent records; GitHub
+  returned 25. Of 20 configured sources, 18 passed the second run. MIT Technology Review China and
+  AIbase were transient first-run failures; 科学网 and C114 failed both 30-second adapter runs and
+  both direct 35-second proxy checks.
+- 科学网 publishes an official credential-free HTTPS RSS endpoint at
+  `https://www.sciencenet.cn/xml/blog.aspx?di=0`; a direct check returned HTTP 200,
+  `application/xml`, and 7,818 bytes in 2.5 seconds. This is a candidate replacement only after the
+  existing normalizer contract passes.
+- C114's configured proxy is unavailable and its direct site did not pass the local TLS chain
+  check. Do not bypass certificate validation; keep the source failed unless a trustworthy HTTPS
+  feed/proxy is independently verified.
+- Implementation outcome: ScienceNet now uses its official RSS endpoint. C114 uses the fixed mobile
+  HTTPS endpoint, explicit bounded `gb18030` decoding, and a source-specific listing normalizer. The
+  final configured-source smoke passed 20/20; C114 returned 12 normalized records (8 dated today),
+  and ScienceNet returned 20 normalized records (all dated today).
+- Discover now defaults to a one-line 22-source summary, presents ranked records before a collapsed
+  details inspector, displays honest indeterminate pending feedback, caps card stagger at six
+  positions, and disables transitions as well as animations under Reduced Motion.
+- Final gates: `npm run check` passed 42 files / 219 tests; Electron E2E passed 1/1; seven fresh
+  light-mode captures were inspected; the generated unsigned macOS bundle passed package smoke.
+- Publication-gate revalidation exposed repeatable timeouts at the earlier C114 mobile primary. The
+  official desktop homepage returned current dated content with the application's bounded user
+  agent, so C114 now uses that fixed HTTPS origin first, retries twice, retains the mobile origin as
+  a bounded fallback, and supports both audited listing shapes. Focused tests passed 23/23 and the
+  next complete live run passed 20/20 configured sources; C114 returned 25 normalized records, 18
+  dated today, with zero rejected records. The post-fix full gate passed 42 files / 220 tests with
+  91.53% statements, 80.60% branches, 93.46% functions, and 94.41% lines.

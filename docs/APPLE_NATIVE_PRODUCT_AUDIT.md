@@ -177,3 +177,10 @@ Apple 系统颜色在原生控件中是动态颜色；把名称和固定 hex 搬
 - **仍待开发**：独立 Settings window 与 unsaved-change protection、可拖动/持久化 split view、window/view/pane restoration、Discover 统一 list-detail、Provider Test Connection、本地 `Command-F` 搜索、右键 Copy/Open 命令、analysis history/stale hardening。
 - **验证结果**：`npm run check` 通过 27 个测试文件 / 141 个测试；覆盖率为 Statements 93.55%、Branches 84.10%、Functions 93.95%、Lines 95.74%。Electron fixture 最终 1/1 通过（5.2 秒），并确认被动 read 不显示 HUD、triage HUD 不跨视图泄漏；7 张最终截图无裁切/错位/深色模式阻断。生产依赖审计为 0 vulnerabilities；最终安装版 packaged-app smoke 通过。
 - **发布边界**：本地开发安装仍为 unsigned personal beta。有效 Developer ID、notarization 和同身份升级验证仍是公开分发前置门槛。
+
+## 9. Phase 27 Discover 收敛结果
+
+- **已完成**：22 来源选择器默认收起并显示确切选中数；搜索后先展示排名结果，再以折叠检查器保留 plan、provenance 和 22 源 outcome；等待阶段使用不伪造百分比的活动指示。
+- **动效收敛**：卡片进入从 360 ms / 55 ms 索引延迟收敛为 180 ms / 25 ms，且第六个之后不再增加等待；Reduced Motion 同时覆盖 transition 与 keyframe animation。
+- **视觉方向**：保留 Newsreader 作为研究内容标题，控件、状态和导航继续使用系统 UI 字体与克制的分组表面，不在内容平面叠加 Liquid Glass 或装饰性特效。
+- **验证**：`npm run check` 通过 42 个测试文件 / 219 个测试；Electron E2E 1/1 通过；7 张最新浅色截图均已检查；未安装的 unsigned macOS 包通过隔离启动与 preload smoke。

@@ -17,6 +17,7 @@ interface AnalyticsAnalysisRow {
   analysis_id: string
   item_id: string
   source: DiscoverySource
+  item_kind: string
   title: string
   url: string
   provider_name: string
@@ -56,7 +57,7 @@ export function buildAnalyticsSnapshot(
     .all() as DiscoverActivityRow[]
   const analysisActivity = database
     .prepare(
-      `SELECT a.id AS analysis_id, a.item_id, d.source, d.title, d.url,
+      `SELECT a.id AS analysis_id, a.item_id, d.source, d.item_kind, d.title, d.url,
               a.provider_name, a.model, a.created_at
        FROM analysis_artifact a
        INNER JOIN discovery_item d ON d.id = a.item_id
@@ -94,7 +95,7 @@ export function buildAnalyticsSnapshot(
       discoverResults,
       deepAnalyses: analysisActivity.length,
       analyzedPapers: new Set(
-        analysisActivity.filter((row) => row.source === 'arxiv').map((row) => row.item_id)
+        analysisActivity.filter((row) => row.item_kind === 'paper').map((row) => row.item_id)
       ).size
     },
     daily,

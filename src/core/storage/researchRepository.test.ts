@@ -2,7 +2,7 @@ import Database from 'better-sqlite3'
 import { describe, expect, it } from 'vitest'
 import type { InterestProfile } from '../interests/interestProfile'
 import type { DiscoveryItem, RankedDiscoveryItem } from '../../shared/discovery'
-import type { DiscoverSnapshot } from '../../shared/discover'
+import { DISCOVER_SOURCE_IDS, type DiscoverSnapshot } from '../../shared/discover'
 import { ResearchRepository } from './researchRepository'
 
 const profile: InterestProfile = {
@@ -58,6 +58,20 @@ function createRepository(): ResearchRepository {
 }
 
 function discoverSnapshot(): DiscoverSnapshot {
+  const sourceOutcomes = Object.fromEntries(
+    DISCOVER_SOURCE_IDS.map((source) => [
+      source,
+      source === 'arxiv'
+        ? { status: 'healthy', resultCount: 1, error: null }
+        : source === 'github'
+          ? { status: 'failed', resultCount: 0, error: 'rate limited' }
+          : { status: 'not_searched', resultCount: 0, error: null }
+    ])
+  ) as DiscoverSnapshot['sourceOutcomes']
+  const bySource = Object.fromEntries(
+    DISCOVER_SOURCE_IDS.map((source) => [source, source === 'arxiv' ? 1 : 0])
+  ) as DiscoverSnapshot['counts']['bySource']
+
   return {
     id: 'discover-session-1',
     intent: 'semantic communication pruning',
@@ -83,11 +97,14 @@ function discoverSnapshot(): DiscoverSnapshot {
       inputHash: 'a'.repeat(64),
       createdAt: '2026-08-16T10:00:00.000Z'
     },
-    sourceOutcomes: {
-      arxiv: { status: 'healthy', resultCount: 1, error: null },
-      github: { status: 'failed', resultCount: 0, error: 'rate limited' }
+    sourceOutcomes,
+    counts: {
+      total: 1,
+      arxiv: 1,
+      github: 0,
+      byKind: { paper: 1, repository: 0, article: 0, model: 0, dataset: 0, post: 0 },
+      bySource
     },
-    counts: { total: 1, arxiv: 1, github: 0 },
     items: [
       {
         ...rankedItem().item,
@@ -429,6 +446,27 @@ describe('ResearchRepository', () => {
 
     expect(repository.getLatestDiscoverSnapshot()).toEqual(snapshot)
     expect(repository.listDashboardItems()).toEqual([])
+    repository.close()
+  })
+
+  it('keeps retired-source history recoverable but excludes it from Today', () => {
+    const repository = createRepository()
+    const retired = rankedItem({
+      id: 'folo:2:post:retired',
+      source: 'folo:2',
+      kind: 'article',
+      externalId: 'retired',
+      title: 'Retired X signal',
+      url: 'https://x.com/example/status/1'
+    })
+
+    repository.upsertRankedItems([retired], '2026-08-19T09:00:00.000Z')
+    repository.setTriageState(retired.item.id, 'saved', '2026-08-19T09:01:00.000Z')
+
+    expect(repository.listDashboardItems()).toEqual([])
+    expect(repository.listSavedItems()).toEqual([
+      expect.objectContaining({ id: retired.item.id, triageState: 'saved' })
+    ])
     repository.close()
   })
 

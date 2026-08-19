@@ -1,6 +1,6 @@
 # ADR 0004: Separate configured retrieval from Today/Discover ingestion
 
-- Status: Accepted
+- Status: Superseded by ADR 0007 and the 22-source live-verified allowlist
 - Date: 2026-08-19
 
 ## Context
@@ -21,15 +21,16 @@ Add a `configured` acquisition state between `active` and the planning states.
 - `rsshub_candidate`: a possible route exists but is not in the executable configuration registry.
 - `adapter_required`: a source-specific adapter or credential workflow is still required.
 
-The configured-source registry is code-owned, validates HTTPS/fixed hosts at startup, and supports
-four transport families:
+The configured-source registry is code-owned, validates HTTPS/fixed hosts at startup, and currently
+supports three transport families:
 
 1. RSS/Atom or RSSHub feeds retrieved through the bounded HTTP reader.
 2. Public landing responses retrieved as bounded untrusted HTML or JSON for later source-specific
    parsing.
 3. Hugging Face public structured APIs for models, datasets, and daily papers.
-4. X search through the local xapi CLI, always checking the action schema before calling it and
-   never invoking through a shell.
+
+The earlier X/xapi transport was never included in the successful live-verified 22-source set and
+is no longer registered or exposed. The raw catalog entry remains dormant for recoverability.
 
 OpenAlex is removed from the selected directory. ENTSO-E remains `adapter_required` until a user
 token exists. GitHub remains `active`; an optional token is read in Electron main only.

@@ -1,10 +1,8 @@
 export const APP_COMMANDS = [
   'open-settings',
-  'show-today',
   'show-saved',
   'show-discover',
   'toggle-sidebar',
-  'refresh-sources',
   'save-selected',
   'dismiss-selected',
   'analyze-selected',

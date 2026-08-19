@@ -95,22 +95,23 @@ describe('DiscoverPlannerService', () => {
     }
   )
 
-  it('builds a JSON-only, no-tools planning prompt with explicit source bounds', () => {
+  it('builds a JSON-only, no-tools prompt whose bounded fields are a shared semantic profile', () => {
     const prompt = buildDiscoverPlannerPrompt({
       intent: 'Find semantic communications work',
       runner: 'codex',
-      sources: ['arxiv']
+      sources: ['folo:302']
     })
 
     expect(prompt).toContain('Return exactly one JSON object')
     expect(prompt).toContain('Do not browse')
-    expect(prompt).toContain('arxiv')
-    expect(prompt).toContain('github arrays must be empty')
+    expect(prompt).toContain('folo:302')
+    expect(prompt).toContain('transient semantic profile')
+    expect(prompt).not.toContain('arrays must be empty')
     expect(prompt).toContain('BEGIN UNTRUSTED USER INTENT')
     expect(prompt).toContain('Find semantic communications work')
   })
 
-  it('rejects expansion rules for a source the user did not select', async () => {
+  it('accepts bounded arXiv and GitHub fields for a configured-only source selection', async () => {
     const planner = new DiscoverPlannerService({
       getModelProfile: () => profile,
       planWithModel: vi.fn().mockResolvedValue({
@@ -123,9 +124,104 @@ describe('DiscoverPlannerService', () => {
 
     await expect(
       planner.plan({
-        intent: 'structured pruning papers only',
+        intent: 'structured pruning across research sources',
         runner: 'model-provider',
-        sources: ['arxiv']
+        sources: ['folo:302']
+      })
+    ).resolves.toMatchObject({ plan: JSON.parse(content) })
+  })
+
+  it('rejects a plan that contains no positive semantic expansion rules', async () => {
+    const emptyContent = JSON.stringify({
+      version: 'discover-plan-v1',
+      intentSummary: 'No usable expansion.',
+      arxiv: { categories: [], keywords: [], excludeKeywords: ['unrelated'] },
+      github: { keywords: [], topics: [], languages: [] },
+      rationale: 'No positive semantic terms were generated.'
+    })
+    const planner = new DiscoverPlannerService({
+      getModelProfile: () => profile,
+      planWithModel: vi.fn().mockResolvedValue({
+        content: emptyContent,
+        inputTokens: 40,
+        outputTokens: 60
+      }),
+      planWithLocalAgent: vi.fn()
+    })
+
+    await expect(
+      planner.plan({
+        intent: 'structured pruning',
+        runner: 'model-provider',
+        sources: ['folo:302']
+      })
+    ).rejects.toThrow('invalid search plan')
+  })
+
+  it.each([
+    [
+      'arxiv',
+      {
+        arxiv: { categories: [], keywords: [], excludeKeywords: [] },
+        github: { keywords: ['edge AI'], topics: [], languages: [] }
+      }
+    ],
+    [
+      'github',
+      {
+        arxiv: { categories: ['cs.LG'], keywords: [], excludeKeywords: [] },
+        github: { keywords: [], topics: [], languages: [] }
+      }
+    ]
+  ] as const)('rejects a plan with no rules usable by selected %s', async (source, rules) => {
+    const unusableContent = JSON.stringify({
+      version: 'discover-plan-v1',
+      intentSummary: 'Cross-source-only expansion.',
+      ...rules,
+      rationale: 'The selected source has no usable search rules.'
+    })
+    const planner = new DiscoverPlannerService({
+      getModelProfile: () => profile,
+      planWithModel: vi.fn().mockResolvedValue({
+        content: unusableContent,
+        inputTokens: 40,
+        outputTokens: 60
+      }),
+      planWithLocalAgent: vi.fn()
+    })
+
+    await expect(
+      planner.plan({
+        intent: 'edge AI',
+        runner: 'model-provider',
+        sources: [source]
+      })
+    ).rejects.toThrow('invalid search plan')
+  })
+
+  it('rejects configured-only plans without a title/summary-searchable keyword', async () => {
+    const categoryOnlyContent = JSON.stringify({
+      version: 'discover-plan-v1',
+      intentSummary: 'Category-only expansion.',
+      arxiv: { categories: ['cs.LG'], keywords: [], excludeKeywords: [] },
+      github: { keywords: [], topics: ['edge-ai'], languages: ['Python'] },
+      rationale: 'No keyword can match a browse-only title or summary.'
+    })
+    const planner = new DiscoverPlannerService({
+      getModelProfile: () => profile,
+      planWithModel: vi.fn().mockResolvedValue({
+        content: categoryOnlyContent,
+        inputTokens: 40,
+        outputTokens: 60
+      }),
+      planWithLocalAgent: vi.fn()
+    })
+
+    await expect(
+      planner.plan({
+        intent: 'edge AI',
+        runner: 'model-provider',
+        sources: ['folo:302']
       })
     ).rejects.toThrow('invalid search plan')
   })

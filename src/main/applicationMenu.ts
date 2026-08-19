@@ -43,19 +43,14 @@ export function createApplicationMenuTemplate(
     label: 'View',
     submenu: [
       {
-        label: 'Today',
+        label: 'Discover',
         accelerator: 'CommandOrControl+1',
-        click: () => send('show-today')
+        click: () => send('show-discover')
       },
       {
         label: 'Saved',
         accelerator: 'CommandOrControl+2',
         click: () => send('show-saved')
-      },
-      {
-        label: 'Discover',
-        accelerator: 'CommandOrControl+3',
-        click: () => send('show-discover')
       },
       { type: 'separator' },
       {
@@ -63,12 +58,6 @@ export function createApplicationMenuTemplate(
         accelerator: isMac ? 'Control+Command+S' : 'CommandOrControl+Shift+S',
         click: () => send('toggle-sidebar')
       },
-      {
-        label: 'Refresh Sources',
-        accelerator: 'CommandOrControl+R',
-        click: () => send('refresh-sources')
-      },
-      { type: 'separator' },
       { role: 'togglefullscreen' }
     ]
   }

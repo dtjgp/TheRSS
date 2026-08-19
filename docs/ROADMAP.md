@@ -39,7 +39,7 @@ Deliverables:
 - bounded semantic Discover planning through a configured model, Codex, or Claude, with TheRSS-controlled arXiv/GitHub retrieval and separate session persistence;
 - in-app provider/model/prompt-version/source-hash provenance and evidence boundary.
 - local Data Analytics with separated Today/Discover result volume and deep-analysis provenance history.
-- searchable built-in 106-source research directory with explicit active/candidate/adapter-required states; catalog-only entries do not enter Today or Discover.
+- searchable built-in directory exposing only the 22 live-verified sources; dormant raw-catalog entries do not enter Sources, Today, or Discover.
 
 Exit gate: secret, endpoint, mock-provider, read-only MCP, Discover plan/isolation/failure, analytics aggregation, and provenance tests pass. Stale-result detection remains later hardening.
 
@@ -67,6 +67,20 @@ Deliverables:
 Exit gate: pushed commit exists remotely and CI reports the required checks.
 
 Status: complete on 2026-08-15. The public repository, matching remote commit, passing initial CI run, and real-remote local update were verified.
+
+## M5 — Discover-centered retrieval
+
+Deliverables:
+
+- Discover as the default and only user-facing acquisition surface;
+- exact 22-source selection derived from the retained registry;
+- bounded arXiv/GitHub search plus deterministic semantic filtering for browse-only adapters;
+- dynamic per-source outcomes and configured-source result-kind persistence;
+- removal of Today/Interests navigation and automatic Interest-driven startup refresh while
+  retaining historical SQLite data and analytics.
+
+Exit gate: shared/core/storage/renderer tests, full quality gate, Electron E2E, rendered inspection,
+and package smoke pass; live source/model execution remains an explicit opt-in verifier.
 
 ## Deferred
 

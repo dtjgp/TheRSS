@@ -859,7 +859,7 @@
     "researchAxes": ["C6"],
     "role": "通信行业媒体",
     "acquisition": "active",
-    "accessNote": "已配置：公开RSSHub路由（2026-08-19重试后当日验证）",
+    "accessNote": "已配置：固定 HTTPS 桌面首页、移动端回退、gb18030 解码与专用纯文本归一化（2026-08-19验证）",
     "reason": "运营商、5G/6G 和通信产业动态",
     "origin": "Folo 1543目录"
   },
@@ -1254,8 +1254,8 @@
     "url": "https://x.com",
     "researchAxes": ["MC", "C6", "GA", "SG", "AB"],
     "role": "社交语境",
-    "acquisition": "active",
-    "accessNote": "已配置：本地xapi twitter.search；计量计费，密钥不进入TheRSS",
+    "acquisition": "adapter_required",
+    "accessNote": "暂不考虑：未通过当前22个信息源的当日内容验证边界",
     "reason": "研究者、企业和政策实时信号；噪声高",
     "origin": "Folo 1543目录"
   }

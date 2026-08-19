@@ -68,6 +68,16 @@ export const e2eDiscoverRepository: DiscoveryItem = {
   url: 'https://github.com/TheRSS/semantic-fixture'
 }
 
+export const e2eDiscoverConfiguredArticle: DiscoveryItem = {
+  ...e2eConfiguredArticle,
+  id: 'folo:302:article:discover-fixture',
+  externalId: 'discover-fixture',
+  title: 'BAAI structured pruning research fixture',
+  summary:
+    'A configured-source Discover fixture connecting structured pruning, semantic communication, and edge deployment.',
+  url: 'https://www.baai.ac.cn/news/discover-fixture'
+}
+
 export async function e2eAnalysis(): Promise<ModelAnalysisResponse> {
   return {
     content:
