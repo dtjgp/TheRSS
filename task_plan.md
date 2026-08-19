@@ -442,7 +442,7 @@ build, Electron E2E, rendered screenshot review, local installation, and package
       coverage, Playwright, release, and test-result output outside version control.
 - [x] Verify remote parity, secret hygiene, diff hygiene, the complete quality gate, and the
       high-severity dependency audit.
-- [ ] Commit the verified scope on `codex/local-first-discovery-suite`, push it, and confirm the
+- [x] Commit the verified scope on `codex/local-first-discovery-suite`, push it, and confirm the
       remote ref and review handoff.
 
 Current publish verification: `origin/main...main` was `0 0`; `npm run check` passed 41 test files /
@@ -458,3 +458,7 @@ The first commit attempt was stopped by the ECC secret hook because two tests as
 placeholder strings directly to credential-shaped fields. No commit was created. Replace those
 literals with runtime-composed test placeholders, rerun the focused tests and secret scan, and keep
 the hook enabled.
+
+Publication handoff: commit `d1d06ed` reached `origin/codex/local-first-discovery-suite` with an
+exact remote-ref match, and draft PR #5 targets `main`. The pre-push hook independently reran lint,
+type checking, all 216 tests, and both production builds before accepting the push.
