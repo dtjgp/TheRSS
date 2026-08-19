@@ -10,6 +10,7 @@ const rankedItem: RankedDiscoveryItem = {
   item: {
     id: 'arxiv:2608.00001',
     source: 'arxiv',
+    kind: 'paper',
     externalId: '2608.00001',
     title: 'Structured pruning for edge deployment',
     summary: 'A resource-aware method.',
@@ -20,7 +21,8 @@ const rankedItem: RankedDiscoveryItem = {
     categories: ['cs.LG'],
     topics: [],
     language: null,
-    stars: null
+    stars: null,
+    metrics: {}
   },
   score: 62,
   excluded: false,

@@ -35,9 +35,13 @@ Deliverables:
 - OpenAI-compatible/DeepSeek and Anthropic adapters;
 - direct, user-initiated analysis artifact lifecycle;
 - MCP server for Codex and Claude Code;
+- dedicated Saved shelf plus bounded direct Codex/Claude CLI analysis;
+- bounded semantic Discover planning through a configured model, Codex, or Claude, with TheRSS-controlled arXiv/GitHub retrieval and separate session persistence;
 - in-app provider/model/prompt-version/source-hash provenance and evidence boundary.
+- local Data Analytics with separated Today/Discover result volume and deep-analysis provenance history.
+- searchable built-in 106-source research directory with explicit active/candidate/adapter-required states; catalog-only entries do not enter Today or Discover.
 
-Exit gate: secret, endpoint, mock-provider, read-only MCP, failure, and provenance tests pass. Stale-result detection remains later hardening.
+Exit gate: secret, endpoint, mock-provider, read-only MCP, Discover plan/isolation/failure, analytics aggregation, and provenance tests pass. Stale-result detection remains later hardening.
 
 ## M3 — Personal beta
 
@@ -66,6 +70,7 @@ Status: complete on 2026-08-15. The public repository, matching remote commit, p
 
 ## Deferred
 
+- Account login and cross-device synchronization. The experimental Google Drive implementation was withdrawn on 2026-08-16; the current product contains no login or Sync surface.
 - Official GitHub Trending HTML adapter.
 - Learned recommendations.
 - Zotero/llm-wiki promotion.

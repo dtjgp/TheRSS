@@ -1,18 +1,23 @@
 import { log } from 'node:console'
 import { execFileSync } from 'node:child_process'
-import { lstat, mkdir, readlink, rename } from 'node:fs/promises'
+import { lstat, mkdir, readFile, readlink, rename } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { homedir, arch } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { pid, platform } from 'node:process'
 import { fileURLToPath } from 'node:url'
 import Database from 'better-sqlite3'
+import { macDatabasePath } from './local-beta-paths.mjs'
 
 if (platform !== 'darwin') {
   throw new Error('The local beta installer currently supports macOS only')
 }
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const packageMetadata = JSON.parse(await readFile(join(projectRoot, 'package.json'), 'utf8'))
+if (typeof packageMetadata.name !== 'string') {
+  throw new Error('The package metadata has no application name')
+}
 const packageArchitecture = arch() === 'arm64' ? 'arm64' : 'x64'
 const sourceApp = join(projectRoot, 'release', `mac-${packageArchitecture}`, 'TheRSS.app')
 const applicationsDirectory = join(homedir(), 'Applications')
@@ -41,7 +46,7 @@ if (existsSync(targetApp)) {
 
 await mkdir(applicationsDirectory, { recursive: true })
 
-const databasePath = join(homedir(), 'Library', 'Application Support', 'TheRSS', 'therss.sqlite')
+const databasePath = macDatabasePath(homedir(), packageMetadata.name)
 if (existsSync(databasePath)) {
   const backupDirectory = join(dirname(databasePath), 'backups')
   const backupPath = join(backupDirectory, `therss-${timestamp}.sqlite`)

@@ -1,8 +1,15 @@
-export type DiscoverySource = 'arxiv' | 'github'
+export type DiscoverySource = 'arxiv' | 'github' | `folo:${number}`
+export type DiscoveryItemKind = 'paper' | 'repository' | 'article' | 'model' | 'dataset' | 'post'
+
+export interface DiscoveryItemMetrics {
+  readonly downloads?: number
+  readonly likes?: number
+}
 
 export interface DiscoveryItem {
   readonly id: string
   readonly source: DiscoverySource
+  readonly kind: DiscoveryItemKind
   readonly externalId: string
   readonly title: string
   readonly summary: string
@@ -14,6 +21,7 @@ export interface DiscoveryItem {
   readonly topics: readonly string[]
   readonly language: string | null
   readonly stars: number | null
+  readonly metrics: DiscoveryItemMetrics
 }
 
 export type MatchReasonKind =

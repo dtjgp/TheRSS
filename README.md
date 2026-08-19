@@ -1,8 +1,8 @@
 # TheRSS
 
-TheRSS 是一个本地优先的学术信息收件箱：它把 arXiv 论文和 GitHub 项目按你的研究兴趣汇总成一份可解释的每日推荐，并允许你用自定义模型 API、Codex 或 Claude Code继续分析候选内容。
+TheRSS 是一个本地优先的学术信息收件箱：它把 arXiv 论文和 GitHub 项目按你的研究兴趣汇总成一份可解释的每日推荐，并允许你用自定义模型 API、Codex 或 Claude Code 扩展语义检索和继续分析候选内容。
 
-> 当前是个人测试版（v0.1.0）。arXiv 摘要、GitHub 元数据和模型输出只用于发现与初筛，不能替代全文阅读、代码审计或实验复现。
+> 当前是个人测试版（v0.2.0）。arXiv 摘要、GitHub 元数据和模型输出只用于发现与初筛，不能替代全文阅读、代码审计或实验复现。
 
 ## 当前可用能力
 
@@ -10,8 +10,13 @@ TheRSS 是一个本地优先的学术信息收件箱：它把 arXiv 论文和 Gi
 - 配置 GitHub 关键词、topic 和编程语言；结果明确称为 **GitHub Interest Radar**，不冒充 GitHub 官方 Trending。
 - 已配置兴趣后，每个本机日历日第一次打开会自动刷新两类来源；也可手动重试，得到去重、确定性排序的 Today 列表。
 - 查看每个候选项的匹配原因，按来源筛选，并保存或忽略。
+- 在独立的 **Saved** 栏目查看已保存的论文和 GitHub 项目。
+- 在 **Discover** 中用自然语言描述一次性研究意图，选择自定义模型、Codex 或 Claude Code 生成可检查的扩展计划，再由 TheRSS 检索 arXiv/GitHub；检索后可即时切换全部、论文或 GitHub Repo，Discover 结果不会混入 Today，只有显式保存后才进入 Saved。
+- 在 **Data Analytics** 中查看每天由 Today 与 Discover 返回的结果数量，并回溯哪些论文或 GitHub 项目做过深度分析、使用了哪个模型或本地代理。
+- 在 **Sources** 中浏览和筛选 106 个研究信息源（A=40、B=63、C=3）；目录会明确区分 2 个当前可获取的原生适配器、94 个 RSSHub 候选和 10 个需要新适配器的官方来源。
 - 配置 OpenAI-compatible（包括兼容的 DeepSeek 端点）或 Anthropic-compatible 模型并生成带来源信息的分析记录。
 - 通过只读 Model Context Protocol（MCP）服务向 Codex、Claude Code 或其他兼容客户端开放本地候选项。
+- 所有兴趣、Saved/Dismissed 状态和分析记录仅保存在本机；当前不提供账号登录或跨设备同步。
 - 在 macOS 上构建并以可回滚方式安装 `~/Applications/TheRSS Dev.app`，升级前自动备份 SQLite 数据库。
 
 ## 立即运行
@@ -30,7 +35,9 @@ npm run dev
 1. 在 **Interests** 中设置关注方向。
 2. 回到 **Today**，点击 **Refresh sources**。
 3. 如需模型分析，在 **Models & Agents** 中设置协议、基础 URL、模型名和 API key。
-4. 回到 **Today**，对候选项点击 **Analyze**。
+4. 在 **Discover** 中输入研究问题并选择模型、Codex 或 Claude Code，或回到 **Today** 对候选项点击 **Analyze**。
+5. 在 **Data Analytics** 中查看最近 7 个本机日历日的搜索结果量和深度分析记录。
+6. 在 **Sources** 中按名称、优先级、研究方向或获取状态检查完整信息源目录。
 
 API key 不会返回给渲染进程，也不会以明文写入 SQLite；应用使用 Electron `safeStorage` 加密后保存密文。远程模型地址必须使用 HTTPS，只有回环地址可使用 HTTP。
 
@@ -98,10 +105,14 @@ npm audit --audit-level=high
 
 ## 数据与边界
 
-- 主数据库：`~/Library/Application Support/TheRSS/therss.sqlite`
-- 更新备份：`~/Library/Application Support/TheRSS/backups/`
+- 主数据库：`~/Library/Application Support/therss/therss.sqlite`
+- 更新备份：`~/Library/Application Support/therss/backups/`
 - 安装位置：`~/Applications/TheRSS Dev.app`
 - 本地数据库和密钥密文不会提交到 Git。
+- 当前版本没有账号登录或云同步入口；更换设备时不会自动迁移本机状态。
+- Discover 只让所选模型/本地代理生成受限检索计划；实际外部请求由固定主机、限时限量的 TheRSS 数据源适配器执行。模型输出与源元数据仍是发现证据，不代表全文或代码已经验证。
+- Data Analytics 完全读取本地 SQLite，不发送遥测。“搜索结果量”统计每次已完成搜索返回的记录，因此重复刷新可能重复计数；旧版只保留最后一次 Today 状态，Today 的准确历史曲线从本功能启用后开始记录，不回填推测数据。
+- Sources 是随应用发布的只读目录，不等于 106 个来源已经接入 Today/Discover。当前只有 arXiv 与 GitHub 具有可执行适配器；RSSHub 候选仍需逐一验证路由，其余来源需要新增适配器。
 - Zotero 和 llm-wiki 的确认式写回属于后续版本；TheRSS 不替代 Zotero 或 Obsidian。
 
 产品范围见 [PRODUCT.md](PRODUCT.md)，架构见 [docs/DESIGN.md](docs/DESIGN.md)，需求验收见 [docs/REQUIREMENTS_TRACEABILITY.md](docs/REQUIREMENTS_TRACEABILITY.md)。

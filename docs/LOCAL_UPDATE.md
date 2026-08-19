@@ -24,7 +24,7 @@ npm run update:local
 
 ## 恢复
 
-- 数据库备份位于 `~/Library/Application Support/TheRSS/backups/`。
+- 数据库备份位于 `~/Library/Application Support/therss/backups/`。
 - 旧应用位于 `~/Applications/TheRSS Dev.backup-<timestamp>.app`。
 - 如果新版本不能启动，先退出 TheRSS，再把当前 `TheRSS Dev.app` 移到其他明确位置，然后将选定备份重命名为 `TheRSS Dev.app`。
 - 如果数据库迁移出现问题，先保留当前数据库，再从对应时间戳备份恢复。不要在应用运行时直接覆盖数据库。

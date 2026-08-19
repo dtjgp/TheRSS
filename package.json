@@ -1,6 +1,6 @@
 {
   "name": "therss",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A local-first academic discovery inbox for arXiv papers and GitHub repositories.",
   "type": "module",
   "main": "out/main/index.js",
@@ -23,6 +23,7 @@
     "smoke:mcp": "npm run build:mcp --silent && node scripts/smoke-mcp.mjs",
     "smoke:package": "node scripts/smoke-packaged-app.mjs",
     "smoke:sources": "tsx scripts/smoke-sources.ts",
+    "smoke:configured-sources": "tsx scripts/smoke-configured-sources.ts",
     "mcp:serve": "node out/mcp/stdio.js",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build",
     "package:mac": "npm run build && electron-builder --mac dir",
@@ -36,6 +37,7 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "better-sqlite3": "^13.0.3",
     "fast-xml-parser": "^5.10.1",
+    "lucide-react": "^1.32.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "zod": "^4.4.3"
@@ -78,6 +80,7 @@
       "package.json"
     ],
     "mac": {
+      "icon": "build/icon.png",
       "category": "public.app-category.productivity",
       "target": [
         "dir"

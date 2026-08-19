@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildArxivQueryUrl, buildArxivSearchExpression } from './arxivQuery'
+import {
+  buildArxivQueryUrl,
+  buildArxivRecentQueryUrl,
+  buildArxivSearchExpression
+} from './arxivQuery'
 
 describe('arXiv query construction', () => {
   it('combines categories, keywords, and exclusions explicitly', () => {
@@ -25,6 +29,19 @@ describe('arXiv query construction', () => {
     expect(url.searchParams.get('sortBy')).toBe('submittedDate')
     expect(url.searchParams.get('sortOrder')).toBe('descending')
     expect(url.searchParams.get('max_results')).toBe('40')
+  })
+
+  it('builds an interest-independent newest-first query for Sources browsing', () => {
+    const url = new URL(buildArxivRecentQueryUrl(new Date('2026-08-19T12:00:00.000Z'), 200))
+
+    expect(url.origin).toBe('https://export.arxiv.org')
+    expect(url.pathname).toBe('/api/query')
+    expect(url.searchParams.get('search_query')).toBe(
+      'submittedDate:[202608190000 TO 202608192359]'
+    )
+    expect(url.searchParams.get('sortBy')).toBe('submittedDate')
+    expect(url.searchParams.get('sortOrder')).toBe('descending')
+    expect(url.searchParams.get('max_results')).toBe('200')
   })
 
   it('rejects result limits outside the application safety bound', () => {

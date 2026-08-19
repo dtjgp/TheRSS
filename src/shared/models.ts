@@ -1,4 +1,12 @@
 export type ModelProtocol = 'openai-compatible' | 'anthropic-compatible'
+export type AnalysisRunner = 'model-provider' | 'codex' | 'claude'
+export type LocalAgentRunner = Exclude<AnalysisRunner, 'model-provider'>
+
+export interface LocalAgentStatus {
+  readonly runner: LocalAgentRunner
+  readonly label: string
+  readonly available: boolean
+}
 
 export interface ModelProviderInput {
   readonly name: string

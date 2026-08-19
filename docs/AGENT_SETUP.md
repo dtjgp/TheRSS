@@ -2,6 +2,17 @@
 
 TheRSS 提供一个本地 stdio MCP 服务，让 Codex 和 Claude Code读取同一份候选项与分析上下文。该服务不访问模型密钥，并使用 SQLite 只读连接。
 
+应用内的 `Analyze with` 还可以直接启动本机已经安装并登录的 Codex CLI 或 Claude Code。它每次创建一个新的受限非交互进程，不会接管已经打开的交互会话。
+
+默认会检查 `PATH`、常见 macOS 安装目录和 NVM。GUI 应用无法发现自定义位置时，可以在启动 TheRSS 前设置绝对路径：
+
+```bash
+export THERSS_CODEX_PATH=/absolute/path/to/codex
+export THERSS_CLAUDE_PATH=/absolute/path/to/claude
+```
+
+在 `Models & Agents` 页面可查看 `detected` 状态；检测成功只表示可执行文件存在，最终调用仍依赖对应 CLI 已经完成登录。
+
 ## 前置检查
 
 ```bash
@@ -13,7 +24,7 @@ npm run smoke:mcp
 默认数据库为：
 
 ```text
-/Users/dtjgp/Library/Application Support/TheRSS/therss.sqlite
+/Users/dtjgp/Library/Application Support/therss/therss.sqlite
 ```
 
 如果要连接测试数据库，可向 MCP 进程设置 `THERSS_DB_PATH`。

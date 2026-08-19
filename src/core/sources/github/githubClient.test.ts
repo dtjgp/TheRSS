@@ -34,6 +34,7 @@ describe('GitHub Interest Radar client', () => {
       {
         id: 'github:owner/repo',
         source: 'github',
+        kind: 'repository',
         externalId: 'owner/repo',
         title: 'owner/repo',
         summary: 'Open tools for model compression.',
@@ -44,7 +45,8 @@ describe('GitHub Interest Radar client', () => {
         categories: [],
         topics: ['model-compression', 'edge-ai'],
         language: 'Python',
-        stars: 42
+        stars: 42,
+        metrics: {}
       }
     ])
   })
