@@ -1040,8 +1040,8 @@ through the repository's required pull-request and quality-check workflow.
 
 - [x] Refresh remote refs and confirm the feature branch is based on current `origin/main`.
 - [x] Review the complete diff and staged scope for unintended files or secrets.
-- [ ] Create and push one Conventional Commit for the shortcut fix.
-- [ ] Pass GitHub `quality`, rebase-merge the PR, and verify the exact remote `main` commit.
+- [x] Create and push one Conventional Commit for the shortcut fix.
+- [x] Pass GitHub `quality`, rebase-merge the PR, and verify the exact remote `main` commit.
 
 ### Decisions
 
@@ -1053,6 +1053,9 @@ through the repository's required pull-request and quality-check workflow.
 
 ### Status
 
-**Phase 35 in progress.** `origin/main` is refreshed. The five-file diff contains only the native
+**Phase 35 complete.** `origin/main` was refreshed. The five-file diff contained only the native
 menu implementation, its unit/Electron coverage, and durable plan/notes; formatting, whitespace, and
-secret-pattern review pass. Scoped staging and publication remain in progress.
+secret-pattern review passed. Conventional Commit `078dcc3` passed the ECC pre-push lint, typecheck,
+43-file/238-test, and production/MCP build gate and was pushed to
+`origin/codex/native-macos-shortcuts`. PR #10 passed its required GitHub `quality` workflow and was
+rebased into protected `main`; refreshed `origin/main` records the published fix as `ca24931`.
