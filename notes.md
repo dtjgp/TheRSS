@@ -479,3 +479,23 @@ src/renderer/src/App.test.tsx` -> 4 files / 54 tests.
   next complete live run passed 20/20 configured sources; C114 returned 25 normalized records, 18
   dated today, with zero rejected records. The post-fix full gate passed 42 files / 220 tests with
   91.53% statements, 80.60% branches, 93.46% functions, and 94.41% lines.
+
+## 2026-08-20 Apple system typography
+
+- The renderer previously mixed 26 Newsreader declarations, one IBM Plex Sans declaration, five
+  Fontsource stylesheet imports, and two direct font-package dependencies.
+- Typography is now centralized as `--font-apple-text` for body/controls and
+  `--font-apple-display` for headings. macOS resolves these to SF Pro Text and SF Pro Display; the
+  remaining stack entries are system/development fallbacks, not bundled font files.
+- Every renderer `font-family` declaration is limited by contract to one of the two Apple variables
+  or inheritance. Removing the Fontsource imports and dependencies prevents the production bundle
+  from retaining the former third-party font assets.
+- Final evidence: `npm run check` passed 43 files / 237 tests and all four coverage thresholds;
+  Electron E2E passed 1/1 with computed-font checks. Discover, Saved, Personal Prompt, and Sources
+  screenshots showed no typography-driven clipping or layout regression, and the renderer build
+  contains no font asset files.
+- Publication preparation repeated the complete quality gate and a production-only dependency audit
+  with zero vulnerabilities. The reversible installer retained the previous app and a SQLite backup,
+  installed the Apple-typography build to `~/Applications/TheRSS Dev.app`, and the installed executable
+  passed package smoke. Release and installed `app.asar` hashes both equal
+  `822fe94be988b4a003f0f02702bbe489bb8a790b292a7c1adabf75502e1a889e`.

@@ -182,5 +182,7 @@ Apple 系统颜色在原生控件中是动态颜色；把名称和固定 hex 搬
 
 - **已完成**：22 来源选择器默认收起并显示确切选中数；搜索后先展示排名结果，再以折叠检查器保留 plan、provenance 和 22 源 outcome；等待阶段使用不伪造百分比的活动指示。
 - **动效收敛**：卡片进入从 360 ms / 55 ms 索引延迟收敛为 180 ms / 25 ms，且第六个之后不再增加等待；Reduced Motion 同时覆盖 transition 与 keyframe animation。
-- **视觉方向**：保留 Newsreader 作为研究内容标题，控件、状态和导航继续使用系统 UI 字体与克制的分组表面，不在内容平面叠加 Liquid Glass 或装饰性特效。
-- **验证**：`npm run check` 通过 42 个测试文件 / 219 个测试；Electron E2E 1/1 通过；7 张最新浅色截图均已检查；未安装的 unsigned macOS 包通过隔离启动与 preload smoke。
+- **视觉方向**：标题使用 macOS 的 SF Pro Display 系统栈，正文、控件、状态和导航使用
+  SF Pro Text 系统栈与克制的分组表面；不打包或分发第三方字体，也不在内容平面叠加
+  Liquid Glass 或装饰性特效。
+- **验证**：`npm run check` 通过 43 个测试文件 / 237 个测试；Electron E2E 1/1 通过，包含 Apple 字体运行时断言；关键浅色截图均已检查；unsigned macOS 包已通过可回滚流程安装，且已安装可执行文件通过隔离启动与 preload smoke。

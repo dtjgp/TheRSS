@@ -32,8 +32,6 @@
     "postinstall": "node scripts/ensure-electron.mjs && electron-builder install-app-deps"
   },
   "dependencies": {
-    "@fontsource/ibm-plex-sans": "^5.3.0",
-    "@fontsource/newsreader": "^5.3.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "better-sqlite3": "^13.0.3",
     "fast-xml-parser": "^5.10.1",
