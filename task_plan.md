@@ -823,8 +823,9 @@ the installed bundle, then commit and push the complete Phase 29–30 Discover i
 - [x] Recheck the exact install target, database path, Git branch/remote, and final diff scope.
 - [x] Run the reversible local installer and validate the installed bundle plus retained backups.
 - [x] Review staged content for secrets and unintended artifacts.
-- [ ] Create one Conventional Commit for the verified Phase 29–30 worktree.
-- [ ] Push `main`, verify local/remote convergence, and record final evidence.
+- [x] Create one Conventional Commit for the verified Phase 29–30 worktree.
+- [x] Push the protected-main-compliant branch, verify local/remote convergence, and record final
+      evidence.
 
 ### Decisions
 
@@ -837,13 +838,16 @@ the installed bundle, then commit and push the complete Phase 29–30 Discover i
 
 ### Status
 
-**Phase 31 in progress.** `npm run install:local` installed the unsigned arm64 build at
+**Phase 31 complete.** `npm run install:local` installed the unsigned arm64 build at
 `/Users/dtjgp/Applications/TheRSS Dev.app`; the explicitly installed executable passed packaged
 smoke. The retained SQLite backup passes `PRAGMA integrity_check`, bundle metadata is version
 `0.2.0` / `dev.dtjgp.therss`, and installed/release `app.asar` files share SHA-256
 `601dbfd76044970ebdbf57a369ccd8700db9ae28f48fd1d31ec477ece20dfbaa`. The staged source/test/docs
 set passes whitespace and secret-pattern review; the production dependency audit reports zero
-vulnerabilities. Commit creation and remote closure remain.
+vulnerabilities. Feature commit `7b5ecb1` passed the ECC pre-push lint, typecheck, 43-file/236-test,
+and production/MCP build gate. GitHub correctly refused direct protected-`main` publication, so the
+same commit was pushed to `origin/codex/personalized-discover` with upstream tracking. No pull
+request or merge was created without separate authorization.
 
 ### Errors encountered
 
@@ -852,3 +856,10 @@ vulnerabilities. Commit creation and remote closure remain.
   returned `ok`; no database write or repair was attempted.
 - The first production `npm audit` could not resolve `registry.npmjs.org` inside the network-
   restricted sandbox. The approved npm advisory-endpoint rerun completed with zero vulnerabilities.
+- A combined staging/status shell command could not create `.git/index.lock` inside the restricted
+  sandbox. Reissuing only the already-authorized scoped `git add task_plan.md` succeeded.
+- GitHub rejected `git push origin main` with `GH006` because `main` requires a pull request and the
+  `quality` status check. Do not bypass protection: create the `codex/personalized-discover` branch
+  from the verified commit and push that branch instead.
+- The first sandboxed `git switch -c` could not create the branch ref lock. The approved scoped
+  branch-creation rerun succeeded; no existing branch or commit was rewritten.
