@@ -521,3 +521,5 @@ src/renderer/src/App.test.tsx` -> 4 files / 54 tests.
 - Final verification passes 43 files / 238 tests, all four coverage thresholds, Electron E2E 1/1,
   production/MCP builds, unsigned arm64 packaging, and isolated packaged-app smoke. The E2E also
   emits `activate` after closing the last window and confirms that the Discover window is recreated.
+- Publication commit `078dcc3` passed the ECC pre-push gate. GitHub PR #10 passed the required
+  `quality` workflow and was rebased into protected `main` as `ca24931`.
