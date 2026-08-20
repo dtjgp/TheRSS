@@ -20,6 +20,11 @@ import type {
 } from '../../shared/api'
 import type { ModelProtocol, ModelProviderSummary } from '../../shared/models'
 import type { AnalysisArtifact } from '../../shared/models'
+import {
+  DISCOVER_PERSONALIZATION_PROMPT_MAX_LENGTH,
+  discoverPersonalizationPromptSchema,
+  type DiscoverPersonalizationSettings
+} from '../../shared/personalization'
 import { localDateKey } from '../../shared/date'
 import { parseDiscoverPlan } from '../discover/discoverPlan'
 import { buildAnalyticsSnapshot } from './analyticsRepository'
@@ -148,7 +153,10 @@ function parseDiscoverProvenance(value: string): DiscoverSnapshot['provenance'] 
     !('model' in parsed) ||
     typeof parsed.model !== 'string' ||
     !('promptVersion' in parsed) ||
-    parsed.promptVersion !== 'semantic-discover-v1' ||
+    (parsed.promptVersion !== 'semantic-discover-v1' &&
+      parsed.promptVersion !== 'semantic-discover-v2') ||
+    (parsed.promptVersion === 'semantic-discover-v2' && !('personalizationApplied' in parsed)) ||
+    ('personalizationApplied' in parsed && typeof parsed.personalizationApplied !== 'boolean') ||
     !('inputHash' in parsed) ||
     typeof parsed.inputHash !== 'string' ||
     !/^[a-f0-9]{64}$/u.test(parsed.inputHash) ||
@@ -162,6 +170,10 @@ function parseDiscoverProvenance(value: string): DiscoverSnapshot['provenance'] 
     providerName: parsed.providerName,
     model: parsed.model,
     promptVersion: parsed.promptVersion,
+    personalizationApplied:
+      'personalizationApplied' in parsed && typeof parsed.personalizationApplied === 'boolean'
+        ? parsed.personalizationApplied
+        : false,
     inputHash: parsed.inputHash,
     createdAt: parsed.createdAt
   }
@@ -183,6 +195,14 @@ export class ResearchRepository {
       CREATE TABLE IF NOT EXISTS interest_profile (
         singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
         profile_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS discover_personalization (
+        singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+        prompt TEXT NOT NULL CHECK (
+          length(prompt) <= ${DISCOVER_PERSONALIZATION_PROMPT_MAX_LENGTH}
+        ),
         updated_at TEXT NOT NULL
       );
 
@@ -556,6 +576,39 @@ export class ResearchRepository {
       .get() as { profile_json: string } | undefined
 
     return row ? interestProfileSchema.parse(JSON.parse(row.profile_json)) : null
+  }
+
+  saveDiscoverPersonalizationPrompt(
+    prompt: string,
+    updatedAt = new Date().toISOString()
+  ): DiscoverPersonalizationSettings {
+    const validatedPrompt = discoverPersonalizationPromptSchema.parse(prompt)
+    this.#database
+      .prepare(
+        `INSERT INTO discover_personalization(singleton_id, prompt, updated_at)
+         VALUES (1, ?, ?)
+         ON CONFLICT(singleton_id) DO UPDATE SET
+           prompt = excluded.prompt,
+           updated_at = excluded.updated_at`
+      )
+      .run(validatedPrompt, updatedAt)
+    return { prompt: validatedPrompt, updatedAt }
+  }
+
+  getDiscoverPersonalizationSettings(): DiscoverPersonalizationSettings | null {
+    const row = this.#database
+      .prepare(
+        `SELECT prompt, updated_at
+         FROM discover_personalization WHERE singleton_id = 1`
+      )
+      .get() as { prompt: string; updated_at: string } | undefined
+
+    return row
+      ? {
+          prompt: discoverPersonalizationPromptSchema.parse(row.prompt),
+          updatedAt: row.updated_at
+        }
+      : null
   }
 
   #upsertRankedItems(
@@ -1004,11 +1057,7 @@ export class ResearchRepository {
     }
   }
 
-  saveDiscoverResult(
-    sessionId: string,
-    itemId: string,
-    updatedAt = new Date().toISOString()
-  ): void {
+  #getDiscoverResult(sessionId: string, itemId: string): DiscoverResultRow {
     const row = this.#database
       .prepare(
         `SELECT item_id, source, item_kind, external_id, title, summary, url, published_at,
@@ -1018,7 +1067,15 @@ export class ResearchRepository {
       )
       .get(sessionId, itemId) as DiscoverResultRow | undefined
     if (!row) throw new Error(`Unknown Discover result: ${itemId}`)
+    return row
+  }
 
+  #upsertDiscoverResult(
+    row: DiscoverResultRow,
+    initialState: 'viewed' | 'saved',
+    forceSaved: boolean,
+    updatedAt: string
+  ): void {
     this.#database
       .prepare(
         `INSERT INTO discovery_item(
@@ -1026,7 +1083,7 @@ export class ResearchRepository {
            authors_json, categories_json, topics_json, language, stars, score,
            excluded, reasons_json, in_daily_inbox, triage_state, triage_updated_at,
            first_seen_at, last_seen_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, 'saved', ?, ?, ?)
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?, ?, ?, ?)
          ON CONFLICT(id) DO UPDATE SET
            item_kind = excluded.item_kind,
            title = excluded.title,
@@ -1042,8 +1099,11 @@ export class ResearchRepository {
            score = excluded.score,
            excluded = 0,
            reasons_json = excluded.reasons_json,
-           triage_state = 'saved',
-           triage_updated_at = excluded.triage_updated_at,
+           triage_state = CASE WHEN ? = 1 THEN 'saved' ELSE discovery_item.triage_state END,
+           triage_updated_at = CASE
+             WHEN ? = 1 THEN excluded.triage_updated_at
+             ELSE discovery_item.triage_updated_at
+           END,
            last_seen_at = excluded.last_seen_at`
       )
       .run(
@@ -1063,10 +1123,33 @@ export class ResearchRepository {
         row.stars,
         row.score,
         row.reasons_json,
+        initialState,
         updatedAt,
         updatedAt,
-        updatedAt
+        updatedAt,
+        forceSaved ? 1 : 0,
+        forceSaved ? 1 : 0
       )
+  }
+
+  saveDiscoverResult(
+    sessionId: string,
+    itemId: string,
+    updatedAt = new Date().toISOString()
+  ): void {
+    this.#upsertDiscoverResult(this.#getDiscoverResult(sessionId, itemId), 'saved', true, updatedAt)
+  }
+
+  materializeDiscoverResultForAnalysis(
+    sessionId: string,
+    itemId: string,
+    updatedAt = new Date().toISOString()
+  ): void {
+    const row = this.#getDiscoverResult(sessionId, itemId)
+    if (row.item_kind !== 'paper') {
+      throw new Error('Discover analysis is available only for paper results')
+    }
+    this.#upsertDiscoverResult(row, 'viewed', false, updatedAt)
   }
 
   recordSourceRun(

@@ -13,6 +13,8 @@ while leaving durable literature/knowledge ownership to specialized tools.
 ## Goals
 
 - Expand one natural-language research intent into bounded, inspectable retrieval terms.
+- Optionally tailor expansion with one locally stored, bounded Personal Prompt while keeping the
+  current question primary and explicit.
 - Query arXiv and GitHub with source-specific terms from that transient plan.
 - Fetch 19 fixed, code-owned RSS/Atom/HTML routes plus Hugging Face models, datasets, and papers.
 - Filter and rank bounded recent records from browse-only sources against the same transient plan.
@@ -154,11 +156,21 @@ Every ranked item stores a list of `MatchReason` records so the UI can explain i
 ## Semantic Discover contract
 
 Discover is the primary explicit search surface. A configured model provider, Codex CLI, or Claude
-Code receives only the bounded natural-language intent and returns a strict `discover-plan-v1` JSON
-object. The plan is schema-validated for bounded arXiv category syntax, keywords, exclusions,
+Code receives the bounded natural-language intent plus the optional Personal Prompt and returns a
+strict `discover-plan-v1` JSON object. The plan is schema-validated for bounded arXiv category
+syntax, keywords, exclusions,
 GitHub topics/languages, and query-count limits before any network request. The source selection is
 separate validated user input. The model/agent does not browse, call tools, read project files, or
 execute source requests.
+
+The optional Personal Prompt is a singleton local setting (maximum 4,000 characters). A non-empty
+saved value is included only in the selected model/Codex/Claude planning prompt; saving an empty
+value disables it. The planner labels it as untrusted profile data, may use it only to tailor
+terminology, priorities, and exclusions, and forbids it from changing selected sources, the JSON
+contract, tool/file access, or evidence status. Source adapters receive only the validated generated
+plan rather than direct access to the saved setting; the plan's search terms may reflect personal
+context. Discover shows whether context is currently active, and each session provenance records
+whether it was applied without automatically duplicating the saved prompt text.
 
 The Discover orchestrator can run the accepted plan through any subset of the 22 retained source
 adapters. arXiv and GitHub perform fixed-host parameterized queries. The other sources fetch only
@@ -198,6 +210,7 @@ Initial persisted entities:
 - `ModelProvider` (metadata plus OS-encrypted credential ciphertext)
 - `AnalysisArtifact`
 - `DiscoverSession`, `DiscoverSourceRun`, and `DiscoverResult`
+- `DiscoverPersonalizationSettings` (one optional local Personal Prompt)
 
 Stable item IDs are derived from source identity. Every model analysis stores a SHA-256 hash of the exact discovery fields included in its prompt; automatic stale-analysis labeling is deferred.
 
@@ -233,6 +246,8 @@ other kind retains `discovery-analysis-v1`. The paper contract is a packaged ada
 llm-wiki `Paper_Note_L1` structure, not runtime vault access. Because the input remains discovery
 metadata, the output must state `abstract-only / provisional`, retain `[TBD]` for unavailable facts,
 and must not be described as a verified full-paper L1 deep read. Analysis remains user initiated.
+Discover paper cards expose the same contract directly; an unsaved result is materialized as
+`viewed` for stable artifact ownership without changing its Saved star.
 
 Discover sessions persist the exact validated plan, runner/provider/model, prompt version, prompt-input hash, timestamps, per-source outcomes, and result snapshots. Generated plan text remains derived evidence; only validated fields reach source adapters.
 
@@ -245,6 +260,10 @@ Discover sessions persist the exact validated plan, runner/provider/model, promp
 - Network requests use explicit timeouts, response-size bounds, and safe redirects.
 - SQL is parameterized.
 - Secrets are never returned through ordinary read APIs.
+- Personal Prompt text is not a credential: it is stored as bounded local operational data, never
+  logged, and sent in full only to the selected planner after an explicit Discover action. Source
+  sites receive the generated search terms, which may reflect that context; the UI therefore warns
+  against entering secrets or confidential unpublished details.
 - The initial MCP surface is structurally read-only and opens SQLite in read-only mode.
 
 ## Failure and recovery

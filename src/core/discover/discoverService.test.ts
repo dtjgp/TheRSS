@@ -32,6 +32,7 @@ const provenance: DiscoverPlannerProvenance = {
   providerName: 'Codex CLI',
   model: 'codex-cli',
   promptVersion: 'semantic-discover-v1',
+  personalizationApplied: false,
   inputHash: 'a'.repeat(64),
   createdAt: '2026-08-16T10:00:00.000Z'
 }

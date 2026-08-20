@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Sparkles } from 'lucide-react'
 import type { DashboardSnapshot, TheRSSApi } from '../../shared/api'
 import type {
   DiscoverResultItem,
@@ -8,7 +9,9 @@ import type {
 } from '../../shared/discover'
 import { DISCOVER_SOURCE_IDS } from '../../shared/discover'
 import { sourceDisplayName, sourceStyleToken } from '../../shared/sourceIdentity'
-import type { LocalAgentStatus } from '../../shared/models'
+import type { AnalysisArtifact, LocalAgentStatus } from '../../shared/models'
+import { AnalysisPanel } from './AppSections'
+import { SaveStar } from './SaveStar'
 
 interface DiscoverViewProps {
   readonly api: TheRSSApi
@@ -63,13 +66,19 @@ function DiscoverCard({
   index,
   isSaving,
   isSaveDisabled,
-  onSave
+  analysis,
+  isAnalyzing,
+  onToggleSave,
+  onAnalyze
 }: {
   readonly item: DiscoverResultItem
   readonly index: number
   readonly isSaving: boolean
   readonly isSaveDisabled: boolean
-  readonly onSave: (itemId: string) => Promise<void>
+  readonly analysis: AnalysisArtifact | null
+  readonly isAnalyzing: boolean
+  readonly onToggleSave: (itemId: string) => Promise<void>
+  readonly onAnalyze: (itemId: string) => Promise<void>
 }) {
   return (
     <article
@@ -99,14 +108,34 @@ function DiscoverCard({
       <div className="signal-card__actions">
         <button
           type="button"
-          className="text-button"
+          className="discover-save-button save-button"
+          aria-label={item.saved ? 'Remove result from Saved' : 'Save result'}
           aria-pressed={item.saved}
-          disabled={isSaveDisabled || item.saved}
-          onClick={() => void onSave(item.id)}
+          aria-busy={isSaving}
+          title={item.saved ? 'Remove from Saved' : 'Save this result'}
+          disabled={isSaveDisabled}
+          onClick={() => void onToggleSave(item.id)}
         >
-          {item.saved ? 'Saved' : isSaving ? 'Saving…' : 'Save result'}
+          <SaveStar isSaved={item.saved} />
         </button>
+        {item.kind === 'paper' && (
+          <button
+            type="button"
+            className="text-button discover-analysis-button"
+            aria-label="Analyze paper"
+            disabled={isAnalyzing}
+            onClick={() => void onAnalyze(item.id)}
+          >
+            <Sparkles aria-hidden="true" size={16} strokeWidth={1.8} />
+            <span>{isAnalyzing ? 'Analyzing…' : 'Analyze paper'}</span>
+          </button>
+        )}
       </div>
+      {analysis?.itemId === item.id && (
+        <div className="discover-card__analysis">
+          <AnalysisPanel artifact={analysis} />
+        </div>
+      )}
     </article>
   )
 }
@@ -120,6 +149,9 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
   const [resultFilter, setResultFilter] = useState<DiscoverResultFilter>('all')
   const [isSearching, setIsSearching] = useState(false)
   const [savingItemId, setSavingItemId] = useState<string | null>(null)
+  const [analyzingItemId, setAnalyzingItemId] = useState<string | null>(null)
+  const [analysis, setAnalysis] = useState<AnalysisArtifact | null>(null)
+  const [hasPersonalContext, setHasPersonalContext] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -141,6 +173,21 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
       })
       .catch(() => {
         if (active) setError('The previous Discover session could not be loaded.')
+      })
+    return () => {
+      active = false
+    }
+  }, [api])
+
+  useEffect(() => {
+    let active = true
+    api
+      .getDiscoverPersonalizationSettings()
+      .then((settings) => {
+        if (active) setHasPersonalContext(Boolean(settings?.prompt.trim()))
+      })
+      .catch(() => {
+        if (active) setHasPersonalContext(false)
       })
     return () => {
       active = false
@@ -194,27 +241,48 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
     }
   }
 
-  const saveResult = async (itemId: string) => {
+  const toggleSaveResult = async (itemId: string) => {
     if (!snapshot) return
+    const item = snapshot.items.find((candidate) => candidate.id === itemId)
+    if (!item) return
     setSavingItemId(itemId)
     setError(null)
     try {
-      const dashboard = await api.saveDiscoverResult(snapshot.id, itemId)
+      const dashboard = item.saved
+        ? await api.setTriageState(itemId, 'viewed')
+        : await api.saveDiscoverResult(snapshot.id, itemId)
       onDashboardChange(dashboard)
       setSnapshot((current) =>
         current
           ? {
               ...current,
               items: current.items.map((item) =>
-                item.id === itemId ? { ...item, saved: true } : item
+                item.id === itemId ? { ...item, saved: !item.saved } : item
               )
             }
           : current
       )
     } catch {
-      setError('The Discover result could not be added to Saved.')
+      setError('The Discover result Saved state could not be updated.')
     } finally {
       setSavingItemId(null)
+    }
+  }
+
+  const analyzeResult = async (itemId: string) => {
+    if (!snapshot) return
+    setAnalyzingItemId(itemId)
+    setError(null)
+    try {
+      setAnalysis(await api.analyzeDiscoverResult(snapshot.id, itemId, runner))
+    } catch {
+      setError(
+        runner === 'model-provider'
+          ? 'Analysis failed. Configure or check the selected model provider.'
+          : `Analysis failed. Confirm ${runner === 'codex' ? 'Codex CLI' : 'Claude Code'} is installed and signed in.`
+      )
+    } finally {
+      setAnalyzingItemId(null)
     }
   }
 
@@ -249,6 +317,21 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
             maxLength={2_000}
           />
         </label>
+        <div
+          className={`discover-personalization-status ${
+            hasPersonalContext ? 'discover-personalization-status--active' : ''
+          }`}
+          role="status"
+          aria-label="Personal prompt status"
+        >
+          <span aria-hidden="true" />
+          <p>
+            <strong>{hasPersonalContext ? 'Personal context on' : 'Personal context off'}</strong>
+            {hasPersonalContext
+              ? 'The selected runner will use your saved profile. Source sites receive the generated search terms; review them in Search details.'
+              : 'Add a Personal Prompt in Models & Agents to tailor future query expansion.'}
+          </p>
+        </div>
         <div className="discover-controls">
           <div className="discover-source-picker">
             <button
@@ -348,7 +431,11 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
 
       {snapshot && (
         <div className="discover-results">
-          <section className="today-view discover-result-list" aria-label="Discover results">
+          <section
+            className="today-view discover-result-list"
+            aria-label="Discover results"
+            tabIndex={0}
+          >
             <div className="today-view__heading">
               <div>
                 <p className="eyebrow">DISCOVER RESULTS</p>
@@ -421,7 +508,10 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
                     index={index}
                     isSaving={savingItemId === item.id}
                     isSaveDisabled={savingItemId !== null}
-                    onSave={saveResult}
+                    analysis={analysis?.itemId === item.id ? analysis : null}
+                    isAnalyzing={analyzingItemId === item.id}
+                    onToggleSave={toggleSaveResult}
+                    onAnalyze={analyzeResult}
                   />
                 ))}
               </div>
@@ -484,8 +574,11 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
                   {snapshot.provenance.providerName} · {snapshot.provenance.model}
                 </strong>
                 <span>
-                  {snapshot.provenance.promptVersion} · input{' '}
-                  {snapshot.provenance.inputHash.slice(0, 12)}
+                  {snapshot.provenance.promptVersion} ·{' '}
+                  {snapshot.provenance.personalizationApplied
+                    ? 'personal context applied'
+                    : 'generic context'}{' '}
+                  · input {snapshot.provenance.inputHash.slice(0, 12)}
                 </span>
               </div>
             </div>

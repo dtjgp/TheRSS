@@ -64,6 +64,7 @@ function createDiscoverSnapshot(): DiscoverSnapshot {
       providerName: 'Codex CLI',
       model: 'codex-cli',
       promptVersion: 'semantic-discover-v1',
+      personalizationApplied: false,
       inputHash: 'a'.repeat(64),
       createdAt: '2026-08-19T12:00:00.000Z'
     },
@@ -185,6 +186,15 @@ function createApi(snapshot: DashboardSnapshot = emptyDashboard): TheRSSApi {
       hasCredential: true,
       updatedAt: '2026-08-19T12:00:00.000Z'
     }),
+    getDiscoverPersonalizationSettings: vi.fn().mockResolvedValue({
+      prompt: '',
+      updatedAt: '2026-08-19T12:00:00.000Z'
+    }),
+    saveDiscoverPersonalizationPrompt: vi.fn().mockResolvedValue({
+      prompt:
+        'I focus on local-first edge intelligence research and reviewer-safe evidence boundaries.',
+      updatedAt: '2026-08-20T08:00:00.000Z'
+    }),
     getLocalAgentStatuses: vi.fn().mockResolvedValue([
       { runner: 'codex', label: 'Codex CLI', available: true },
       { runner: 'claude', label: 'Claude Code', available: true }
@@ -199,6 +209,18 @@ function createApi(snapshot: DashboardSnapshot = emptyDashboard): TheRSSApi {
       sourceHash: 'b'.repeat(64),
       content: 'Bounded fixture analysis.',
       createdAt: '2026-08-19T12:00:00.000Z'
+    }),
+    analyzeDiscoverResult: vi.fn().mockResolvedValue({
+      id: 'analysis-discover-paper',
+      itemId: 'arxiv:discover',
+      providerId: 'local-agent:codex',
+      providerName: 'Codex CLI',
+      model: 'codex-cli',
+      promptVersion: 'llm-wiki-paper-l1-v1',
+      sourceHash: 'c'.repeat(64),
+      content:
+        '## 快速决策卡\nEvidence state: abstract-only / provisional\n\n## TL;DR\nA bounded L1 fixture.',
+      createdAt: '2026-08-20T12:00:00.000Z'
     }),
     getLatestAnalysis: vi.fn().mockResolvedValue(null)
   }
@@ -319,6 +341,20 @@ describe('App', () => {
     )
   })
 
+  it('shows whether personalization is active without echoing the private prompt', async () => {
+    const api = createApi()
+    vi.mocked(api.getDiscoverPersonalizationSettings).mockResolvedValue({
+      prompt: 'Private profile text about energy systems and edge intelligence.',
+      updatedAt: '2026-08-20T08:00:00.000Z'
+    })
+    render(<App api={api} />)
+
+    const status = await screen.findByRole('status', { name: 'Personal prompt status' })
+    expect(status).toHaveTextContent('Personal context on')
+    expect(status).toHaveTextContent('Source sites receive the generated search terms')
+    expect(status).not.toHaveTextContent('Private profile text')
+  })
+
   it('caps staggered result entrance delays after the first six cards', async () => {
     const api = createApi()
     const snapshot = createDiscoverSnapshot()
@@ -408,6 +444,80 @@ describe('App', () => {
     expect(screen.getByRole('group', { name: 'Filter saved signals by source' })).toBeVisible()
   })
 
+  it('uses a reversible outline and filled star instead of Save result text', async () => {
+    const api = createApi()
+    const user = userEvent.setup()
+    render(<App api={api} />)
+
+    await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
+    await user.click(screen.getByRole('button', { name: 'Expand and search' }))
+    const paperCard = (
+      await screen.findByText('Structured pruning for semantic communication')
+    ).closest('article') as HTMLElement
+    const saveButton = within(paperCard).getByRole('button', { name: 'Save result' })
+
+    expect(saveButton).toHaveAttribute('aria-pressed', 'false')
+    expect(saveButton).not.toHaveTextContent('Save result')
+    expect(saveButton.querySelector('[data-save-star]')).toHaveAttribute('fill', 'none')
+
+    await user.click(saveButton)
+    expect(api.saveDiscoverResult).toHaveBeenCalledWith('discover-session-1', 'arxiv:discover')
+    const removeButton = within(paperCard).getByRole('button', {
+      name: 'Remove result from Saved'
+    })
+    expect(removeButton).toHaveAttribute('aria-pressed', 'true')
+    expect(removeButton.querySelector('[data-save-star]')).toHaveAttribute('fill', 'currentColor')
+
+    await user.click(removeButton)
+    expect(api.setTriageState).toHaveBeenCalledWith('arxiv:discover', 'viewed')
+    expect(within(paperCard).getByRole('button', { name: 'Save result' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    )
+  })
+
+  it('places a paper-only L1 analysis action to the right of the star without auto-saving', async () => {
+    const api = createApi()
+    const user = userEvent.setup()
+    render(<App api={api} />)
+
+    await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Search with' }), 'codex')
+    await user.click(screen.getByRole('button', { name: 'Expand and search' }))
+
+    const paperCard = (
+      await screen.findByText('Structured pruning for semantic communication')
+    ).closest('article') as HTMLElement
+    const paperActions = paperCard.querySelector('.signal-card__actions') as HTMLElement
+    expect(
+      within(paperActions)
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label'))
+    ).toEqual(['Save result', 'Analyze paper'])
+
+    const repositoryCard = screen.getByText('discover/repo').closest('article') as HTMLElement
+    const articleCard = screen
+      .getByText('BAAI edge intelligence briefing')
+      .closest('article') as HTMLElement
+    expect(within(repositoryCard).queryByRole('button', { name: 'Analyze paper' })).toBeNull()
+    expect(within(articleCard).queryByRole('button', { name: 'Analyze paper' })).toBeNull()
+
+    await user.click(within(paperActions).getByRole('button', { name: 'Analyze paper' }))
+    expect(api.analyzeDiscoverResult).toHaveBeenCalledWith(
+      'discover-session-1',
+      'arxiv:discover',
+      'codex'
+    )
+    expect(api.saveDiscoverResult).not.toHaveBeenCalled()
+    expect(within(paperCard).getByRole('button', { name: 'Save result' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    )
+    expect(await within(paperCard).findByLabelText('L1 paper analysis result')).toHaveTextContent(
+      'abstract-only / provisional'
+    )
+  })
+
   it('restores the exact source subset from the latest Discover session', async () => {
     const api = createApi()
     vi.mocked(api.getLatestDiscover).mockResolvedValue({
@@ -470,6 +580,66 @@ describe('App', () => {
       baseUrl: 'http://127.0.0.1:11434/v1',
       model: 'fixture-model'
     })
+  })
+
+  it('loads and saves the optional personal Discover prompt from Settings', async () => {
+    const api = createApi()
+    vi.mocked(api.getDiscoverPersonalizationSettings).mockResolvedValue({
+      prompt: 'Prefer systems papers with explicit evaluation and reproducibility detail.',
+      updatedAt: '2026-08-20T08:00:00.000Z'
+    })
+    const user = userEvent.setup()
+    render(<App api={api} />)
+
+    await user.click(screen.getByRole('button', { name: '03 Models & Agents' }))
+    expect(await screen.findByRole('textbox', { name: 'Personal Discover prompt' })).toHaveValue(
+      'Prefer systems papers with explicit evaluation and reproducibility detail.'
+    )
+    await user.clear(screen.getByRole('textbox', { name: 'Personal Discover prompt' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'Personal Discover prompt' }),
+      'Prioritize edge intelligence, energy systems, and clear claim boundaries.'
+    )
+    await user.click(screen.getByRole('button', { name: 'Save personal Discover prompt' }))
+
+    expect(api.saveDiscoverPersonalizationPrompt).toHaveBeenCalledWith(
+      'Prioritize edge intelligence, energy systems, and clear claim boundaries.'
+    )
+  })
+
+  it('clears and disables saved personal context across Settings and Discover', async () => {
+    const api = createApi()
+    let storedPrompt = 'Prefer reviewer-safe energy systems research.'
+    vi.mocked(api.getDiscoverPersonalizationSettings).mockImplementation(() =>
+      Promise.resolve({
+        prompt: storedPrompt,
+        updatedAt: '2026-08-20T08:00:00.000Z'
+      })
+    )
+    vi.mocked(api.saveDiscoverPersonalizationPrompt).mockImplementation((prompt) => {
+      storedPrompt = prompt.trim()
+      return Promise.resolve({
+        prompt: storedPrompt,
+        updatedAt: '2026-08-20T09:00:00.000Z'
+      })
+    })
+    const user = userEvent.setup()
+    render(<App api={api} />)
+
+    await user.click(screen.getByRole('button', { name: '03 Models & Agents' }))
+    const personalPrompt = await screen.findByRole('textbox', {
+      name: 'Personal Discover prompt'
+    })
+    await user.clear(personalPrompt)
+    await user.click(screen.getByRole('button', { name: 'Save personal Discover prompt' }))
+
+    expect(api.saveDiscoverPersonalizationPrompt).toHaveBeenCalledWith('')
+    expect(await screen.findByRole('status')).toHaveTextContent('Personal context cleared')
+
+    await user.click(screen.getByRole('button', { name: '01 Discover' }))
+    expect(await screen.findByRole('status', { name: 'Personal prompt status' })).toHaveTextContent(
+      'Personal context off'
+    )
   })
 
   it('responds to native navigation, sidebar, and selected-item analysis commands', async () => {

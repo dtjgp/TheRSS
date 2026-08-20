@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { ExternalLink, EyeOff, Sparkles, Star } from 'lucide-react'
+import { ExternalLink, EyeOff, Sparkles } from 'lucide-react'
 import type { DashboardItem, TriageState } from '../../shared/api'
 import type { AnalysisArtifact } from '../../shared/models'
 import { isPaperAnalysisCandidate, PAPER_L1_ANALYSIS_PROMPT_VERSION } from '../../shared/analysis'
 import { AnalysisPanel } from './AppSections'
+import { SaveStar } from './SaveStar'
 import { sourceDisplayName, sourceStyleToken } from '../../shared/sourceIdentity'
 
 interface SignalWorkspaceProps {
@@ -31,19 +32,6 @@ function SourceMark({ source }: { readonly source: DashboardItem['source'] }) {
     <span className={`source-mark source-mark--${sourceStyleToken(source)}`}>
       {sourceDisplayName(source).toLocaleUpperCase()}
     </span>
-  )
-}
-
-function SaveStar({ isSaved }: { readonly isSaved: boolean }) {
-  return (
-    <Star
-      aria-hidden="true"
-      className="save-button__icon"
-      data-save-star
-      fill={isSaved ? 'currentColor' : 'none'}
-      focusable="false"
-      strokeWidth={1.75}
-    />
   )
 }
 

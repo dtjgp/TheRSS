@@ -577,13 +577,32 @@ main {
   outline: none;
 }
 
+.field textarea {
+  width: 100%;
+  min-height: 132px;
+  padding: 12px 13px;
+  color: var(--ink);
+  resize: vertical;
+  background: var(--tertiary-system-grouped-background);
+  border: 1px solid var(--opaque-separator);
+  border-radius: 8px;
+  outline: none;
+  line-height: 1.55;
+}
+
 .field input:focus {
+  border-color: var(--view-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--view-accent) 18%, transparent);
+}
+
+.field textarea:focus {
   border-color: var(--view-accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--view-accent) 18%, transparent);
 }
 
 .field input:hover,
 .field select:hover,
+.field textarea:hover,
 .discover-form textarea:hover {
   border-color: var(--separator);
 }
@@ -602,6 +621,89 @@ main {
 
 .model-editor form {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.model-editor .personalization-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+  padding: 30px;
+  background: var(--secondary-system-grouped-background);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.personalization-form__heading {
+  display: grid;
+  gap: 12px;
+}
+
+.personalization-form__heading h2 {
+  margin: 0;
+  font-family: 'Newsreader', serif;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.personalization-form__heading p:last-child,
+.model-provider-form__heading > p:last-child,
+.field-hint {
+  margin: 0;
+  color: var(--secondary-label);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.personalization-form + form {
+  margin-top: 22px;
+}
+
+.personalization-form__guidance {
+  display: grid;
+  gap: 8px;
+}
+
+.personalization-form__privacy {
+  margin: 0;
+  padding: 11px 12px;
+  color: var(--secondary-label);
+  background: var(--tertiary-system-fill);
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.personalization-form__footer {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.personalization-form__status {
+  padding: 10px 12px;
+  color: var(--system-green-text);
+  background: color-mix(in srgb, var(--system-green) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--system-green) 28%, transparent);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.model-provider-form__heading {
+  display: grid;
+  gap: 10px;
+  padding-bottom: 4px;
+}
+
+.model-provider-form__heading h2 {
+  margin: 0;
+  font-family: 'Newsreader', serif;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
 }
 
 .field select {
@@ -1858,6 +1960,39 @@ main {
   outline: none;
 }
 
+.discover-personalization-status {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  min-height: 28px;
+  color: var(--secondary-label);
+  font-size: 11px;
+}
+
+.discover-personalization-status > span {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  background: var(--system-gray);
+  border-radius: 50%;
+}
+
+.discover-personalization-status--active > span {
+  background: var(--system-green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--system-green) 14%, transparent);
+}
+
+.discover-personalization-status p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.discover-personalization-status strong {
+  margin-right: 7px;
+  color: var(--label);
+  font-weight: 650;
+}
+
 .discover-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
@@ -2156,7 +2291,28 @@ main {
 }
 
 .discover-result-list {
+  height: clamp(420px, calc(100vh - 112px), 840px);
   padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--secondary-system-grouped-background);
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  scrollbar-gutter: stable;
+}
+
+.discover-result-list > .today-view__heading {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  background: color-mix(in srgb, var(--secondary-system-grouped-background) 94%, transparent);
+  backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.discover-result-list:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--view-accent) 28%, transparent);
+  outline-offset: 2px;
 }
 
 .discover-result-list .signal-grid {
@@ -2166,6 +2322,29 @@ main {
 .discover-result-list .signal-card {
   min-height: 0;
   padding: 24px 28px 22px;
+}
+
+.discover-save-button {
+  flex: 0 0 auto;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.discover-analysis-button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.discover-card__analysis {
+  margin-top: 18px;
+}
+
+.discover-card__analysis .analysis-panel {
+  grid-template-columns: 150px minmax(0, 1fr);
+  margin: 0;
 }
 
 .discover-result-filters {
@@ -3013,6 +3192,19 @@ main {
 }
 
 @media (max-width: 860px) {
+  .model-editor form {
+    grid-template-columns: 1fr;
+  }
+
+  .personalization-form__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .personalization-form__footer .primary-button {
+    align-self: start;
+  }
+
   .analytics-summary,
   .source-catalog-summary,
   .source-catalog-grid,

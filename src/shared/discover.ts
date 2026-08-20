@@ -43,7 +43,8 @@ export interface DiscoverPlannerProvenance {
   readonly providerId: string
   readonly providerName: string
   readonly model: string
-  readonly promptVersion: 'semantic-discover-v1'
+  readonly promptVersion: 'semantic-discover-v1' | 'semantic-discover-v2'
+  readonly personalizationApplied: boolean
   readonly inputHash: string
   readonly createdAt: string
 }

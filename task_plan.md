@@ -693,3 +693,162 @@ release `app.asar` share SHA-256
 `305c54ee53aa23f2dfa3c63af270c54edad95ece982e7fc4908b01e7b5ccf78e`. The database backup is
 `~/Library/Application Support/therss/backups/therss-2026-08-19T21-25-28-902Z.sqlite`; the previous
 app is retained at `~/Applications/TheRSS Dev.backup-2026-08-19T21-25-28-902Z.app`.
+
+## Phase 29 — Scrollable Discover results and direct paper analysis
+
+### Goal
+
+Make the ranked Discover result region independently scrollable, replace the result-save text with
+an accessible outline/filled star toggle, and let a user run the existing evidence-bounded
+`llm-wiki-paper-l1-v1` analysis directly from a paper result card.
+
+### Execution
+
+- [x] Add RED renderer and Electron contracts for a bounded scroll region, reversible star state,
+      paper-only Analyze placement, and direct L1 analysis.
+- [x] Reuse the existing Discover promotion, triage, and analysis-artifact boundaries so direct
+      analysis neither grants renderer privileges nor invents a second persistence model.
+- [x] Implement the smallest renderer/CSS/API changes and keep non-paper results free of the paper
+      analysis action.
+- [x] Run focused tests, the full quality gate, Electron E2E, and rendered screenshot inspection.
+
+### Decisions
+
+- The result list, not the whole Discover search form, owns post-search scrolling so filters and
+  search context remain visible while browsing a long session.
+- A Discover result must be promoted to the local discovery index before analysis; the user-initiated
+  Analyze action may perform that prerequisite without changing the visible star to saved.
+- The direct paper action uses the currently selected analysis runner and the packaged
+  `llm-wiki-paper-l1-v1` prompt; it does not read or write the llm-wiki vault at runtime.
+
+### Status
+
+**Phase 29 complete.** The intended RED run failed at all four new boundaries. `npm run check` now
+passes 42 test files / 224 tests with 91.56% statements, 80.71% branches, 93.51% functions, and
+94.44% lines; production and MCP builds pass. The authorized Electron critical path passes 1/1 and
+proves non-zero result scrolling, outline/filled/reversible stars, paper-only analysis, no implicit
+save on Analyze, and a persisted `llm-wiki-paper-l1-v1` artifact. The Discover results, expanded L1
+analysis, filtered record, and filled-star screenshots were inspected without clipping or control
+misalignment. No live provider/source call, package installation, commit, push, or publication was
+performed.
+
+### Errors encountered
+
+- The restricted Electron launch aborted at the established macOS GUI boundary with `SIGABRT` and
+  `kill EPERM`; the authorized desktop rerun reached all new scroll/star/analysis assertions.
+- That rerun then found an obsolete broad text selector: analysis provenance adds a second valid
+  `Codex CLI · codex-cli` label alongside Search details. Scope the old assertion to the Search
+  details region instead of weakening either provenance surface.
+- The first formatting check reported two changed files; scoped Prettier formatting resolved it.
+- The first non-paper negative test referenced an identifier outside its Discover fixture and
+  correctly returned `Unknown Discover result`. Add an explicit repository-shaped result to the
+  fixture, then verify it is rejected before materialization.
+
+## Phase 30 — Personal research context
+
+### Goal
+
+Add a local Personal Prompt setting that lets the user provide stable research context for more
+specific Discover plan generation while keeping each search intent explicit, the generated plan
+inspectable, and the full saved prompt out of logs and direct source-adapter inputs.
+
+### Execution
+
+- [x] Map the current Models & Agents settings surface, typed IPC, SQLite ownership, and Discover
+      prompt/provenance path before choosing the interaction and storage contract.
+- [x] Add RED schema, repository, planner, IPC, renderer, and Electron contracts for bounded,
+      optional personal context.
+- [x] Implement the smallest local persistence, settings UI, and prompt-composition changes with
+      explicit enablement and privacy guidance.
+- [x] Update the product/design contract and run focused tests, the full quality gate, Electron E2E,
+      and rendered UI inspection.
+
+### Initial decisions
+
+- Personal context supplements the current Discover intent; it never replaces the per-search query
+  and never reaches source adapters as an unvalidated query.
+- Store the bounded plain-text setting in local SQLite, not browser storage or a cloud/account
+  surface. Do not log or render it inside historical result/provenance views.
+- Preserve prompt traceability with a version and input hash rather than duplicating the personal
+  text into every Discover session.
+- Treat a saved non-empty prompt as active and a saved empty prompt as disabled. This keeps one
+  obvious source of truth instead of allowing a toggle and text field to disagree.
+- New personalized-capable runs use `semantic-discover-v2` and record only an applied/not-applied
+  provenance flag plus the exact composed-input hash; legacy v1 sessions remain readable.
+
+### Errors encountered
+
+- The added personalization-schema RED suite initially could not import the not-yet-created module;
+  adding the bounded shared schema made its trim, empty-disable, size, and control-character cases
+  pass.
+- Two concurrent audit paths briefly produced overlapping partial persistence code. Stop the audits,
+  retain one shared-schema implementation, remove the duplicates, and verify the repaired boundary
+  with TypeScript before continuing.
+- One provenance parser narrowing expression returned `unknown` to a boolean field. Require an
+  explicit `typeof === 'boolean'` guard and default legacy records to `false`.
+- Independent review found the original privacy copy overstated the source boundary: source sites
+  receive planner-generated search terms, which can reflect personal context. Correct the UI and
+  product/design contract, while retaining the true boundary that the full saved setting is sent
+  only to the selected planner after an explicit Discover action.
+- Review also caught desktop CSS specificity, permissive v2 provenance fallback, and missing clear-
+  to-disable coverage. Add focused RED cases, then fix the one-column selector, require the v2 flag,
+  and verify non-empty -> empty -> Discover off across renderer/repository/planner boundaries.
+
+### Status
+
+**Phase 30 complete.** The Personal Prompt settings surface is now anchored at the top of Models &
+Agents, Discover shows whether personal context is active without echoing the private text, and the
+planner/provenance path records only an applied flag plus the composed-input hash. The final
+review-focused suite passed 4 files / 60 tests. `npm run check` passed 43 files / 236 tests with
+91.69% statements, 81.15% branches, 93.59% functions, and 94.56% lines; production and MCP builds
+passed. The
+restricted Electron launch hit the established macOS GUI sandbox boundary (`SIGABRT` / `kill
+EPERM`), then the authorized desktop rerun passed 1/1. Rendered inspection of
+`test-results/05-personal-prompt-settings.png`,
+`test-results/05b-personalized-discover-ready.png`, and
+`test-results/05c-personalized-discover.png` confirmed the one-column settings hierarchy, accurate
+privacy copy, active state, and personalized provenance/result layout. Independent code/security
+review findings were addressed; no blocking issue remains. No live provider/source call, package
+installation, commit, push, or publication was performed.
+
+## Phase 31 — Local install and publication closure
+
+### Goal
+
+Build the verified current worktree, replace the existing reversible local `TheRSS Dev.app`, smoke
+the installed bundle, then commit and push the complete Phase 29–30 Discover improvement set.
+
+### Execution
+
+- [x] Recheck the exact install target, database path, Git branch/remote, and final diff scope.
+- [x] Run the reversible local installer and validate the installed bundle plus retained backups.
+- [x] Review staged content for secrets and unintended artifacts.
+- [ ] Create one Conventional Commit for the verified Phase 29–30 worktree.
+- [ ] Push `main`, verify local/remote convergence, and record final evidence.
+
+### Decisions
+
+- Treat the user's follow-up as authorization to publish the complete currently verified Phase
+  29–30 worktree. Generated release/test output remains ignored and outside the commit.
+- Use the established `npm run install:local` workflow, which backs up SQLite, retains the previous
+  app, and refuses symbolic-link or unexpected targets before replacement.
+- Smoke the installed executable explicitly rather than attributing the release-directory smoke to
+  the installed app.
+
+### Status
+
+**Phase 31 in progress.** `npm run install:local` installed the unsigned arm64 build at
+`/Users/dtjgp/Applications/TheRSS Dev.app`; the explicitly installed executable passed packaged
+smoke. The retained SQLite backup passes `PRAGMA integrity_check`, bundle metadata is version
+`0.2.0` / `dev.dtjgp.therss`, and installed/release `app.asar` files share SHA-256
+`601dbfd76044970ebdbf57a369ccd8700db9ae28f48fd1d31ec477ece20dfbaa`. The staged source/test/docs
+set passes whitespace and secret-pattern review; the production dependency audit reports zero
+vulnerabilities. Commit creation and remote closure remain.
+
+### Errors encountered
+
+- The first backup-integrity command ran inside the restricted sandbox and SQLite returned
+  `unable to open database file (14)` for the external backup path. The approved read-only rerun
+  returned `ok`; no database write or repair was attempted.
+- The first production `npm audit` could not resolve `registry.npmjs.org` inside the network-
+  restricted sandbox. The approved npm advisory-endpoint rerun completed with zero vulnerabilities.

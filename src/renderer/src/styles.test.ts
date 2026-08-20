@@ -77,4 +77,19 @@ describe('Apple semantic color system', () => {
       /\.app-shell--sidebar-collapsed\s*\{[^}]*grid-template-columns:\s*68px/u
     )
   })
+
+  it('keeps long Discover sessions inside a keyboard-scrollable result region', () => {
+    expect(stylesheet).toMatch(
+      /\.discover-result-list\s*\{[^}]*overflow-y:\s*auto;[^}]*overscroll-behavior:\s*contain;[^}]*scrollbar-gutter:\s*stable;/su
+    )
+    expect(stylesheet).toMatch(
+      /\.discover-result-list\s*>\s*\.today-view__heading\s*\{[^}]*position:\s*sticky;/su
+    )
+  })
+
+  it('keeps Personal Prompt settings in one column on desktop layouts', () => {
+    expect(stylesheet).toMatch(
+      /\.model-editor\s+\.personalization-form\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/su
+    )
+  })
 })
