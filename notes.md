@@ -499,3 +499,6 @@ src/renderer/src/App.test.tsx` -> 4 files / 54 tests.
   installed the Apple-typography build to `~/Applications/TheRSS Dev.app`, and the installed executable
   passed package smoke. Release and installed `app.asar` hashes both equal
   `822fe94be988b4a003f0f02702bbe489bb8a790b292a7c1adabf75502e1a889e`.
+- GitHub PR #8 passed its required quality workflow and was rebased into protected `main`; the
+  published Apple-typography commit is `e7fb39c`. Merge commits are disabled in this repository, so
+  rebase is the verified publication strategy for this change set.

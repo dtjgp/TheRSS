@@ -924,9 +924,9 @@ commit every current tracked change, and publish the resulting verified state to
       state.
 - [x] Refresh remote refs and determine the current branch-protection-compliant publication path.
 - [x] Run the complete release gate, update README evidence, and install/smoke the local app.
-- [ ] Review and stage the complete worktree, commit with Conventional Commits, and push the feature
+- [x] Review and stage the complete worktree, commit with Conventional Commits, and push the feature
       branch.
-- [ ] Land the verified commit on GitHub `main` without bypassing protection, then verify local and
+- [x] Land the verified commit on GitHub `main` without bypassing protection, then verify local and
       remote convergence.
 
 ### Decisions
@@ -940,7 +940,7 @@ commit every current tracked change, and publish the resulting verified state to
 
 ### Status
 
-**Phase 33 in progress.** README now documents Personal Prompt, Apple system typography, the latest
+**Phase 33 complete.** README now documents Personal Prompt, Apple system typography, the latest
 quality evidence, and the installed-app state. `npm run check` passed 43 files / 237 tests with the
 same above-threshold coverage; production/MCP builds passed and the production dependency audit
 reported zero vulnerabilities. `npm run install:local` backed up SQLite, retained the previous app,
@@ -950,8 +950,10 @@ smoke. Installed and release `app.asar` files share SHA-256
 `0.2.0` / `dev.dtjgp.therss`, and backup
 `/Users/dtjgp/Library/Application Support/therss/backups/therss-2026-08-20T11-58-06-926Z.sqlite`
 passes `PRAGMA integrity_check`. The prior application remains at
-`/Users/dtjgp/Applications/TheRSS Dev.backup-2026-08-20T11-58-06-926Z.app`. Commit and protected-main
-publication remain in progress.
+`/Users/dtjgp/Applications/TheRSS Dev.backup-2026-08-20T11-58-06-926Z.app`. Feature commit `88e3e7c`
+passed the ECC pre-push lint, typecheck, 43-file/237-test, and production/MCP build gate. PR #8 passed
+the required `quality` check and was rebased into GitHub `main`; refreshed `origin/main` recorded the
+published typography commit as `e7fb39c`.
 
 ### Errors encountered
 
@@ -963,3 +965,11 @@ publication remain in progress.
 - electron-builder found no valid Developer ID identity and therefore produced the expected unsigned
   personal-development bundle. This does not block the authorized local install, but it remains a
   public distribution and automatic replacement-update limitation.
+- GitHub rejected PR #8's first merge attempt because merge commits are disabled for this repository.
+  The already-approved PR was merged with the allowed rebase strategy; no protection rule was
+  bypassed.
+- The first post-merge `git fetch` could not write `.git/FETCH_HEAD` inside the restricted sandbox.
+  The approved scoped fetch succeeded and showed `origin/main` at `e7fb39c`.
+- A combined closure staging/check/commit command could not create `.git/index.lock` inside the
+  restricted sandbox. Reissuing only the already-authorized scoped `git add` succeeded; no index or
+  commit was partially created.
