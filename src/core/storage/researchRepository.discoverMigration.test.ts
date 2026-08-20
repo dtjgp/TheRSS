@@ -83,6 +83,7 @@ function discoverSnapshotWithDataset(): DiscoverSnapshot {
       providerName: 'Codex CLI',
       model: 'codex-cli',
       promptVersion: 'semantic-discover-v1',
+      personalizationApplied: false,
       inputHash: 'a'.repeat(64),
       createdAt: '2026-08-19T10:00:00.000Z'
     },
@@ -241,6 +242,7 @@ describe('ResearchRepository Discover migration', () => {
     })
     expect(restored.sourceOutcomes['folo:64']).toEqual(NOT_SEARCHED)
     expect(restored.counts.bySource['folo:64']).toBe(0)
+    expect(restored.provenance.personalizationApplied).toBe(false)
     repository.close()
   })
 

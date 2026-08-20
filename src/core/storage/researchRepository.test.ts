@@ -94,6 +94,7 @@ function discoverSnapshot(): DiscoverSnapshot {
       providerName: 'Codex CLI',
       model: 'codex-cli',
       promptVersion: 'semantic-discover-v1',
+      personalizationApplied: false,
       inputHash: 'a'.repeat(64),
       createdAt: '2026-08-16T10:00:00.000Z'
     },
@@ -222,6 +223,57 @@ describe('ResearchRepository', () => {
       .all()
 
     expect(remaining).toEqual([])
+    repository.close()
+  })
+
+  it('persists one local Discover personalization prompt', () => {
+    const repository = createRepository()
+
+    repository.saveDiscoverPersonalizationPrompt(
+      'I focus on reproducible edge intelligence systems and demand-response user modeling.',
+      '2026-08-20T09:00:00.000Z'
+    )
+
+    expect(repository.getDiscoverPersonalizationSettings()).toEqual({
+      prompt:
+        'I focus on reproducible edge intelligence systems and demand-response user modeling.',
+      updatedAt: '2026-08-20T09:00:00.000Z'
+    })
+
+    repository.saveDiscoverPersonalizationPrompt('  \n  ', '2026-08-20T09:05:00.000Z')
+    expect(repository.getDiscoverPersonalizationSettings()).toEqual({
+      prompt: '',
+      updatedAt: '2026-08-20T09:05:00.000Z'
+    })
+    repository.close()
+  })
+
+  it('rejects v2 Discover provenance when its personalization flag is missing', () => {
+    const database = new Database(':memory:')
+    const repository = new ResearchRepository(database)
+    repository.saveDiscoverSnapshot({
+      ...discoverSnapshot(),
+      provenance: {
+        ...discoverSnapshot().provenance,
+        promptVersion: 'semantic-discover-v2',
+        personalizationApplied: true
+      }
+    })
+    database.prepare('UPDATE discover_session SET provenance_json = ? WHERE id = ?').run(
+      JSON.stringify({
+        providerId: 'local-agent:codex',
+        providerName: 'Codex CLI',
+        model: 'codex-cli',
+        promptVersion: 'semantic-discover-v2',
+        inputHash: 'a'.repeat(64),
+        createdAt: '2026-08-16T10:00:00.000Z'
+      }),
+      'discover-session-1'
+    )
+
+    expect(() => repository.getLatestDiscoverSnapshot()).toThrow(
+      'The local index contains invalid Discover provenance'
+    )
     repository.close()
   })
 
@@ -485,6 +537,58 @@ describe('ResearchRepository', () => {
       expect.objectContaining({ id: 'arxiv:2608.00001', triageState: 'saved' })
     ])
     expect(repository.getLatestDiscoverSnapshot()?.items[0]?.saved).toBe(true)
+    repository.close()
+  })
+
+  it('materializes a Discover result for analysis without silently saving it', () => {
+    const repository = createRepository()
+    const snapshot = discoverSnapshot()
+    const nonPaperId = 'arxiv:discover-repository'
+    repository.saveDiscoverSnapshot({
+      ...snapshot,
+      sourceOutcomes: {
+        ...snapshot.sourceOutcomes,
+        arxiv: { status: 'healthy', resultCount: 2, error: null }
+      },
+      counts: {
+        ...snapshot.counts,
+        total: 2,
+        byKind: { ...snapshot.counts.byKind, repository: 1 },
+        bySource: { ...snapshot.counts.bySource, arxiv: 2 }
+      },
+      items: [
+        ...snapshot.items,
+        {
+          ...snapshot.items[0]!,
+          id: nonPaperId,
+          kind: 'repository',
+          externalId: 'discover-repository',
+          title: 'Repository-shaped Discover result',
+          url: 'https://arxiv.org/abs/discover-repository'
+        }
+      ]
+    })
+
+    repository.materializeDiscoverResultForAnalysis(
+      'discover-session-1',
+      'arxiv:2608.00001',
+      '2026-08-16T10:05:00.000Z'
+    )
+
+    expect(repository.getDiscoveryItem('arxiv:2608.00001')).toEqual(
+      expect.objectContaining({ id: 'arxiv:2608.00001', triageState: 'viewed' })
+    )
+    expect(repository.listSavedItems()).toEqual([])
+    expect(repository.getLatestDiscoverSnapshot()?.items[0]?.saved).toBe(false)
+
+    repository.saveDiscoverResult('discover-session-1', 'arxiv:2608.00001')
+    repository.materializeDiscoverResultForAnalysis('discover-session-1', 'arxiv:2608.00001')
+    expect(repository.getDiscoveryItem('arxiv:2608.00001')?.triageState).toBe('saved')
+
+    expect(() =>
+      repository.materializeDiscoverResultForAnalysis('discover-session-1', nonPaperId)
+    ).toThrow('Discover analysis is available only for paper results')
+    expect(repository.getDiscoveryItem(nonPaperId)).toBeNull()
     repository.close()
   })
 

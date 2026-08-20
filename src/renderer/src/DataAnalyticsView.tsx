@@ -132,7 +132,10 @@ function AnalyticsContent({ snapshot }: { readonly snapshot: AnalyticsSnapshot }
         {snapshot.analyzedItems.length === 0 ? (
           <div className="analytics-empty">
             <strong>No deep analyses recorded yet.</strong>
-            <p>Analyze a paper or repository from Saved to create an auditable record.</p>
+            <p>
+              Analyze a paper from Discover, or a paper or repository from Saved, to create an
+              auditable record.
+            </p>
           </div>
         ) : (
           <ol className="analytics-history" aria-label="Deep analysis history">

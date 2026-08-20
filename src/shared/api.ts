@@ -1,4 +1,5 @@
 import type { InterestProfile } from '../core/interests/interestProfile'
+import type { DiscoverPersonalizationSettings } from './personalization'
 import type {
   AnalysisArtifact,
   AnalysisRunner,
@@ -79,7 +80,14 @@ export interface TheRSSApi {
   setTriageState(id: string, state: TriageState): Promise<DashboardSnapshot>
   getModelProvider(): Promise<ModelProviderSummary | null>
   saveModelProvider(input: ModelProviderInput): Promise<ModelProviderSummary>
+  getDiscoverPersonalizationSettings(): Promise<DiscoverPersonalizationSettings | null>
+  saveDiscoverPersonalizationPrompt(prompt: string): Promise<DiscoverPersonalizationSettings>
   getLocalAgentStatuses(): Promise<readonly LocalAgentStatus[]>
   analyzeItem(id: string, runner: AnalysisRunner): Promise<AnalysisArtifact>
+  analyzeDiscoverResult(
+    sessionId: string,
+    itemId: string,
+    runner: AnalysisRunner
+  ): Promise<AnalysisArtifact>
   getLatestAnalysis(id: string): Promise<AnalysisArtifact | null>
 }

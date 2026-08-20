@@ -15,6 +15,7 @@ import { ResearchRepository } from '../core/storage/researchRepository'
 import { discoverSearchRequestSchema } from '../shared/discover'
 import type { DiscoverySource } from '../shared/discovery'
 import { IPC_CHANNELS } from '../shared/ipc'
+import { discoverPersonalizationPromptSchema } from '../shared/personalization'
 import { isDiscoverySource } from '../shared/sourceIdentity'
 import { createApplicationMenuTemplate } from './applicationMenu'
 import {
@@ -48,6 +49,9 @@ const analysisInputSchema = z.object({
 const discoverResultInputSchema = z
   .object({ sessionId: itemIdSchema, itemId: itemIdSchema })
   .strict()
+const discoverAnalysisInputSchema = discoverResultInputSchema.extend({
+  runner: z.enum(['model-provider', 'codex', 'claude']).default('model-provider')
+})
 
 class ElectronSecretCipher implements SecretCipher {
   isAvailable(): boolean {
@@ -120,11 +124,27 @@ function registerIpcHandlers(
   ipcMain.handle(IPC_CHANNELS.saveModelProvider, (_event, candidate: unknown) =>
     providerService.save(candidate)
   )
+  ipcMain.handle(IPC_CHANNELS.getDiscoverPersonalizationSettings, () =>
+    repository.getDiscoverPersonalizationSettings()
+  )
+  ipcMain.handle(IPC_CHANNELS.saveDiscoverPersonalizationPrompt, (_event, candidate: unknown) =>
+    repository.saveDiscoverPersonalizationPrompt(
+      discoverPersonalizationPromptSchema.parse(candidate)
+    )
+  )
   ipcMain.handle(IPC_CHANNELS.getLocalAgentStatuses, () => localAgentService.getStatuses())
   ipcMain.handle(IPC_CHANNELS.analyzeItem, (_event, id: unknown, runner: unknown) => {
     const validated = analysisInputSchema.parse({ id, runner })
     return analysisService.analyzeItem(validated.id, { runner: validated.runner })
   })
+  ipcMain.handle(
+    IPC_CHANNELS.analyzeDiscoverResult,
+    (_event, sessionId: unknown, itemId: unknown, runner: unknown) => {
+      const validated = discoverAnalysisInputSchema.parse({ sessionId, itemId, runner })
+      repository.materializeDiscoverResultForAnalysis(validated.sessionId, validated.itemId)
+      return analysisService.analyzeItem(validated.itemId, { runner: validated.runner })
+    }
+  )
   ipcMain.handle(IPC_CHANNELS.getLatestAnalysis, (_event, id: unknown) =>
     repository.getLatestAnalysis(itemIdSchema.parse(id))
   )
@@ -244,6 +264,7 @@ app.whenReady().then(() => {
               'You generate bounded academic search plans. Return one JSON object only and never claim retrieval.',
             maxTokens: 800
           }),
+    getPersonalizationPrompt: () => repository.getDiscoverPersonalizationSettings()?.prompt ?? null,
     planWithLocalAgent: useE2eFixtures
       ? async (_prompt, runner) => ({
           content: fixturePlan,

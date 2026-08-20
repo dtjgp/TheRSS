@@ -30,7 +30,10 @@ export const IPC_CHANNELS = {
   setTriageState: 'triage:set',
   getModelProvider: 'models:get-provider',
   saveModelProvider: 'models:save-provider',
+  getDiscoverPersonalizationSettings: 'models:get-discover-personalization',
+  saveDiscoverPersonalizationPrompt: 'models:save-discover-personalization',
   getLocalAgentStatuses: 'agents:get-statuses',
   analyzeItem: 'analysis:run',
+  analyzeDiscoverResult: 'analysis:run-discover-result',
   getLatestAnalysis: 'analysis:get-latest'
 } as const

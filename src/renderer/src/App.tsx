@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { BarChart3, Bot, Compass, Library, PanelLeftClose, PanelLeftOpen, Star } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { DashboardSnapshot, TheRSSApi, TriageState } from '../../shared/api'
+import { DISCOVER_PERSONALIZATION_PROMPT_MAX_LENGTH } from '../../shared/personalization'
 import type {
   AnalysisArtifact,
   AnalysisRunner,
@@ -101,8 +102,13 @@ function ModelEditor({
 }) {
   const [draft, setDraft] = useState<ModelDraft>(emptyModelDraft)
   const [provider, setProvider] = useState<ModelProviderSummary | null>(null)
+  const [personalPrompt, setPersonalPrompt] = useState('')
+  const [savedPersonalPrompt, setSavedPersonalPrompt] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isSavingPersonalPrompt, setIsSavingPersonalPrompt] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [personalPromptError, setPersonalPromptError] = useState<string | null>(null)
+  const [personalPromptStatus, setPersonalPromptStatus] = useState<string | null>(null)
 
   useEffect(() => {
     let isActive = true
@@ -112,6 +118,23 @@ function ModelEditor({
         setDraft(draftFromProvider(current))
       }
     })
+    return () => {
+      isActive = false
+    }
+  }, [api])
+
+  useEffect(() => {
+    let isActive = true
+    api
+      .getDiscoverPersonalizationSettings()
+      .then((settings) => {
+        if (!isActive || !settings) return
+        setPersonalPrompt(settings.prompt)
+        setSavedPersonalPrompt(settings.prompt)
+      })
+      .catch(() => {
+        if (isActive) setPersonalPromptError('The local personal prompt could not be opened.')
+      })
     return () => {
       isActive = false
     }
@@ -143,17 +166,111 @@ function ModelEditor({
     }
   }
 
+  const savePersonalPrompt = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setIsSavingPersonalPrompt(true)
+    setPersonalPromptError(null)
+    setPersonalPromptStatus(null)
+    try {
+      const saved = await api.saveDiscoverPersonalizationPrompt(personalPrompt)
+      setPersonalPrompt(saved.prompt)
+      setSavedPersonalPrompt(saved.prompt)
+      setPersonalPromptStatus(
+        saved.prompt
+          ? 'Personal context saved. Future Discover searches will use it.'
+          : 'Personal context cleared. Future Discover searches will stay generic.'
+      )
+    } catch {
+      setPersonalPromptError(
+        'The personal Discover prompt must stay within the local safety limit.'
+      )
+    } finally {
+      setIsSavingPersonalPrompt(false)
+    }
+  }
+
   return (
     <section className="model-editor">
       <div className="model-editor__heading">
-        <p className="eyebrow">MODEL DESK</p>
-        <h1>Bring your own analysis model.</h1>
+        <p className="eyebrow">AGENT SETTINGS</p>
+        <h1>Personalize your research agents.</h1>
         <p>
-          OpenAI-compatible covers DeepSeek and local servers; Anthropic-compatible covers Claude
-          APIs. The API key is encrypted with the operating system and is never returned here.
+          Give Discover stable research context, then choose the model or local agent that expands
+          each question into an inspectable search plan.
         </p>
       </div>
+      <form className="personalization-form" onSubmit={(event) => void savePersonalPrompt(event)}>
+        <div className="personalization-form__heading">
+          <div>
+            <p className="eyebrow">01 · PERSONAL PROMPT</p>
+            <h2>Give search the context you repeat every time.</h2>
+          </div>
+          <p>
+            Describe your fields, active questions, preferred evidence, methods, and exclusions.
+            Your current Discover question remains the primary instruction.
+          </p>
+        </div>
+        <label className="field field--wide">
+          <span>Personal Discover prompt</span>
+          <textarea
+            aria-label="Personal Discover prompt"
+            aria-describedby="personal-prompt-guidance personal-prompt-privacy"
+            value={personalPrompt}
+            onChange={(event) => {
+              setPersonalPrompt(event.target.value)
+              setPersonalPromptStatus(null)
+            }}
+            maxLength={DISCOVER_PERSONALIZATION_PROMPT_MAX_LENGTH}
+            placeholder="Example: I research edge intelligence and energy systems. Prioritize reproducible evaluations, explicit resource budgets, and reviewer-safe claim boundaries."
+            rows={6}
+          />
+        </label>
+        <div className="personalization-form__guidance">
+          <p id="personal-prompt-guidance" className="field-hint">
+            A short profile is usually enough. Clear the field and save to disable personalization.
+          </p>
+          <p id="personal-prompt-privacy" className="personalization-form__privacy">
+            Stored only in local SQLite. Your full text is sent to the selected model, Codex, or
+            Claude only when you run Discover. Source sites receive the generated search terms,
+            which can reflect this context. Do not include passwords, API keys, or confidential
+            unpublished details.
+          </p>
+        </div>
+        <div className="personalization-form__footer">
+          <p className="field-hint">
+            {personalPrompt.length}/{DISCOVER_PERSONALIZATION_PROMPT_MAX_LENGTH} characters
+            {savedPersonalPrompt.trim()
+              ? ' · active for future Discover runs'
+              : ' · Discover remains generic until saved'}
+          </p>
+          <button
+            type="submit"
+            className="primary-button"
+            disabled={isSavingPersonalPrompt || personalPrompt === savedPersonalPrompt}
+          >
+            {isSavingPersonalPrompt ? 'Saving personal prompt…' : 'Save personal Discover prompt'}
+          </button>
+        </div>
+        {personalPromptError && (
+          <div className="form-error" role="alert">
+            {personalPromptError}
+          </div>
+        )}
+        {personalPromptStatus && (
+          <div className="personalization-form__status" role="status">
+            {personalPromptStatus}
+          </div>
+        )}
+      </form>
       <form onSubmit={(event) => void save(event)}>
+        <div className="model-provider-form__heading field--wide">
+          <p className="eyebrow">02 · MODEL PROVIDER</p>
+          <h2>Bring your own analysis model.</h2>
+          <p>
+            OpenAI-compatible covers DeepSeek and local servers; Anthropic-compatible covers Claude
+            APIs. API keys are encrypted by the operating system and never returned here.
+          </p>
+        </div>
         <label className="field">
           <span>Provider name</span>
           <input

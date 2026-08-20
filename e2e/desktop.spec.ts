@@ -140,6 +140,36 @@ test('Discover-first search across every deployed source', async () => {
     await expect(discoverArticle).toBeVisible()
     await expect(discoverArticle.getByText('北京智源人工智能研究院')).toBeVisible()
     await expect(discoverArticle.getByText('Article')).toBeVisible()
+    const resultRegion = page.getByRole('region', { name: 'Discover results' })
+    await expect(resultRegion).toHaveAttribute('tabindex', '0')
+    expect(
+      await resultRegion.evaluate((element) => ({
+        clientHeight: element.clientHeight,
+        overflowY: getComputedStyle(element).overflowY,
+        scrollHeight: element.scrollHeight
+      }))
+    ).toMatchObject({ overflowY: 'auto' })
+    expect(
+      await resultRegion.evaluate((element) => element.scrollHeight > element.clientHeight)
+    ).toBe(true)
+    await resultRegion.evaluate((element) => {
+      element.scrollTop = element.scrollHeight
+    })
+    expect(await resultRegion.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+    await resultRegion.evaluate((element) => {
+      element.scrollTop = 0
+    })
+    const paperSave = discoverPaper.getByRole('button', { name: 'Save result' })
+    await expect(paperSave).toHaveAttribute('aria-pressed', 'false')
+    await expect(paperSave.locator('[data-save-star]')).toHaveAttribute('fill', 'none')
+    await expect(discoverPaper.getByRole('button', { name: 'Analyze paper' })).toBeVisible()
+    await expect(discoverRepository.getByRole('button', { name: 'Analyze paper' })).toHaveCount(0)
+    await expect(discoverArticle.getByRole('button', { name: 'Analyze paper' })).toHaveCount(0)
+    await discoverPaper.getByRole('button', { name: 'Analyze paper' }).click()
+    await expect(discoverPaper.getByLabel('L1 paper analysis result')).toContainText(
+      'llm-wiki-paper-l1-v1'
+    )
+    await expect(paperSave).toHaveAttribute('aria-pressed', 'false')
     const resultTop = await page
       .getByRole('region', { name: 'Discover results' })
       .evaluate((element) => element.getBoundingClientRect().top)
@@ -151,7 +181,7 @@ test('Discover-first search across every deployed source', async () => {
     await capture(page, '02-discover-results.png')
 
     await page.getByRole('button', { name: /Search details/u }).click()
-    await expect(page.getByText('Codex CLI · codex-cli')).toBeVisible()
+    await expect(searchDetails.getByText('Codex CLI · codex-cli')).toBeVisible()
     const outcomes = page.getByRole('list', { name: 'Source outcomes' })
     await expect(outcomes.getByRole('listitem')).toHaveCount(22)
     await expect(outcomes.getByText('北京智源人工智能研究院')).toBeVisible()
@@ -164,7 +194,21 @@ test('Discover-first search across every deployed source', async () => {
     await capture(page, '03-discover-other.png')
 
     await discoverArticle.getByRole('button', { name: 'Save result' }).click({ force: true })
-    await expect(discoverArticle.getByRole('button', { name: 'Saved' })).toBeDisabled()
+    const removeSavedArticle = discoverArticle.getByRole('button', {
+      name: 'Remove result from Saved'
+    })
+    await expect(removeSavedArticle).toHaveAttribute('aria-pressed', 'true')
+    await expect(removeSavedArticle.locator('[data-save-star]')).toHaveAttribute(
+      'fill',
+      'currentColor'
+    )
+    await capture(page, '03b-discover-star-saved.png')
+    await removeSavedArticle.click({ force: true })
+    await expect(discoverArticle.getByRole('button', { name: 'Save result' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    )
+    await discoverArticle.getByRole('button', { name: 'Save result' }).click({ force: true })
     await primaryNavigation.getByRole('button', { name: '02 Saved' }).click()
     await expect(page.getByRole('heading', { name: 'Saved research signals' })).toBeVisible()
     await expect(
@@ -187,14 +231,41 @@ test('Discover-first search across every deployed source', async () => {
 
     await primaryNavigation.getByRole('button', { name: '03 Models & Agents' }).click()
     await expect(
-      page.getByRole('heading', { name: 'Bring your own analysis model.' })
+      page.getByRole('heading', { name: 'Personalize your research agents.' })
     ).toBeVisible()
+    const personalPrompt = page.getByRole('textbox', { name: 'Personal Discover prompt' })
+    await expect(personalPrompt).toHaveValue('')
+    await personalPrompt.fill(
+      'I research edge intelligence and energy systems. Prioritize reproducible evaluations and explicit resource budgets.'
+    )
+    await page.getByRole('button', { name: 'Save personal Discover prompt' }).click()
+    await expect(page.getByRole('status')).toContainText('Personal context saved')
+    await page.locator('main').evaluate((element) => {
+      element.scrollTop = 0
+    })
+    await capture(page, '05-personal-prompt-settings.png')
     await page.getByRole('textbox', { name: 'Provider name' }).fill('Local fixture')
     await page.getByRole('textbox', { name: 'Provider base URL' }).fill('http://127.0.0.1:11434/v1')
     await page.getByRole('textbox', { name: 'Model name' }).fill('fixture-model')
     await page.getByRole('button', { name: 'Save model provider' }).click()
     await expect(page.getByText('Credential protected by macOS')).toHaveCount(0)
     await capture(page, '05-models.png')
+
+    await primaryNavigation.getByRole('button', { name: '01 Discover' }).click()
+    await expect(page.getByRole('status', { name: 'Personal prompt status' })).toContainText(
+      'Personal context on'
+    )
+    await page.locator('main').evaluate((element) => {
+      element.scrollTop = 0
+    })
+    await capture(page, '05b-personalized-discover-ready.png')
+    await page.getByRole('button', { name: 'Expand and search' }).click()
+    await expect(page.getByText('Search complete')).toBeVisible()
+    await page.getByRole('button', { name: /Search details/u }).click()
+    await expect(page.getByLabel('Discover search details')).toContainText(
+      'semantic-discover-v2 · personal context applied'
+    )
+    await capture(page, '05c-personalized-discover.png')
 
     await page.getByRole('button', { name: 'Hide sidebar' }).click()
     await expect(page.locator('.app-shell')).toHaveClass(/app-shell--sidebar-collapsed/)
@@ -204,8 +275,8 @@ test('Discover-first search across every deployed source', async () => {
     await primaryNavigation.getByRole('button', { name: '04 Data Analytics' }).click()
     await expect(page.getByRole('heading', { name: 'Data Analytics' })).toBeVisible()
     const searchResults = page.getByLabel('Search results')
-    await expect(searchResults).toContainText('3')
-    await expect(searchResults).toContainText('0 legacy Today · 3 Discover')
+    await expect(searchResults).toContainText('6')
+    await expect(searchResults).toContainText('0 legacy Today · 6 Discover')
     await capture(page, '06-analytics.png')
 
     if (!isBaselineCapture) {

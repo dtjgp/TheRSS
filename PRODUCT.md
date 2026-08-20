@@ -2,9 +2,10 @@
 
 ## Capability
 
-TheRSS enables a single research user to express a research question in natural language, ask a
-configured model, Codex, or Claude Code to expand it into an inspectable plan, and search exactly 22
-live-verified research sources through one Discover workflow. arXiv and GitHub execute bounded
+TheRSS enables a single research user to save an optional Personal Prompt, express a research
+question in natural language, ask a configured model, Codex, or Claude Code to expand that context
+into an inspectable plan, and search exactly 22 live-verified research sources through one Discover
+workflow. arXiv and GitHub execute bounded
 source-specific queries; the 19 fixed RSS/HTML routes and Hugging Face return bounded recent
 records that TheRSS filters and ranks locally against the same transient plan. Every result retains
 typed provenance and an independent source outcome. Deeper item analysis retains model/tool
@@ -18,6 +19,8 @@ provenance without copying secrets.
   provisional, abstract-bounded adaptation of llm-wiki's L1 paper template and never present it as
   a verified full-paper deep read.
 - Semantic expansion search exposes the executed terms and per-source outcome instead of presenting opaque model answers as search evidence.
+- A bounded Personal Prompt can supply stable research fields, evidence preferences, and exclusions
+  without replacing the explicit question for each Discover run.
 - All operational state remains local; the current release exposes no account-login or synchronization surface.
 
 ## Fixed constraints
@@ -27,6 +30,9 @@ provenance without copying secrets.
 - No plaintext API key is committed, logged, exported to llm-wiki, returned to the renderer/MCP, or stored in SQLite. Only OS-backed encrypted ciphertext may be persisted.
 - External HTML and feed data are untrusted and must be parsed, bounded, and sanitized.
 - The current Discover intent, selected sources, expanded terms, and ranking reasons are inspectable.
+- Personal Prompt text stays in local SQLite and is sent only to the selected planner after an
+  explicit Discover action. Source adapters receive only the validated generated plan, but its
+  search terms can reflect the personal context. Saving an empty prompt disables it.
 - Agent writes and external exports require explicit confirmation.
 - Account login and cross-device synchronization are deferred until the user explicitly reopens that product decision.
 - The initial release must not depend on a paid Apple Developer Program membership.
@@ -37,9 +43,14 @@ provenance without copying secrets.
    Codex CLI, or Claude Code. The user can search any subset of all 22 deployed sources, inspect the
    executed plan and each source outcome, and filter the persisted result session by record type
    without rerunning the model or adapters. Source selection is summarized until requested; after a
-   run, ranked records precede a collapsed plan/provenance/source-outcome inspector.
+   run, ranked records occupy a keyboard-scrollable region before a collapsed
+   plan/provenance/source-outcome inspector. Every result has a reversible outline/filled Saved star;
+   paper records additionally expose a user-initiated L1 analysis action without implicitly saving
+   the paper.
 2. **Saved** — one persisted shelf for explicitly retained research signals from every active source.
-3. **Models & Agents** — one model provider profile, direct bounded Codex/Claude CLI analysis, plus documented read-only MCP setup.
+3. **Models & Agents** — a Personal Prompt settings group, one model provider profile, direct
+   bounded Codex/Claude CLI analysis, plus documented read-only MCP setup. The UI explains what
+   context is useful, where it is sent, and what sensitive content not to include.
 4. **Data Analytics** — local Discover result-volume reporting, preserved historical Today volume, and a provenance-bearing ledger of deeply analyzed research signals.
 5. **Sources** — a searchable directory containing only the 22 previously live-verified sources,
    with priority, research-axis, and provenance. Selecting a source opens an in-app rolling 30-day
@@ -76,6 +87,10 @@ Paper promotion to a knowledge system is a separate, confirmation-gated workflow
 - Discover rejects invalid model-generated plans before any source request, distinguishes complete,
   partial, empty, and failed outcomes per selected source, and never silently treats a browse-only
   source's unrelated recent records as semantic matches.
+- Personal Prompt input is length/control-character validated at IPC and persistence boundaries;
+  the composed planner input is versioned and hashed, and historical provenance records only
+  whether personalization was applied. The persisted generated plan remains inspectable derived
+  evidence and can reflect terms from the profile.
 - Data Analytics retains historical Today refresh volume separately from explicit Discover volume,
   derives deep-analysis history only from persisted artifacts, and does not fabricate history.
 - The Sources directory and Discover selector expose exactly 22 unique live-verified HTTPS sources

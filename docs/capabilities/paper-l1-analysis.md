@@ -2,10 +2,10 @@
 
 ## User outcome
 
-When the selected Today or Saved record is typed as a paper, its detail view introduces a dedicated
-L1 analysis section immediately after the discovery summary. The user can invoke the configured
-model, Codex CLI, or Claude Code through the existing Analyze action; the resulting artifact expands
-in that section using an evidence-bounded adaptation of llm-wiki's `Paper_Note_L1` structure.
+When a Discover result or selected Saved record is typed as a paper, the user can invoke the
+configured model, Codex CLI, or Claude Code through an explicit Analyze action. Discover expands the
+resulting artifact in the result card; Saved places it immediately after the discovery summary. Both
+surfaces use the same evidence-bounded adaptation of llm-wiki's `Paper_Note_L1` structure.
 
 ## Source contract
 
@@ -39,6 +39,8 @@ placeholders.
   Legacy arXiv snapshots whose optional `kind` predates that contract retain a narrow compatibility
   fallback; an explicit non-paper kind is never overridden.
 - Electron main and the existing `AnalysisService` own model/local-agent execution and persistence.
+- An unsaved Discover paper is materialized as a local `viewed` discovery record before analysis so
+  the artifact has a stable source row; this prerequisite does not change the visible Saved star.
 - Every artifact retains provider/runner, model/tool, prompt version, discovery-source hash, content,
   and timestamp in SQLite.
 - Renderer receives the existing typed artifact only. It gains no filesystem, vault, process,
@@ -51,6 +53,8 @@ placeholders.
 
 - Analysis remains user initiated. Merely selecting a paper never spends provider quota or starts a
   local process.
+- The Discover Analyze action is present only on typed paper results and appears immediately to the
+  right of the reversible Saved star.
 - Before analysis, the paper section explains the evidence level and the Analyze / `A` action.
 - A saved artifact from the older generic paper prompt remains visible, is not relabeled as L1, and
   invites an explicit replacement run.
@@ -64,9 +68,10 @@ placeholders.
 - Unit: paper/non-paper prompt routing, required L1 sections, `[TBD]` and evidence constraints,
   model output budget, and local-agent prompt reuse.
 - Integration: paper artifacts persist `llm-wiki-paper-l1-v1` for model and local-agent runners.
-- Renderer: the L1 artifact follows the paper summary and exposes accessible region labels.
-- Electron E2E: the fixture paper shows the pre-run L1 boundary, runs analysis, and renders the
-  provenance-bearing L1 result in the selected detail.
+- Renderer: Discover exposes a paper-only Analyze action without auto-saving, while both Discover
+  and Saved render accessible L1 artifact regions.
+- Electron E2E: the fixture verifies the independently scrollable result region, outline/filled star
+  transitions, paper-only analysis, and the provenance-bearing L1 result.
 
 ## Non-goals
 

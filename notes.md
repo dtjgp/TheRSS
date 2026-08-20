@@ -238,6 +238,31 @@ TheRSS wins by combining deterministic, provenance-preserving discovery with a d
 - Design-system gap: the fixed per-view sidebar icon colors conflict with Apple's preference for the user's system accent on most sidebar icons. The 1,859-line stylesheet also contains duplicate declarations and lacks increased-contrast/inactive-window adaptations, making future visual drift likely.
 - Surface consistency gap: Today/Saved uses a dense native-style list-detail workspace, while Discover returns to large editorial cards. The different selection, open, save, and keyboard behaviors make the two discovery workflows feel like separate products.
 - Test gap: the suite strongly covers business behavior and one critical Electron flow, but there is no automated accessibility scan, contrast contract, application-menu/window-restoration test, keyboard-focus assertion, or stateful visual-regression baseline.
+
+## 2026-08-20 Personal Prompt verification
+
+- UI/UX placement decision: the Personal Prompt belongs at the top of `Models & Agents`, not as a
+  new primary navigation item and not inline inside each Discover search. It is stable planner
+  context, so the settings surface is the least ambiguous location and keeps the per-search intent
+  explicit.
+- Current implementation stores one bounded prompt in local SQLite through typed IPC, validates and
+  trims it in shared schema code, and includes it only in the planner prompt for Discover. Source
+  adapters receive the validated generated plan; its search terms can reflect the personal context.
+- Discover does not echo the private text in status or provenance. Provenance retains only
+  `personalizationApplied` plus the composed-input hash under `semantic-discover-v2`; the separately
+  persisted generated plan remains inspectable and its terms can reflect personal context.
+- Focused verification passed: `npm test -- src/shared/personalization.test.ts
+src/core/storage/researchRepository.test.ts src/core/discover/discoverPlanner.test.ts
+src/renderer/src/App.test.tsx` -> 4 files / 54 tests.
+- Full quality gate passed on 2026-08-20: `npm run check` -> 43 files / 232 tests with 91.63%
+  statements, 80.95% branches, 93.59% functions, and 94.49% lines; production and MCP builds
+  passed.
+- Electron E2E first failed only at the known macOS restricted-GUI boundary (`SIGABRT`,
+  `kill EPERM`). The authorized rerun of `npm run test:e2e` passed 1/1.
+- Rendered screenshots inspected locally: `test-results/05-personal-prompt-settings.png` confirms
+  the settings card hierarchy, privacy copy, character counter, and save confirmation;
+  `test-results/02-discover-results.png` confirms Discover result layout and search-details
+  inspector placement after a successful run.
 - Current quality gate remained green during the audit: 26 test files / 133 tests passed with 93.93% statements, 84.45% branches, 94.83% functions, and 96.02% lines; lint, typecheck, renderer/main/MCP builds, and formatting passed.
 
 ## 2026-08-18 Apple semantic color system
@@ -301,6 +326,56 @@ TheRSS wins by combining deterministic, provenance-preserving discovery with a d
   `08d-x-watchlist-elon.png` were inspected; all groups and `@elonmusk` render without overlap.
 - No live xapi call or package/install operation was performed. The installed-app `npx` lookup
   remains deferred and is still required before packaged X retrieval can be claimed.
+
+## 2026-08-20 Discover result usability
+
+- The screenshot confirms the ranked result list is clipped by a fixed-height `.today-view` nested
+  inside the page-scrolling Discover surface; `.today-view` currently applies `overflow: hidden`.
+- Discover cards still expose a one-way `Save result` text action even though Saved already has the
+  required accessible outline/filled `Star` toggle and the repository supports `saved -> viewed`.
+- The existing paper analysis path already mirrors the live
+  `/Users/dtjgp/Obsidian/llm-wiki/Templates/Paper_Note_L1.md` decision/evidence sequence under prompt
+  version `llm-wiki-paper-l1-v1`; no new template or vault runtime access is needed.
+- Direct analysis of an unsaved Discover result needs a local `discovery_item` row before
+  `AnalysisService.analyzeItem` can run. Promotion for analysis must remain distinct from the Saved
+  star state so an analysis request does not silently claim that the user saved the result.
+- The focused RED run produced four intended failures: missing scroll CSS, missing materialization,
+  the old Save result text control, and the absent paper Analyze action. After implementation, the
+  same renderer/style/storage selection passes 42/42.
+- Final behavior: the result region has bounded vertical overflow, keyboard focus, stable scrollbar
+  space, overscroll containment, and a sticky heading/filter bar. Save is an accessible star with
+  outline/filled state and `saved -> viewed` cancellation. Only `kind: paper` gets the adjacent
+  Analyze action; an unsaved paper materializes as `viewed`, runs the selected Discover runner, and
+  keeps its star off while persisting the standard L1 provenance artifact.
+- Final verification: `npm run check` passes 42 files / 224 tests at 91.56% statements, 80.71%
+  branches, 93.51% functions, and 94.44% lines. The Electron E2E passes 1/1; inspected screenshots
+  include `02-discover-results.png` and `03b-discover-star-saved.png`.
+
+## 2026-08-20 Personal Prompt settings
+
+- UI/UX placement: keep the five-destination sidebar stable. Native `Command-,` and the existing
+  Models & Agents destination already converge on one settings surface, so Personal Prompt belongs
+  as the first settings group rather than a sixth primary destination.
+- Interaction: saving a non-empty prompt activates it for subsequent Discover planning; clearing
+  and saving disables personalization. This avoids a second switch whose state could disagree with
+  the text while keeping the off-state explicit.
+- Prompt content guidance: fields/current questions, preferred methods/evidence, and exclusions are
+  useful. The UI explicitly warns against passwords, API keys, or confidential unpublished details.
+- Privacy boundary: the bounded prompt is stored in the local SQLite operational database. It is
+  sent only to the selected configured model or bounded Codex/Claude planner after an explicit
+  Discover action. Source adapters receive the validated generated plan, whose search terms can
+  reflect the personal context; the UI discloses this and warns against entering sensitive details.
+- Injection boundary: personal context and the per-search intent have separate untrusted-data
+  delimiters. The profile cannot change the JSON contract, selected sources, tool/file access, or
+  evidence status. Only the validated `discover-plan-v1` reaches source adapters.
+- Traceability: new plan runs use `semantic-discover-v2`; the existing input hash covers the exact
+  composed prompt, and provenance records whether personal context was applied without persisting a
+  duplicate profile inside each historical session. Legacy v1 sessions restore as generic context.
+- RED evidence: the initial focused run had four intended failures across prompt composition/hash,
+  SQLite persistence, and renderer settings. The added schema test also failed because the bounded
+  personalization module did not yet exist.
+- Focused GREEN evidence: seven files / 78 tests pass across schema, planner, service, SQLite
+  migration/round-trip, shared contract, and renderer behavior; type checking also passes.
 
 ## 2026-08-19 retain only live-verified sources
 
