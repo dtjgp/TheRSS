@@ -11,6 +11,20 @@ function submenuFor(
 }
 
 describe('createApplicationMenuTemplate', () => {
+  it('exposes the native Close Window role for the macOS Command+W shortcut', () => {
+    const template = createApplicationMenuTemplate(vi.fn(), true)
+
+    expect(submenuFor(template, 'File')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'close-window',
+          role: 'close',
+          accelerator: 'CommandOrControl+W'
+        })
+      ])
+    )
+  })
+
   it('provides macOS settings, navigation, sidebar, refresh, and signal commands', () => {
     const send = vi.fn()
     const template = createApplicationMenuTemplate(send, true)

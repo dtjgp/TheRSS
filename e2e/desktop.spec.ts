@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { env } from 'node:process'
+import { env, platform } from 'node:process'
 import { _electron as electron, expect, test, type Page } from '@playwright/test'
 
 test('Discover-first search across every deployed source', async () => {
@@ -92,6 +92,7 @@ test('Discover-first search across every deployed source', async () => {
           submenu: item.submenu?.items.map((child) => child.label) ?? []
         }))
       )
+      const fileMenu = applicationMenuLabels.find((item) => item.label === 'File')
       const viewMenu = applicationMenuLabels.find((item) => item.label === 'View')
       expect(applicationMenuLabels).toEqual(
         expect.arrayContaining([
@@ -107,6 +108,7 @@ test('Discover-first search across every deployed source', async () => {
       )
       expect(viewMenu?.submenu).not.toContain('Today')
       expect(viewMenu?.submenu).not.toContain('Interests')
+      expect(fileMenu?.submenu).toContain('Close Window')
     }
 
     const sourcePicker = page.getByRole('button', {
@@ -319,6 +321,39 @@ test('Discover-first search across every deployed source', async () => {
     await expect(page.getByRole('button', { name: /Today|Interests|Sync/ })).toHaveCount(0)
     await expect(page.getByText(/Google Drive/i)).toHaveCount(0)
     expect(rendererErrors).toEqual([])
+
+    if (!isBaselineCapture && platform === 'darwin') {
+      expect(
+        await application.evaluate(({ Menu }) => {
+          const closeItem = Menu.getApplicationMenu()?.getMenuItemById('close-window')
+          return closeItem
+            ? {
+                role: closeItem.role,
+                accelerator: closeItem.accelerator,
+                registerAccelerator: closeItem.registerAccelerator
+              }
+            : null
+        })
+      ).toEqual({
+        role: 'close',
+        accelerator: 'CommandOrControl+W',
+        registerAccelerator: true
+      })
+      await application.evaluate(({ Menu }) => {
+        Menu.sendActionToFirstResponder('performClose:')
+      })
+      await expect.poll(() => page.isClosed()).toBe(true)
+      await expect.poll(() => application.windows().length).toBe(0)
+
+      const reopenedWindow = application.waitForEvent('window')
+      await application.evaluate(({ app }) => {
+        app.emit('activate')
+      })
+      const reopenedPage = await reopenedWindow
+      await expect(
+        reopenedPage.getByRole('heading', { name: 'Search across your full source desk' })
+      ).toBeVisible()
+    }
   } finally {
     await application.close()
   }

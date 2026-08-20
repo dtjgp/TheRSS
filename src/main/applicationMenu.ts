@@ -26,6 +26,17 @@ export function createApplicationMenuTemplate(
     ]
   }
 
+  const fileMenu: MenuItemConstructorOptions = {
+    label: 'File',
+    submenu: [
+      {
+        id: 'close-window',
+        role: 'close',
+        accelerator: 'CommandOrControl+W'
+      }
+    ]
+  }
+
   const editMenu: MenuItemConstructorOptions = {
     label: 'Edit',
     submenu: [
@@ -90,5 +101,5 @@ export function createApplicationMenuTemplate(
     ]
   }
 
-  return [appMenu, editMenu, viewMenu, signalMenu, windowMenu]
+  return [appMenu, fileMenu, editMenu, viewMenu, signalMenu, windowMenu]
 }

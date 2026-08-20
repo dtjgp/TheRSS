@@ -973,3 +973,86 @@ published typography commit as `e7fb39c`.
 - A combined closure staging/check/commit command could not create `.git/index.lock` inside the
   restricted sandbox. Reissuing only the already-authorized scoped `git add` succeeded; no index or
   commit was partially created.
+
+## Phase 34 — Native macOS window shortcuts
+
+### Goal
+
+Restore the standard macOS `File → Close Window` command so `Command+W` closes the focused TheRSS
+window without quitting the application, using Electron native menu roles rather than renderer or
+global shortcut interception.
+
+### Execution
+
+- [x] Confirm the custom application menu replaces Electron defaults and currently omits the native
+      `close` role.
+- [x] Add a RED menu contract for a macOS File menu with `role: close`.
+- [x] Implement the smallest native menu change and add runtime Electron coverage for `Command+W`.
+- [x] Run focused, full, and Electron validation; confirm no regression to existing application
+      shortcuts or macOS reopen behavior.
+
+### Decisions
+
+- Put `role: close` in a standard File menu. Electron/macOS owns the `Command+W` accelerator, label,
+  focus targeting, and accessibility semantics.
+- Do not use `globalShortcut` or renderer `keydown` handling: those would either capture the shortcut
+  outside TheRSS or duplicate native window behavior.
+- `Command+W` closes the single application window, not an internal Discover/Saved/Sources route.
+  The existing macOS `activate` handler remains responsible for recreating a window from the Dock.
+
+### Status
+
+**Phase 34 complete.** Static diagnosis confirmed that the renderer does not intercept
+`Command+W`; the missing native `close` role in the custom menu template is the root cause. The new
+unit contract failed as expected because the current template has no File submenu. The native File
+menu now exposes an identified `close` role with the application-scoped `CommandOrControl+W`
+accelerator. Focused tests pass 3/3, and Electron E2E passes 1/1 after verifying the runtime menu
+registration, Cocoa Close Window action, zero remaining windows, a still-running macOS app, and
+successful window recreation on `activate`. `npm run check` passes 43 files / 238 tests with 91.69%
+statements, 81.15% branches, 93.59% functions, and 94.56% lines; lint, typecheck, production build,
+and MCP build pass. The unsigned arm64 package builds and its isolated package smoke passes. No app
+installation, commit, push, live source/model request, or publication was performed in this phase.
+
+### Errors encountered
+
+- Playwright's renderer-level `page.keyboard.press('Meta+W')` did not close the window. CDP-injected
+  key events do not traverse the native macOS AppKit menu accelerator path. Keep a runtime assertion
+  for the registered accelerator and invoke the native menu command itself to verify close semantics;
+  do not replace the native implementation with renderer keyboard handling merely to satisfy the
+  harness.
+- Calling the role-backed `MenuItem.click()` directly also did not close the window because Electron
+  does not use that method to emulate native role dispatch. Replace the harness call with Electron's
+  documented macOS `Menu.sendActionToFirstResponder('performClose:')` API, which emulates the Cocoa
+  Close Window action while the separate menu assertion verifies the registered role and accelerator.
+- The first `npm run package:mac` could not resolve `github.com` inside the network-restricted
+  sandbox while electron-builder fetched its Electron archive. The approved network-enabled rerun
+  completed packaging; package smoke then passed. The bundle remains unsigned because no valid
+  Developer ID identity is installed, which is expected for this personal-development workflow.
+
+## Phase 35 — Publish native macOS shortcuts
+
+### Goal
+
+Commit the verified native Close Window implementation and land it on protected GitHub `main`
+through the repository's required pull-request and quality-check workflow.
+
+### Execution
+
+- [x] Refresh remote refs and confirm the feature branch is based on current `origin/main`.
+- [x] Review the complete diff and staged scope for unintended files or secrets.
+- [ ] Create and push one Conventional Commit for the shortcut fix.
+- [ ] Pass GitHub `quality`, rebase-merge the PR, and verify the exact remote `main` commit.
+
+### Decisions
+
+- Publish the five current source, test, plan, and notes files. Generated package/test output remains
+  ignored and outside the commit.
+- Use a pull request and the repository-supported rebase merge strategy; do not bypass protected
+  `main` or delete remote branches without separate authorization.
+- The user authorized GitHub publication only. Do not replace the installed local app in this phase.
+
+### Status
+
+**Phase 35 in progress.** `origin/main` is refreshed. The five-file diff contains only the native
+menu implementation, its unit/Electron coverage, and durable plan/notes; formatting, whitespace, and
+secret-pattern review pass. Scoped staging and publication remain in progress.

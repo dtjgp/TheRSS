@@ -502,3 +502,22 @@ src/renderer/src/App.test.tsx` -> 4 files / 54 tests.
 - GitHub PR #8 passed its required quality workflow and was rebased into protected `main`; the
   published Apple-typography commit is `e7fb39c`. Merge commits are disabled in this repository, so
   rebase is the verified publication strategy for this change set.
+
+## 2026-08-20 native macOS shortcut diagnosis
+
+- `Menu.setApplicationMenu()` installs a fully custom template, so native commands absent from that
+  template are not retained automatically.
+- The template includes native quit, hide, minimize, zoom, editing roles, and custom navigation
+  accelerators, but no File menu and no `close` role. This specifically leaves `Command+W` without a
+  native menu command.
+- The correct fix is a standard File menu containing `role: close`; the existing macOS activation
+  handler already recreates a window after the last one is closed.
+- Implementation uses `id: close-window`, `role: close`, and the application-menu-scoped
+  `CommandOrControl+W` accelerator. This is not a system-wide `globalShortcut`.
+- Playwright keyboard injection does not pass through AppKit accelerators, and directly calling a
+  role-backed `MenuItem.click()` does not emulate native dispatch. The stable E2E contract inspects
+  the built menu registration and uses `Menu.sendActionToFirstResponder('performClose:')` to verify
+  Cocoa window-close behavior while keeping the Electron application process alive.
+- Final verification passes 43 files / 238 tests, all four coverage thresholds, Electron E2E 1/1,
+  production/MCP builds, unsigned arm64 packaging, and isolated packaged-app smoke. The E2E also
+  emits `activate` after closing the last window and confirms that the Discover window is recreated.
