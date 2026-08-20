@@ -863,3 +863,103 @@ request or merge was created without separate authorization.
   from the verified commit and push that branch instead.
 - The first sandboxed `git switch -c` could not create the branch ref lock. The approved scoped
   branch-creation rerun succeeded; no existing branch or commit was rewritten.
+
+## Phase 32 — Apple system typography
+
+### Goal
+
+Replace every bundled/editorial font in the renderer with macOS Apple system typography while
+preserving readable display/body hierarchy and removing unused font assets from the application.
+
+### Execution
+
+- [x] Inventory renderer imports, every CSS `font-family`, package dependencies, and stale design
+      documentation.
+- [x] Add a RED typography contract that forbids third-party font imports/dependencies and permits
+      only Apple text/display stacks or inheritance.
+- [x] Migrate all renderer typography to shared Apple system stacks and remove Fontsource packages.
+- [x] Run focused/full/Electron verification and inspect fresh rendered screenshots.
+
+### Decisions
+
+- Use `-apple-system` / `BlinkMacSystemFont` / `SF Pro Text` for body and controls, and `SF Pro
+Display` first for large headings. Retain `Helvetica Neue` and generic sans-serif only as
+  non-macOS development fallbacks; no Apple font files are bundled or redistributed.
+- Preserve hierarchy through size, weight, tracking, and spacing rather than the former Newsreader
+  serif contrast.
+- Remove both Fontsource imports and package dependencies so the production bundle cannot silently
+  retain IBM Plex Sans or Newsreader assets.
+
+### Status
+
+**Phase 32 complete.** The live audit found 26 Newsreader declarations, one IBM Plex Sans
+declaration, five Fontsource imports, two direct dependencies, and one stale design-audit statement.
+The RED typography contract failed against those legacy references, then passed 7/7 after the
+renderer was migrated to the shared Apple text/display variables and both Fontsource packages were
+removed. `npm run check` passed 43 files / 237 tests with 91.69% statements, 81.15% branches, 93.59%
+functions, and 94.56% lines; lint, typecheck, production build, and MCP build also passed. Electron
+E2E passed 1/1 with computed-font assertions for the text and display stacks. Fresh Discover,
+Saved, Personal Prompt, and Sources screenshots were inspected; English and Chinese content, large
+headings, forms, and dense list/detail layouts remain readable without clipping. The production
+renderer contains only HTML, CSS, and JavaScript assets—no bundled font files. No local app install,
+commit, push, live source/model request, or publication was performed in this phase.
+
+### Errors encountered
+
+- Removing the two Fontsource packages completed successfully, but npm reported the existing Node
+  `v24.13.0` as below jsdom 30.0.1's declared `^24.15.0` range. This is an environment warning rather
+  than a typography failure; the focused test passed, and the complete verifier will determine
+  whether it affects this worktree.
+
+## Phase 33 — Install and publish Apple typography
+
+### Goal
+
+Update README for Personal Prompt and Apple typography, replace the existing reversible local app,
+commit every current tracked change, and publish the resulting verified state to GitHub `main`.
+
+### Execution
+
+- [x] Recheck the current branch, worktree scope, README, install workflow, and prior protected-main
+      state.
+- [x] Refresh remote refs and determine the current branch-protection-compliant publication path.
+- [x] Run the complete release gate, update README evidence, and install/smoke the local app.
+- [ ] Review and stage the complete worktree, commit with Conventional Commits, and push the feature
+      branch.
+- [ ] Land the verified commit on GitHub `main` without bypassing protection, then verify local and
+      remote convergence.
+
+### Decisions
+
+- The user's explicit “push all to GitHub main” authorizes publishing every currently tracked font,
+  test, planning, notes, and README change. Generated release and test output remain ignored.
+- Reuse the reversible `npm run install:local` workflow so the database and previous app are retained
+  before replacement, followed by an explicit installed-bundle smoke.
+- If GitHub still protects `main`, use the existing feature branch and a pull-request merge after the
+  required quality check rather than bypassing branch protection.
+
+### Status
+
+**Phase 33 in progress.** README now documents Personal Prompt, Apple system typography, the latest
+quality evidence, and the installed-app state. `npm run check` passed 43 files / 237 tests with the
+same above-threshold coverage; production/MCP builds passed and the production dependency audit
+reported zero vulnerabilities. `npm run install:local` backed up SQLite, retained the previous app,
+and installed `/Users/dtjgp/Applications/TheRSS Dev.app`; the installed executable passed packaged
+smoke. Installed and release `app.asar` files share SHA-256
+`822fe94be988b4a003f0f02702bbe489bb8a790b292a7c1adabf75502e1a889e`, bundle metadata remains
+`0.2.0` / `dev.dtjgp.therss`, and backup
+`/Users/dtjgp/Library/Application Support/therss/backups/therss-2026-08-20T11-58-06-926Z.sqlite`
+passes `PRAGMA integrity_check`. The prior application remains at
+`/Users/dtjgp/Applications/TheRSS Dev.backup-2026-08-20T11-58-06-926Z.app`. Commit and protected-main
+publication remain in progress.
+
+### Errors encountered
+
+- The macOS `sqlite3 -readonly` invocation returned `unable to open database file (14)` both in the
+  protected backup directory and for a temporary copy. Opening only the fixed temporary copy in its
+  writable temporary directory returned `ok`; the formal backup and live database were not modified.
+  The temporary copy was validated as one regular file and then removed to avoid leaving user data in
+  `/private/tmp`.
+- electron-builder found no valid Developer ID identity and therefore produced the expected unsigned
+  personal-development bundle. This does not block the authorized local install, but it remains a
+  public distribution and automatic replacement-update limitation.

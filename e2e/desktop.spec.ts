@@ -50,9 +50,25 @@ test('Discover-first search across every deployed source', async () => {
       })
     ).toEqual({ display: 'grid', alignItems: 'center', justifyItems: 'center' })
 
-    await expect(
-      page.getByRole('heading', { name: 'Search across your full source desk' })
-    ).toBeVisible()
+    const discoverHeading = page.getByRole('heading', {
+      name: 'Search across your full source desk'
+    })
+    await expect(discoverHeading).toBeVisible()
+    const appleTypography = await page.evaluate(() => {
+      const rootStyle = getComputedStyle(document.documentElement)
+      return {
+        textVariable: rootStyle.getPropertyValue('--font-apple-text').trim(),
+        displayVariable: rootStyle.getPropertyValue('--font-apple-display').trim(),
+        bodyFont: getComputedStyle(document.body).fontFamily
+      }
+    })
+    expect(appleTypography.textVariable).toContain('-apple-system')
+    expect(appleTypography.textVariable).toContain('SF Pro Text')
+    expect(appleTypography.displayVariable).toContain('SF Pro Display')
+    expect(appleTypography.bodyFont).toContain('-apple-system')
+    expect(
+      await discoverHeading.evaluate((element) => getComputedStyle(element).fontFamily)
+    ).toContain('SF Pro Display')
     const primaryNavigation = page.getByRole('navigation', { name: 'Primary navigation' })
     await expect(primaryNavigation.getByRole('button')).toHaveCount(5)
     await expect(primaryNavigation.getByRole('button', { name: '01 Discover' })).toBeVisible()

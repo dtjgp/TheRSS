@@ -2,6 +2,11 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const stylesheet = readFileSync(new URL('./styles.css', import.meta.url), 'utf8')
+const rendererEntry = readFileSync(new URL('./main.tsx', import.meta.url), 'utf8')
+const packageMetadata = JSON.parse(
+  readFileSync(new URL('../../../package.json', import.meta.url), 'utf8')
+) as { dependencies?: Record<string, string> }
+const packageLock = readFileSync(new URL('../../../package-lock.json', import.meta.url), 'utf8')
 
 describe('Apple semantic color system', () => {
   it('defines native light and dark semantic roles instead of legacy palette names', () => {
@@ -91,5 +96,27 @@ describe('Apple semantic color system', () => {
     expect(stylesheet).toMatch(
       /\.model-editor\s+\.personalization-form\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/su
     )
+  })
+
+  it('uses only Apple system typography without bundled third-party font assets', () => {
+    const fontFamilyDeclarations = Array.from(
+      stylesheet.matchAll(/font-family:\s*([^;]+);/gu),
+      (match) => match[1]?.trim()
+    )
+
+    expect(stylesheet).toMatch(
+      /--font-apple-text:\s*-apple-system,\s*BlinkMacSystemFont,\s*'SF Pro Text',\s*'Helvetica Neue',\s*sans-serif;/u
+    )
+    expect(stylesheet).toMatch(
+      /--font-apple-display:\s*'SF Pro Display',\s*-apple-system,\s*BlinkMacSystemFont,\s*'Helvetica Neue',\s*sans-serif;/u
+    )
+    expect(new Set(fontFamilyDeclarations)).toEqual(
+      new Set(['var(--font-apple-text)', 'var(--font-apple-display)', 'inherit'])
+    )
+    expect(stylesheet).not.toMatch(/Newsreader|IBM Plex Sans/u)
+    expect(rendererEntry).not.toContain('@fontsource/')
+    expect(packageMetadata.dependencies).not.toHaveProperty('@fontsource/ibm-plex-sans')
+    expect(packageMetadata.dependencies).not.toHaveProperty('@fontsource/newsreader')
+    expect(packageLock).not.toContain('node_modules/@fontsource/')
   })
 })
