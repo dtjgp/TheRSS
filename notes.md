@@ -397,8 +397,8 @@ src/renderer/src/App.test.tsx` -> 4 files / 54 tests.
   recoverable target.
 - Publication gate after the README update: `npm run check` passes 49 files / 291 tests at 90.43%
   statements, 80.12% branches, 93.86% functions, and 93.33% lines; production and MCP builds pass.
-  Electron E2E passes 2/2, including sidebar resize and the Discover-first workflow. `npm audit
-  --audit-level=high` reports zero vulnerabilities.
+  Electron E2E passes 2/2, including sidebar resize and the Discover-first workflow. The production
+  dependency audit reports zero vulnerabilities.
 
 ## 2026-08-19 retain only live-verified sources
 
