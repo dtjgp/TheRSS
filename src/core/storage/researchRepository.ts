@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3'
 import { interestProfileSchema, type InterestProfile } from '../interests/interestProfile'
 import type {
+  DiscoveryItem,
   DiscoveryItemKind,
   DiscoverySource,
   RankedDiscoveryItem
@@ -29,6 +30,10 @@ import { localDateKey } from '../../shared/date'
 import { parseDiscoverPlan } from '../discover/discoverPlan'
 import { buildAnalyticsSnapshot } from './analyticsRepository'
 import { ACTIVE_TODAY_SOURCE_IDS, isDiscoverySource } from '../../shared/sourceIdentity'
+import {
+  llmWikiPromotionReceiptSchema,
+  type LlmWikiPromotionReceipt
+} from '../../shared/llmWikiPromotion'
 
 const TRIAGE_STATES = new Set<TriageState>(['new', 'viewed', 'saved', 'dismissed'])
 type PersistedSourceHealth = Exclude<SourceHealth, 'no_results'>
@@ -131,6 +136,46 @@ interface DiscoverResultRow {
   score: number
   reasons_json: string
   saved: number
+}
+
+interface DiscoveryRecordRow {
+  id: string
+  source: DiscoverySource
+  item_kind: DiscoveryItemKind
+  external_id: string
+  title: string
+  summary: string
+  url: string
+  published_at: string
+  updated_at: string
+  authors_json: string
+  categories_json: string
+  topics_json: string
+  language: string | null
+  stars: number | null
+}
+
+interface LlmWikiPromotionReceiptRow {
+  id: string
+  item_id: string
+  arxiv_id: string
+  status: LlmWikiPromotionReceipt['status']
+  runner: string
+  version: string
+  prompt_version: string
+  source_hash: string
+  contract_hash: string
+  evidence_tier: LlmWikiPromotionReceipt['evidenceTier']
+  summary: string
+  created_paths_json: string
+  updated_paths_json: string
+  pdf_path: string | null
+  sidecar_path: string | null
+  note_path: string | null
+  audit_path: string | null
+  blockers_json: string
+  started_at: string
+  completed_at: string | null
 }
 
 function parseStringList(value: string): string[] {
@@ -282,6 +327,40 @@ export class ResearchRepository {
 
       CREATE INDEX IF NOT EXISTS analysis_artifact_by_item
         ON analysis_artifact(item_id, created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS llm_wiki_promotion_receipt (
+        sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT NOT NULL UNIQUE,
+        item_id TEXT NOT NULL REFERENCES discovery_item(id) ON DELETE CASCADE,
+        arxiv_id TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (
+          status IN (
+            'running', 'completed', 'partial', 'blocked',
+            'no-change', 'no-source', 'skipped', 'failed'
+          )
+        ),
+        runner TEXT NOT NULL CHECK (runner = 'codex'),
+        version TEXT NOT NULL,
+        prompt_version TEXT NOT NULL,
+        source_hash TEXT NOT NULL,
+        contract_hash TEXT NOT NULL,
+        evidence_tier TEXT NOT NULL CHECK (
+          evidence_tier IN ('pending', 'full-text-verified', 'partial', 'no-source')
+        ),
+        summary TEXT NOT NULL,
+        created_paths_json TEXT NOT NULL,
+        updated_paths_json TEXT NOT NULL,
+        pdf_path TEXT,
+        sidecar_path TEXT,
+        note_path TEXT,
+        audit_path TEXT,
+        blockers_json TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        completed_at TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS llm_wiki_promotion_receipt_by_item
+        ON llm_wiki_promotion_receipt(item_id, sequence DESC);
 
       CREATE TABLE IF NOT EXISTS discover_session (
         id TEXT PRIMARY KEY,
@@ -883,6 +962,39 @@ export class ResearchRepository {
       : null
   }
 
+  getDiscoveryRecord(id: string): DiscoveryItem | null {
+    const row = this.#database
+      .prepare(
+        `SELECT id, source, item_kind, external_id, title, summary, url,
+                published_at, updated_at, authors_json, categories_json, topics_json,
+                language, stars
+         FROM discovery_item WHERE id = ?`
+      )
+      .get(id) as DiscoveryRecordRow | undefined
+    if (!row) return null
+    if (!isDiscoverySource(row.source)) {
+      throw new Error('The local index contains an unsupported discovery source')
+    }
+
+    return {
+      id: row.id,
+      source: row.source,
+      kind: row.item_kind,
+      externalId: row.external_id,
+      title: row.title,
+      summary: row.summary,
+      url: row.url,
+      publishedAt: row.published_at,
+      updatedAt: row.updated_at,
+      authors: parseStringList(row.authors_json),
+      categories: parseStringList(row.categories_json),
+      topics: parseStringList(row.topics_json),
+      language: row.language,
+      stars: row.stars,
+      metrics: {}
+    }
+  }
+
   saveDiscoverSnapshot(snapshot: DiscoverSnapshot): void {
     const save = this.#database.transaction(() => {
       this.#database
@@ -1152,6 +1264,18 @@ export class ResearchRepository {
     this.#upsertDiscoverResult(row, 'viewed', false, updatedAt)
   }
 
+  materializeDiscoverResultForLlmWikiPromotion(
+    sessionId: string,
+    itemId: string,
+    updatedAt = new Date().toISOString()
+  ): void {
+    const row = this.#getDiscoverResult(sessionId, itemId)
+    if (row.source !== 'arxiv' || row.item_kind !== 'paper') {
+      throw new Error('llm-wiki promotion is available only for arXiv paper results')
+    }
+    this.#upsertDiscoverResult(row, 'viewed', false, updatedAt)
+  }
+
   recordSourceRun(
     source: DiscoverySource,
     status: PersistedSourceHealth,
@@ -1274,6 +1398,111 @@ export class ResearchRepository {
         usage.outputTokens,
         artifact.createdAt
       )
+  }
+
+  saveLlmWikiPromotionReceipt(receipt: LlmWikiPromotionReceipt): void {
+    const validated = llmWikiPromotionReceiptSchema.parse(receipt)
+    this.#database
+      .prepare(
+        `INSERT INTO llm_wiki_promotion_receipt(
+           id, item_id, arxiv_id, status, runner, version, prompt_version,
+           source_hash, contract_hash, evidence_tier, summary,
+           created_paths_json, updated_paths_json, pdf_path, sidecar_path,
+           note_path, audit_path, blockers_json, started_at, completed_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        validated.id,
+        validated.itemId,
+        validated.arxivId,
+        validated.status,
+        validated.runner,
+        validated.version,
+        validated.promptVersion,
+        validated.sourceHash,
+        validated.contractHash,
+        validated.evidenceTier,
+        validated.summary,
+        JSON.stringify(validated.createdPaths),
+        JSON.stringify(validated.updatedPaths),
+        validated.pdfPath,
+        validated.sidecarPath,
+        validated.notePath,
+        validated.auditPath,
+        JSON.stringify(validated.blockers),
+        validated.startedAt,
+        validated.completedAt
+      )
+  }
+
+  getLatestLlmWikiPromotionReceipt(itemId: string): LlmWikiPromotionReceipt | null {
+    const row = this.#database
+      .prepare(
+        `SELECT id, item_id, arxiv_id, status, runner, version, prompt_version,
+                source_hash, contract_hash, evidence_tier, summary,
+                created_paths_json, updated_paths_json, pdf_path, sidecar_path,
+                note_path, audit_path, blockers_json, started_at, completed_at
+         FROM llm_wiki_promotion_receipt
+         WHERE item_id = ?
+         ORDER BY sequence DESC
+         LIMIT 1`
+      )
+      .get(itemId) as LlmWikiPromotionReceiptRow | undefined
+    if (!row) return null
+
+    return llmWikiPromotionReceiptSchema.parse({
+      version: row.version,
+      id: row.id,
+      itemId: row.item_id,
+      arxivId: row.arxiv_id,
+      status: row.status,
+      runner: row.runner,
+      promptVersion: row.prompt_version,
+      sourceHash: row.source_hash,
+      contractHash: row.contract_hash,
+      evidenceTier: row.evidence_tier,
+      summary: row.summary,
+      createdPaths: parseStringList(row.created_paths_json),
+      updatedPaths: parseStringList(row.updated_paths_json),
+      pdfPath: row.pdf_path,
+      sidecarPath: row.sidecar_path,
+      notePath: row.note_path,
+      auditPath: row.audit_path,
+      blockers: parseStringList(row.blockers_json),
+      startedAt: row.started_at,
+      completedAt: row.completed_at
+    })
+  }
+
+  reconcileInterruptedLlmWikiPromotions(completedAt = new Date().toISOString()): number {
+    const itemIds = this.#database
+      .prepare(
+        `SELECT current.item_id
+         FROM llm_wiki_promotion_receipt AS current
+         WHERE current.status = 'running'
+           AND current.sequence = (
+             SELECT MAX(latest.sequence)
+             FROM llm_wiki_promotion_receipt AS latest
+             WHERE latest.item_id = current.item_id
+           )`
+      )
+      .pluck()
+      .all() as string[]
+    for (const itemId of itemIds) {
+      const running = this.getLatestLlmWikiPromotionReceipt(itemId)
+      if (!running || running.status !== 'running') continue
+      this.saveLlmWikiPromotionReceipt({
+        ...running,
+        id: `interrupted:${running.id}`.slice(0, 300),
+        status: 'partial',
+        evidenceTier: 'partial',
+        summary:
+          'The previous app session ended without a terminal vault receipt; inspect llm-wiki before retrying.',
+        blockers: ['The previous promotion outcome is unknown after application interruption.'],
+        completedAt
+      })
+    }
+    return itemIds.length
   }
 
   getLatestAnalysis(itemId: string): AnalysisArtifact | null {

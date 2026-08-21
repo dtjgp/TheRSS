@@ -35,5 +35,9 @@ export const IPC_CHANNELS = {
   getLocalAgentStatuses: 'agents:get-statuses',
   analyzeItem: 'analysis:run',
   analyzeDiscoverResult: 'analysis:run-discover-result',
-  getLatestAnalysis: 'analysis:get-latest'
+  getLatestAnalysis: 'analysis:get-latest',
+  previewLlmWikiPromotion: 'llm-wiki-promotion:preview',
+  confirmLlmWikiPromotion: 'llm-wiki-promotion:confirm',
+  cancelLlmWikiPromotion: 'llm-wiki-promotion:cancel',
+  getLatestLlmWikiPromotion: 'llm-wiki-promotion:get-latest'
 } as const

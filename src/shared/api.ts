@@ -11,6 +11,7 @@ import type { DiscoverSearchRequest, DiscoverSnapshot } from './discover'
 import type { AnalyticsSnapshot } from './analytics'
 import type { AppCommand } from './ipc'
 import type { DiscoveryItemKind, DiscoverySource } from './discovery'
+import type { LlmWikiPromotionPreview, LlmWikiPromotionReceipt } from './llmWikiPromotion'
 
 export type SourceHealth = 'idle' | 'refreshing' | 'healthy' | 'no_results' | 'partial' | 'failed'
 export type TriageState = 'new' | 'viewed' | 'saved' | 'dismissed'
@@ -90,4 +91,8 @@ export interface TheRSSApi {
     runner: AnalysisRunner
   ): Promise<AnalysisArtifact>
   getLatestAnalysis(id: string): Promise<AnalysisArtifact | null>
+  previewLlmWikiPromotion(itemId: string, sessionId?: string): Promise<LlmWikiPromotionPreview>
+  confirmLlmWikiPromotion(previewId: string): Promise<LlmWikiPromotionReceipt>
+  cancelLlmWikiPromotion(previewId: string): Promise<LlmWikiPromotionReceipt>
+  getLatestLlmWikiPromotion(itemId: string): Promise<LlmWikiPromotionReceipt | null>
 }

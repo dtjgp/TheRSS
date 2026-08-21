@@ -1059,3 +1059,106 @@ secret-pattern review passed. Conventional Commit `078dcc3` passed the ECC pre-p
 43-file/238-test, and production/MCP build gate and was pushed to
 `origin/codex/native-macos-shortcuts`. PR #10 passed its required GitHub `quality` workflow and was
 rebased into protected `main`; refreshed `origin/main` records the published fix as `ca24931`.
+
+## Phase 36 — Confirmation-gated llm-wiki paper promotion
+
+### Goal
+
+Let the user promote one high-value arXiv paper from TheRSS into the live local llm-wiki vault with
+one explicit confirmation. The host-side workflow must follow the vault's current paper-ingestion
+governance, save the real source/PDF and analysis into canonical paths, preserve evidence tiers, and
+return an inspectable terminal receipt without exposing filesystem or process access to the renderer.
+
+### Execution
+
+- [x] Freeze the live llm-wiki ingest/write/lease contract and record the capability ADR.
+- [x] Add RED shared-contract, service, persistence, IPC/preload, renderer, and Electron tests.
+- [x] Implement a preview and explicit-confirmation boundary for eligible arXiv papers.
+- [x] Run the bounded host-side vault workflow and persist provenance plus honest terminal states.
+- [x] Expose the paper-card action and render pending, success, partial, blocked, and failed receipts.
+- [x] Update product/design/traceability documentation and run focused, full, Electron, and security
+      verification without modifying the installed app or publishing externally.
+- [x] Register the vault-owner-authorized `Topics` and `Methods` writer scopes and pass an exact live
+      adapter preflight that stops before PDF network access, Codex analysis, or any vault write.
+- [x] Build and reversibly install the unsigned local beta, retain the previous app plus a verified
+      SQLite backup, and pass packaged smoke plus the complete installed-app desktop E2E.
+
+### Initial decisions
+
+- The first vertical slice accepts only a persisted paper with a canonical arXiv identifier; other
+  paper sources remain a later extension because the live vault's two-layer archive contract is
+  arXiv/PDF specific.
+- The renderer submits only a stable local item ID. Electron main reloads the discovery record,
+  validates eligibility, resolves the local vault, and owns all filesystem/process interaction.
+- Preview and confirmed execution are separate calls. Execution must revalidate the source snapshot
+  and live vault governance to avoid a stale-preview or path-substitution write.
+- No commit, push, publication, credential change, or llm-wiki taxonomy refactor is authorized by
+  this feature.
+
+### Status
+
+**Phase 36 implementation and live preflight complete.** The application slice, governed adapter,
+sender-bound renderer/native confirmation, full-text note validation, Topic/Method backlink
+transaction, append-only receipts, rollback/audit behavior, and fixture UI are implemented. The
+focused suite and full coverage gate pass. On 2026-08-21, the vault owner explicitly authorized
+`Topics` and `Methods` in the live `therss-paper-promotion` lock scopes. The exact adapter preflight
+passed against the live vault before PDF network access. The first user-triggered preview then failed
+safely before any vault write because Codex rejected an unsupported JSON Schema keyword; a second
+model-output gap exposed prompt-dependent boilerplate. The final implementation removes the
+unsupported keyword, keeps richer validation local, deterministically rebuilds governed frontmatter
+and provenance, and pins the PDF/sidecar to the exact discovered arXiv version. The same real
+`arxiv:2607.26658v1` preview now returns `ready: true` with a verified 16-page PDF and zero blockers;
+the stage was disposed without confirmation or vault write. The final local gate passes 49 files /
+291 tests with all coverage thresholds, and the installed desktop E2E passes with a poison-vault
+sentinel. The 2026-08-21 final ARM64 beta is installed at `~/Applications/TheRSS Dev.app`; release and
+installed `app.asar` SHA-256 match at
+`01da4ade39893e0c89a8f3a43a2c16d4abe4e38219488ee8849331ce23a0c094`. The prior app and SQLite
+backup are retained at `~/Applications/TheRSS Dev.backup-2026-08-21T14-05-18-683Z.app` and
+`~/Library/Application Support/therss/backups/therss-2026-08-21T14-05-18-683Z.sqlite`.
+
+## Phase 37 — Backup cleanup, database documentation, and main publication
+
+### Goal
+
+Remove superseded local app/database backups without touching the active installation, document the
+self-initializing SQLite lifecycle and llm-wiki promotion workflow in README, and publish the complete
+verified feature state to protected GitHub `main`.
+
+### Execution
+
+- [x] Enumerate and validate every old application/database backup target; retain the active app and
+      live database.
+- [x] Move the validated historical backups to Trash and verify the active app/database remain intact.
+- [x] Update README with llm-wiki promotion, current verification evidence, and database setup rules.
+- [ ] Review the complete worktree, run release/security gates, and create one Conventional Commit.
+- [ ] Publish through the repository's protected-main workflow and verify local/remote SHA convergence.
+
+### Decisions
+
+- “Delete old application and database” means all timestamped `TheRSS Dev.backup-*.app` and
+  `backups/therss-*.sqlite` snapshots. It does not include `TheRSS Dev.app` or the live
+  `therss.sqlite` database.
+- Use recoverable Trash relocation for the 15 discovered backup targets; do not recursively delete
+  the application or database parent directories.
+- The desktop app owns SQLite creation and transactional schema migration on first launch. No
+  separately deployed database server or manual schema bootstrap is required.
+
+### Status
+
+**In progress.** Historical backups are in Trash, the active database and application state were
+restored after an app-cleaner side effect, and SQLite integrity is `ok`. README, verification, and
+protected-main publication remain.
+
+### Errors encountered
+
+- Moving the timestamped backup applications to Trash triggered a local app-cleaner integration,
+  which also moved the active `Application Support/therss`, cache, and preferences into Trash. The
+  cleanup stopped at the first missing database-backup source. The active support directory and
+  settings were restored from Trash, `therss.sqlite` passed `PRAGMA integrity_check`, and only the
+  restored `backups/` directory was then moved back to Trash as the intended database-cleanup scope.
+- The first notes patch inserted the cleanup heading immediately below the Personal Prompt heading,
+  temporarily assigning the Personal Prompt bullets to the wrong section. A scoped follow-up patch
+  restored the original section boundary before any commit.
+- The first combined secret-pattern scan had an invalid shell quote around the regular expression and
+  exited at zsh parsing before scanning files. Re-run the scan with fixed-string patterns and
+  separately inspect staged additions; do not treat the failed command as security evidence.

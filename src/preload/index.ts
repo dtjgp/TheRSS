@@ -32,7 +32,15 @@ const api: TheRSSApi = {
   analyzeItem: (id, runner) => ipcRenderer.invoke(IPC_CHANNELS.analyzeItem, id, runner),
   analyzeDiscoverResult: (sessionId, itemId, runner) =>
     ipcRenderer.invoke(IPC_CHANNELS.analyzeDiscoverResult, sessionId, itemId, runner),
-  getLatestAnalysis: (id) => ipcRenderer.invoke(IPC_CHANNELS.getLatestAnalysis, id)
+  getLatestAnalysis: (id) => ipcRenderer.invoke(IPC_CHANNELS.getLatestAnalysis, id),
+  previewLlmWikiPromotion: (itemId, sessionId) =>
+    ipcRenderer.invoke(IPC_CHANNELS.previewLlmWikiPromotion, { itemId, sessionId }),
+  confirmLlmWikiPromotion: (previewId) =>
+    ipcRenderer.invoke(IPC_CHANNELS.confirmLlmWikiPromotion, { previewId }),
+  cancelLlmWikiPromotion: (previewId) =>
+    ipcRenderer.invoke(IPC_CHANNELS.cancelLlmWikiPromotion, { previewId }),
+  getLatestLlmWikiPromotion: (itemId) =>
+    ipcRenderer.invoke(IPC_CHANNELS.getLatestLlmWikiPromotion, itemId)
 }
 
 contextBridge.exposeInMainWorld('therss', api)

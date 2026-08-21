@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { ExternalLink, EyeOff, Sparkles } from 'lucide-react'
-import type { DashboardItem, TriageState } from '../../shared/api'
+import type { DashboardItem, TheRSSApi, TriageState } from '../../shared/api'
 import type { AnalysisArtifact } from '../../shared/models'
 import { isPaperAnalysisCandidate, PAPER_L1_ANALYSIS_PROMPT_VERSION } from '../../shared/analysis'
 import { AnalysisPanel } from './AppSections'
 import { SaveStar } from './SaveStar'
 import { sourceDisplayName, sourceStyleToken } from '../../shared/sourceIdentity'
+import { PaperPromotionAction } from './PaperPromotionAction'
 
 interface SignalWorkspaceProps {
+  readonly api: TheRSSApi
   readonly items: readonly DashboardItem[]
   readonly analysis: AnalysisArtifact | null
   readonly analyzingItemId: string | null
@@ -84,6 +86,7 @@ function ShortcutHint({ keyName, label }: { readonly keyName: string; readonly l
 }
 
 export function SignalWorkspace({
+  api,
   items,
   analysis,
   analyzingItemId,
@@ -270,6 +273,9 @@ export function SignalWorkspace({
             <SaveStar isSaved={isSaved} />
             <kbd>S</kbd>
           </button>
+          {selectedItem.source === 'arxiv' && selectedItem.kind === 'paper' ? (
+            <PaperPromotionAction api={api} itemId={selectedItem.id} />
+          ) : null}
           <button
             type="button"
             className="detail-action"

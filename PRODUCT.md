@@ -18,6 +18,9 @@ provenance without copying secrets.
 - Analysis is user initiated and records model/tool provenance. Typed paper records use a
   provisional, abstract-bounded adaptation of llm-wiki's L1 paper template and never present it as
   a verified full-paper deep read.
+- Eligible arXiv papers expose a separate, confirmation-gated llm-wiki promotion. Its preview shows
+  the live vault, L1/L2 route, verified PDF facts, evidence boundary, and exact intended paths before
+  Electron main may write anything.
 - Semantic expansion search exposes the executed terms and per-source outcome instead of presenting opaque model answers as search evidence.
 - A bounded Personal Prompt can supply stable research fields, evidence preferences, and exclusions
   without replacing the explicit question for each Discover run.
@@ -46,8 +49,9 @@ provenance without copying secrets.
    run, ranked records occupy a keyboard-scrollable region before a collapsed
    plan/provenance/source-outcome inspector. Every result has a reversible outline/filled Saved star;
    paper records additionally expose a user-initiated L1 analysis action without implicitly saving
-   the paper.
-2. **Saved** — one persisted shelf for explicitly retained research signals from every active source.
+   the paper. arXiv papers also expose the separately confirmed llm-wiki promotion action.
+2. **Saved** — one persisted shelf for explicitly retained research signals from every active
+   source. A selected saved arXiv paper can enter the same llm-wiki preview/confirmation workflow.
 3. **Models & Agents** — a Personal Prompt settings group, one model provider profile, direct
    bounded Codex/Claude CLI analysis, plus documented read-only MCP setup. The UI explains what
    context is useful, where it is sent, and what sensitive content not to include.
@@ -66,7 +70,9 @@ navigation surfaces or implicit launch actions.
 
 `new -> matched -> ranked -> viewed -> saved | dismissed | analysis_requested -> analyzed`
 
-Paper promotion to a knowledge system is a separate, confirmation-gated workflow.
+Paper promotion remains a separate branch:
+
+`eligible_arxiv_paper -> preview_ready -> confirmed -> completed | partial | blocked | no-change | no-source | failed`
 
 ## Non-goals for the initial release
 
@@ -96,6 +102,8 @@ Paper promotion to a knowledge system is a separate, confirmation-gated workflow
 - The Sources directory and Discover selector expose exactly 22 unique live-verified HTTPS sources
   (A=7, B=15, C=0); deferred catalog entries are absent from the product surface.
 - No live external service is required for automated tests.
+- Deterministic Electron fixtures verify preview, cancellation, confirmation, and terminal receipt
+  without touching the real llm-wiki vault. A live promotion always requires an in-app confirmation.
 - Release gates meet or exceed 80% line, statement, branch, and function coverage for owned code.
 
 ## Open product decisions

@@ -15,6 +15,7 @@ TheRSS 是一个本地优先的研究发现桌面应用：你可以用自然语�
 - 在 **Data Analytics** 中查看 Discover 返回的记录量、保留的历史 Today 统计，以及做过深度分析的内容和所用模型/本地代理。
 - 在 **Sources** 中浏览和筛选同一组 22 个已验证来源（A=7、B=15、C=0）；未验证候选、Pending 来源和 X 不进入当前产品表面。
 - 配置 OpenAI-compatible（包括兼容的 DeepSeek 端点）或 Anthropic-compatible 模型并生成带来源信息的分析记录。
+- 对符合条件的 arXiv 论文使用 **Promote to llm-wiki**：TheRSS 先下载发现记录对应的精确版本 PDF，调用本地 Codex 生成全文分析并展示目标路径预览；只有用户再次确认后，才按照 vault 的治理规则写入 PDF、来源 sidecar、L2 论文笔记、Topic/Method 反向链接和审计记录。
 - 通过只读 Model Context Protocol（MCP）服务向 Codex、Claude Code 或其他兼容客户端开放本地候选项。
 - 所有 Discover 会话、Saved 状态和分析记录仅保存在本机；当前不提供账号登录或跨设备同步。
 - 界面统一使用 macOS Apple 系统字体：正文与控件使用 SF Pro Text，展示标题使用 SF Pro Display；应用不再打包第三方字体文件。
@@ -37,20 +38,22 @@ npm run dev
 2. 在 **Discover** 中输入研究问题；默认会搜索全部 22 个来源，按需展开来源选择器缩小范围。
 3. 选择 runner 后执行扩展搜索；先检查排名结果与匹配原因，再展开 **Search details** 查看计划、溯源和逐来源状态。
 4. 把需要继续阅读的记录显式加入 **Saved**，并在条目详情中按需执行分析。
-5. 在 **Data Analytics** 中查看最近 7 个本机日历日的搜索结果量和深度分析记录。
-6. 在 **Sources** 中按名称、优先级或研究方向检查已部署来源及其近期内容。
+5. 对准备进入知识库的 arXiv 论文点击 **Promote to llm-wiki**；先审阅全文分析等级、blocker 和目标路径，确认无误后再执行本地写入。
+6. 在 **Data Analytics** 中查看最近 7 个本机日历日的搜索结果量和深度分析记录。
+7. 在 **Sources** 中按名称、优先级或研究方向检查已部署来源及其近期内容。
 
 API key 不会返回给渲染进程，也不会以明文写入 SQLite；应用使用 Electron `safeStorage` 加密后保存密文。远程模型地址必须使用 HTTPS，只有回环地址可使用 HTTP。
 
 应用不会在启动时隐式发起 22 个来源请求。每次外部检索都由 Discover 中的显式操作触发；失败不会删除上一轮会话或 Saved 数据。
 
-## 当前验证状态（2026-08-20）
+## 当前验证状态（2026-08-21）
 
-- 完整质量门禁通过：43 个测试文件、237 个测试；statements、branches、functions、lines 均高于 80%。
+- 完整质量门禁通过：49 个测试文件、291 个测试；覆盖率为 statements 90.43%、branches 80.12%、functions 93.86%、lines 93.33%。
 - 最近一次真实联网来源复检为 2026-08-19，最终通过 22/22 来源：arXiv 定向检索返回 3 条、近期批次 200 条，GitHub 返回 25 条，其余配置来源最终通过 20/20。
 - 科学网使用官方 HTTPS RSS；C114 使用固定 HTTPS 桌面首页、移动端故障回退、受限 `gb18030` 解码和专用纯文本归一化器。
-- Electron 端到端流程通过，覆盖 Personal Prompt、个性化 Discover、折叠来源选择、结果优先、Search details、Saved、Analytics、Sources，以及 Apple 系统字体的运行时检查。
-- 未签名 macOS arm64 构建已覆盖安装到 `~/Applications/TheRSS Dev.app`，数据库与旧 App 均已保留备份，已安装可执行文件通过隔离 smoke；公开分发仍需要有效 Developer ID、签名和公证。
+- Electron 端到端流程通过，覆盖 Personal Prompt、个性化 Discover、折叠来源选择、结果优先、Search details、Saved、Analytics、Sources、llm-wiki 确认边界，以及 Apple 系统字体的运行时检查。
+- llm-wiki 真实预览已使用精确 arXiv 版本完成 16 页 PDF 校验并返回 L2 ready 状态；该验证在确认前主动释放 stage，没有写入真实 vault。
+- 未签名 macOS arm64 构建已覆盖安装到 `~/Applications/TheRSS Dev.app`，安装包与已安装 `app.asar` 哈希一致，当前 SQLite 完整性与已安装可执行文件隔离 smoke 均通过；公开分发仍需要有效 Developer ID、签名和公证。
 
 详细的本轮来源证据见 [docs/verification/ACTIVE_SOURCE_SMOKE_2026-08-19.md](docs/verification/ACTIVE_SOURCE_SMOKE_2026-08-19.md)。
 
@@ -100,6 +103,17 @@ npm run smoke:mcp
 
 随后按 [docs/AGENT_SETUP.md](docs/AGENT_SETUP.md) 配置。当前 MCP 服务只暴露三个只读工具：`list_today_items`、`get_item` 和 `get_analysis_context`；它以只读模式打开本地 SQLite，不提供修改 triage、写回知识库或读取模型密钥的能力。
 
+## 数据库是否需要单独搭建？
+
+不需要。TheRSS 使用随桌面应用运行的本地 SQLite，不需要 PostgreSQL/MySQL、Docker、云数据库或手动执行建表 SQL。
+
+- 第一次启动桌面应用时，Electron 主进程会打开 `app.getPath('userData')/therss.sqlite`；文件不存在时由 `better-sqlite3` 自动创建。
+- `ResearchRepository` 随后在事务中执行 `CREATE TABLE IF NOT EXISTS` 和版本兼容迁移，并在迁移后检查外键完整性。
+- 已有数据库会在新版本第一次启动时自动迁移；`npm run install:local` 在替换应用前会生成可回滚备份。
+- MCP 服务刻意以只读方式连接，不负责创建或迁移数据库。因此配置 MCP 前只需先正常打开一次 TheRSS。
+
+日常使用不需要维护数据库进程。只有迁移设备、手工恢复或排障时，才需要直接处理 SQLite 文件。
+
 ## 质量门禁
 
 ```bash
@@ -126,9 +140,10 @@ npm audit --audit-level=high
 - “搜索全部 22 个来源”不等于全网或完整历史搜索：固定 feed/API 来源只提供各适配器的有界近期窗口，再接受本地语义筛选。
 - Data Analytics 完全读取本地 SQLite，不发送遥测。“搜索结果量”统计每次已完成搜索返回的记录；历史 Today 数据被保留但不会被推测或改写成 Discover。
 - Sources 是随应用发布的 22-source 只读目录；原始 105-entry catalog 仅作为休眠版本元数据保留，不代表其余来源已经部署。
-- Zotero 和 llm-wiki 的确认式写回属于后续版本；TheRSS 不替代 Zotero 或 Obsidian。
+- llm-wiki 写回已经实现为本地主进程拥有的确认式能力：预览失败或校验不通过时不会写入 vault；Zotero 写回仍未集成。TheRSS 不替代 Zotero 或 Obsidian。
 
 产品范围见 [PRODUCT.md](PRODUCT.md)，架构见 [docs/DESIGN.md](docs/DESIGN.md)，需求验收见 [docs/REQUIREMENTS_TRACEABILITY.md](docs/REQUIREMENTS_TRACEABILITY.md)。
+llm-wiki 推送的证据等级、路径事务和回滚规则见 [docs/capabilities/llm-wiki-paper-promotion.md](docs/capabilities/llm-wiki-paper-promotion.md)。
 
 ## License
 

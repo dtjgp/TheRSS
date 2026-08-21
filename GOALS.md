@@ -79,6 +79,7 @@ The goal is complete only when every explicit founding requirement has current e
 ## Later goals
 
 - Signed and notarized macOS releases with verified old-to-new automatic replacement.
-- Optional Zotero and llm-wiki promotion workflows.
+- Optional Zotero promotion; llm-wiki paper promotion activation is pending explicit Topic/Method
+  writer-scope approval.
 - Optional background refresh while the application is closed.
 - Learned ranking based on explicit user feedback, with explainability retained.

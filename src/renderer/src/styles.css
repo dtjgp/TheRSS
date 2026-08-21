@@ -103,14 +103,22 @@ textarea:focus-visible {
 }
 
 .app-shell {
+  --sidebar-width: 224px;
   --accent: var(--view-accent);
   --accent-soft: color-mix(in srgb, var(--view-accent) 14%, transparent);
+  position: relative;
   display: grid;
-  grid-template-columns: 224px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   height: 100vh;
   overflow: hidden;
   background: var(--paper);
   transition: grid-template-columns 180ms ease;
+}
+
+.app-shell--sidebar-resizing {
+  cursor: col-resize;
+  user-select: none;
+  transition: none;
 }
 
 .app-shell[data-view='today'] {
@@ -190,6 +198,41 @@ textarea:focus-visible {
   border-right: 1px solid var(--line);
   backdrop-filter: blur(28px) saturate(1.35);
   -webkit-app-region: drag;
+}
+
+.sidebar-resizer {
+  position: absolute;
+  z-index: 20;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--sidebar-width) - 5px);
+  width: 10px;
+  padding: 0;
+  cursor: col-resize;
+  touch-action: none;
+  -webkit-app-region: no-drag;
+}
+
+.sidebar-resizer::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  content: '';
+  background: transparent;
+  transform: translateX(-50%);
+  transition: background 120ms ease;
+}
+
+.sidebar-resizer:hover::after,
+.sidebar-resizer:focus-visible::after,
+.app-shell--sidebar-resizing .sidebar-resizer::after {
+  background: color-mix(in srgb, var(--view-accent) 72%, transparent);
+}
+
+.sidebar-resizer:focus-visible {
+  outline: none;
 }
 
 .brand-lockup {
@@ -3253,11 +3296,125 @@ main {
   }
 }
 
-@media (max-width: 1120px) {
-  .app-shell:not(.app-shell--sidebar-collapsed) {
-    grid-template-columns: 196px 1fr;
-  }
+.paper-promotion-action {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
 
+.paper-promotion-action > button {
+  min-height: 34px;
+  padding: 7px 10px;
+  color: var(--system-indigo-text);
+  background: color-mix(in srgb, var(--system-indigo) 9%, var(--control));
+  border: 1px solid color-mix(in srgb, var(--system-indigo) 24%, var(--line));
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.signal-card__actions .paper-promotion-action > button {
+  min-height: auto;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.paper-promotion-action > button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.promotion-receipt {
+  max-width: 360px;
+  margin: 0;
+  color: var(--secondary-label);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.promotion-completed {
+  color: var(--system-green-text);
+}
+
+.promotion-partial,
+.promotion-blocked,
+.promotion-failed {
+  color: var(--system-red-text);
+}
+
+.promotion-dialog-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(12px);
+}
+
+.promotion-dialog {
+  display: grid;
+  gap: 14px;
+  width: min(720px, 100%);
+  max-height: min(720px, calc(100vh - 48px));
+  padding: 24px;
+  overflow: auto;
+  color: var(--label);
+  background: var(--secondary-system-background);
+  border: 1px solid var(--separator);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.promotion-dialog h2,
+.promotion-dialog p,
+.promotion-dialog ul {
+  margin: 0;
+}
+
+.promotion-dialog code {
+  overflow-wrap: anywhere;
+  color: var(--system-indigo-text);
+  font-size: 11px;
+}
+
+.promotion-dialog ul {
+  display: grid;
+  gap: 6px;
+  padding-left: 20px;
+}
+
+.promotion-dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 6px;
+}
+
+.promotion-dialog-actions button {
+  min-height: 34px;
+  padding: 7px 12px;
+  color: var(--label);
+  background: var(--control);
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.promotion-dialog-actions button:last-child {
+  color: #fff;
+  background: var(--system-indigo);
+  border-color: var(--system-indigo);
+}
+
+@media (max-width: 1120px) {
   .signal-workspace {
     grid-template-columns: minmax(280px, 42%) minmax(0, 1fr);
   }
@@ -3349,10 +3506,6 @@ main {
 }
 
 @media (max-width: 920px) {
-  .app-shell:not(.app-shell--sidebar-collapsed) {
-    grid-template-columns: 184px minmax(0, 1fr);
-  }
-
   .today-view__heading,
   .inbox-toolbar {
     padding-inline: 16px;

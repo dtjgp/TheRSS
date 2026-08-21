@@ -249,6 +249,39 @@ and must not be described as a verified full-paper L1 deep read. Analysis remain
 Discover paper cards expose the same contract directly; an unsaved result is materialized as
 `viewed` for stable artifact ownership without changing its Saved star.
 
+## Confirmation-gated llm-wiki promotion
+
+The paper-specific Analyze action above remains abstract-bounded and SQLite-owned. An eligible
+`source === "arxiv" && kind === "paper"` record may separately enter `llm-wiki-promotion-v1` from
+Discover or Saved. Discover supplies a bounded session ID so Electron main can materialize the
+persisted source record before promotion; the renderer never supplies paper metadata or a vault
+path.
+
+Preparation resolves the configured vault root in Electron main, reads the live AGENTS/schema,
+paper-ingest SOP, write-governance contract, runtime scope map, L1/L2 templates, and governed
+indexes, then downloads and verifies the official arXiv PDF. `%PDF` magic, byte size, page count,
+and SHA-256 must pass before analysis. Codex receives bounded extracted PDF text and live template
+snapshots as untrusted content in an isolated temporary directory. It runs ephemerally with a
+read-only sandbox and shell tooling disabled, returning only a strict L1/L2 note bundle. It never
+writes the live vault.
+
+The preview token is opaque, single-use, expires after 30 minutes, and binds the persisted source
+hash plus live contract hash. Confirmation reloads the discovery row, reacquires/revalidates the
+live contract, requires a sender-bound native confirmation, and obtains the cooperative
+`therss-paper-promotion` writer lease. Electron main then applies only the validated PDF,
+same-basename sidecar, one canonical L1/L2 note, 1–4 selected existing Topic/Method backlinks,
+paper/root indexes, log, and audit record. Path traversal, symlinked ancestor chains, target
+collisions, source/contract drift, malformed note bundles, and lease conflicts fail closed. New files
+and exact mutable-file snapshots are rolled back on write/verifier failure; any unproven remainder is
+reported as `partial` rather than success.
+
+SQLite stores an append-only running/terminal receipt ledger with source/contract hashes, status,
+evidence tier, exact relative paths, blockers, and timestamps. It stores no PDF text, note content,
+Codex stderr, prompt, secret, or absolute vault path. MCP remains read-only; promotion is available
+only through the explicit desktop UI. The current live runtime registration does not yet authorize
+the required broad `Topics`/`Methods` lock scopes; live execution remains blocked until the vault
+owner explicitly approves that persistent scope expansion.
+
 Discover sessions persist the exact validated plan, runner/provider/model, prompt version, prompt-input hash, timestamps, per-source outcomes, and result snapshots. Generated plan text remains derived evidence; only validated fields reach source adapters.
 
 ## Security and privacy
@@ -290,8 +323,9 @@ Electron requires a signed macOS application for automatic updates: <https://www
 - UI: accessible filtering, match explanations, triage, settings validation, Data Analytics tables/history, failure states.
 - E2E: open directly to Discover -> expand and verify the 22-source selector -> execute deterministic
   arXiv/GitHub/configured-source fixtures -> filter and save a configured-source result -> verify
-  result-first ordering and the collapsed search-details inspector -> verify Saved promotion ->
-  inspect Sources and separated Discover/legacy-Today analytics.
+  result-first ordering and the collapsed search-details inspector -> preview/cancel/confirm the
+  fixture-only llm-wiki paper promotion -> verify Saved triage -> inspect Sources and separated
+  Discover/legacy-Today analytics.
 - Opt-in smoke: bounded live requests for the retained active sources. Live smoke is never part of deterministic CI.
 
 ## Launch plan
