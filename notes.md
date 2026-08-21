@@ -604,3 +604,15 @@ src/renderer/src/App.test.tsx` -> 4 files / 54 tests.
   49 test files / 291 tests, packaged smoke, installed-app desktop E2E, and production/backup SQLite
   integrity. Release and installed `app.asar` hashes match at
   `01da4ade39893e0c89a8f3a43a2c16d4abe4e38219488ee8849331ce23a0c094`.
+
+## 2026-08-21 llm-wiki promotion publication closure
+
+- Feature commit `6264c80` and verification-doc commit `99876d6` were pushed on
+  `codex/llm-wiki-paper-promotion`. The first PR #12 quality run failed at the final unformatted
+  `notes.md` append; the corrected full local gate and pre-push gate passed before the second run.
+- GitHub `quality` passed in 53 seconds. PR #12 was rebase-merged without bypassing protection; remote
+  `main`, refreshed `origin/main`, and `git ls-remote` agree at
+  `303889f2345123201560a8dd216fd42e1f828868`.
+- README now documents the confirmation-gated llm-wiki workflow and that the desktop app creates and
+  migrates its embedded SQLite database automatically. No external database service, Docker stack,
+  or manual schema bootstrap is part of normal use.
