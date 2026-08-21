@@ -1146,8 +1146,8 @@ verified feature state to protected GitHub `main`.
 ### Status
 
 **In progress.** Historical backups are in Trash, the active database and application state were
-restored after an app-cleaner side effect, and SQLite integrity is `ok`. README, verification, and
-protected-main publication remain.
+restored after an app-cleaner side effect, and SQLite integrity is `ok`. README and local
+verification are complete; PR #12's corrective quality run and protected-main merge remain.
 
 ### Errors encountered
 
@@ -1162,3 +1162,7 @@ protected-main publication remain.
 - The first combined secret-pattern scan had an invalid shell quote around the regular expression and
   exited at zsh parsing before scanning files. Re-run the scan with fixed-string patterns and
   separately inspect staged additions; do not treat the failed command as security evidence.
+- PR #12's first `quality` run failed only at `prettier --check` for `notes.md`. The full local gate
+  had run immediately before the final verification-note append, so it did not cover that last edit.
+  Format the changed planning files, rerun the complete gate, and push a corrective documentation
+  commit; do not bypass the required check.
