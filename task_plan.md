@@ -1130,8 +1130,8 @@ verified feature state to protected GitHub `main`.
       live database.
 - [x] Move the validated historical backups to Trash and verify the active app/database remain intact.
 - [x] Update README with llm-wiki promotion, current verification evidence, and database setup rules.
-- [ ] Review the complete worktree, run release/security gates, and create one Conventional Commit.
-- [ ] Publish through the repository's protected-main workflow and verify local/remote SHA convergence.
+- [x] Review the complete worktree, run release/security gates, and create one Conventional Commit.
+- [x] Publish through the repository's protected-main workflow and verify local/remote SHA convergence.
 
 ### Decisions
 
@@ -1145,9 +1145,11 @@ verified feature state to protected GitHub `main`.
 
 ### Status
 
-**In progress.** Historical backups are in Trash, the active database and application state were
-restored after an app-cleaner side effect, and SQLite integrity is `ok`. README and local
-verification are complete; PR #12's corrective quality run and protected-main merge remain.
+**Phase 37 complete.** Historical backups are in Trash; the active app, database, application state,
+and preferences are present, and SQLite integrity is `ok`. README documents the confirmation-gated
+llm-wiki workflow and self-initializing SQLite lifecycle. `npm run check`, 2/2 Electron E2E, the
+production dependency audit, pre-push gates, and GitHub `quality` passed. PR #12 was rebase-merged;
+GitHub `main` and `git ls-remote` agree at `303889f2345123201560a8dd216fd42e1f828868`.
 
 ### Errors encountered
 
