@@ -12,6 +12,7 @@ import { sourceDisplayName, sourceStyleToken } from '../../shared/sourceIdentity
 import type { AnalysisArtifact, LocalAgentStatus } from '../../shared/models'
 import { AnalysisPanel } from './AppSections'
 import { SaveStar } from './SaveStar'
+import { PaperPromotionAction } from './PaperPromotionAction'
 
 interface DiscoverViewProps {
   readonly api: TheRSSApi
@@ -69,7 +70,9 @@ function DiscoverCard({
   analysis,
   isAnalyzing,
   onToggleSave,
-  onAnalyze
+  onAnalyze,
+  api,
+  sessionId
 }: {
   readonly item: DiscoverResultItem
   readonly index: number
@@ -79,6 +82,8 @@ function DiscoverCard({
   readonly isAnalyzing: boolean
   readonly onToggleSave: (itemId: string) => Promise<void>
   readonly onAnalyze: (itemId: string) => Promise<void>
+  readonly api: TheRSSApi
+  readonly sessionId: string
 }) {
   return (
     <article
@@ -130,6 +135,9 @@ function DiscoverCard({
             <span>{isAnalyzing ? 'Analyzing…' : 'Analyze paper'}</span>
           </button>
         )}
+        {item.source === 'arxiv' && item.kind === 'paper' ? (
+          <PaperPromotionAction api={api} itemId={item.id} sessionId={sessionId} />
+        ) : null}
       </div>
       {analysis?.itemId === item.id && (
         <div className="discover-card__analysis">
@@ -512,6 +520,8 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
                     isAnalyzing={analyzingItemId === item.id}
                     onToggleSave={toggleSaveResult}
                     onAnalyze={analyzeResult}
+                    api={api}
+                    sessionId={snapshot.id}
                   />
                 ))}
               </div>

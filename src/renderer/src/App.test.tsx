@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DashboardSnapshot, TheRSSApi } from '../../shared/api'
 import type { DiscoverSnapshot, DiscoverSource, DiscoverSourceOutcome } from '../../shared/discover'
 import { ACTIVE_TODAY_SOURCE_IDS, sourceDisplayName } from '../../shared/sourceIdentity'
@@ -222,11 +222,24 @@ function createApi(snapshot: DashboardSnapshot = emptyDashboard): TheRSSApi {
         '## 快速决策卡\nEvidence state: abstract-only / provisional\n\n## TL;DR\nA bounded L1 fixture.',
       createdAt: '2026-08-20T12:00:00.000Z'
     }),
-    getLatestAnalysis: vi.fn().mockResolvedValue(null)
+    getLatestAnalysis: vi.fn().mockResolvedValue(null),
+    previewLlmWikiPromotion: vi.fn(),
+    confirmLlmWikiPromotion: vi.fn(),
+    cancelLlmWikiPromotion: vi.fn(),
+    getLatestLlmWikiPromotion: vi.fn().mockResolvedValue(null)
   }
 }
 
 describe('App', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 1024
+    })
+  })
+
   it('opens on Discover with only the five consolidated primary destinations', async () => {
     const api = createApi()
     render(<App api={api} />)
@@ -493,7 +506,7 @@ describe('App', () => {
       within(paperActions)
         .getAllByRole('button')
         .map((button) => button.getAttribute('aria-label'))
-    ).toEqual(['Save result', 'Analyze paper'])
+    ).toEqual(['Save result', 'Analyze paper', 'Promote to llm-wiki'])
 
     const repositoryCard = screen.getByText('discover/repo').closest('article') as HTMLElement
     const articleCard = screen
@@ -683,6 +696,138 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Show sidebar' })).toBeVisible()
   })
 
+  it('lets the user resize the sidebar with pointer or keyboard and restores the width', () => {
+    const { unmount } = render(<App api={createApi()} />)
+    const shell = document.querySelector<HTMLElement>('.app-shell')
+    const separator = screen.getByRole('separator', { name: 'Resize sidebar' })
+
+    expect(shell).toHaveStyle({ '--sidebar-width': '196px' })
+    expect(separator).toHaveAttribute('aria-valuemin', '184')
+    expect(separator).toHaveAttribute('aria-valuemax', '360')
+    expect(separator).toHaveAttribute('aria-valuenow', '196')
+
+    fireEvent.pointerDown(separator, { pointerId: 1, clientX: 196 })
+    fireEvent.pointerMove(separator, { pointerId: 1, clientX: 312 })
+    expect(shell).toHaveStyle({ '--sidebar-width': '312px' })
+    expect(separator).toHaveAttribute('aria-valuenow', '312')
+    fireEvent.pointerUp(separator, { pointerId: 1, clientX: 312 })
+    expect(window.localStorage.getItem('therss.sidebar-width')).toBe('312')
+
+    fireEvent.keyDown(separator, { key: 'ArrowLeft' })
+    expect(shell).toHaveStyle({ '--sidebar-width': '304px' })
+    expect(window.localStorage.getItem('therss.sidebar-width')).toBe('304')
+
+    unmount()
+    render(<App api={createApi()} />)
+    expect(document.querySelector<HTMLElement>('.app-shell')).toHaveStyle({
+      '--sidebar-width': '304px'
+    })
+  })
+
+  it('rolls back an interrupted sidebar drag and clears the resizing state', () => {
+    render(<App api={createApi()} />)
+    const shell = document.querySelector<HTMLElement>('.app-shell')
+    const separator = screen.getByRole('separator', { name: 'Resize sidebar' })
+
+    fireEvent.pointerDown(separator, { pointerId: 1, clientX: 196 })
+    fireEvent.pointerMove(separator, { pointerId: 1, clientX: 260 })
+    expect(shell).toHaveStyle({ '--sidebar-width': '260px' })
+    expect(shell).toHaveClass('app-shell--sidebar-resizing')
+    fireEvent.pointerCancel(separator, { pointerId: 1 })
+    expect(shell).toHaveStyle({ '--sidebar-width': '196px' })
+    expect(shell).not.toHaveClass('app-shell--sidebar-resizing')
+    expect(window.localStorage.getItem('therss.sidebar-width')).toBeNull()
+
+    fireEvent.pointerDown(separator, { pointerId: 2, clientX: 196 })
+    fireEvent.pointerMove(separator, { pointerId: 2, clientX: 280 })
+    fireEvent.lostPointerCapture(separator, { pointerId: 2 })
+    expect(shell).toHaveStyle({ '--sidebar-width': '196px' })
+    expect(shell).not.toHaveClass('app-shell--sidebar-resizing')
+  })
+
+  it('caps a saved width for a narrow window and restores it when space returns', () => {
+    window.localStorage.setItem('therss.sidebar-width', '360')
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 820 })
+    render(<App api={createApi()} />)
+    const shell = document.querySelector<HTMLElement>('.app-shell')
+    const separator = screen.getByRole('separator', { name: 'Resize sidebar' })
+
+    expect(shell).toHaveStyle({ '--sidebar-width': '184px' })
+    expect(separator).toHaveAttribute('aria-valuemax', '184')
+    expect(window.localStorage.getItem('therss.sidebar-width')).toBe('360')
+
+    fireEvent.keyDown(separator, { key: 'ArrowRight' })
+    fireEvent.pointerDown(separator, { pointerId: 1, clientX: 184 })
+    fireEvent.pointerUp(separator, { pointerId: 1, clientX: 184 })
+    expect(shell).toHaveStyle({ '--sidebar-width': '184px' })
+    expect(window.localStorage.getItem('therss.sidebar-width')).toBe('360')
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1360 })
+    fireEvent(window, new Event('resize'))
+    expect(shell).toHaveStyle({ '--sidebar-width': '360px' })
+    expect(separator).toHaveAttribute('aria-valuemax', '360')
+  })
+
+  it('preserves the wider preference when a capped drag returns to its start', () => {
+    window.localStorage.setItem('therss.sidebar-width', '296')
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 900 })
+    render(<App api={createApi()} />)
+    const shell = document.querySelector<HTMLElement>('.app-shell')
+    const separator = screen.getByRole('separator', { name: 'Resize sidebar' })
+
+    expect(shell).toHaveStyle({ '--sidebar-width': '260px' })
+    fireEvent.pointerDown(separator, { pointerId: 1, clientX: 260 })
+    fireEvent.pointerMove(separator, { pointerId: 1, clientX: 252 })
+    expect(shell).toHaveStyle({ '--sidebar-width': '252px' })
+    fireEvent.pointerMove(separator, { pointerId: 1, clientX: 260 })
+    fireEvent.pointerUp(separator, { pointerId: 1, clientX: 260 })
+    expect(shell).toHaveStyle({ '--sidebar-width': '260px' })
+    expect(window.localStorage.getItem('therss.sidebar-width')).toBe('296')
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1360 })
+    fireEvent(window, new Event('resize'))
+    expect(shell).toHaveStyle({ '--sidebar-width': '296px' })
+  })
+
+  it('clamps malformed saved widths and keeps resizing available when storage throws', () => {
+    window.localStorage.setItem('therss.sidebar-width', '999')
+    const firstRender = render(<App api={createApi()} />)
+    expect(document.querySelector<HTMLElement>('.app-shell')).toHaveStyle({
+      '--sidebar-width': '360px'
+    })
+    firstRender.unmount()
+
+    window.localStorage.setItem('therss.sidebar-width', 'not-a-number')
+    const secondRender = render(<App api={createApi()} />)
+    expect(document.querySelector<HTMLElement>('.app-shell')).toHaveStyle({
+      '--sidebar-width': '196px'
+    })
+    secondRender.unmount()
+
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage unavailable')
+    })
+    const thirdRender = render(<App api={createApi()} />)
+    expect(document.querySelector<HTMLElement>('.app-shell')).toHaveStyle({
+      '--sidebar-width': '196px'
+    })
+    getItem.mockRestore()
+
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage unavailable')
+    })
+    expect(() =>
+      fireEvent.keyDown(screen.getByRole('separator', { name: 'Resize sidebar' }), {
+        key: 'ArrowRight'
+      })
+    ).not.toThrow()
+    expect(document.querySelector<HTMLElement>('.app-shell')).toHaveStyle({
+      '--sidebar-width': '204px'
+    })
+    setItem.mockRestore()
+    thirdRender.unmount()
+  })
+
   it('keeps a saved signal after a failed removal and removes it after a successful retry', async () => {
     const savedItem: DashboardSnapshot['savedItems'][number] = {
       id: 'folo:302:saved',
@@ -739,6 +884,7 @@ describe('App', () => {
     render(<App api={api} />)
 
     await user.click(screen.getByRole('button', { name: '02 Saved' }))
+    expect(await screen.findByRole('button', { name: 'Promote to llm-wiki' })).toBeVisible()
     await user.click(await screen.findByRole('button', { name: 'Dismiss signal' }))
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Dismissed “Saved paper for triage”'

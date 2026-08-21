@@ -377,6 +377,29 @@ src/renderer/src/App.test.tsx` -> 4 files / 54 tests.
 - Focused GREEN evidence: seven files / 78 tests pass across schema, planner, service, SQLite
   migration/round-trip, shared contract, and renderer behavior; type checking also passes.
 
+## 2026-08-21 backup cleanup and SQLite deployment boundary
+
+- Five timestamped `TheRSS Dev.backup-*.app` directories and ten timestamped
+  `backups/therss-*.sqlite` files were enumerated as the cleanup scope. The active
+  `~/Applications/TheRSS Dev.app` and `~/Library/Application Support/therss/therss.sqlite` are
+  explicitly excluded.
+- `src/main/index.ts` opens `app.getPath('userData')/therss.sqlite`; better-sqlite3 creates the file
+  when absent, and `ResearchRepository` immediately runs transactional `CREATE TABLE IF NOT EXISTS`
+  plus checked migrations. End users do not deploy a database service or run a schema command.
+- The read-only MCP process intentionally does not create or migrate the database. The user must open
+  TheRSS once before enabling MCP so the desktop owner has initialized the schema.
+- README must replace the stale “llm-wiki is later” statement with the confirmation-gated current
+  capability and retain the distinction between preview and actual vault write.
+- Moving old `.app` bundles to Trash triggered an installed app-cleaner integration that also moved
+  the active Application Support, cache, and preferences. The active state was restored from Trash;
+  `therss.sqlite` remained 3,125,248 bytes and passed `PRAGMA integrity_check`. The historical
+  `backups/` directory was then moved to `~/.Trash/therss-backups-2026-08-21-cleanup` as one verified
+  recoverable target.
+- Publication gate after the README update: `npm run check` passes 49 files / 291 tests at 90.43%
+  statements, 80.12% branches, 93.86% functions, and 93.33% lines; production and MCP builds pass.
+  Electron E2E passes 2/2, including sidebar resize and the Discover-first workflow. `npm audit
+  --audit-level=high` reports zero vulnerabilities.
+
 ## 2026-08-19 retain only live-verified sources
 
 - Latest user direction supersedes the Phase 24 X addition: retain only the 22 sources that were
@@ -523,3 +546,61 @@ src/renderer/src/App.test.tsx` -> 4 files / 54 tests.
   emits `activate` after closing the last window and confirms that the Discover window is recreated.
 - Publication commit `078dcc3` passed the ECC pre-push gate. GitHub PR #10 passed the required
   `quality` workflow and was rebased into protected `main` as `ca24931`.
+
+## 2026-08-21 llm-wiki paper-promotion design evidence
+
+- The referenced `Daily ArXiv Scan` automation is active in the local llm-wiki project and defines
+  more than a Markdown export: official arXiv discovery/metadata, duplicate checks, honest scoring,
+  a real validated PDF, an exactly matching paper-record sidecar, L2-by-default promotion with a
+  selective L1 deep-read upgrade, bidirectional Method/Topic links, a dated digest/deep review,
+  index/log maintenance, and post-write verification.
+- Discovery metadata and abstract-only analysis remain provisional evidence. The app must not label
+  a successful TheRSS L1-style abstract analysis as a full-paper vault deep read.
+- The live automation distinguishes `completed`, `partial`, `blocked`, `no-change`, `no-source`, and
+  `skipped`; the manual promotion UI needs equally honest terminal feedback instead of a boolean
+  success toast.
+- Vault writes are a host-side trust-boundary change. The renderer must never receive arbitrary
+  filesystem/process access, a mutable destination path, or raw credentials. It should address a
+  persisted paper by stable item ID, preview the resolved canonical vault and intended workflow,
+  then require a second explicit confirmation.
+- Existing uncommitted sidebar work currently owns `src/renderer/src/App.tsx`,
+  `src/renderer/src/App.test.tsx`, `src/renderer/src/styles.css`, and
+  `e2e/sidebar-resize.spec.ts`. Promotion work must preserve and accommodate those edits; no reset,
+  checkout, stash, cleanup, commit, push, package install, or external publication is authorized.
+- The fixture implementation now verifies 1–4 existing Topic/Method selections, strict paper-note
+  frontmatter/template/read-state/provenance, reverse-link updates, exact mutable-file rollback, a
+  Europe/Rome automation audit, official streamed arXiv PDF redirects, and a hash-pinned cooperative
+  runtime. Preview UUIDs are capped, timer-expired, sender-bound, and followed by a native main-
+  process confirmation.
+- The vault owner explicitly authorized `Topics` and `Methods` for the live
+  `therss-paper-promotion` registration on 2026-08-21. The exact adapter preflight passed against the
+  live vault with contract hash
+  `8082e5daa021b289c5d3ba34849312c5689da17488eeeae1ba89ebe7e55cd8d3`; a sentinel stopped execution
+  before PDF network access, and neither Codex nor a vault write was attempted.
+- Current fixture gate: 48 test files / 286 tests, statements 90.42%, branches 80.04%, functions
+  93.80%, lines 93.33%; Electron E2E passes 2/2 and preserves an isolated poison-vault sentinel. A
+  real paper promotion remains unrun and cannot be inferred from fixtures.
+- The authorized local beta update built the unsigned ARM64 package and installed
+  `~/Applications/TheRSS Dev.app`. It retained
+  `~/Applications/TheRSS Dev.backup-2026-08-21T13-31-02-972Z.app` plus database backup
+  `therss-2026-08-21T13-31-02-972Z.sqlite`; both the live database and backup passed
+  `PRAGMA integrity_check`. Release and installed `app.asar` hashes matched at
+  `9a100018028e5db2037d3dadda305e0e42ba4a706ceff5f23260a944cfd2adc1`.
+- Packaged smoke passed. The first installed-app E2E reached its final native close/reopen check but
+  did not close because the packaged window was not the macOS first responder. Making the harness
+  explicitly focus the application and window before `performClose:` resolved the timing defect;
+  the complete installed-app desktop E2E then passed without touching the poison vault.
+- The first user-triggered live preview failed safely before any vault write. Reproduction exposed
+  two independent contract gaps: Codex 0.149.0 rejects `uniqueItems` in output schemas, and the live
+  L2 template requires an explicit `source_access: full-text` line while note validation also needs
+  the exact stored arXiv URL. Removing only the unsupported API keyword, retaining uniqueness in
+  local Zod validation, and spelling the two required literals out in the prompt made the same
+  `arxiv:2607.26658v1` preview ready. The 16-page, 3,514,425-byte PDF passed verification; the staged
+  preview was disposed and no confirmation or llm-wiki write occurred.
+- Final hardening moved controlled frontmatter and provenance generation into Electron main, pins PDF
+  acquisition and sidecar links to the exact discovered arXiv version, preserves sidecar body text,
+  and aligns L1/L2 tags with their different live templates. The same real paper preview remained
+  `ready: true` with zero blockers after this deterministic normalization. Final verification passed
+  49 test files / 291 tests, packaged smoke, installed-app desktop E2E, and production/backup SQLite
+  integrity. Release and installed `app.asar` hashes match at
+  `01da4ade39893e0c89a8f3a43a2c16d4abe4e38219488ee8849331ce23a0c094`.

@@ -1,7 +1,8 @@
 import { join } from 'node:path'
 import { env } from 'node:process'
+import { randomUUID } from 'node:crypto'
 import Database from 'better-sqlite3'
-import { app, BrowserWindow, ipcMain, Menu, safeStorage, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, shell } from 'electron'
 import { z } from 'zod'
 import { LocalAgentService } from '../core/agents/localAgentService'
 import { AnalysisService } from '../core/analysis/analysisService'
@@ -12,9 +13,18 @@ import { interestProfileSchema } from '../core/interests/interestProfile'
 import { runPromptWithModel } from '../core/models/modelGateway'
 import { ProviderService, type SecretCipher } from '../core/models/providerService'
 import { ResearchRepository } from '../core/storage/researchRepository'
+import { LlmWikiPromotionService } from '../core/integrations/llmWikiPromotionService'
+import { LlmWikiVaultAdapter } from '../core/integrations/llmWikiVaultAdapter'
 import { discoverSearchRequestSchema } from '../shared/discover'
 import type { DiscoverySource } from '../shared/discovery'
 import { IPC_CHANNELS } from '../shared/ipc'
+import {
+  LLM_WIKI_PROMOTION_PREVIEW_VERSION,
+  LLM_WIKI_PROMOTION_PROMPT_VERSION,
+  LLM_WIKI_PROMOTION_RECEIPT_VERSION,
+  llmWikiPromotionConfirmRequestSchema,
+  llmWikiPromotionPreviewRequestSchema
+} from '../shared/llmWikiPromotion'
 import { discoverPersonalizationPromptSchema } from '../shared/personalization'
 import { isDiscoverySource } from '../shared/sourceIdentity'
 import { createApplicationMenuTemplate } from './applicationMenu'
@@ -28,6 +38,7 @@ import {
   e2eRepository
 } from './e2eFixtures'
 import { githubTokenFromEnvironment, huggingFaceTokenFromEnvironment } from './sourceCredentials'
+import { createLlmWikiPromotionRuntime } from './llmWikiPromotionRuntime'
 
 const triageInputSchema = z.object({
   id: z.string().trim().min(1).max(300),
@@ -73,7 +84,9 @@ function registerIpcHandlers(
   discoverService: DiscoverService,
   providerService: ProviderService,
   analysisService: AnalysisService,
-  localAgentService: LocalAgentService
+  localAgentService: LocalAgentService,
+  promotionService: LlmWikiPromotionService,
+  useE2eFixtures: boolean
 ): void {
   ipcMain.handle(IPC_CHANNELS.getDashboard, () => repository.getDashboardSnapshot())
   ipcMain.handle(IPC_CHANNELS.getSourceContent, (_event, source: unknown) =>
@@ -148,6 +161,45 @@ function registerIpcHandlers(
   ipcMain.handle(IPC_CHANNELS.getLatestAnalysis, (_event, id: unknown) =>
     repository.getLatestAnalysis(itemIdSchema.parse(id))
   )
+  ipcMain.handle(IPC_CHANNELS.previewLlmWikiPromotion, (event, candidate: unknown) => {
+    const validated = llmWikiPromotionPreviewRequestSchema.parse(candidate)
+    if (validated.sessionId) {
+      repository.materializeDiscoverResultForLlmWikiPromotion(validated.sessionId, validated.itemId)
+    }
+    return promotionService.preview(validated.itemId, String(event.sender.id))
+  })
+  ipcMain.handle(IPC_CHANNELS.confirmLlmWikiPromotion, async (event, candidate: unknown) => {
+    const validated = llmWikiPromotionConfirmRequestSchema.parse(candidate)
+    const ownerId = String(event.sender.id)
+    if (!useE2eFixtures) {
+      const window = BrowserWindow.fromWebContents(event.sender)
+      if (!window || window.isDestroyed()) {
+        throw new Error('The promotion window is no longer available')
+      }
+      const choice = await dialog.showMessageBox(window, {
+        type: 'warning',
+        title: 'Confirm llm-wiki write',
+        message: 'Write the previewed paper artifacts to your local llm-wiki vault?',
+        detail:
+          'TheRSS will create the verified PDF, paper record, analysis note, backlinks, indexes, log entry, and audit record shown in the preview.',
+        buttons: ['Cancel', 'Write to llm-wiki'],
+        cancelId: 0,
+        defaultId: 1,
+        noLink: true
+      })
+      if (choice.response !== 1) {
+        return promotionService.cancel(validated.previewId, ownerId)
+      }
+    }
+    return promotionService.confirm(validated.previewId, ownerId)
+  })
+  ipcMain.handle(IPC_CHANNELS.cancelLlmWikiPromotion, (event, candidate: unknown) => {
+    const validated = llmWikiPromotionConfirmRequestSchema.parse(candidate)
+    return promotionService.cancel(validated.previewId, String(event.sender.id))
+  })
+  ipcMain.handle(IPC_CHANNELS.getLatestLlmWikiPromotion, (_event, itemId: unknown) =>
+    promotionService.getLatest(itemIdSchema.parse(itemId))
+  )
 }
 
 function isSafeExternalUrl(value: string): boolean {
@@ -203,6 +255,7 @@ function createWindow(): BrowserWindow {
 app.whenReady().then(() => {
   const database = new Database(join(app.getPath('userData'), 'therss.sqlite'))
   const repository = new ResearchRepository(database)
+  repository.reconcileInterruptedLlmWikiPromotions()
   const useE2eFixtures = env.THERSS_E2E_FIXTURES === '1'
   const discoveryService = new DiscoveryService(
     repository,
@@ -296,13 +349,80 @@ app.whenReady().then(() => {
     useE2eFixtures ? e2eAnalysis : undefined,
     localAgentService.analyze.bind(localAgentService)
   )
+  const promotionAdapter = useE2eFixtures
+    ? {
+        prepare: async (
+          item: Parameters<LlmWikiVaultAdapter['prepare']>[0],
+          context: Parameters<LlmWikiVaultAdapter['prepare']>[1]
+        ) => {
+          const base = 'Fixture et al. - 2026 - Deterministic promotion fixture'
+          const paths = [
+            `raw/papers/${base}.pdf`,
+            `raw/paper_records/${base}.md`,
+            'Literature/Paper_Notes/L2_Structured/Model_Compression/Fixture_2026_DeterministicPromotion.md',
+            'Topics/Edge_AI/Model_Compression/Structured_Pruning.md',
+            'Literature/Paper_Notes/Paper_Notes_Index.md',
+            'index.md',
+            'log.md',
+            'Automation_Conversations/2026-08-21__therss-paper-promotion__fixture.md'
+          ]
+          return {
+            preview: {
+              version: LLM_WIKI_PROMOTION_PREVIEW_VERSION,
+              previewId: context.previewId,
+              itemId: item.id,
+              arxivId: item.externalId.replace(/v\d+$/u, ''),
+              title: item.title,
+              ready: true,
+              vaultLabel: 'llm-wiki' as const,
+              level: 'L2' as const,
+              routingRationale: 'Deterministic Electron fixture route.',
+              intendedPaths: paths,
+              pdf: { pageCount: 12, byteSize: 120_000, sha256: 'd'.repeat(64) },
+              evidenceBoundary: 'Fixture only; no real vault write or network call occurred.',
+              blockers: [],
+              sourceHash: '0'.repeat(64),
+              contractHash: 'e'.repeat(64),
+              expiresAt: context.expiresAt
+            },
+            opaqueHandle: { fixture: true }
+          }
+        },
+        confirm: async (prepared: Parameters<LlmWikiVaultAdapter['confirm']>[0]) => ({
+          version: LLM_WIKI_PROMOTION_RECEIPT_VERSION,
+          id: `e2e:${randomUUID()}`,
+          itemId: prepared.preview.itemId,
+          arxivId: prepared.preview.arxivId,
+          status: 'completed' as const,
+          runner: 'codex' as const,
+          promptVersion: LLM_WIKI_PROMOTION_PROMPT_VERSION,
+          sourceHash: prepared.preview.sourceHash,
+          contractHash: prepared.preview.contractHash,
+          evidenceTier: 'full-text-verified' as const,
+          summary: 'Deterministic fixture promotion completed without writing the real vault.',
+          createdPaths: prepared.preview.intendedPaths.slice(0, 3),
+          updatedPaths: prepared.preview.intendedPaths.slice(3, -1),
+          pdfPath: prepared.preview.intendedPaths[0] ?? null,
+          sidecarPath: prepared.preview.intendedPaths[1] ?? null,
+          notePath: prepared.preview.intendedPaths[2] ?? null,
+          auditPath: prepared.preview.intendedPaths.at(-1) ?? null,
+          blockers: [],
+          startedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString()
+        }),
+        dispose: async () => undefined
+      }
+    : new LlmWikiVaultAdapter(createLlmWikiPromotionRuntime())
+  const promotionService = new LlmWikiPromotionService(repository, promotionAdapter)
   registerIpcHandlers(
     repository,
     discoveryService,
     discoverService,
     providerService,
     analysisService,
-    localAgentService
+    localAgentService,
+    promotionService,
+    useE2eFixtures
   )
   createWindow()
   Menu.setApplicationMenu(
@@ -313,7 +433,19 @@ app.whenReady().then(() => {
     )
   )
 
-  app.once('before-quit', () => repository.close())
+  let shutdownStarted = false
+  let shutdownCompleted = false
+  app.on('before-quit', (event) => {
+    if (shutdownCompleted) return
+    event.preventDefault()
+    if (shutdownStarted) return
+    shutdownStarted = true
+    void promotionService.disposeAll().then(() => {
+      repository.close()
+      shutdownCompleted = true
+      app.quit()
+    })
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

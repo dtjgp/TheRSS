@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { env, platform } from 'node:process'
@@ -6,6 +6,10 @@ import { _electron as electron, expect, test, type Page } from '@playwright/test
 
 test('Discover-first search across every deployed source', async () => {
   const userDataDirectory = await mkdtemp(join(tmpdir(), 'therss-e2e-'))
+  const poisonVault = join(userDataDirectory, 'must-not-touch-llm-wiki')
+  const poisonSentinel = join(poisonVault, 'SENTINEL.txt')
+  await mkdir(poisonVault, { recursive: true })
+  await writeFile(poisonSentinel, 'fixture adapter must not touch this vault\n')
   const baselineDirectory = env.THERSS_E2E_CAPTURE_BASELINE
   const baselineExecutable = env.THERSS_E2E_EXECUTABLE
   const isBaselineCapture = Boolean(baselineDirectory && baselineExecutable)
@@ -19,11 +23,21 @@ test('Discover-first search across every deployed source', async () => {
       ? {
           executablePath: baselineExecutable,
           args: [`--user-data-dir=${userDataDirectory}`],
-          env: { ...env, THERSS_E2E_FIXTURES: '1' }
+          env: {
+            ...env,
+            HOME: userDataDirectory,
+            THERSS_E2E_FIXTURES: '1',
+            THERSS_LLM_WIKI_PATH: poisonVault
+          }
         }
       : {
           args: [`--user-data-dir=${userDataDirectory}`, '.'],
-          env: { ...env, THERSS_E2E_FIXTURES: '1' }
+          env: {
+            ...env,
+            HOME: userDataDirectory,
+            THERSS_E2E_FIXTURES: '1',
+            THERSS_LLM_WIKI_PATH: poisonVault
+          }
         }
   )
 
@@ -183,6 +197,26 @@ test('Discover-first search across every deployed source', async () => {
     await expect(discoverPaper.getByRole('button', { name: 'Analyze paper' })).toBeVisible()
     await expect(discoverRepository.getByRole('button', { name: 'Analyze paper' })).toHaveCount(0)
     await expect(discoverArticle.getByRole('button', { name: 'Analyze paper' })).toHaveCount(0)
+    await expect(discoverPaper.getByRole('button', { name: 'Promote to llm-wiki' })).toBeVisible()
+    await expect(
+      discoverRepository.getByRole('button', { name: 'Promote to llm-wiki' })
+    ).toHaveCount(0)
+    await expect(discoverArticle.getByRole('button', { name: 'Promote to llm-wiki' })).toHaveCount(
+      0
+    )
+    await discoverPaper.getByRole('button', { name: 'Promote to llm-wiki' }).click()
+    const promotionDialog = page.getByRole('dialog', { name: 'Promote paper to llm-wiki' })
+    await expect(promotionDialog).toContainText('Destination: local llm-wiki vault')
+    await expect(promotionDialog).not.toContainText(poisonVault)
+    await expect(promotionDialog).toContainText(
+      'Literature/Paper_Notes/L2_Structured/Model_Compression'
+    )
+    await capture(page, '02a-llm-wiki-promotion-preview.png')
+    await promotionDialog.getByRole('button', { name: 'Cancel promotion' }).click()
+    await expect(promotionDialog).toHaveCount(0)
+    await discoverPaper.getByRole('button', { name: 'Promote to llm-wiki' }).click()
+    await page.getByRole('button', { name: 'Confirm local promotion' }).click()
+    await expect(discoverPaper.getByRole('status')).toContainText('without writing the real vault')
     await discoverPaper.getByRole('button', { name: 'Analyze paper' }).click()
     await expect(discoverPaper.getByLabel('L1 paper analysis result')).toContainText(
       'llm-wiki-paper-l1-v1'
@@ -339,6 +373,15 @@ test('Discover-first search across every deployed source', async () => {
         accelerator: 'CommandOrControl+W',
         registerAccelerator: true
       })
+      await application.evaluate(({ app, BrowserWindow }) => {
+        app.focus({ steal: true })
+        BrowserWindow.getAllWindows()[0]?.focus()
+      })
+      await expect
+        .poll(() =>
+          application.evaluate(({ BrowserWindow }) => Boolean(BrowserWindow.getFocusedWindow()))
+        )
+        .toBe(true)
       await application.evaluate(({ Menu }) => {
         Menu.sendActionToFirstResponder('performClose:')
       })
@@ -356,5 +399,9 @@ test('Discover-first search across every deployed source', async () => {
     }
   } finally {
     await application.close()
+    expect(await readdir(poisonVault)).toEqual(['SENTINEL.txt'])
+    expect(await readFile(poisonSentinel, 'utf8')).toBe(
+      'fixture adapter must not touch this vault\n'
+    )
   }
 })

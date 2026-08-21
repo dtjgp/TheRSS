@@ -74,4 +74,29 @@ claude mcp list
 先用 therss 的 list_today_items 查看今天的候选项。选出与边缘智能和模型压缩最相关的 3 项，逐项调用 get_analysis_context。明确区分元数据所支持的事实、模型推断和仍需阅读全文或审计源码验证的问题。
 ```
 
-当前版本有意不提供 MCP 写工具。未来 Zotero/llm-wiki 写回必须另行设计预览、精确目标和用户确认。
+当前版本有意不提供 MCP 写工具。llm-wiki 论文推送只存在于桌面应用的显式
+`preview -> confirm` 交互中，不会因 Codex/Claude 连接了 TheRSS MCP 而获得写权限；Zotero
+写回仍未实现。
+
+## llm-wiki 论文推送
+
+默认 vault 路径为 `~/Obsidian/llm-wiki`。如实际位置不同，请在启动 TheRSS 前设置绝对路径：
+
+```bash
+export THERSS_LLM_WIKI_PATH=/absolute/path/to/llm-wiki
+```
+
+本功能还要求：
+
+- Codex CLI 已安装并登录；
+- `pdfinfo` 与 `pdftotext` 可执行；
+- vault 的 `System/Configs/Automation_Runtime_Scopes.json` 已注册
+  `therss-paper-promotion`，覆盖 `Automation_Conversations`、`Literature/Paper_Notes`、
+  `Topics`、`Methods`、`raw/papers`、`raw/paper_records`、`index.md` 与 `log.md`；这两个知识图谱
+  目录的持久 writer-scope 扩展必须由 vault 所有者显式授权，否则 live preview 会 fail closed；
+- vault 的 AGENTS、schema、paper-ingest SOP、write-governance、L1/L2 templates 与三个索引文件
+  均为可读取的普通文件。
+
+首次点击只在临时目录下载/核验 PDF、运行只读 Codex 分析并显示精确相对路径；只有 renderer
+确认并通过 Electron main 的原生确认后，才会获取 vault writer lease 并落盘。自动化测试使用
+fixture adapter，不访问网络、Codex 或真实 vault。
