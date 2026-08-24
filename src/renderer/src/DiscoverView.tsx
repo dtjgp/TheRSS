@@ -22,6 +22,8 @@ interface DiscoverViewProps {
 
 type DiscoverResultFilter = 'all' | 'paper' | 'repository' | 'other'
 
+const DISCOVER_RESULT_BATCH_SIZE = 24
+
 function statusLabel(snapshot: DiscoverSnapshot): string {
   if (snapshot.status === 'partial') return 'Partial results'
   if (snapshot.status === 'failed') return 'Search failed'
@@ -99,12 +101,12 @@ function DiscoverCard({
         <span>{new Date(item.publishedAt).toLocaleDateString()}</span>
         <span className="signal-card__score">signal {item.score}</span>
       </div>
-      <h2>
+      <h3>
         <a href={item.url} target="_blank" rel="noreferrer">
           {item.title}
         </a>
-      </h2>
-      <p>{item.summary}</p>
+      </h3>
+      <p className="discover-card__summary">{item.summary}</p>
       <div className="reason-list" aria-label="Discover match reasons">
         {item.reasons.map((reason) => (
           <span key={reason}>{reason}</span>
@@ -155,6 +157,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
   const [isSourcePickerOpen, setIsSourcePickerOpen] = useState(false)
   const [snapshot, setSnapshot] = useState<DiscoverSnapshot | null>(null)
   const [resultFilter, setResultFilter] = useState<DiscoverResultFilter>('all')
+  const [visibleResultCount, setVisibleResultCount] = useState(DISCOVER_RESULT_BATCH_SIZE)
   const [isSearching, setIsSearching] = useState(false)
   const [savingItemId, setSavingItemId] = useState<string | null>(null)
   const [analyzingItemId, setAnalyzingItemId] = useState<string | null>(null)
@@ -172,6 +175,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
             (source) => latest.sourceOutcomes[source]?.status !== 'not_searched'
           )
           setSnapshot(latest)
+          setVisibleResultCount(DISCOVER_RESULT_BATCH_SIZE)
           setIntent(latest.intent)
           setRunner(latest.runner)
           if (latestSources.length > 0) {
@@ -215,6 +219,8 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
       }) ?? [],
     [resultFilter, snapshot]
   )
+  const visibleItems = filteredItems.slice(0, visibleResultCount)
+  const remainingItemCount = Math.max(0, filteredItems.length - visibleItems.length)
 
   const toggleSource = (source: DiscoverSource) => {
     setSources((current) =>
@@ -238,6 +244,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
       })
       setSnapshot(nextSnapshot)
       setResultFilter('all')
+      setVisibleResultCount(DISCOVER_RESULT_BATCH_SIZE)
     } catch {
       setError(
         runner === 'model-provider'
@@ -337,7 +344,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
             <strong>{hasPersonalContext ? 'Personal context on' : 'Personal context off'}</strong>
             {hasPersonalContext
               ? 'The selected runner will use your saved profile. Source sites receive the generated search terms; review them in Search details.'
-              : 'Add a Personal Prompt in Models & Agents to tailor future query expansion.'}
+              : 'Add a Personal Prompt in Settings to tailor future query expansion.'}
           </p>
         </div>
         <div className="discover-controls">
@@ -474,7 +481,10 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
                     type="button"
                     aria-label={`${label} ${count}`}
                     aria-pressed={resultFilter === filter}
-                    onClick={() => setResultFilter(filter)}
+                    onClick={() => {
+                      setResultFilter(filter)
+                      setVisibleResultCount(DISCOVER_RESULT_BATCH_SIZE)
+                    }}
                   >
                     <strong>{count}</strong>
                     <span>{label}</span>
@@ -508,23 +518,46 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
                 <p>Choose another result type to see the records already found.</p>
               </div>
             ) : (
-              <div className="signal-grid">
-                {filteredItems.map((item, index) => (
-                  <DiscoverCard
-                    key={`${snapshot.id}-${item.id}`}
-                    item={item}
-                    index={index}
-                    isSaving={savingItemId === item.id}
-                    isSaveDisabled={savingItemId !== null}
-                    analysis={analysis?.itemId === item.id ? analysis : null}
-                    isAnalyzing={analyzingItemId === item.id}
-                    onToggleSave={toggleSaveResult}
-                    onAnalyze={analyzeResult}
-                    api={api}
-                    sessionId={snapshot.id}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="signal-grid" id="discover-visible-results">
+                  {visibleItems.map((item, index) => (
+                    <DiscoverCard
+                      key={`${snapshot.id}-${item.id}`}
+                      item={item}
+                      index={index}
+                      isSaving={savingItemId === item.id}
+                      isSaveDisabled={savingItemId !== null}
+                      analysis={analysis?.itemId === item.id ? analysis : null}
+                      isAnalyzing={analyzingItemId === item.id}
+                      onToggleSave={toggleSaveResult}
+                      onAnalyze={analyzeResult}
+                      api={api}
+                      sessionId={snapshot.id}
+                    />
+                  ))}
+                </div>
+                <div className="discover-result-pagination">
+                  <p role="status" aria-label="Discover result count">
+                    {remainingItemCount === 0
+                      ? `Showing all ${filteredItems.length} results`
+                      : `Showing ${visibleItems.length} of ${filteredItems.length} results`}
+                  </p>
+                  {remainingItemCount > 0 && (
+                    <button
+                      type="button"
+                      className="text-button"
+                      aria-controls="discover-visible-results"
+                      onClick={() =>
+                        setVisibleResultCount((current) =>
+                          Math.min(current + DISCOVER_RESULT_BATCH_SIZE, filteredItems.length)
+                        )
+                      }
+                    >
+                      Show {Math.min(DISCOVER_RESULT_BATCH_SIZE, remainingItemCount)} more results
+                    </button>
+                  )}
+                </div>
+              </>
             )}
             <p className="discover-evidence-boundary">
               Evidence boundary: these are source metadata and model-derived relevance signals;

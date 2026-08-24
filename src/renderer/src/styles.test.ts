@@ -1,7 +1,17 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-const stylesheet = readFileSync(new URL('./styles.css', import.meta.url), 'utf8')
+const stylesheet = [
+  './styles.css',
+  './styles/settings.css',
+  './styles/discover.css',
+  './styles/analytics.css',
+  './styles/sources.css',
+  './styles/workspace.css',
+  './styles/accessibility.css'
+]
+  .map((path) => readFileSync(new URL(path, import.meta.url), 'utf8'))
+  .join('\n')
 const rendererEntry = readFileSync(new URL('./main.tsx', import.meta.url), 'utf8')
 const packageMetadata = JSON.parse(
   readFileSync(new URL('../../../package.json', import.meta.url), 'utf8')
@@ -54,7 +64,7 @@ describe('Apple semantic color system', () => {
       ".app-shell[data-view='saved']",
       ".app-shell[data-view='discover']",
       ".app-shell[data-view='interests']",
-      ".app-shell[data-view='models']",
+      ".app-shell[data-view='settings']",
       ".app-shell[data-view='analytics']"
     ]
 
@@ -92,10 +102,68 @@ describe('Apple semantic color system', () => {
     )
   })
 
-  it('keeps Personal Prompt settings in one column on desktop layouts', () => {
+  it('keeps Personal Prompt controls on the full Settings panel width', () => {
     expect(stylesheet).toMatch(
-      /\.model-editor\s+\.personalization-form\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/su
+      /\.settings-panel\s+form\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/su
     )
+    expect(stylesheet).toMatch(/\.settings-panel\s+\.field--wide[^}]*grid-column:\s*1\s*\/\s*-1/su)
+  })
+
+  it('gives the Discover source summary a full row at the minimum desktop width', () => {
+    const narrowStart = stylesheet.indexOf('@media (max-width: 920px)')
+    const narrowEnd = stylesheet.indexOf('@media (prefers-color-scheme: dark)')
+    const narrowRules = stylesheet.slice(narrowStart, narrowEnd)
+
+    expect(narrowRules).toMatch(
+      /\.discover-controls\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto;/su
+    )
+    expect(narrowRules).toMatch(/\.discover-source-picker\s*\{[^}]*grid-column:\s*1\s*\/\s*-1;/su)
+  })
+
+  it('uses an opaque placeholder token with normal-text contrast in both appearances', () => {
+    const contrastRatio = (foreground: string, background: string): number => {
+      const luminance = (hex: string) => {
+        const channels = hex
+          .slice(1)
+          .match(/.{2}/gu)!
+          .map((value) => Number.parseInt(value, 16) / 255)
+          .map((value) =>
+            value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4)
+          )
+        return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!
+      }
+      const foregroundLuminance = luminance(foreground)
+      const backgroundLuminance = luminance(background)
+      return (
+        (Math.max(foregroundLuminance, backgroundLuminance) + 0.05) /
+        (Math.min(foregroundLuminance, backgroundLuminance) + 0.05)
+      )
+    }
+
+    expect(stylesheet).toContain('--placeholder-label: #626267;')
+    expect(stylesheet).toContain('--placeholder-label: #a9a9af;')
+    expect(stylesheet).toMatch(
+      /input::placeholder,\s*textarea::placeholder\s*\{[^}]*color:\s*var\(--placeholder-label\);[^}]*opacity:\s*1;/su
+    )
+    expect(contrastRatio('#626267', '#f2f2f7')).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio('#a9a9af', '#2c2c2e')).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('keeps large-result and Saved triage controls compact and visible', () => {
+    const discoverSummaryRule = stylesheet.match(/\.discover-card__summary\s*\{([^}]*)\}/su)?.[1]
+    const savedSummaryRule = stylesheet.match(
+      /\.signal-detail__summary\[data-expanded='false'\]\s*\{([^}]*)\}/su
+    )?.[1]
+    expect(discoverSummaryRule).toContain('-webkit-line-clamp: 3;')
+    expect(discoverSummaryRule).toContain('overflow: hidden;')
+    expect(stylesheet).toMatch(
+      /\.discover-result-pagination\s*\{[^}]*position:\s*sticky;[^}]*bottom:\s*0;/su
+    )
+    expect(stylesheet).toMatch(
+      /\.signal-detail__actions\s*\{[^}]*position:\s*sticky;[^}]*top:\s*0;/su
+    )
+    expect(savedSummaryRule).toContain('-webkit-line-clamp: 6;')
+    expect(savedSummaryRule).toContain('overflow: hidden;')
   })
 
   it('uses only Apple system typography without bundled third-party font assets', () => {
@@ -118,5 +186,32 @@ describe('Apple semantic color system', () => {
     expect(packageMetadata.dependencies).not.toHaveProperty('@fontsource/ibm-plex-sans')
     expect(packageMetadata.dependencies).not.toHaveProperty('@fontsource/newsreader')
     expect(packageLock).not.toContain('node_modules/@fontsource/')
+  })
+
+  it('supports increased contrast and forced colors without hiding focus or state', () => {
+    expect(stylesheet).toContain('@media (prefers-contrast: more)')
+    expect(stylesheet).toContain('@media (forced-colors: active)')
+    expect(stylesheet).toMatch(
+      /@media \(prefers-contrast: more\)[\s\S]*--separator:\s*rgba\(60,\s*60,\s*67,\s*0\.62\);/u
+    )
+    expect(stylesheet).toMatch(
+      /@media \(forced-colors: active\)[\s\S]*\.status-dot[\s\S]*background:\s*CanvasText;/u
+    )
+    expect(stylesheet).toMatch(
+      /@media \(forced-colors: active\)[\s\S]*:focus-visible[\s\S]*outline:\s*3px solid Highlight;/u
+    )
+  })
+
+  it('keeps critical uppercase metadata at an 11px minimum', () => {
+    for (const selector of [
+      '.eyebrow',
+      '.source-catalog-controls label > span',
+      '.analytics-summary-card > span'
+    ]) {
+      const escaped = selector.replaceAll(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+      const rule = stylesheet.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'su'))?.[1]
+      expect(rule, selector).toBeDefined()
+      expect(rule, selector).not.toMatch(/font-size:\s*(?:8|9|10)px;/u)
+    }
   })
 })

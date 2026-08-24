@@ -1,6 +1,11 @@
 import { ArrowLeft, ArrowRight, ArrowUpRight, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { SourceContentSnapshot, TheRSSApi } from '../../shared/api'
+import type {
+  DashboardSnapshot,
+  SourceContentSnapshot,
+  SourceHealth,
+  TheRSSApi
+} from '../../shared/api'
 import {
   RESEARCH_AXES,
   RESEARCH_AXIS_LABELS,
@@ -16,10 +21,25 @@ import { discoverySourceFromCatalogId } from '../../shared/sourceIdentity'
 
 type PriorityFilter = 'all' | SourcePriority
 type ResearchAxisFilter = 'all' | ResearchAxis
-type SourceCatalogApi = Pick<TheRSSApi, 'getSourceContent' | 'refreshSourceContent'>
+type SourceCatalogApi = Pick<
+  TheRSSApi,
+  'getDashboard' | 'getSourceContent' | 'refreshSourceContent'
+>
 
 interface SourceCatalogViewProps {
   readonly api: SourceCatalogApi
+  readonly sourceHealth: DashboardSnapshot['sourceHealth'] | undefined
+  readonly sourceHealthDetails?: DashboardSnapshot['sourceHealthDetails'] | undefined
+  readonly attentionOnly?: boolean
+  readonly onAttentionOnlyChange?: (attentionOnly: boolean) => void
+  readonly onDashboardChange?: (dashboard: DashboardSnapshot) => void
+}
+
+interface SourceHealthCounts {
+  readonly ready: number
+  readonly attention: number
+  readonly refreshing: number
+  readonly idle: number
 }
 
 function matchesSearch(source: SourceCatalogEntry, query: string): boolean {
@@ -71,6 +91,59 @@ function sourceSearchesThroughDiscover(sourceId: SourceContentSnapshot['source']
   return sourceId === 'github'
 }
 
+function sourceHealthLabel(health: SourceHealth | undefined): string {
+  switch (health) {
+    case 'healthy':
+      return 'Healthy'
+    case 'no_results':
+      return 'Healthy · no results'
+    case 'partial':
+      return 'Partial'
+    case 'failed':
+      return 'Failed'
+    case 'refreshing':
+      return 'Refreshing'
+    case 'idle':
+    default:
+      return 'Not checked this session'
+  }
+}
+
+function sourceSnapshotLabel(status: SourceContentSnapshot['status']): string {
+  switch (status) {
+    case 'cached':
+      return 'Cached snapshot'
+    case 'no_results':
+      return 'Fetched · no results'
+    case 'partial':
+      return 'Fetched · partial'
+    case 'fetched':
+      return 'Freshly fetched'
+  }
+}
+
+function summarizeSourceHealth(
+  sourceHealth: DashboardSnapshot['sourceHealth'] | undefined
+): SourceHealthCounts {
+  return SOURCE_CATALOG.reduce<SourceHealthCounts>(
+    (counts, source) => {
+      const sourceId = discoverySourceFromCatalogId(source.id)
+      const health = sourceId ? sourceHealth?.[sourceId] : undefined
+      if (health === 'healthy' || health === 'no_results') {
+        return { ...counts, ready: counts.ready + 1 }
+      }
+      if (health === 'partial' || health === 'failed') {
+        return { ...counts, attention: counts.attention + 1 }
+      }
+      if (health === 'refreshing') {
+        return { ...counts, refreshing: counts.refreshing + 1 }
+      }
+      return { ...counts, idle: counts.idle + 1 }
+    },
+    { ready: 0, attention: 0, refreshing: 0, idle: 0 }
+  )
+}
+
 function sourceErrorMessage(reason: unknown): string {
   const raw = reason instanceof Error ? reason.message : String(reason || 'Unknown source error')
   const nested = raw.lastIndexOf('Error: ')
@@ -85,16 +158,24 @@ function sourceErrorMessage(reason: unknown): string {
 function SourceDetail({
   source,
   api,
+  sourceHealth,
+  sourceHealthDetails,
+  onDashboardChange,
   onBack
 }: {
   readonly source: SourceCatalogEntry
   readonly api: SourceCatalogApi
+  readonly sourceHealth: DashboardSnapshot['sourceHealth'] | undefined
+  readonly sourceHealthDetails: DashboardSnapshot['sourceHealthDetails'] | undefined
+  readonly onDashboardChange: (dashboard: DashboardSnapshot) => void
   readonly onBack: () => void
 }) {
   const sourceId = discoverySourceFromCatalogId(source.id)
   const isActive = source.acquisition === 'active' && sourceId !== null
   const isArxiv = sourceId === 'arxiv'
   const canRefresh = isActive && sourceId !== null && !sourceSearchesThroughDiscover(sourceId)
+  const currentHealth = sourceId ? sourceHealth?.[sourceId] : undefined
+  const currentHealthDetail = sourceId ? sourceHealthDetails?.[sourceId] : undefined
   const [snapshot, setSnapshot] = useState<SourceContentSnapshot | null>(null)
   const [isLoading, setIsLoading] = useState(isActive)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -117,7 +198,11 @@ function SourceDetail({
         setIsRefreshing(true)
         try {
           const refreshed = await api.refreshSourceContent(sourceId)
-          if (isCurrent) setSnapshot(refreshed)
+          if (isCurrent) {
+            setSnapshot(refreshed)
+            const nextDashboard = await api.getDashboard().catch(() => null)
+            if (isCurrent && nextDashboard) onDashboardChange(nextDashboard)
+          }
         } catch (reason) {
           if (isCurrent) {
             setError(sourceErrorMessage(reason))
@@ -136,7 +221,7 @@ function SourceDetail({
     return () => {
       isCurrent = false
     }
-  }, [api, canRefresh, isActive, sourceId])
+  }, [api, canRefresh, isActive, onDashboardChange, sourceId])
 
   const refresh = useCallback(async () => {
     if (!canRefresh || sourceId === null) return
@@ -144,12 +229,14 @@ function SourceDetail({
     setError(null)
     try {
       setSnapshot(await api.refreshSourceContent(sourceId))
+      const nextDashboard = await api.getDashboard().catch(() => null)
+      if (nextDashboard) onDashboardChange(nextDashboard)
     } catch (reason) {
       setError(sourceErrorMessage(reason))
     } finally {
       setIsRefreshing(false)
     }
-  }, [api, canRefresh, sourceId])
+  }, [api, canRefresh, onDashboardChange, sourceId])
 
   return (
     <section className="source-detail-view">
@@ -163,16 +250,15 @@ function SourceDetail({
           <span className={`source-priority source-priority--${source.priority}`}>
             Priority {source.priority}
           </span>
-          <span className={`source-acquisition source-acquisition--${source.acquisition}`}>
-            {SOURCE_ACQUISITION_LABELS[source.acquisition]}
+          <span className={`source-health source-health--${currentHealth ?? 'idle'}`}>
+            {sourceHealthLabel(currentHealth)}
           </span>
         </div>
         <p className="eyebrow">
           {isArxiv ? 'SOURCE DESK · TODAY' : 'SOURCE DESK · ROLLING 30 DAYS'}
         </p>
         <h1>{source.name}</h1>
-        <strong>{source.role}</strong>
-        <p>{source.reason}</p>
+        <p>Retained research source with bounded in-app retrieval and explicit local evidence.</p>
         <div className="source-detail-actions">
           {isActive && (
             <button
@@ -192,6 +278,34 @@ function SourceDetail({
           </a>
         </div>
       </header>
+
+      <details className="source-provenance">
+        <summary>Source provenance</summary>
+        <dl>
+          <div>
+            <dt>Research role</dt>
+            <dd>{source.role}</dd>
+          </div>
+          <div>
+            <dt>Why retained</dt>
+            <dd>{source.reason}</dd>
+          </div>
+          <div>
+            <dt>Retrieval implementation</dt>
+            <dd>
+              {SOURCE_ACQUISITION_LABELS[source.acquisition]} · {source.accessNote}
+            </dd>
+          </div>
+          <div>
+            <dt>Catalog provenance</dt>
+            <dd>{source.origin}</dd>
+          </div>
+          <div>
+            <dt>Registry verification</dt>
+            <dd>August 19, 2026 · dated verification, not a current-health promise</dd>
+          </div>
+        </dl>
+      </details>
 
       <p className="source-detail-boundary">
         {isArxiv
@@ -240,24 +354,33 @@ function SourceDetail({
               <strong>{snapshot.items.length}</strong>
             </div>
             <div>
-              <span>Latest source request</span>
+              <span>Last recorded health</span>
               <strong>
-                {snapshot.status === 'cached'
-                  ? 'Local cache'
-                  : snapshot.status === 'no_results'
-                    ? 'No results'
-                    : snapshot.status === 'partial'
-                      ? 'Partial'
-                      : 'Fetched'}
+                {sourceHealthLabel(currentHealth)}
+                {currentHealthDetail?.observedAt
+                  ? ` · recorded ${formatTimestamp(currentHealthDetail.observedAt)}`
+                  : ' · not yet observed'}
               </strong>
             </div>
             <div>
-              <span>Last indexed</span>
-              <strong>
-                {snapshot.lastIndexedAt ? formatTimestamp(snapshot.lastIndexedAt) : 'Not yet'}
-              </strong>
+              <span>Local snapshot</span>
+              <strong>{sourceSnapshotLabel(snapshot.status)}</strong>
             </div>
           </div>
+
+          {currentHealthDetail?.errorMessage && (
+            <p className="source-health-record" role="status">
+              {currentHealthDetail.errorMessage}
+            </p>
+          )}
+
+          <p className="source-content-status-note">
+            {snapshot.status === 'cached'
+              ? 'Showing stored local records; cache availability does not prove that the source is currently reachable.'
+              : 'The local snapshot reflects the latest completed in-app source request.'}{' '}
+            Latest indexed item:{' '}
+            {snapshot.lastIndexedAt ? formatTimestamp(snapshot.lastIndexedAt) : 'not yet indexed'}.
+          </p>
 
           {snapshot.items.length === 0 && !isRefreshing ? (
             <div className="source-detail-empty">
@@ -307,11 +430,19 @@ function SourceDetail({
   )
 }
 
-export function SourceCatalogView({ api }: SourceCatalogViewProps) {
+export function SourceCatalogView({
+  api,
+  sourceHealth,
+  sourceHealthDetails,
+  attentionOnly = false,
+  onAttentionOnlyChange = () => undefined,
+  onDashboardChange = () => undefined
+}: SourceCatalogViewProps) {
   const [query, setQuery] = useState('')
   const [priority, setPriority] = useState<PriorityFilter>('all')
   const [researchAxis, setResearchAxis] = useState<ResearchAxisFilter>('all')
   const [selectedSource, setSelectedSource] = useState<SourceCatalogEntry | null>(null)
+  const healthCounts = useMemo(() => summarizeSourceHealth(sourceHealth), [sourceHealth])
 
   const visibleSources = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase()
@@ -319,36 +450,68 @@ export function SourceCatalogView({ api }: SourceCatalogViewProps) {
       (source) =>
         matchesSearch(source, normalizedQuery) &&
         (priority === 'all' || source.priority === priority) &&
-        (researchAxis === 'all' || source.researchAxes.includes(researchAxis))
+        (researchAxis === 'all' || source.researchAxes.includes(researchAxis)) &&
+        (!attentionOnly ||
+          (() => {
+            const sourceId = discoverySourceFromCatalogId(source.id)
+            const health = sourceId ? sourceHealth?.[sourceId] : undefined
+            return health === 'partial' || health === 'failed'
+          })())
     )
-  }, [priority, query, researchAxis])
+  }, [attentionOnly, priority, query, researchAxis, sourceHealth])
 
   if (selectedSource) {
-    return <SourceDetail source={selectedSource} api={api} onBack={() => setSelectedSource(null)} />
+    return (
+      <SourceDetail
+        source={selectedSource}
+        api={api}
+        sourceHealth={sourceHealth}
+        sourceHealthDetails={sourceHealthDetails}
+        onDashboardChange={onDashboardChange}
+        onBack={() => setSelectedSource(null)}
+      />
+    )
   }
 
   return (
     <section className="source-catalog-view">
       <header className="source-catalog-heading">
         <p className="eyebrow">RESEARCH SOURCE DIRECTORY</p>
-        <h1>{SOURCE_CATALOG_STATS.total} live-verified research sources</h1>
+        <h1>{SOURCE_CATALOG_STATS.total} configured research sources</h1>
         <p>
-          Select one of the retained sources to inspect its locally indexed recent records without
-          leaving TheRSS; arXiv uses its newest available daily batch.
+          These retained sources passed a dated deployment verification on August 19, 2026. Select
+          one to inspect its separately recorded health and locally indexed content without leaving
+          TheRSS.
         </p>
       </header>
 
       <div className="source-catalog-summary" role="group" aria-label="Source catalog summary">
         <SummaryMetric
-          label="Live-verified sources"
+          label="Configured sources"
           value={SOURCE_CATALOG_STATS.total}
-          detail="Only sources that passed the previous live retrieval test are active"
+          detail="Retained by a dated verification gate; membership is not current health"
+        />
+        <SummaryMetric
+          label="Last recorded ready"
+          value={healthCounts.ready}
+          detail="Healthy or explicit no-result in the latest recorded observation"
+        />
+        <SummaryMetric
+          label="Needs attention"
+          value={healthCounts.attention}
+          detail="Partial or failed in the latest recorded health"
+        />
+        <SummaryMetric
+          label="Not checked"
+          value={healthCounts.idle}
+          detail={`${healthCounts.refreshing} refreshing · no current state is not a failure`}
         />
       </div>
 
       <p className="source-catalog-boundary">
-        This directory retains only the 22 sources that passed live verification. Other catalog
-        candidates are deferred and hidden from retrieval, Today, and Sources.
+        Catalog membership is not a live-health claim. These 22 sources passed the previous
+        verification gate; current retrieval can still be healthy, empty, refreshing, partial, or
+        failed. Other catalog candidates remain deferred and hidden.
       </p>
 
       <div className="source-catalog-controls" aria-label="Filter source catalog">
@@ -377,6 +540,19 @@ export function SourceCatalogView({ api }: SourceCatalogViewProps) {
             ))}
           </select>
         </label>
+        <div className="source-attention-field">
+          <span>Health</span>
+          <button
+            type="button"
+            className="source-attention-filter"
+            aria-label="Show sources needing attention"
+            aria-pressed={attentionOnly}
+            onClick={() => onAttentionOnlyChange(!attentionOnly)}
+          >
+            Needs attention
+            <strong>{healthCounts.attention}</strong>
+          </button>
+        </div>
         <label>
           <span>Research axis</span>
           <select
@@ -421,24 +597,26 @@ export function SourceCatalogView({ api }: SourceCatalogViewProps) {
                   <span className={`source-priority source-priority--${source.priority}`}>
                     Priority {source.priority}
                   </span>
-                  <span className={`source-acquisition source-acquisition--${source.acquisition}`}>
-                    {SOURCE_ACQUISITION_LABELS[source.acquisition]}
+                  <span
+                    className={`source-health source-health--${
+                      discoverySourceFromCatalogId(source.id)
+                        ? (sourceHealth?.[discoverySourceFromCatalogId(source.id)!] ?? 'idle')
+                        : 'idle'
+                    }`}
+                  >
+                    {sourceHealthLabel(
+                      discoverySourceFromCatalogId(source.id)
+                        ? sourceHealth?.[discoverySourceFromCatalogId(source.id)!]
+                        : undefined
+                    )}
                   </span>
                 </div>
                 <h2>{source.name}</h2>
-                <p className="source-catalog-card__role">{source.role}</p>
-                <p>{source.reason}</p>
                 <div className="source-axis-list" aria-label={`${source.name} research axes`}>
                   {source.researchAxes.map((axis) => (
-                    <span key={axis} title={RESEARCH_AXIS_LABELS[axis]}>
-                      {axis}
-                    </span>
+                    <span key={axis}>{RESEARCH_AXIS_LABELS[axis]}</span>
                   ))}
                 </div>
-                <footer>
-                  <span>{source.accessNote}</span>
-                  <span>{source.origin}</span>
-                </footer>
                 <span className="source-catalog-card__drill">
                   View recent content
                   <ArrowRight aria-hidden="true" size={14} />

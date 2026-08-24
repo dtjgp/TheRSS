@@ -4,22 +4,23 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent
 } from 'react'
-import { BarChart3, Bot, Compass, Library, PanelLeftClose, PanelLeftOpen, Star } from 'lucide-react'
+import {
+  BarChart3,
+  Compass,
+  Library,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings,
+  Star
+} from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { DashboardSnapshot, TheRSSApi, TriageState } from '../../shared/api'
-import { DISCOVER_PERSONALIZATION_PROMPT_MAX_LENGTH } from '../../shared/personalization'
-import type {
-  AnalysisArtifact,
-  AnalysisRunner,
-  LocalAgentStatus,
-  ModelProtocol,
-  ModelProviderInput,
-  ModelProviderSummary
-} from '../../shared/models'
+import type { AnalysisArtifact, AnalysisRunner, LocalAgentStatus } from '../../shared/models'
 import { DiscoverView } from './DiscoverView'
 import { DataAnalyticsView } from './DataAnalyticsView'
 import { SignalWorkspace } from './SignalWorkspace'
 import { SourceCatalogView } from './SourceCatalogView'
+import { SettingsView } from './SettingsView'
 import type { DiscoverySource } from '../../shared/discovery'
 import { ACTIVE_TODAY_SOURCE_IDS, sourceDisplayName } from '../../shared/sourceIdentity'
 
@@ -27,7 +28,7 @@ interface AppProps {
   readonly api: TheRSSApi
 }
 
-type AppView = 'discover' | 'saved' | 'models' | 'analytics' | 'sources'
+type AppView = 'discover' | 'saved' | 'settings' | 'analytics' | 'sources'
 
 interface NavigationItem {
   readonly view: AppView
@@ -36,13 +37,17 @@ interface NavigationItem {
   readonly icon: LucideIcon
 }
 
-const navigationItems: readonly NavigationItem[] = [
+const primaryNavigationItems: readonly NavigationItem[] = [
   { view: 'discover', index: '01', label: 'Discover', icon: Compass },
-  { view: 'saved', index: '02', label: 'Saved', icon: Star },
-  { view: 'models', index: '03', label: 'Models & Agents', icon: Bot },
-  { view: 'analytics', index: '04', label: 'Data Analytics', icon: BarChart3 },
-  { view: 'sources', index: '05', label: 'Sources', icon: Library }
+  { view: 'saved', index: '02', label: 'Saved', icon: Star }
 ]
+
+const secondaryNavigationItems: readonly NavigationItem[] = [
+  { view: 'analytics', index: '03', label: 'Data Analytics', icon: BarChart3 },
+  { view: 'sources', index: '04', label: 'Sources', icon: Library }
+]
+
+const navigationItems = [...primaryNavigationItems, ...secondaryNavigationItems] as const
 
 const SIDEBAR_WIDTH_STORAGE_KEY = 'therss.sidebar-width'
 const SIDEBAR_MIN_WIDTH = 184
@@ -118,297 +123,6 @@ function getSourceHealthSummary(snapshot: DashboardSnapshot | null): {
   return { label: 'Local index ready', tone: 'idle' }
 }
 
-interface ModelDraft {
-  readonly name: string
-  readonly protocol: ModelProtocol
-  readonly baseUrl: string
-  readonly model: string
-  readonly apiKey: string
-}
-
-const emptyModelDraft: ModelDraft = {
-  name: '',
-  protocol: 'openai-compatible',
-  baseUrl: '',
-  model: '',
-  apiKey: ''
-}
-
-function draftFromProvider(provider: ModelProviderSummary): ModelDraft {
-  return {
-    name: provider.name,
-    protocol: provider.protocol,
-    baseUrl: provider.baseUrl,
-    model: provider.model,
-    apiKey: ''
-  }
-}
-
-function ModelEditor({
-  api,
-  localAgents
-}: {
-  readonly api: TheRSSApi
-  readonly localAgents: readonly LocalAgentStatus[]
-}) {
-  const [draft, setDraft] = useState<ModelDraft>(emptyModelDraft)
-  const [provider, setProvider] = useState<ModelProviderSummary | null>(null)
-  const [personalPrompt, setPersonalPrompt] = useState('')
-  const [savedPersonalPrompt, setSavedPersonalPrompt] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
-  const [isSavingPersonalPrompt, setIsSavingPersonalPrompt] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [personalPromptError, setPersonalPromptError] = useState<string | null>(null)
-  const [personalPromptStatus, setPersonalPromptStatus] = useState<string | null>(null)
-
-  useEffect(() => {
-    let isActive = true
-    api.getModelProvider().then((current) => {
-      if (isActive && current) {
-        setProvider(current)
-        setDraft(draftFromProvider(current))
-      }
-    })
-    return () => {
-      isActive = false
-    }
-  }, [api])
-
-  useEffect(() => {
-    let isActive = true
-    api
-      .getDiscoverPersonalizationSettings()
-      .then((settings) => {
-        if (!isActive || !settings) return
-        setPersonalPrompt(settings.prompt)
-        setSavedPersonalPrompt(settings.prompt)
-      })
-      .catch(() => {
-        if (isActive) setPersonalPromptError('The local personal prompt could not be opened.')
-      })
-    return () => {
-      isActive = false
-    }
-  }, [api])
-
-  const setField = <Key extends keyof ModelDraft>(field: Key, value: ModelDraft[Key]) => {
-    setDraft((current) => ({ ...current, [field]: value }))
-  }
-
-  const save = async (event: React.FormEvent) => {
-    event.preventDefault()
-    setIsSaving(true)
-    setError(null)
-    const input: ModelProviderInput = {
-      name: draft.name,
-      protocol: draft.protocol,
-      baseUrl: draft.baseUrl,
-      model: draft.model,
-      ...(draft.apiKey.trim() ? { apiKey: draft.apiKey } : {})
-    }
-    try {
-      const saved = await api.saveModelProvider(input)
-      setProvider(saved)
-      setDraft(draftFromProvider(saved))
-    } catch {
-      setError('Provider settings were rejected. Use remote HTTPS or local loopback HTTP.')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const savePersonalPrompt = async (event: React.FormEvent) => {
-    event.preventDefault()
-    setIsSavingPersonalPrompt(true)
-    setPersonalPromptError(null)
-    setPersonalPromptStatus(null)
-    try {
-      const saved = await api.saveDiscoverPersonalizationPrompt(personalPrompt)
-      setPersonalPrompt(saved.prompt)
-      setSavedPersonalPrompt(saved.prompt)
-      setPersonalPromptStatus(
-        saved.prompt
-          ? 'Personal context saved. Future Discover searches will use it.'
-          : 'Personal context cleared. Future Discover searches will stay generic.'
-      )
-    } catch {
-      setPersonalPromptError(
-        'The personal Discover prompt must stay within the local safety limit.'
-      )
-    } finally {
-      setIsSavingPersonalPrompt(false)
-    }
-  }
-
-  return (
-    <section className="model-editor">
-      <div className="model-editor__heading">
-        <p className="eyebrow">AGENT SETTINGS</p>
-        <h1>Personalize your research agents.</h1>
-        <p>
-          Give Discover stable research context, then choose the model or local agent that expands
-          each question into an inspectable search plan.
-        </p>
-      </div>
-      <form className="personalization-form" onSubmit={(event) => void savePersonalPrompt(event)}>
-        <div className="personalization-form__heading">
-          <div>
-            <p className="eyebrow">01 · PERSONAL PROMPT</p>
-            <h2>Give search the context you repeat every time.</h2>
-          </div>
-          <p>
-            Describe your fields, active questions, preferred evidence, methods, and exclusions.
-            Your current Discover question remains the primary instruction.
-          </p>
-        </div>
-        <label className="field field--wide">
-          <span>Personal Discover prompt</span>
-          <textarea
-            aria-label="Personal Discover prompt"
-            aria-describedby="personal-prompt-guidance personal-prompt-privacy"
-            value={personalPrompt}
-            onChange={(event) => {
-              setPersonalPrompt(event.target.value)
-              setPersonalPromptStatus(null)
-            }}
-            maxLength={DISCOVER_PERSONALIZATION_PROMPT_MAX_LENGTH}
-            placeholder="Example: I research edge intelligence and energy systems. Prioritize reproducible evaluations, explicit resource budgets, and reviewer-safe claim boundaries."
-            rows={6}
-          />
-        </label>
-        <div className="personalization-form__guidance">
-          <p id="personal-prompt-guidance" className="field-hint">
-            A short profile is usually enough. Clear the field and save to disable personalization.
-          </p>
-          <p id="personal-prompt-privacy" className="personalization-form__privacy">
-            Stored only in local SQLite. Your full text is sent to the selected model, Codex, or
-            Claude only when you run Discover. Source sites receive the generated search terms,
-            which can reflect this context. Do not include passwords, API keys, or confidential
-            unpublished details.
-          </p>
-        </div>
-        <div className="personalization-form__footer">
-          <p className="field-hint">
-            {personalPrompt.length}/{DISCOVER_PERSONALIZATION_PROMPT_MAX_LENGTH} characters
-            {savedPersonalPrompt.trim()
-              ? ' · active for future Discover runs'
-              : ' · Discover remains generic until saved'}
-          </p>
-          <button
-            type="submit"
-            className="primary-button"
-            disabled={isSavingPersonalPrompt || personalPrompt === savedPersonalPrompt}
-          >
-            {isSavingPersonalPrompt ? 'Saving personal prompt…' : 'Save personal Discover prompt'}
-          </button>
-        </div>
-        {personalPromptError && (
-          <div className="form-error" role="alert">
-            {personalPromptError}
-          </div>
-        )}
-        {personalPromptStatus && (
-          <div className="personalization-form__status" role="status">
-            {personalPromptStatus}
-          </div>
-        )}
-      </form>
-      <form onSubmit={(event) => void save(event)}>
-        <div className="model-provider-form__heading field--wide">
-          <p className="eyebrow">02 · MODEL PROVIDER</p>
-          <h2>Bring your own analysis model.</h2>
-          <p>
-            OpenAI-compatible covers DeepSeek and local servers; Anthropic-compatible covers Claude
-            APIs. API keys are encrypted by the operating system and never returned here.
-          </p>
-        </div>
-        <label className="field">
-          <span>Provider name</span>
-          <input
-            aria-label="Provider name"
-            value={draft.name}
-            onChange={(event) => setField('name', event.target.value)}
-            placeholder="DeepSeek, Anthropic, or Local"
-            required
-          />
-        </label>
-        <label className="field">
-          <span>Protocol</span>
-          <select
-            aria-label="Provider protocol"
-            value={draft.protocol}
-            onChange={(event) => setField('protocol', event.target.value as ModelProtocol)}
-          >
-            <option value="openai-compatible">OpenAI-compatible</option>
-            <option value="anthropic-compatible">Anthropic-compatible</option>
-          </select>
-        </label>
-        <label className="field field--wide">
-          <span>Base URL</span>
-          <input
-            aria-label="Provider base URL"
-            value={draft.baseUrl}
-            onChange={(event) => setField('baseUrl', event.target.value)}
-            placeholder="https://api.deepseek.com or http://127.0.0.1:11434/v1"
-            required
-          />
-        </label>
-        <label className="field">
-          <span>Model</span>
-          <input
-            aria-label="Model name"
-            value={draft.model}
-            onChange={(event) => setField('model', event.target.value)}
-            placeholder="deepseek-chat"
-            required
-          />
-        </label>
-        <label className="field">
-          <span>
-            API key {provider?.hasCredential ? '(leave blank to keep)' : '(optional locally)'}
-          </span>
-          <input
-            aria-label="API key"
-            type="password"
-            value={draft.apiKey}
-            onChange={(event) => setField('apiKey', event.target.value)}
-            autoComplete="off"
-          />
-        </label>
-        {provider?.hasCredential && (
-          <div className="credential-status">Credential protected by macOS</div>
-        )}
-        {error && (
-          <div className="form-error" role="alert">
-            {error}
-          </div>
-        )}
-        <button type="submit" className="primary-button" disabled={isSaving}>
-          {isSaving ? 'Protecting settings…' : 'Save model provider'}
-        </button>
-      </form>
-      <aside className="agent-note">
-        <span>AGENT BRIDGE</span>
-        <strong>Codex · Claude Code · DeepSeek harness</strong>
-        <p>
-          The Analyze action can launch either detected CLI in a bounded, non-interactive session.
-          The read-only MCP interface remains available for agent-led exploration.
-        </p>
-        <div className="agent-status-list" aria-label="Local agent status">
-          {localAgents.map((agent) => (
-            <span
-              key={agent.runner}
-              className={`agent-status agent-status--${agent.available ? 'ready' : 'missing'}`}
-            >
-              {agent.label}: {agent.available ? 'detected' : 'not detected'}
-            </span>
-          ))}
-        </div>
-      </aside>
-    </section>
-  )
-}
-
 export function App({ api }: AppProps) {
   const [dashboard, setDashboard] = useState<DashboardSnapshot | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -417,9 +131,11 @@ export function App({ api }: AppProps) {
   const [preferredSidebarWidth, setPreferredSidebarWidth] = useState(readSidebarWidth)
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth)
   const [isSidebarResizing, setIsSidebarResizing] = useState(false)
+  const mainRef = useRef<HTMLElement>(null)
   const preferredSidebarWidthRef = useRef(preferredSidebarWidth)
   const sidebarResizeDragRef = useRef<SidebarResizeDrag | null>(null)
   const [sourceFilter, setSourceFilter] = useState<'all' | DiscoverySource>('all')
+  const [sourceAttentionOnly, setSourceAttentionOnly] = useState(false)
   const [analysisRunner, setAnalysisRunner] = useState<AnalysisRunner>('model-provider')
   const [localAgents, setLocalAgents] = useState<readonly LocalAgentStatus[]>([])
   const [analysis, setAnalysis] = useState<AnalysisArtifact | null>(null)
@@ -427,11 +143,34 @@ export function App({ api }: AppProps) {
   const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null)
   const [lastTriageAction, setLastTriageAction] = useState<LastTriageAction | null>(null)
   const [isTriageToastVisible, setIsTriageToastVisible] = useState(false)
+  const [settingsDirty, setSettingsDirty] = useState(false)
 
-  const navigate = useCallback((view: AppView) => {
-    setActiveView(view)
-    setIsTriageToastVisible(false)
-  }, [])
+  const navigate = useCallback(
+    async (view: AppView) => {
+      if (view === activeView) return
+      if (activeView === 'settings' && settingsDirty) {
+        const shouldDiscard = await api.confirmDiscardSettings()
+        if (!shouldDiscard) return
+        setSettingsDirty(false)
+        api.setSettingsDirty(false)
+      }
+      if (mainRef.current) {
+        mainRef.current.scrollTop = 0
+        mainRef.current.scrollLeft = 0
+      }
+      setActiveView(view)
+      setIsTriageToastVisible(false)
+    },
+    [activeView, api, settingsDirty]
+  )
+
+  const handleSettingsDirtyChange = useCallback(
+    (isDirty: boolean) => {
+      setSettingsDirty(isDirty)
+      api.setSettingsDirty(isDirty)
+    },
+    [api]
+  )
 
   const viewItems = dashboard?.savedItems.length
     ? dashboard.savedItems
@@ -676,13 +415,13 @@ export function App({ api }: AppProps) {
       api.onAppCommand((command) => {
         switch (command) {
           case 'open-settings':
-            navigate('models')
+            void navigate('settings')
             return
           case 'show-saved':
-            navigate('saved')
+            void navigate('saved')
             return
           case 'show-discover':
-            navigate('discover')
+            void navigate('discover')
             return
           case 'toggle-sidebar':
             setIsSidebarCollapsed((current) => !current)
@@ -736,7 +475,7 @@ export function App({ api }: AppProps) {
           </div>
         </div>
         <nav aria-label="Primary navigation">
-          {navigationItems.map((item) => {
+          {primaryNavigationItems.map((item) => {
             const Icon = item.icon
             return (
               <button
@@ -746,7 +485,7 @@ export function App({ api }: AppProps) {
                 aria-current={activeView === item.view ? 'page' : undefined}
                 aria-label={`${item.index} ${item.label}`}
                 title={isSidebarCollapsed ? item.label : undefined}
-                onClick={() => navigate(item.view)}
+                onClick={() => void navigate(item.view)}
               >
                 <Icon className="nav-item__icon" aria-hidden="true" size={17} strokeWidth={1.8} />
                 <span className="nav-item__label">{item.label}</span>
@@ -754,10 +493,52 @@ export function App({ api }: AppProps) {
             )
           })}
         </nav>
-        <div className="sidebar__footer" title={sourceHealthSummary.label}>
+        <nav className="sidebar__secondary" aria-label="Research utilities">
+          {secondaryNavigationItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.view}
+                type="button"
+                className={`nav-item ${activeView === item.view ? 'nav-item--active' : ''}`}
+                aria-current={activeView === item.view ? 'page' : undefined}
+                aria-label={`${item.index} ${item.label}`}
+                title={isSidebarCollapsed ? item.label : undefined}
+                onClick={() => {
+                  if (item.view === 'sources') setSourceAttentionOnly(false)
+                  void navigate(item.view)
+                }}
+              >
+                <Icon className="nav-item__icon" aria-hidden="true" size={17} strokeWidth={1.8} />
+                <span className="nav-item__label">{item.label}</span>
+              </button>
+            )
+          })}
+        </nav>
+        <button
+          type="button"
+          className={`nav-item sidebar__settings ${activeView === 'settings' ? 'nav-item--active' : ''}`}
+          aria-current={activeView === 'settings' ? 'page' : undefined}
+          aria-label="Settings"
+          title={isSidebarCollapsed ? 'Settings' : undefined}
+          onClick={() => void navigate('settings')}
+        >
+          <Settings className="nav-item__icon" aria-hidden="true" size={17} strokeWidth={1.8} />
+          <span className="nav-item__label">Settings</span>
+        </button>
+        <button
+          type="button"
+          className="sidebar__footer"
+          aria-label={sourceHealthSummary.label}
+          title={sourceHealthSummary.label}
+          onClick={() => {
+            setSourceAttentionOnly(sourceHealthSummary.tone === 'attention')
+            void navigate('sources')
+          }}
+        >
           <span className={`status-dot status-dot--${sourceHealthSummary.tone}`} />
           <span>{sourceHealthSummary.label}</span>
-        </div>
+        </button>
       </aside>
 
       <div
@@ -780,7 +561,7 @@ export function App({ api }: AppProps) {
         onKeyDown={resizeSidebarWithKeyboard}
       />
 
-      <main>
+      <main ref={mainRef}>
         <header className="topbar">
           <div className="topbar__leading">
             <button
@@ -798,11 +579,18 @@ export function App({ api }: AppProps) {
             </button>
             <div className="topbar__identity">
               <span className="profile-name">
-                {navigationItems.find((item) => item.view === activeView)?.label}
+                {activeView === 'settings'
+                  ? 'Settings'
+                  : navigationItems.find((item) => item.view === activeView)?.label}
               </span>
               <span className="dateline">{dashboard?.date ?? 'Loading local index…'}</span>
             </div>
           </div>
+          {activeView === 'settings' && settingsDirty && (
+            <span className="topbar__unsaved" role="status">
+              Unsaved changes
+            </span>
+          )}
         </header>
 
         {error && (
@@ -815,12 +603,27 @@ export function App({ api }: AppProps) {
             Opening local research index…
           </div>
         )}
-        {activeView === 'models' && <ModelEditor api={api} localAgents={localAgents} />}
+        {activeView === 'settings' && (
+          <SettingsView
+            api={api}
+            localAgents={localAgents}
+            onDirtyChange={handleSettingsDirtyChange}
+          />
+        )}
         {activeView === 'discover' && (
           <DiscoverView api={api} localAgents={localAgents} onDashboardChange={setDashboard} />
         )}
         {activeView === 'analytics' && <DataAnalyticsView api={api} />}
-        {activeView === 'sources' && <SourceCatalogView api={api} />}
+        {activeView === 'sources' && (
+          <SourceCatalogView
+            api={api}
+            sourceHealth={dashboard?.sourceHealth}
+            sourceHealthDetails={dashboard?.sourceHealthDetails}
+            attentionOnly={sourceAttentionOnly}
+            onAttentionOnlyChange={setSourceAttentionOnly}
+            onDashboardChange={setDashboard}
+          />
+        )}
         {dashboard && activeView === 'saved' && (
           <section className="today-view">
             <div className="today-view__heading">

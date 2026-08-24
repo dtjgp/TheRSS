@@ -447,6 +447,14 @@ describe('ResearchRepository', () => {
       profileName: 'Edge intelligence',
       lastRefreshAt: null,
       sourceHealth: { arxiv: 'healthy', github: 'idle' },
+      sourceHealthDetails: {
+        arxiv: {
+          status: 'healthy',
+          observedAt: '2026-08-15T10:05:00.000Z',
+          errorMessage: null
+        },
+        github: { status: 'idle', observedAt: null, errorMessage: null }
+      },
       counts: { total: 2, arxiv: 1, github: 1, unread: 1 }
     })
     repository.close()
@@ -465,6 +473,27 @@ describe('ResearchRepository', () => {
     expect(
       repository.getDashboardSnapshot(new Date('2026-08-15T10:07:00.000Z')).lastRefreshAt
     ).toBeNull()
+    repository.close()
+  })
+
+  it('exposes bounded per-source observation timestamps and current failure reasons', () => {
+    const repository = createRepository()
+    repository.recordSourceRun(
+      'folo:302',
+      'failed',
+      '2026-08-24T08:30:00.000Z',
+      'Timed out after the bounded retry window'
+    )
+
+    expect(
+      repository.getDashboardSnapshot(new Date('2026-08-24T09:00:00.000Z')).sourceHealthDetails[
+        'folo:302'
+      ]
+    ).toEqual({
+      status: 'failed',
+      observedAt: '2026-08-24T08:30:00.000Z',
+      errorMessage: 'Timed out after the bounded retry window'
+    })
     repository.close()
   })
 

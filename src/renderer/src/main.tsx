@@ -2,6 +2,12 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { App } from './App'
 import './styles.css'
+import './styles/settings.css'
+import './styles/discover.css'
+import './styles/analytics.css'
+import './styles/sources.css'
+import './styles/workspace.css'
+import './styles/accessibility.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

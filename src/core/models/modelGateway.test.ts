@@ -5,7 +5,8 @@ import {
   analysisPromptVersionFor,
   analyzeWithModel,
   buildAnalysisPrompt,
-  runPromptWithModel
+  runPromptWithModel,
+  testModelProviderConnection
 } from './modelGateway'
 
 const item: DashboardItem = {
@@ -191,5 +192,57 @@ describe('modelGateway', () => {
     await expect(analyzeWithModel(item, provider(), { fetcher })).rejects.toThrow(
       'Model provider request failed with status 401'
     )
+  })
+
+  it.each([
+    [401, 'authentication_failed'],
+    [403, 'authentication_failed'],
+    [404, 'model_not_found'],
+    [422, 'protocol_error']
+  ] as const)('classifies HTTP %s without returning remote content', async (status, expected) => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(
+        new Response('untrusted provider diagnostic with a credential-like value', { status })
+      )
+
+    const result = await testModelProviderConnection(provider(), { fetcher })
+
+    expect(result.status).toBe(expected)
+    expect(JSON.stringify(result)).not.toContain('untrusted provider diagnostic')
+    expect(JSON.stringify(result)).not.toContain(placeholderCredential)
+  })
+
+  it('distinguishes DNS, timeout, malformed protocol, and successful connections', async () => {
+    const dnsError = Object.assign(new Error('getaddrinfo ENOTFOUND private.example'), {
+      code: 'ENOTFOUND'
+    })
+    await expect(
+      testModelProviderConnection(provider(), {
+        fetcher: vi.fn().mockRejectedValue(dnsError)
+      })
+    ).resolves.toMatchObject({ status: 'dns_failed' })
+
+    await expect(
+      testModelProviderConnection(provider(), {
+        fetcher: vi.fn().mockRejectedValue(new DOMException('Timed out', 'TimeoutError'))
+      })
+    ).resolves.toMatchObject({ status: 'timeout' })
+
+    await expect(
+      testModelProviderConnection(provider(), {
+        fetcher: vi.fn().mockResolvedValue(new Response('{"unexpected":true}', { status: 200 }))
+      })
+    ).resolves.toMatchObject({ status: 'protocol_error' })
+
+    await expect(
+      testModelProviderConnection(provider(), {
+        fetcher: vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ choices: [{ message: { content: 'OK' } }] }), {
+            status: 200
+          })
+        )
+      })
+    ).resolves.toMatchObject({ status: 'connected' })
   })
 })

@@ -24,6 +24,10 @@ const api: TheRSSApi = {
   setTriageState: (id, state) => ipcRenderer.invoke(IPC_CHANNELS.setTriageState, id, state),
   getModelProvider: () => ipcRenderer.invoke(IPC_CHANNELS.getModelProvider),
   saveModelProvider: (input) => ipcRenderer.invoke(IPC_CHANNELS.saveModelProvider, input),
+  testModelProvider: (input) => ipcRenderer.invoke(IPC_CHANNELS.testModelProvider, input),
+  clearModelProviderCredential: () => ipcRenderer.invoke(IPC_CHANNELS.clearModelProviderCredential),
+  setSettingsDirty: (isDirty) => ipcRenderer.send(IPC_CHANNELS.setSettingsDirty, isDirty),
+  confirmDiscardSettings: () => ipcRenderer.invoke(IPC_CHANNELS.confirmDiscardSettings),
   getDiscoverPersonalizationSettings: () =>
     ipcRenderer.invoke(IPC_CHANNELS.getDiscoverPersonalizationSettings),
   saveDiscoverPersonalizationPrompt: (prompt) =>

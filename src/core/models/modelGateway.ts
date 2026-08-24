@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { readBoundedText } from '../security/boundedResponse'
 import type { DashboardItem } from '../../shared/api'
+import type { ProviderConnectionResult } from '../../shared/models'
 import {
   GENERIC_ANALYSIS_PROMPT_VERSION,
   isPaperAnalysisCandidate,
@@ -18,6 +19,7 @@ interface ModelGatewayOptions {
 interface ModelPromptOptions extends ModelGatewayOptions {
   readonly systemPrompt: string
   readonly maxTokens?: number
+  readonly timeoutMs?: number
 }
 
 export interface ModelAnalysisResponse {
@@ -53,6 +55,12 @@ const anthropicResponseSchema = z.object({
     })
     .optional()
 })
+
+class ModelProviderHttpError extends Error {
+  constructor(readonly status: number) {
+    super(`Model provider request failed with status ${status}`)
+  }
+}
 
 function providerEndpoint(profile: ModelExecutionProfile): string {
   const url = new URL(profile.baseUrl)
@@ -218,10 +226,10 @@ export async function runPromptWithModel(
     headers,
     body: JSON.stringify(body),
     redirect: 'error',
-    signal: AbortSignal.timeout(90_000)
+    signal: AbortSignal.timeout(options.timeoutMs ?? 90_000)
   })
   if (!response.ok) {
-    throw new Error(`Model provider request failed with status ${response.status}`)
+    throw new ModelProviderHttpError(response.status)
   }
 
   const payload = await boundedJson(response)
@@ -242,6 +250,101 @@ export async function runPromptWithModel(
       .trim(),
     inputTokens: parsed.usage?.input_tokens ?? null,
     outputTokens: parsed.usage?.output_tokens ?? null
+  }
+}
+
+function errorCode(error: unknown): string | null {
+  if (!error || typeof error !== 'object') return null
+  const direct = 'code' in error && typeof error.code === 'string' ? error.code : null
+  if (direct) return direct
+  if ('cause' in error) return errorCode(error.cause)
+  return null
+}
+
+function connectionResult(
+  status: ProviderConnectionResult['status'],
+  message: string,
+  testedAt: string
+): ProviderConnectionResult {
+  return { status, message, testedAt }
+}
+
+export async function testModelProviderConnection(
+  profile: ModelExecutionProfile,
+  options: ModelGatewayOptions = {}
+): Promise<ProviderConnectionResult> {
+  const testedAt = new Date().toISOString()
+  try {
+    await runPromptWithModel('Reply with OK.', profile, {
+      ...options,
+      systemPrompt: 'This is a bounded connection check. Reply with OK only.',
+      maxTokens: 4,
+      timeoutMs: 10_000
+    })
+    return connectionResult(
+      'connected',
+      'Connection succeeded. The endpoint accepted the selected model and protocol.',
+      testedAt
+    )
+  } catch (error) {
+    if (error instanceof ModelProviderHttpError) {
+      if (error.status === 401 || error.status === 403) {
+        return connectionResult(
+          'authentication_failed',
+          'Authentication was rejected. Replace the credential and try again.',
+          testedAt
+        )
+      }
+      if (error.status === 404) {
+        return connectionResult(
+          'model_not_found',
+          'The endpoint did not recognize this model or route. Check the model name and base URL.',
+          testedAt
+        )
+      }
+      if (error.status === 400 || error.status === 405 || error.status === 422) {
+        return connectionResult(
+          'protocol_error',
+          'The endpoint responded, but it did not accept the selected compatible protocol.',
+          testedAt
+        )
+      }
+    }
+
+    const code = errorCode(error)
+    if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') {
+      return connectionResult(
+        'dns_failed',
+        'The provider host could not be resolved. Check the base URL and DNS.',
+        testedAt
+      )
+    }
+    if (
+      (error instanceof DOMException &&
+        (error.name === 'TimeoutError' || error.name === 'AbortError')) ||
+      code === 'ETIMEDOUT'
+    ) {
+      return connectionResult(
+        'timeout',
+        'The provider did not respond within the bounded connection-test window.',
+        testedAt
+      )
+    }
+    if (
+      error instanceof z.ZodError ||
+      (error instanceof Error && /invalid JSON|response exceeds/u.test(error.message))
+    ) {
+      return connectionResult(
+        'protocol_error',
+        'The endpoint responded, but its payload did not match the selected compatible protocol.',
+        testedAt
+      )
+    }
+    return connectionResult(
+      'network_error',
+      'The provider could not be reached. Check the endpoint and network, then try again.',
+      testedAt
+    )
   }
 }
 

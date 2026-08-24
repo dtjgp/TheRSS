@@ -27,6 +27,7 @@ function SummaryCard({
 
 function AnalyticsContent({ snapshot }: { readonly snapshot: AnalyticsSnapshot }) {
   const maxDailyResults = Math.max(1, ...snapshot.daily.map((day) => day.searchResults))
+  const recentWindowResults = snapshot.daily.reduce((total, day) => total + day.searchResults, 0)
 
   return (
     <section className="analytics-view">
@@ -41,9 +42,9 @@ function AnalyticsContent({ snapshot }: { readonly snapshot: AnalyticsSnapshot }
 
       <div className="analytics-summary" role="group" aria-label="Analytics summary">
         <SummaryCard
-          label="Search results"
+          label="Lifetime returned records"
           value={snapshot.totals.searchResults}
-          detail={`${snapshot.totals.todayResults} legacy Today · ${snapshot.totals.discoverResults} Discover`}
+          detail={`${snapshot.totals.todayResults} legacy Today · ${snapshot.totals.discoverResults} Discover · ${recentWindowResults} in last ${snapshot.windowDays} local days`}
         />
         <SummaryCard
           label="Deep analyses"

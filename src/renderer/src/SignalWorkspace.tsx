@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ExternalLink, EyeOff, Sparkles } from 'lucide-react'
 import type { DashboardItem, TheRSSApi, TriageState } from '../../shared/api'
 import type { AnalysisArtifact } from '../../shared/models'
@@ -7,6 +7,7 @@ import { AnalysisPanel } from './AppSections'
 import { SaveStar } from './SaveStar'
 import { sourceDisplayName, sourceStyleToken } from '../../shared/sourceIdentity'
 import { PaperPromotionAction } from './PaperPromotionAction'
+import { ResizableSplitPane } from './ResizableSplitPane'
 
 interface SignalWorkspaceProps {
   readonly api: TheRSSApi
@@ -96,6 +97,7 @@ export function SignalWorkspace({
   onSelectionChange
 }: SignalWorkspaceProps) {
   const workspaceRef = useRef<HTMLDivElement>(null)
+  const [expandedSummaryId, setExpandedSummaryId] = useState<string | null>(null)
   const selectedIndex = useMemo(() => {
     const matchedIndex = items.findIndex((item) => item.id === selectedItemId)
     return matchedIndex >= 0 ? matchedIndex : 0
@@ -109,6 +111,7 @@ export function SignalWorkspace({
 
   const selectItem = useCallback(
     (item: DashboardItem, moveFocus: boolean) => {
+      setExpandedSummaryId(null)
       onSelectionChange(item.id)
       if (item.triageState === 'new') void onTriage(item.id, 'viewed')
       if (moveFocus) {
@@ -179,140 +182,177 @@ export function SignalWorkspace({
 
   const isSaved = selectedItem.triageState === 'saved'
   const isPaper = isPaperAnalysisCandidate(selectedItem)
+  const isSummaryExpanded = expandedSummaryId === selectedItem.id
+  const canCollapseSummary = selectedItem.summary.length > 420
+  const isFullSummaryVisible = !canCollapseSummary || isSummaryExpanded
   const selectedAnalysis = analysis?.itemId === selectedItem.id ? analysis : null
   const paperL1Analysis =
     isPaper && selectedAnalysis?.promptVersion === PAPER_L1_ANALYSIS_PROMPT_VERSION
       ? selectedAnalysis
       : null
+  const promotionStatusTargetId = `promotion-status-${selectedItem.id.replaceAll(/[^A-Za-z0-9_-]/gu, '-')}`
 
   return (
-    <div ref={workspaceRef} className="signal-workspace">
-      <aside className="signal-list-pane" aria-label="Research signal list">
-        <div className="signal-list-pane__heading">
-          <div>
-            <strong>{items.length} signals</strong>
-            <span>
+    <ResizableSplitPane
+      ariaLabel="Resize saved signal list"
+      storageKey="therss.saved-list-width"
+      containerRef={workspaceRef}
+      className="signal-workspace"
+      before={
+        <aside className="signal-list-pane" aria-label="Research signal list">
+          <div className="signal-list-pane__heading">
+            <div>
+              <strong>{items.length} signals</strong>
+              <span>
+                {selectedIndex + 1} of {items.length}
+              </span>
+            </div>
+            <span>Use arrow keys to move</span>
+          </div>
+          <ol className="signal-list">
+            {items.map((item) => (
+              <SignalListItem
+                key={item.id}
+                item={item}
+                isSelected={item.id === selectedItem.id}
+                onSelect={() => selectItem(item, false)}
+              />
+            ))}
+          </ol>
+        </aside>
+      }
+      after={
+        <article className="signal-detail" aria-label="Selected signal details">
+          <header className="signal-detail__header">
+            <div className="signal-detail__meta">
+              <SourceMark source={selectedItem.source} />
+              <time dateTime={selectedItem.publishedAt}>
+                {new Date(selectedItem.publishedAt).toLocaleDateString()}
+              </time>
+              <span>signal {selectedItem.score}</span>
+            </div>
+            <span className="signal-detail__position">
               {selectedIndex + 1} of {items.length}
             </span>
+          </header>
+
+          <h2 className="signal-detail__title">
+            <a href={selectedItem.url} target="_blank" rel="noreferrer">
+              {selectedItem.title}
+              <ExternalLink aria-hidden="true" size={17} strokeWidth={1.8} />
+            </a>
+          </h2>
+
+          <div className="signal-detail__actions">
+            <button
+              type="button"
+              className="detail-action detail-action--primary save-button"
+              aria-label="Save signal"
+              aria-pressed={isSaved}
+              title={isSaved ? 'Remove from Saved' : 'Save this signal'}
+              onClick={() => void onTriage(selectedItem.id, isSaved ? 'viewed' : 'saved')}
+            >
+              <SaveStar isSaved={isSaved} />
+              <kbd>S</kbd>
+            </button>
+            {selectedItem.source === 'arxiv' && selectedItem.kind === 'paper' ? (
+              <PaperPromotionAction
+                api={api}
+                itemId={selectedItem.id}
+                statusTargetId={promotionStatusTargetId}
+              />
+            ) : null}
+            <button
+              type="button"
+              className="detail-action"
+              aria-label="Analyze signal"
+              disabled={analyzingItemId === selectedItem.id}
+              onClick={() => void onAnalyze(selectedItem.id)}
+            >
+              <Sparkles aria-hidden="true" size={17} strokeWidth={1.8} />
+              <span>{analyzingItemId === selectedItem.id ? 'Analyzing…' : 'Analyze'}</span>
+              <kbd>A</kbd>
+            </button>
+            <button
+              type="button"
+              className="detail-action detail-action--muted"
+              aria-label="Dismiss signal"
+              onClick={() => void onTriage(selectedItem.id, 'dismissed')}
+            >
+              <EyeOff aria-hidden="true" size={17} strokeWidth={1.8} />
+              <span>Dismiss</span>
+              <kbd>D</kbd>
+            </button>
           </div>
-          <span>Use arrow keys to move</span>
-        </div>
-        <ol className="signal-list">
-          {items.map((item) => (
-            <SignalListItem
-              key={item.id}
-              item={item}
-              isSelected={item.id === selectedItem.id}
-              onSelect={() => selectItem(item, false)}
-            />
-          ))}
-        </ol>
-      </aside>
+          <div
+            id={promotionStatusTargetId}
+            className="signal-detail__promotion-status"
+            aria-live="polite"
+          />
 
-      <article className="signal-detail" aria-label="Selected signal details">
-        <header className="signal-detail__header">
-          <div className="signal-detail__meta">
-            <SourceMark source={selectedItem.source} />
-            <time dateTime={selectedItem.publishedAt}>
-              {new Date(selectedItem.publishedAt).toLocaleDateString()}
-            </time>
-            <span>signal {selectedItem.score}</span>
-          </div>
-          <span className="signal-detail__position">
-            {selectedIndex + 1} of {items.length}
-          </span>
-        </header>
+          <p className="signal-detail__summary" data-expanded={String(isFullSummaryVisible)}>
+            {selectedItem.summary}
+          </p>
+          {canCollapseSummary && (
+            <button
+              type="button"
+              className="signal-detail__summary-toggle"
+              aria-expanded={isSummaryExpanded}
+              onClick={() =>
+                setExpandedSummaryId((current) =>
+                  current === selectedItem.id ? null : selectedItem.id
+                )
+              }
+            >
+              {isSummaryExpanded ? 'Collapse summary' : 'Show full summary'}
+            </button>
+          )}
 
-        <h2 className="signal-detail__title">
-          <a href={selectedItem.url} target="_blank" rel="noreferrer">
-            {selectedItem.title}
-            <ExternalLink aria-hidden="true" size={17} strokeWidth={1.8} />
-          </a>
-        </h2>
-        <p className="signal-detail__summary">{selectedItem.summary}</p>
+          {isPaper && (
+            <section className="paper-l1-analysis" aria-label="L1 paper analysis">
+              <div className="paper-l1-analysis__heading">
+                <span>L1 PAPER ANALYSIS</span>
+                <strong>llm-wiki decision-to-evidence template</strong>
+              </div>
+              {paperL1Analysis ? (
+                <AnalysisPanel artifact={paperL1Analysis} />
+              ) : (
+                <>
+                  <p>
+                    {selectedAnalysis
+                      ? 'The saved result below uses an earlier generic prompt. Run Analyze or press A to replace it with a provisional, abstract-bounded L1 analysis.'
+                      : 'Run Analyze or press A to create a provisional, abstract-bounded L1 analysis. No model or local agent runs automatically.'}
+                  </p>
+                  {selectedAnalysis && <AnalysisPanel artifact={selectedAnalysis} />}
+                </>
+              )}
+            </section>
+          )}
 
-        {isPaper && (
-          <section className="paper-l1-analysis" aria-label="L1 paper analysis">
-            <div className="paper-l1-analysis__heading">
-              <span>L1 PAPER ANALYSIS</span>
-              <strong>llm-wiki decision-to-evidence template</strong>
-            </div>
-            {paperL1Analysis ? (
-              <AnalysisPanel artifact={paperL1Analysis} />
-            ) : (
-              <>
-                <p>
-                  {selectedAnalysis
-                    ? 'The saved result below uses an earlier generic prompt. Run Analyze or press A to replace it with a provisional, abstract-bounded L1 analysis.'
-                    : 'Run Analyze or press A to create a provisional, abstract-bounded L1 analysis. No model or local agent runs automatically.'}
-                </p>
-                {selectedAnalysis && <AnalysisPanel artifact={selectedAnalysis} />}
-              </>
-            )}
+          <section className="signal-detail__reasons" aria-label="Match reasons">
+            <span className="signal-detail__section-label">Why this matched</span>
+            <ul>
+              {selectedItem.reasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
           </section>
-        )}
 
-        <section className="signal-detail__reasons" aria-label="Match reasons">
-          <span className="signal-detail__section-label">Why this matched</span>
-          <ul>
-            {selectedItem.reasons.map((reason) => (
-              <li key={reason}>{reason}</li>
-            ))}
-          </ul>
-        </section>
+          <div className="signal-detail__shortcut-legend" aria-label="Inbox keyboard shortcuts">
+            <ShortcutHint keyName="↑↓" label="Move" />
+            <ShortcutHint keyName="S" label="Save" />
+            <ShortcutHint keyName="D" label="Dismiss" />
+            <ShortcutHint keyName="A" label="Analyze" />
+          </div>
 
-        <div className="signal-detail__actions">
-          <button
-            type="button"
-            className="detail-action detail-action--primary save-button"
-            aria-label="Save signal"
-            aria-pressed={isSaved}
-            title={isSaved ? 'Remove from Saved' : 'Save this signal'}
-            onClick={() => void onTriage(selectedItem.id, isSaved ? 'viewed' : 'saved')}
-          >
-            <SaveStar isSaved={isSaved} />
-            <kbd>S</kbd>
-          </button>
-          {selectedItem.source === 'arxiv' && selectedItem.kind === 'paper' ? (
-            <PaperPromotionAction api={api} itemId={selectedItem.id} />
-          ) : null}
-          <button
-            type="button"
-            className="detail-action"
-            aria-label="Analyze signal"
-            disabled={analyzingItemId === selectedItem.id}
-            onClick={() => void onAnalyze(selectedItem.id)}
-          >
-            <Sparkles aria-hidden="true" size={17} strokeWidth={1.8} />
-            <span>{analyzingItemId === selectedItem.id ? 'Analyzing…' : 'Analyze'}</span>
-            <kbd>A</kbd>
-          </button>
-          <button
-            type="button"
-            className="detail-action detail-action--muted"
-            aria-label="Dismiss signal"
-            onClick={() => void onTriage(selectedItem.id, 'dismissed')}
-          >
-            <EyeOff aria-hidden="true" size={17} strokeWidth={1.8} />
-            <span>Dismiss</span>
-            <kbd>D</kbd>
-          </button>
-        </div>
+          {!isPaper && selectedAnalysis && <AnalysisPanel artifact={selectedAnalysis} />}
 
-        <div className="signal-detail__shortcut-legend" aria-label="Inbox keyboard shortcuts">
-          <ShortcutHint keyName="↑↓" label="Move" />
-          <ShortcutHint keyName="S" label="Save" />
-          <ShortcutHint keyName="D" label="Dismiss" />
-          <ShortcutHint keyName="A" label="Analyze" />
-        </div>
-
-        {!isPaper && selectedAnalysis && <AnalysisPanel artifact={selectedAnalysis} />}
-
-        <p className="signal-detail__evidence-boundary">
-          Discovery evidence only. Open the source before treating methods, results, or repository
-          quality as verified.
-        </p>
-      </article>
-    </div>
+          <p className="signal-detail__evidence-boundary">
+            Discovery evidence only. Open the source before treating methods, results, or repository
+            quality as verified.
+          </p>
+        </article>
+      }
+    />
   )
 }
