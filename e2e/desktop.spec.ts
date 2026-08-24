@@ -462,15 +462,33 @@ test('Discover-first search across every deployed source', async () => {
       const originalBounds = await application.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows()[0]!.getBounds()
       )
-      const restoredBounds = {
-        x: originalBounds.x,
-        y: originalBounds.y,
-        width: 1120,
-        height: 760
-      }
-      await application.evaluate(({ BrowserWindow }, bounds) => {
-        BrowserWindow.getAllWindows()[0]!.setBounds(bounds)
-      }, restoredBounds)
+      // A fixed 1120x760 only fits on a large display. Both setBounds and the
+      // restore-time work-area fit in windowState clamp to the display, so a 1024x768 CI
+      // runner reopened at 1024x677 and the equality assertion failed. Derive the
+      // expectation from the actual display: request a size that already fits the work
+      // area, then expect the reopened window to reproduce exactly the bounds it held.
+      const restoredBounds = await application.evaluate(
+        ({ BrowserWindow, screen }, requested) => {
+          const fitToWorkArea = (bounds: {
+            x: number
+            y: number
+            width: number
+            height: number
+          }) => {
+            const area = screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y }).workArea
+            return {
+              x: bounds.x,
+              y: bounds.y,
+              width: Math.min(bounds.width, area.x + area.width - bounds.x),
+              height: Math.min(bounds.height, area.y + area.height - bounds.y)
+            }
+          }
+          const window = BrowserWindow.getAllWindows()[0]!
+          window.setBounds(fitToWorkArea(requested))
+          return fitToWorkArea(window.getBounds())
+        },
+        { x: originalBounds.x, y: originalBounds.y, width: 1120, height: 760 }
+      )
       await page.waitForTimeout(350)
       expect(
         await application.evaluate(({ Menu }) => {
