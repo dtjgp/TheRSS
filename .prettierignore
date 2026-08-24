@@ -4,3 +4,5 @@ release
 coverage
 playwright-report
 package-lock.json
+.claude/logs
+test-results

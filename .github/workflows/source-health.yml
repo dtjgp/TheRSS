@@ -1,0 +1,84 @@
+name: Source Health
+
+# The product claim is "22 sources verified by dated deployment". That claim decays
+# silently unless something re-checks it. This job converts the previously manual
+# smoke ritual into a standing signal and files an issue when a source regresses.
+
+on:
+  schedule:
+    # 06:00 UTC daily. GitHub disables scheduled workflows after 60 days of repo
+    # inactivity; re-enable from the Actions tab if that happens.
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: source-health
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Probe arXiv and GitHub adapters
+        id: primary
+        run: |
+          set -o pipefail
+          npm run smoke:sources --silent 2>&1 | tee -a source-health-report.txt
+
+      - name: Probe configured sources
+        id: configured
+        if: always()
+        run: |
+          set -o pipefail
+          npm run smoke:configured-sources --silent 2>&1 | tee -a source-health-report.txt
+
+      - name: Summarize
+        if: always()
+        run: |
+          {
+            echo '### Source health'
+            echo ''
+            echo '```'
+            cat source-health-report.txt 2>/dev/null || echo 'no output captured'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: source-health-report
+          path: source-health-report.txt
+          retention-days: 30
+
+      - name: File or update regression issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Only the failed/degraded lines matter for triage; the artifact holds the rest.
+          detail="$(grep -E 'failed|no_posts' source-health-report.txt 2>/dev/null | head -40 || true)"
+          [ -z "$detail" ] && detail='No per-source lines captured; see the run log.'
+
+          body="$(printf 'Automated source-health probe failed.\n\nRun: %s\n\nDegraded or failing sources:\n\n```\n%s\n```\n\nA geo-restricted source can fail from a GitHub-hosted runner while working locally. Confirm with `npm run smoke:configured-sources` before treating this as a real regression.\n' "$RUN_URL" "$detail")"
+
+          existing="$(gh issue list --label source-health --state open --limit 1 --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh label create source-health --description 'Automated source-health probe' --color D93F0B 2>/dev/null || true
+            gh issue create --title "Source health regression ($(date -u +%Y-%m-%d))" --label source-health --body "$body"
+          fi

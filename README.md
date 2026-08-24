@@ -51,7 +51,7 @@ API key 不会返回给渲染进程，也不会以明文写入 SQLite；应用�
 
 ## 当前验证状态（2026-08-24）
 
-- 完整质量门禁通过：52 个测试文件、328 个测试；覆盖率为 statements 90.46%、branches 80.47%、functions 93.99%、lines 93.43%。
+- 完整质量门禁通过：52 个测试文件、328 个测试。覆盖率统计范围为 `src/core` 与 `src/shared`（约 8,395 行领域代码）：statements 90.46%、branches 80.47%、functions 93.99%、lines 93.43%。Electron 主进程、preload、渲染层与 MCP 入口（约 5,245 行）不计入该百分比，由类型检查、渲染层单元测试和 Electron E2E 分别覆盖。
 - 最近一次真实联网来源复检为 2026-08-19，最终通过 22/22 来源：arXiv 定向检索返回 3 条、近期批次 200 条，GitHub 返回 25 条，其余配置来源最终通过 20/20。
 - 科学网使用官方 HTTPS RSS；C114 使用固定 HTTPS 桌面首页、移动端故障回退、受限 `gb18030` 解码和专用纯文本归一化器。
 - Electron 端到端流程 2/2 通过，覆盖 Settings 底部工具区及侧栏几何位置、侧栏缩放/折叠、Settings/Provider、Personal Prompt、个性化 Discover、Saved 可调分栏、Sources health、forced colors、200% zoom、窗口恢复、llm-wiki 确认边界和 Apple 系统字体。
@@ -130,7 +130,7 @@ npm run smoke:package
 npm audit --audit-level=high
 ```
 
-`smoke:sources` 与 `smoke:configured-sources` 会访问真实来源，其他自动化测试使用确定性 fixture。项目要求自有代码的 statements、branches、functions 和 lines 覆盖率均不低于 80%。
+`smoke:sources` 与 `smoke:configured-sources` 会访问真实来源，其他自动化测试使用确定性 fixture。项目要求覆盖率统计范围（`src/core` 与 `src/shared`）的 statements、branches、functions 和 lines 均不低于 80%，该阈值由 `vitest.config.ts` 强制。
 
 ## 数据与边界
 

@@ -4,4 +4,39 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+    # Raised from 5. The old limit stayed saturated by majors that cannot be merged,
+    # which blocked genuine security updates from opening a PR at all.
+    open-pull-requests-limit: 10
+
+    groups:
+      # Routine patch/minor bumps arrive as one reviewable PR instead of N.
+      dev-minor-patch:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+      prod-minor-patch:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+
+    ignore:
+      # Vite 8 is blocked upstream: electron-vite@5.0.0 (current latest) declares
+      # peerDependencies vite "^5.0.0 || ^6.0.0 || ^7.0.0". This repeats the failure
+      # already recorded in docs/history/PHASE_EXECUTION_HISTORY.md, where an
+      # unqualified latest Vite broke install. Revisit when electron-vite ships
+      # Vite 8 support.
+      - dependency-name: vite
+        update-types: [version-update:semver-major]
+
+      # @vitejs/plugin-react@6 requires vite "^8.0.0", so it is blocked by the same
+      # electron-vite constraint. Lift together with the vite ignore above.
+      - dependency-name: '@vitejs/plugin-react'
+        update-types: [version-update:semver-major]
+
+      # typescript-eslint@8.x declares peerDependencies typescript ">=4.8.4 <6.1.0".
+      # TypeScript 7 is out of range and would break `npm run lint`. Revisit when
+      # typescript-eslint supports TypeScript 7.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
