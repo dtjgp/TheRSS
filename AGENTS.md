@@ -8,14 +8,31 @@ The app is not a generic news reader, an autonomous research author, or a replac
 
 ## Read first
 
-Before non-trivial work, read:
+Read in tiers. Paying the full reading cost for a typo fix is waste; skipping it for an
+architectural change is worse.
 
-1. `PRODUCT.md`
-2. `GOALS.md`
-3. `task_plan.md`
-4. `docs/DESIGN.md`
-5. `docs/ENGINEERING_PRACTICES.md`
-6. The nearest feature test and source files
+**Always, before any change:**
+
+1. This file (`AGENTS.md`)
+2. The nearest feature test and source files
+
+**Before any change to product behavior or a user-visible surface:**
+
+3. `PRODUCT.md`
+4. `GOALS.md` — current objective and stop condition
+
+**Before architectural, storage, adapter, or security work:**
+
+5. `docs/DESIGN.md`
+6. `docs/ENGINEERING_PRACTICES.md`
+7. The relevant ADR in `docs/decisions/`
+
+**On demand only:**
+
+- `task_plan.md` — current status and the completed-phase index
+- `docs/history/PHASE_EXECUTION_HISTORY.md` — closed phase records; historical context, not
+  current scope
+- `notes.md` — dated investigation notes
 
 ## Evidence boundaries
 
