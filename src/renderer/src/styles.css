@@ -345,12 +345,20 @@ nav {
   background: transparent;
 }
 
+.sidebar__utility {
+  flex-shrink: 0;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
 .sidebar__footer {
   display: flex;
   gap: 9px;
   align-items: center;
-  margin-top: auto;
-  padding: 0 9px;
+  min-height: 28px;
+  padding: 5px 9px;
   border: 0;
   border-radius: 8px;
   color: var(--muted);

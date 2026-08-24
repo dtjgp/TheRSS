@@ -515,30 +515,32 @@ export function App({ api }: AppProps) {
             )
           })}
         </nav>
-        <button
-          type="button"
-          className={`nav-item sidebar__settings ${activeView === 'settings' ? 'nav-item--active' : ''}`}
-          aria-current={activeView === 'settings' ? 'page' : undefined}
-          aria-label="Settings"
-          title={isSidebarCollapsed ? 'Settings' : undefined}
-          onClick={() => void navigate('settings')}
-        >
-          <Settings className="nav-item__icon" aria-hidden="true" size={17} strokeWidth={1.8} />
-          <span className="nav-item__label">Settings</span>
-        </button>
-        <button
-          type="button"
-          className="sidebar__footer"
-          aria-label={sourceHealthSummary.label}
-          title={sourceHealthSummary.label}
-          onClick={() => {
-            setSourceAttentionOnly(sourceHealthSummary.tone === 'attention')
-            void navigate('sources')
-          }}
-        >
-          <span className={`status-dot status-dot--${sourceHealthSummary.tone}`} />
-          <span>{sourceHealthSummary.label}</span>
-        </button>
+        <nav className="sidebar__utility" aria-label="Application utilities">
+          <button
+            type="button"
+            className={`nav-item sidebar__settings ${activeView === 'settings' ? 'nav-item--active' : ''}`}
+            aria-current={activeView === 'settings' ? 'page' : undefined}
+            aria-label="Settings"
+            title={isSidebarCollapsed ? 'Settings' : undefined}
+            onClick={() => void navigate('settings')}
+          >
+            <Settings className="nav-item__icon" aria-hidden="true" size={17} strokeWidth={1.8} />
+            <span className="nav-item__label">Settings</span>
+          </button>
+          <button
+            type="button"
+            className="sidebar__footer"
+            aria-label={sourceHealthSummary.label}
+            title={sourceHealthSummary.label}
+            onClick={() => {
+              setSourceAttentionOnly(sourceHealthSummary.tone === 'attention')
+              void navigate('sources')
+            }}
+          >
+            <span className={`status-dot status-dot--${sourceHealthSummary.tone}`} />
+            <span>{sourceHealthSummary.label}</span>
+          </button>
+        </nav>
       </aside>
 
       <div

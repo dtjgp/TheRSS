@@ -260,7 +260,7 @@ describe('App', () => {
     })
   })
 
-  it('opens on Discover with two primary destinations and separate research utilities', async () => {
+  it('opens on Discover with primary, research, and bottom application utilities', async () => {
     const api = createApi()
     render(<App api={api} />)
 
@@ -279,7 +279,11 @@ describe('App', () => {
         .getAllByRole('button')
         .map((button) => button.textContent)
     ).toEqual(['Data Analytics', 'Sources'])
-    expect(screen.getByRole('button', { name: 'Settings' })).toBeVisible()
+    const applicationUtilities = screen.getByRole('navigation', {
+      name: 'Application utilities'
+    })
+    expect(within(applicationUtilities).getByRole('button', { name: 'Settings' })).toBeVisible()
+    expect(applicationUtilities.querySelector('.sidebar__footer')).toBeVisible()
     expect(within(navigation).queryByText('Today')).not.toBeInTheDocument()
     expect(within(navigation).queryByText('Interests')).not.toBeInTheDocument()
     await waitFor(() => expect(api.getDashboard).toHaveBeenCalledOnce())

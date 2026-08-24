@@ -4,6 +4,8 @@ TheRSS 是一个本地优先的研究发现桌面应用：你可以用自然语�
 
 > 当前是个人测试版（v0.2.0）。arXiv 摘要、GitHub 元数据和模型输出只用于发现与初筛，不能替代全文阅读、代码审计或实验复现。
 
+![TheRSS Discover：本地优先的语义研究检索桌面](docs/images/therss-discover.png)
+
 ## 当前可用能力
 
 - 在 **Discover** 中输入自然语言研究问题，选择自定义模型、Codex 或 Claude Code 生成受限、可检查的扩展计划。
@@ -19,6 +21,7 @@ TheRSS 是一个本地优先的研究发现桌面应用：你可以用自然语�
 - 通过只读 Model Context Protocol（MCP）服务向 Codex、Claude Code 或其他兼容客户端开放本地候选项。
 - 所有 Discover 会话、Saved 状态和分析记录仅保存在本机；当前不提供账号登录或跨设备同步。
 - 界面统一使用 macOS Apple 系统字体：正文与控件使用 SF Pro Text，展示标题使用 SF Pro Display；应用不再打包第三方字体文件。
+- 侧栏可以折叠，并支持鼠标拖动或键盘在 184–360 px 范围内调整宽度；Settings 固定在底部应用工具区、紧邻来源状态，不会打断主要研究导航。
 - 在 macOS 上构建并以可回滚方式安装 `~/Applications/TheRSS Dev.app`，升级前自动备份 SQLite 数据库。
 
 ## 立即运行
@@ -51,7 +54,7 @@ API key 不会返回给渲染进程，也不会以明文写入 SQLite；应用�
 - 完整质量门禁通过：52 个测试文件、328 个测试；覆盖率为 statements 90.46%、branches 80.47%、functions 93.99%、lines 93.43%。
 - 最近一次真实联网来源复检为 2026-08-19，最终通过 22/22 来源：arXiv 定向检索返回 3 条、近期批次 200 条，GitHub 返回 25 条，其余配置来源最终通过 20/20。
 - 科学网使用官方 HTTPS RSS；C114 使用固定 HTTPS 桌面首页、移动端故障回退、受限 `gb18030` 解码和专用纯文本归一化器。
-- Electron 端到端流程通过，覆盖 Settings/Provider、Personal Prompt、个性化 Discover、Saved 可调分栏、Sources health、forced colors、200% zoom、窗口恢复、llm-wiki 确认边界和 Apple 系统字体。
+- Electron 端到端流程 2/2 通过，覆盖 Settings 底部工具区及侧栏几何位置、侧栏缩放/折叠、Settings/Provider、Personal Prompt、个性化 Discover、Saved 可调分栏、Sources health、forced colors、200% zoom、窗口恢复、llm-wiki 确认边界和 Apple 系统字体。
 - llm-wiki 真实预览已使用精确 arXiv 版本完成 16 页 PDF 校验并返回 L2 ready 状态；该验证在确认前主动释放 stage，没有写入真实 vault。
 - 未签名 macOS arm64 构建已覆盖安装到 `~/Applications/TheRSS Dev.app`，安装包与已安装 `app.asar` 哈希一致；SQLite 备份/当前库完整性、packaged smoke 和已安装二进制完整 E2E 均通过。公开分发仍需要有效 Developer ID、签名和公证。
 

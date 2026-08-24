@@ -22,6 +22,32 @@ test('the sidebar divider resizes, collapses, and restores its saved width', asy
 
     const sidebar = page.locator('.sidebar')
     const sidebarResizer = page.getByRole('separator', { name: 'Resize sidebar' })
+    const applicationUtilities = page.getByRole('navigation', { name: 'Application utilities' })
+    const settingsButton = applicationUtilities.getByRole('button', { name: 'Settings' })
+    const sourceStatusButton = applicationUtilities.locator('.sidebar__footer')
+    const [sidebarBox, utilityBox, settingsBox, sourceStatusBox] = await Promise.all([
+      sidebar.boundingBox(),
+      applicationUtilities.boundingBox(),
+      settingsButton.boundingBox(),
+      sourceStatusButton.boundingBox()
+    ])
+    expect(sidebarBox).not.toBeNull()
+    expect(utilityBox).not.toBeNull()
+    expect(settingsBox).not.toBeNull()
+    expect(sourceStatusBox).not.toBeNull()
+    if (sidebarBox && utilityBox && settingsBox && sourceStatusBox) {
+      expect(
+        sidebarBox.y + sidebarBox.height - (utilityBox.y + utilityBox.height)
+      ).toBeLessThanOrEqual(20)
+      expect(settingsBox.y + settingsBox.height).toBeLessThanOrEqual(sourceStatusBox.y)
+      expect(sourceStatusBox.y - (settingsBox.y + settingsBox.height)).toBeLessThanOrEqual(8)
+    }
+    if (captureDirectory) {
+      await page.screenshot({
+        path: join(captureDirectory, '11-settings-bottom-utility.png'),
+        animations: 'disabled'
+      })
+    }
     const resizerBox = await sidebarResizer.boundingBox()
     expect(resizerBox).not.toBeNull()
     if (!resizerBox) return
