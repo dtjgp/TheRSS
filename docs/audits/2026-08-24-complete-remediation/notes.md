@@ -100,3 +100,9 @@
 - Final pre-publication gates: `npm run check` passed 52 files / 328 tests at 90.46% statements,
   80.47% branches, 93.99% functions, and 93.43% lines; Electron E2E passed 2/2; production npm audit
   found zero vulnerabilities; diff/secret/debug/unsafe-renderer/symlink/large-file scans were clean.
+- Full-worktree commit `108777145a78aa5c1e642520789d8fb6c37408aa` was pushed to
+  `codex/complete-design-remediation`. PR #15 passed required `quality` and was rebase-merged.
+- GitHub `main` and `git ls-remote` both report
+  `a514197d66976f1303063453f58f752d7a545bbb`. Its tree SHA
+  `7cc6148753a7e624c9abcf8a94d09b8de299b47d` exactly matches the feature commit tree, proving that
+  all authorized files landed despite the expected 1/1 commit-SHA divergence from rebase.

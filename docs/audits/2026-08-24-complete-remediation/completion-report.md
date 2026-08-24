@@ -111,3 +111,16 @@ The existing board remains available at
 the Figma MCP tool-call limit before the final append, so no board mutation was claimed. All final
 screenshots and the closed finding matrix are durably stored in this audit directory and can be
 appended when the plan limit resets or the seat is upgraded.
+
+## Cleanup and GitHub Publication
+
+- Permanently removed the one validated superseded
+  `TheRSS Dev.backup-2026-08-24T14-14-54-159Z.app` bundle. The active app and retained SQLite backup
+  remain; both live and backup database integrity checks return `ok`.
+- Full-worktree commit: `108777145a78aa5c1e642520789d8fb6c37408aa`.
+- Protected-main PR: <https://github.com/dtjgp/TheRSS/pull/15>.
+- Required GitHub `quality`: passed.
+- Rebase-merged GitHub `main`: `a514197d66976f1303063453f58f752d7a545bbb`.
+- Verified feature/main tree SHA:
+  `7cc6148753a7e624c9abcf8a94d09b8de299b47d` on both sides.
+- No force push, protection bypass, or remote-branch deletion was performed.

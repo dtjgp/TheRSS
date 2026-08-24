@@ -94,10 +94,12 @@ E2E, and database integrity all pass. Figma writeback alone remains externally r
 - [x] Remove only validated old application bundles; preserve the active app and SQLite backups
 - [x] Refresh `origin/main`, inspect divergence, auth, staged scope, large files, and secret patterns
 - [x] Re-run the full release and security gates after final documentation edits
-- [ ] Stage the explicitly authorized full worktree and create one Conventional Commit
-- [ ] Push through the protected-main workflow and verify remote/local SHA convergence
+- [x] Stage the explicitly authorized full worktree and create one Conventional Commit
+- [x] Push through the protected-main workflow and verify remote/local SHA convergence
 
 ### Publication Status
 
-**In progress** — cleanup and every local release/security gate pass on the clean publication branch.
-Staging the explicitly authorized full worktree next.
+**Complete** — the obsolete app is removed, the full verified worktree is published through merged
+PR #15, and GitHub `main` SHA `a514197d66976f1303063453f58f752d7a545bbb` has the exact verified
+tree. The final closure-only documentation update is being published separately so this status is
+durable without altering the verified application tree.
