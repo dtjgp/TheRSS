@@ -278,11 +278,17 @@ test('Discover-first search across every deployed source', async () => {
     }
     const savedListDivider = page.getByRole('separator', { name: 'Resize saved signal list' })
     await expect(savedListDivider).toBeVisible()
+    // End grows the pane to the maximum the current viewport allows, which
+    // ResizableSplitPane derives from window.innerWidth. Asserting a fixed pixel value
+    // only holds on a window wide enough to reach the 520 cap; a narrower screen reports
+    // a smaller aria-valuemax. Assert the relationship instead of the magic number.
+    const savedListMaximum = await savedListDivider.getAttribute('aria-valuemax')
+    if (!savedListMaximum) throw new Error('Saved list divider is missing aria-valuemax')
     await savedListDivider.focus()
     await page.keyboard.press('End')
-    await expect(savedListDivider).toHaveAttribute('aria-valuenow', '520')
+    await expect(savedListDivider).toHaveAttribute('aria-valuenow', savedListMaximum)
     expect(await page.evaluate(() => window.localStorage.getItem('therss.saved-list-width'))).toBe(
-      '520'
+      savedListMaximum
     )
     await page.getByRole('button', { name: 'Dismiss signal' }).click()
     await expect(page.getByRole('status')).toContainText(
