@@ -26,6 +26,21 @@ export interface ModelProviderSummary {
   readonly updatedAt: string
 }
 
+export type ProviderConnectionStatus =
+  | 'connected'
+  | 'authentication_failed'
+  | 'dns_failed'
+  | 'model_not_found'
+  | 'timeout'
+  | 'protocol_error'
+  | 'network_error'
+
+export interface ProviderConnectionResult {
+  readonly status: ProviderConnectionStatus
+  readonly message: string
+  readonly testedAt: string
+}
+
 export interface AnalysisArtifact {
   readonly id: string
   readonly itemId: string

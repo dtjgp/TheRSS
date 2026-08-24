@@ -1,4 +1,4 @@
-import { mkdtemp } from 'node:fs/promises'
+import { mkdir, mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { env } from 'node:process'
@@ -6,6 +6,8 @@ import { _electron as electron, expect, test } from '@playwright/test'
 
 test('the sidebar divider resizes, collapses, and restores its saved width', async () => {
   const userDataDirectory = await mkdtemp(join(tmpdir(), 'therss-sidebar-e2e-'))
+  const captureDirectory = env.THERSS_E2E_CAPTURE_BASELINE
+  if (captureDirectory) await mkdir(captureDirectory, { recursive: true })
   const application = await electron.launch({
     args: [`--user-data-dir=${userDataDirectory}`, '.'],
     env: { ...env, THERSS_E2E_FIXTURES: '1' }
@@ -54,6 +56,24 @@ test('the sidebar divider resizes, collapses, and restores its saved width', asy
     })
     await expect(sidebarResizer).toHaveAttribute('aria-valuemax', '184')
     await expect(sidebar).toHaveCSS('width', '184px')
+    const sourceSelectionSummary = page.locator('.discover-source-trigger strong')
+    await expect(sourceSelectionSummary).toHaveText('22 of 22 selected')
+    expect(
+      await sourceSelectionSummary.evaluate((element) => element.scrollWidth <= element.clientWidth)
+    ).toBe(true)
+    const sourcePickerBox = await page.locator('.discover-source-picker').boundingBox()
+    const runnerBox = await page.getByLabel('Search with').boundingBox()
+    expect(sourcePickerBox).not.toBeNull()
+    expect(runnerBox).not.toBeNull()
+    if (sourcePickerBox && runnerBox) {
+      expect(sourcePickerBox.y + sourcePickerBox.height).toBeLessThan(runnerBox.y)
+    }
+    if (captureDirectory) {
+      await page.screenshot({
+        path: join(captureDirectory, '12-minimum-width-discover.png'),
+        animations: 'disabled'
+      })
+    }
     expect(await page.evaluate(() => window.localStorage.getItem('therss.sidebar-width'))).toBe(
       '296'
     )

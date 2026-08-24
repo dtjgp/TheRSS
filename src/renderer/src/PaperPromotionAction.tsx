@@ -10,13 +10,19 @@ interface PaperPromotionActionProps {
   readonly api: TheRSSApi
   readonly itemId: string
   readonly sessionId?: string
+  readonly statusTargetId?: string
 }
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'The llm-wiki promotion could not be prepared.'
 }
 
-export function PaperPromotionAction({ api, itemId, sessionId }: PaperPromotionActionProps) {
+export function PaperPromotionAction({
+  api,
+  itemId,
+  sessionId,
+  statusTargetId
+}: PaperPromotionActionProps) {
   const [preview, setPreview] = useState<LlmWikiPromotionPreview | null>(null)
   const [receipt, setReceipt] = useState<LlmWikiPromotionReceipt | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -141,6 +147,17 @@ export function PaperPromotionAction({ api, itemId, sessionId }: PaperPromotionA
         document.body
       )
     : null
+  const receiptStatus = (
+    <>
+      {receipt && receipt.status !== 'skipped' ? (
+        <p role="status" className={`promotion-receipt promotion-${receipt.status}`}>
+          {receipt.summary}
+        </p>
+      ) : null}
+      {error ? <p role="alert">{error}</p> : null}
+    </>
+  )
+  const statusTarget = statusTargetId ? document.getElementById(statusTargetId) : null
 
   return (
     <>
@@ -154,13 +171,9 @@ export function PaperPromotionAction({ api, itemId, sessionId }: PaperPromotionA
           {busy === 'preview' ? 'Preparing llm-wiki preview…' : 'Promote to llm-wiki'}
         </button>
 
-        {receipt && receipt.status !== 'skipped' ? (
-          <p role="status" className={`promotion-receipt promotion-${receipt.status}`}>
-            {receipt.summary}
-          </p>
-        ) : null}
-        {error ? <p role="alert">{error}</p> : null}
+        {statusTarget ? null : receiptStatus}
       </div>
+      {statusTarget ? createPortal(receiptStatus, statusTarget) : null}
       {dialog}
     </>
   )

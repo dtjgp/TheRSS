@@ -33,6 +33,13 @@ function toSummary(provider: StoredModelProvider): ModelProviderSummary {
   }
 }
 
+function hasSameCredentialScope(
+  existing: StoredModelProvider | null,
+  candidate: { readonly protocol: ModelExecutionProfile['protocol']; readonly baseUrl: string }
+): boolean {
+  return existing?.protocol === candidate.protocol && existing.baseUrl === candidate.baseUrl
+}
+
 export class ProviderService {
   readonly #repository: ResearchRepository
   readonly #cipher: SecretCipher
@@ -45,6 +52,12 @@ export class ProviderService {
   save(input: unknown, updatedAt = new Date().toISOString()): ModelProviderSummary {
     const validated = providerInputSchema.parse(input)
     const apiKey = validated.apiKey || undefined
+    const existing = this.#repository.getModelProvider()
+    if (existing?.secretCiphertext && !apiKey && !hasSameCredentialScope(existing, validated)) {
+      throw new Error(
+        'Enter a replacement credential or clear the protected credential before changing provider protocol or endpoint'
+      )
+    }
     if (apiKey && !this.#cipher.isAvailable()) {
       throw new Error('OS-backed credential encryption is unavailable')
     }
@@ -66,6 +79,32 @@ export class ProviderService {
   getSummary(): ModelProviderSummary | null {
     const provider = this.#repository.getModelProvider()
     return provider ? toSummary(provider) : null
+  }
+
+  clearCredential(updatedAt = new Date().toISOString()): ModelProviderSummary {
+    return toSummary(this.#repository.clearModelProviderCredential('default', updatedAt))
+  }
+
+  getConnectionTestProfile(input: unknown): ModelExecutionProfile {
+    const validated = providerInputSchema.parse(input)
+    const existing = this.#repository.getModelProvider()
+    const replacementKey = validated.apiKey || null
+    const existingKey =
+      hasSameCredentialScope(existing, validated) && existing?.secretCiphertext
+        ? this.#cipher.decrypt(existing.secretCiphertext)
+        : null
+    const apiKey = replacementKey ?? existingKey
+
+    return {
+      id: existing?.id ?? 'default',
+      name: validated.name,
+      protocol: validated.protocol,
+      baseUrl: validated.baseUrl,
+      model: validated.model,
+      hasCredential: apiKey !== null,
+      updatedAt: existing?.updatedAt ?? new Date().toISOString(),
+      apiKey
+    }
   }
 
   getExecutionProfile(): ModelExecutionProfile {

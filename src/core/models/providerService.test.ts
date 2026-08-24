@@ -83,6 +83,95 @@ describe('ProviderService', () => {
     repository.close()
   })
 
+  it('clears an existing credential without changing provider metadata', () => {
+    const repository = new ResearchRepository(new Database(':memory:'))
+    const service = new ProviderService(repository, new FakeSecretCipher())
+    service.save({
+      name: 'Provider',
+      protocol: 'openai-compatible',
+      baseUrl: 'https://example.net/v1',
+      model: 'model-a',
+      apiKey: existingPlaceholder
+    })
+
+    const summary = service.clearCredential('2026-08-24T12:00:00.000Z')
+
+    expect(summary).toMatchObject({
+      name: 'Provider',
+      baseUrl: 'https://example.net/v1',
+      model: 'model-a',
+      hasCredential: false,
+      updatedAt: '2026-08-24T12:00:00.000Z'
+    })
+    expect(service.getExecutionProfile().apiKey).toBeNull()
+    repository.close()
+  })
+
+  it('builds a transient connection profile without persisting a replacement credential', () => {
+    const repository = new ResearchRepository(new Database(':memory:'))
+    const service = new ProviderService(repository, new FakeSecretCipher())
+    service.save({
+      name: 'Provider',
+      protocol: 'openai-compatible',
+      baseUrl: 'https://example.net/v1',
+      model: 'model-a',
+      apiKey: existingPlaceholder
+    })
+    const replacementPlaceholder = ['replacement', 'placeholder'].join('-')
+
+    expect(
+      service.getConnectionTestProfile({
+        name: 'Edited provider',
+        protocol: 'anthropic-compatible',
+        baseUrl: 'https://api.example.org',
+        model: 'model-b',
+        apiKey: replacementPlaceholder
+      })
+    ).toMatchObject({
+      name: 'Edited provider',
+      protocol: 'anthropic-compatible',
+      baseUrl: 'https://api.example.org',
+      model: 'model-b',
+      apiKey: replacementPlaceholder
+    })
+    expect(service.getExecutionProfile().apiKey).toBe(existingPlaceholder)
+    repository.close()
+  })
+
+  it('never reuses a stored credential for a changed protocol or endpoint', () => {
+    const repository = new ResearchRepository(new Database(':memory:'))
+    const service = new ProviderService(repository, new FakeSecretCipher())
+    service.save({
+      name: 'Provider',
+      protocol: 'openai-compatible',
+      baseUrl: 'https://api.example.net/v1',
+      model: 'model-a',
+      apiKey: existingPlaceholder
+    })
+
+    expect(
+      service.getConnectionTestProfile({
+        name: 'Changed host',
+        protocol: 'openai-compatible',
+        baseUrl: 'https://other.example.net/v1',
+        model: 'model-a'
+      }).apiKey
+    ).toBeNull()
+    expect(() =>
+      service.save({
+        name: 'Changed host',
+        protocol: 'openai-compatible',
+        baseUrl: 'https://other.example.net/v1',
+        model: 'model-a'
+      })
+    ).toThrow('replacement credential')
+    expect(service.getExecutionProfile()).toMatchObject({
+      baseUrl: 'https://api.example.net/v1',
+      apiKey: existingPlaceholder
+    })
+    repository.close()
+  })
+
   it('rejects insecure remote URLs and plaintext fallback when encryption is unavailable', () => {
     const repository = new ResearchRepository(new Database(':memory:'))
     const service = new ProviderService(repository, new FakeSecretCipher(false))

@@ -13,6 +13,10 @@ const emptyDashboard: DashboardSnapshot = {
   profileName: null,
   lastRefreshAt: null,
   sourceHealth: { arxiv: 'idle', github: 'idle' },
+  sourceHealthDetails: {
+    arxiv: { status: 'idle', observedAt: null, errorMessage: null },
+    github: { status: 'idle', observedAt: null, errorMessage: null }
+  },
   counts: { total: 0, arxiv: 0, github: 0, unread: 0 },
   items: [],
   savedItems: []
@@ -186,6 +190,22 @@ function createApi(snapshot: DashboardSnapshot = emptyDashboard): TheRSSApi {
       hasCredential: true,
       updatedAt: '2026-08-19T12:00:00.000Z'
     }),
+    testModelProvider: vi.fn().mockResolvedValue({
+      status: 'connected',
+      message: 'Connection succeeded.',
+      testedAt: '2026-08-19T12:00:00.000Z'
+    }),
+    clearModelProviderCredential: vi.fn().mockResolvedValue({
+      id: 'default',
+      name: 'Local fixture',
+      protocol: 'openai-compatible',
+      baseUrl: 'http://127.0.0.1:11434/v1',
+      model: 'fixture-model',
+      hasCredential: false,
+      updatedAt: '2026-08-19T12:00:00.000Z'
+    }),
+    setSettingsDirty: vi.fn(),
+    confirmDiscardSettings: vi.fn().mockResolvedValue(true),
     getDiscoverPersonalizationSettings: vi.fn().mockResolvedValue({
       prompt: '',
       updatedAt: '2026-08-19T12:00:00.000Z'
@@ -240,7 +260,7 @@ describe('App', () => {
     })
   })
 
-  it('opens on Discover with only the five consolidated primary destinations', async () => {
+  it('opens on Discover with two primary destinations and separate research utilities', async () => {
     const api = createApi()
     render(<App api={api} />)
 
@@ -252,7 +272,14 @@ describe('App', () => {
       within(navigation)
         .getAllByRole('button')
         .map((button) => button.textContent)
-    ).toEqual(['Discover', 'Saved', 'Models & Agents', 'Data Analytics', 'Sources'])
+    ).toEqual(['Discover', 'Saved'])
+    const utilities = screen.getByRole('navigation', { name: 'Research utilities' })
+    expect(
+      within(utilities)
+        .getAllByRole('button')
+        .map((button) => button.textContent)
+    ).toEqual(['Data Analytics', 'Sources'])
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeVisible()
     expect(within(navigation).queryByText('Today')).not.toBeInTheDocument()
     expect(within(navigation).queryByText('Interests')).not.toBeInTheDocument()
     await waitFor(() => expect(api.getDashboard).toHaveBeenCalledOnce())
@@ -396,6 +423,53 @@ describe('App', () => {
     const cards = await screen.findAllByTestId('discover-result')
     expect(cards).toHaveLength(8)
     expect(cards[7]).toHaveStyle('--card-index: 5')
+  })
+
+  it('progressively reveals a large Discover session with correct heading levels', async () => {
+    const api = createApi()
+    const snapshot = createDiscoverSnapshot()
+    const items = Array.from({ length: 30 }, (_, index) => ({
+      ...snapshot.items[0]!,
+      id: `arxiv:large-session-${index}`,
+      externalId: `large-session-${index}`,
+      title: `Large session paper ${index + 1}`,
+      url: `https://arxiv.org/abs/large-session-${index}`
+    }))
+    vi.mocked(api.getLatestDiscover).mockResolvedValue({
+      ...snapshot,
+      counts: {
+        ...snapshot.counts,
+        total: items.length,
+        byKind: {
+          paper: items.length,
+          repository: 0,
+          article: 0,
+          model: 0,
+          dataset: 0,
+          post: 0
+        }
+      },
+      items
+    })
+    const user = userEvent.setup()
+    render(<App api={api} />)
+
+    const cards = await screen.findAllByTestId('discover-result')
+    expect(cards).toHaveLength(24)
+    const results = screen.getByRole('region', { name: 'Discover results' })
+    expect(
+      within(results).getByRole('status', { name: 'Discover result count' })
+    ).toHaveTextContent('Showing 24 of 30 results')
+    expect(within(results).getAllByRole('heading', { level: 3 })).toHaveLength(24)
+    expect(
+      within(results).getByRole('heading', { level: 2, name: 'Ranked source records' })
+    ).toBeVisible()
+
+    await user.click(within(results).getByRole('button', { name: 'Show 6 more results' }))
+    expect(await screen.findAllByTestId('discover-result')).toHaveLength(30)
+    expect(
+      within(results).getByRole('status', { name: 'Discover result count' })
+    ).toHaveTextContent('Showing all 30 results')
   })
 
   it('filters results by paper, repository, and other without rerunning search', async () => {
@@ -568,7 +642,7 @@ describe('App', () => {
     )
   })
 
-  it('opens Models & Agents from native Settings and saves a provider', async () => {
+  it('opens Settings from the native command and saves a provider', async () => {
     const api = createApi()
     let listener: Parameters<TheRSSApi['onAppCommand']>[0] | null = null
     vi.mocked(api.onAppCommand).mockImplementation((candidate) => {
@@ -579,7 +653,8 @@ describe('App', () => {
     render(<App api={api} />)
 
     act(() => listener?.('open-settings'))
-    expect(screen.getByRole('heading', { name: 'Bring your own analysis model.' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Settings' })).toBeVisible()
+    await user.click(screen.getByRole('tab', { name: 'Model provider' }))
     await user.type(screen.getByRole('textbox', { name: 'Provider name' }), 'Local fixture')
     await user.type(
       screen.getByRole('textbox', { name: 'Provider base URL' }),
@@ -604,7 +679,7 @@ describe('App', () => {
     const user = userEvent.setup()
     render(<App api={api} />)
 
-    await user.click(screen.getByRole('button', { name: '03 Models & Agents' }))
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
     expect(await screen.findByRole('textbox', { name: 'Personal Discover prompt' })).toHaveValue(
       'Prefer systems papers with explicit evaluation and reproducibility detail.'
     )
@@ -618,6 +693,30 @@ describe('App', () => {
     expect(api.saveDiscoverPersonalizationPrompt).toHaveBeenCalledWith(
       'Prioritize edge intelligence, energy systems, and clear claim boundaries.'
     )
+  })
+
+  it('guards navigation away from unsaved Settings edits', async () => {
+    const api = createApi()
+    vi.mocked(api.confirmDiscardSettings).mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    const user = userEvent.setup()
+    render(<App api={api} />)
+
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    await user.click(screen.getByRole('tab', { name: 'Model provider' }))
+    await user.type(screen.getByRole('textbox', { name: 'Provider name' }), 'Unsaved provider')
+    expect(screen.getByRole('status')).toHaveTextContent('Unsaved changes')
+    expect(api.setSettingsDirty).toHaveBeenLastCalledWith(true)
+
+    await user.click(screen.getByRole('button', { name: '01 Discover' }))
+    expect(api.confirmDiscardSettings).toHaveBeenCalledOnce()
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: '01 Discover' }))
+    expect(api.confirmDiscardSettings).toHaveBeenCalledTimes(2)
+    expect(
+      screen.getByRole('heading', { name: 'Search across your full source desk' })
+    ).toBeVisible()
+    expect(api.setSettingsDirty).toHaveBeenLastCalledWith(false)
   })
 
   it('clears and disables saved personal context across Settings and Discover', async () => {
@@ -639,7 +738,7 @@ describe('App', () => {
     const user = userEvent.setup()
     render(<App api={api} />)
 
-    await user.click(screen.getByRole('button', { name: '03 Models & Agents' }))
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
     const personalPrompt = await screen.findByRole('textbox', {
       name: 'Personal Discover prompt'
     })
@@ -896,6 +995,56 @@ describe('App', () => {
     ).toBeVisible()
   })
 
+  it('keeps Saved triage actions before a collapsed long summary', async () => {
+    const longSummary = 'Long abstract evidence. '.repeat(80)
+    const savedItem: DashboardSnapshot['savedItems'][number] = {
+      id: 'arxiv:long-summary',
+      source: 'arxiv',
+      kind: 'paper',
+      title: 'Long paper for Saved triage',
+      summary: longSummary,
+      url: 'https://arxiv.org/abs/long-summary',
+      publishedAt: '2026-08-18T00:00:00.000Z',
+      score: 64,
+      triageState: 'saved',
+      reasons: ['Long abstract fixture']
+    }
+    const secondSavedItem: DashboardSnapshot['savedItems'][number] = {
+      ...savedItem,
+      id: 'arxiv:second-long-summary',
+      title: 'Second long paper for Saved triage',
+      url: 'https://arxiv.org/abs/second-long-summary'
+    }
+    const user = userEvent.setup()
+    render(<App api={createApi({ ...emptyDashboard, savedItems: [savedItem, secondSavedItem] })} />)
+
+    await user.click(screen.getByRole('button', { name: '02 Saved' }))
+    const saveAction = await screen.findByRole('button', { name: 'Save signal' })
+    const summary = document.querySelector<HTMLElement>('.signal-detail__summary')!
+    expect(summary).toHaveTextContent('Long abstract evidence.')
+    expect(
+      Boolean(saveAction.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING)
+    ).toBe(true)
+    const summaryToggle = screen.getByRole('button', { name: 'Show full summary' })
+    expect(summaryToggle).toHaveAttribute('aria-expanded', 'false')
+    expect(summary).toHaveAttribute('data-expanded', 'false')
+
+    await user.click(summaryToggle)
+    expect(screen.getByRole('button', { name: 'Collapse summary' })).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    )
+    expect(summary).toHaveAttribute('data-expanded', 'true')
+
+    await user.click(
+      screen.getByRole('button', { name: 'Select signal: Second long paper for Saved triage' })
+    )
+    expect(screen.getByRole('button', { name: 'Show full summary' })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    )
+  })
+
   it('restores the latest persisted analysis for the selected saved signal', async () => {
     const savedItem: DashboardSnapshot['savedItems'][number] = {
       id: 'arxiv:persisted',
@@ -932,21 +1081,65 @@ describe('App', () => {
   it('opens Data Analytics from the consolidated navigation', async () => {
     const user = userEvent.setup()
     render(<App api={createApi()} />)
-    await user.click(screen.getByRole('button', { name: '04 Data Analytics' }))
+    await user.click(screen.getByRole('button', { name: '03 Data Analytics' }))
+    expect(await screen.findByRole('heading', { name: 'Data Analytics' })).toBeVisible()
+  })
+
+  it('opens every primary destination at the top of the main workspace', async () => {
+    const user = userEvent.setup()
+    render(<App api={createApi()} />)
+    const main = document.querySelector('main')!
+    main.scrollTop = 420
+
+    await user.click(screen.getByRole('button', { name: '03 Data Analytics' }))
+
+    expect(main.scrollTop).toBe(0)
     expect(await screen.findByRole('heading', { name: 'Data Analytics' })).toBeVisible()
   })
 
   it('opens the retained live-verified source directory', async () => {
     const user = userEvent.setup()
     render(<App api={createApi()} />)
-    await user.click(screen.getByRole('button', { name: '05 Sources' }))
+    await user.click(screen.getByRole('button', { name: '04 Sources' }))
     expect(
-      await screen.findByRole('heading', { name: '22 live-verified research sources' })
+      await screen.findByRole('heading', { name: '22 configured research sources' })
     ).toBeVisible()
     expect(screen.getAllByRole('article')).toHaveLength(22)
     expect(screen.getByRole('heading', { name: 'arXiv' })).toBeVisible()
     expect(screen.queryByText('X (Twitter)')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Pending integrations/i })).not.toBeInTheDocument()
+  })
+
+  it('opens the source directory filtered to the recorded attention set from the sidebar', async () => {
+    const user = userEvent.setup()
+    render(
+      <App
+        api={createApi({
+          ...emptyDashboard,
+          sourceHealth: { arxiv: 'failed', github: 'healthy' },
+          sourceHealthDetails: {
+            arxiv: {
+              status: 'failed',
+              observedAt: '2026-08-24T08:30:00.000Z',
+              errorMessage: 'Timed out after the bounded retry window'
+            },
+            github: {
+              status: 'healthy',
+              observedAt: '2026-08-24T08:31:00.000Z',
+              errorMessage: null
+            }
+          }
+        })}
+      />
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Source attention needed' }))
+    expect(screen.getByRole('button', { name: 'Show sources needing attention' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    expect(screen.getAllByRole('article')).toHaveLength(1)
+    expect(screen.getByRole('heading', { name: 'arXiv' })).toBeVisible()
   })
 
   it('keeps account, sync, Today, and Interests surfaces absent', () => {

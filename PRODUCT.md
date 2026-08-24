@@ -4,7 +4,8 @@
 
 TheRSS enables a single research user to save an optional Personal Prompt, express a research
 question in natural language, ask a configured model, Codex, or Claude Code to expand that context
-into an inspectable plan, and search exactly 22 live-verified research sources through one Discover
+into an inspectable plan, and search exactly 22 retained research sources that passed the dated
+deployment-verification gate through one Discover
 workflow. arXiv and GitHub execute bounded
 source-specific queries; the 19 fixed RSS/HTML routes and Hugging Face return bounded recent
 records that TheRSS filters and ranks locally against the same transient plan. Every result retains
@@ -52,17 +53,20 @@ provenance without copying secrets.
    the paper. arXiv papers also expose the separately confirmed llm-wiki promotion action.
 2. **Saved** — one persisted shelf for explicitly retained research signals from every active
    source. A selected saved arXiv paper can enter the same llm-wiki preview/confirmation workflow.
-3. **Models & Agents** — a Personal Prompt settings group, one model provider profile, direct
-   bounded Codex/Claude CLI analysis, plus documented read-only MCP setup. The UI explains what
-   context is useful, where it is sent, and what sensitive content not to include.
-4. **Data Analytics** — local Discover result-volume reporting, preserved historical Today volume, and a provenance-bearing ledger of deeply analyzed research signals.
-5. **Sources** — a searchable directory containing only the 22 previously live-verified sources,
-   with priority, research-axis, and provenance. Selecting a source opens an in-app rolling 30-day
-   view; arXiv opens the newest available official daily batch. The larger raw catalog remains
-   dormant versioned metadata and is not exposed or scheduled.
+3. **Settings** — two focused panes for Personal Prompt and one model provider profile, plus local
+   Codex/Claude availability. Provider drafts can be tested explicitly before saving; connection
+   results are classified without returning credentials, and a saved credential can be replaced or
+   cleared explicitly.
+4. **Data Analytics** — a secondary local utility for Discover result-volume reporting, preserved
+   historical Today volume, and a provenance-bearing ledger of deeply analyzed research signals.
+5. **Sources** — a secondary searchable directory containing only the 22 retained sources, with
+   priority, full research-area labels, dated registry provenance, per-source recorded health time,
+   and an actionable attention filter. Selecting a source opens an in-app rolling 30-day view;
+   arXiv opens the newest available official daily batch. The larger raw catalog remains dormant
+   versioned metadata and is not exposed or scheduled.
 
-Dedicated full-item reading, operational diagnostics, source weighting, provider connection tests,
-background refresh, and in-app update controls remain later surfaces. Legacy Interest profiles,
+Dedicated full-item reading, source weighting, background refresh, and in-app update controls
+remain later surfaces. Legacy Interest profiles,
 daily-inbox records, and Today analytics remain stored for compatibility but are not current
 navigation surfaces or implicit launch actions.
 
@@ -99,8 +103,9 @@ Paper promotion remains a separate branch:
   evidence and can reflect terms from the profile.
 - Data Analytics retains historical Today refresh volume separately from explicit Discover volume,
   derives deep-analysis history only from persisted artifacts, and does not fabricate history.
-- The Sources directory and Discover selector expose exactly 22 unique live-verified HTTPS sources
-  (A=7, B=15, C=0); deferred catalog entries are absent from the product surface.
+- The Sources directory and Discover selector expose exactly 22 unique retained HTTPS sources
+  (A=7, B=15, C=0) that passed the dated deployment-verification gate; current recorded health and
+  observation time remain separate, and deferred catalog entries are absent from the product surface.
 - No live external service is required for automated tests.
 - Deterministic Electron fixtures verify preview, cancellation, confirmation, and terminal receipt
   without touching the real llm-wiki vault. A live promotion always requires an in-app confirmation.

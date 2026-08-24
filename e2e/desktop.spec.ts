@@ -84,14 +84,14 @@ test('Discover-first search across every deployed source', async () => {
       await discoverHeading.evaluate((element) => getComputedStyle(element).fontFamily)
     ).toContain('SF Pro Display')
     const primaryNavigation = page.getByRole('navigation', { name: 'Primary navigation' })
-    await expect(primaryNavigation.getByRole('button')).toHaveCount(5)
+    await expect(primaryNavigation.getByRole('button')).toHaveCount(2)
     await expect(primaryNavigation.getByRole('button', { name: '01 Discover' })).toBeVisible()
     await expect(primaryNavigation.getByRole('button', { name: '02 Saved' })).toBeVisible()
-    await expect(
-      primaryNavigation.getByRole('button', { name: '03 Models & Agents' })
-    ).toBeVisible()
-    await expect(primaryNavigation.getByRole('button', { name: '04 Data Analytics' })).toBeVisible()
-    await expect(primaryNavigation.getByRole('button', { name: '05 Sources' })).toBeVisible()
+    const researchUtilities = page.getByRole('navigation', { name: 'Research utilities' })
+    await expect(researchUtilities.getByRole('button')).toHaveCount(2)
+    await expect(researchUtilities.getByRole('button', { name: '03 Data Analytics' })).toBeVisible()
+    await expect(researchUtilities.getByRole('button', { name: '04 Sources' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible()
     await expect(primaryNavigation.getByText('Today')).toHaveCount(0)
     await expect(primaryNavigation.getByText('Interests')).toHaveCount(0)
     await expect(page.locator('.nav-item--active .nav-item__icon')).toHaveCSS(
@@ -269,6 +269,21 @@ test('Discover-first search across every deployed source', async () => {
       })
     ).toBeVisible()
     await expect(page.getByRole('group', { name: 'Filter saved signals by source' })).toBeVisible()
+    const savedActionsBox = await page.locator('.signal-detail__actions').boundingBox()
+    const savedSummaryBox = await page.locator('.signal-detail__summary').boundingBox()
+    expect(savedActionsBox).not.toBeNull()
+    expect(savedSummaryBox).not.toBeNull()
+    if (savedActionsBox && savedSummaryBox) {
+      expect(savedActionsBox.y).toBeLessThan(savedSummaryBox.y)
+    }
+    const savedListDivider = page.getByRole('separator', { name: 'Resize saved signal list' })
+    await expect(savedListDivider).toBeVisible()
+    await savedListDivider.focus()
+    await page.keyboard.press('End')
+    await expect(savedListDivider).toHaveAttribute('aria-valuenow', '520')
+    expect(await page.evaluate(() => window.localStorage.getItem('therss.saved-list-width'))).toBe(
+      '520'
+    )
     await page.getByRole('button', { name: 'Dismiss signal' }).click()
     await expect(page.getByRole('status')).toContainText(
       'Dismissed “BAAI structured pruning research fixture”'
@@ -281,12 +296,50 @@ test('Discover-first search across every deployed source', async () => {
     ).toBeVisible()
     await capture(page, '04-saved.png')
 
-    await primaryNavigation.getByRole('button', { name: '03 Models & Agents' }).click()
-    await expect(
-      page.getByRole('heading', { name: 'Personalize your research agents.' })
-    ).toBeVisible()
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
     const personalPrompt = page.getByRole('textbox', { name: 'Personal Discover prompt' })
     await expect(personalPrompt).toHaveValue('')
+    await page.emulateMedia({ colorScheme: 'dark' })
+    const placeholderContrast = await personalPrompt.evaluate((element) => {
+      const parseRgb = (value: string) => {
+        const channels = value.match(/[\d.]+/gu)?.map(Number)
+        if (!channels || channels.length < 3) throw new Error(`Unsupported color: ${value}`)
+        return channels.slice(0, 3)
+      }
+      const luminance = (channels: number[]) => {
+        const linear = channels
+          .map((value) => value / 255)
+          .map((value) =>
+            value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4)
+          )
+        return 0.2126 * linear[0]! + 0.7152 * linear[1]! + 0.0722 * linear[2]!
+      }
+      const foreground = luminance(parseRgb(getComputedStyle(element, '::placeholder').color))
+      const background = luminance(parseRgb(getComputedStyle(element).backgroundColor))
+      return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05)
+    })
+    expect(placeholderContrast).toBeGreaterThanOrEqual(4.5)
+    await capture(page, '05a-personal-prompt-dark.png')
+    await page.emulateMedia({ colorScheme: 'light' })
+    await application.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(2)
+    })
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+    const zoomLayout = await page.evaluate(() => {
+      const main = document.querySelector('main')!
+      return {
+        documentOverflow:
+          document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        mainOverflow: main.scrollWidth - main.clientWidth
+      }
+    })
+    expect(zoomLayout.documentOverflow).toBeLessThanOrEqual(1)
+    expect(zoomLayout.mainOverflow).toBeLessThanOrEqual(1)
+    await capture(page, '05z-settings-200-percent.png')
+    await application.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(1)
+    })
     await personalPrompt.fill(
       'I research edge intelligence and energy systems. Prioritize reproducible evaluations and explicit resource budgets.'
     )
@@ -296,20 +349,61 @@ test('Discover-first search across every deployed source', async () => {
       element.scrollTop = 0
     })
     await capture(page, '05-personal-prompt-settings.png')
+    await page.getByRole('tab', { name: 'Model provider' }).click()
     await page.getByRole('textbox', { name: 'Provider name' }).fill('Local fixture')
     await page.getByRole('textbox', { name: 'Provider base URL' }).fill('http://127.0.0.1:11434/v1')
     await page.getByRole('textbox', { name: 'Model name' }).fill('fixture-model')
+    await page.getByRole('button', { name: 'Test connection' }).click()
+    await expect(page.getByRole('status', { name: 'Provider connection result' })).toContainText(
+      'without a network request'
+    )
     await page.getByRole('button', { name: 'Save model provider' }).click()
-    await expect(page.getByText('Credential protected by macOS')).toHaveCount(0)
+    await expect(page.locator('.provider-save-status')).toContainText('Provider settings saved')
+    await expect(page.getByText('Unsaved changes')).toHaveCount(0)
+    if (!isBaselineCapture) {
+      const cdp = await page.context().newCDPSession(page)
+      const accessibilityTree = await cdp.send('Accessibility.getFullAXTree')
+      const accessibleNodes = accessibilityTree.nodes.map((node) => ({
+        role: node.role?.value,
+        name: node.name?.value
+      }))
+      expect(accessibleNodes).toEqual(
+        expect.arrayContaining([
+          { role: 'heading', name: 'Settings' },
+          { role: 'tab', name: 'Personal context' },
+          { role: 'tab', name: 'Model provider' },
+          { role: 'button', name: 'Test connection' }
+        ])
+      )
+      await cdp.send('Emulation.setEmulatedMedia', {
+        features: [{ name: 'forced-colors', value: 'active' }]
+      })
+      expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true)
+      await page.getByRole('button', { name: 'Save model provider' }).focus()
+      await page.keyboard.press('Shift+Tab')
+      await expect(page.getByRole('button', { name: 'Test connection' })).toBeFocused()
+      await expect(page.getByRole('button', { name: 'Test connection' })).toHaveCSS(
+        'outline-style',
+        'solid'
+      )
+      await capture(page, '05f-settings-forced-colors.png')
+      await cdp.send('Emulation.setEmulatedMedia', { features: [] })
+    }
     await capture(page, '05-models.png')
+
+    await page.locator('main').evaluate((element) => {
+      element.scrollTop = 500
+    })
+    expect(await page.locator('main').evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+    await researchUtilities.getByRole('button', { name: '03 Data Analytics' }).click()
+    expect(await page.locator('main').evaluate((element) => element.scrollTop)).toBe(0)
+    await expect(page.getByRole('heading', { name: 'Data Analytics' })).toBeVisible()
+    await capture(page, '05d-navigation-scroll-reset.png')
 
     await primaryNavigation.getByRole('button', { name: '01 Discover' }).click()
     await expect(page.getByRole('status', { name: 'Personal prompt status' })).toContainText(
       'Personal context on'
     )
-    await page.locator('main').evaluate((element) => {
-      element.scrollTop = 0
-    })
     await capture(page, '05b-personalized-discover-ready.png')
     await page.getByRole('button', { name: 'Expand and search' }).click()
     await expect(page.getByText('Search complete')).toBeVisible()
@@ -324,25 +418,27 @@ test('Discover-first search across every deployed source', async () => {
     await page.getByRole('button', { name: 'Show sidebar' }).click()
     await expect(page.locator('.app-shell')).not.toHaveClass(/app-shell--sidebar-collapsed/)
 
-    await primaryNavigation.getByRole('button', { name: '04 Data Analytics' }).click()
+    await researchUtilities.getByRole('button', { name: '03 Data Analytics' }).click()
     await expect(page.getByRole('heading', { name: 'Data Analytics' })).toBeVisible()
-    const searchResults = page.getByLabel('Search results')
+    const searchResults = page.getByLabel('Lifetime returned records')
     await expect(searchResults).toContainText('6')
     await expect(searchResults).toContainText('0 legacy Today · 6 Discover')
     await capture(page, '06-analytics.png')
 
     if (!isBaselineCapture) {
-      await primaryNavigation.getByRole('button', { name: '05 Sources' }).click()
+      await researchUtilities.getByRole('button', { name: '04 Sources' }).click()
       await expect(
-        page.getByRole('heading', { name: '22 live-verified research sources' })
+        page.getByRole('heading', { name: '22 configured research sources' })
       ).toBeVisible()
       await expect(page.locator('.source-catalog-card')).toHaveCount(22)
+      await capture(page, '07-sources-directory.png')
       await page
         .getByRole('button', { name: 'Browse 北京智源人工智能研究院 recent content' })
         .click()
       await expect(page.getByRole('heading', { name: '北京智源人工智能研究院' })).toBeVisible()
       await expect(page.getByText('BAAI structured pruning research fixture')).toBeVisible()
       await expect(page.locator('.source-detail-boundary')).toContainText('rolling 30 days')
+      await capture(page, '08-source-detail.png')
       await page.getByRole('button', { name: 'Back to source directory' }).click()
 
       await page.getByRole('button', { name: 'Browse GitHub recent content' }).click()
@@ -357,6 +453,19 @@ test('Discover-first search across every deployed source', async () => {
     expect(rendererErrors).toEqual([])
 
     if (!isBaselineCapture && platform === 'darwin') {
+      const originalBounds = await application.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0]!.getBounds()
+      )
+      const restoredBounds = {
+        x: originalBounds.x,
+        y: originalBounds.y,
+        width: 1120,
+        height: 760
+      }
+      await application.evaluate(({ BrowserWindow }, bounds) => {
+        BrowserWindow.getAllWindows()[0]!.setBounds(bounds)
+      }, restoredBounds)
+      await page.waitForTimeout(350)
       expect(
         await application.evaluate(({ Menu }) => {
           const closeItem = Menu.getApplicationMenu()?.getMenuItemById('close-window')
@@ -396,6 +505,17 @@ test('Discover-first search across every deployed source', async () => {
       await expect(
         reopenedPage.getByRole('heading', { name: 'Search across your full source desk' })
       ).toBeVisible()
+      expect(
+        await application.evaluate(({ BrowserWindow }) =>
+          BrowserWindow.getAllWindows()[0]!.getBounds()
+        )
+      ).toEqual(restoredBounds)
+      await reopenedPage.getByRole('button', { name: 'Settings' }).click()
+      const reopenedPrompt = reopenedPage.getByRole('textbox', {
+        name: 'Personal Discover prompt'
+      })
+      await reopenedPrompt.fill('Unsaved shutdown guard fixture')
+      await expect(reopenedPage.getByText('Unsaved changes')).toBeVisible()
     }
   } finally {
     await application.close()

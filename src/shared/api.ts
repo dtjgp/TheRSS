@@ -5,7 +5,8 @@ import type {
   AnalysisRunner,
   LocalAgentStatus,
   ModelProviderInput,
-  ModelProviderSummary
+  ModelProviderSummary,
+  ProviderConnectionResult
 } from './models'
 import type { DiscoverSearchRequest, DiscoverSnapshot } from './discover'
 import type { AnalyticsSnapshot } from './analytics'
@@ -15,6 +16,12 @@ import type { LlmWikiPromotionPreview, LlmWikiPromotionReceipt } from './llmWiki
 
 export type SourceHealth = 'idle' | 'refreshing' | 'healthy' | 'no_results' | 'partial' | 'failed'
 export type TriageState = 'new' | 'viewed' | 'saved' | 'dismissed'
+
+export interface SourceHealthDetail {
+  readonly status: SourceHealth
+  readonly observedAt: string | null
+  readonly errorMessage: string | null
+}
 
 export interface DashboardItem {
   readonly id: string
@@ -54,6 +61,10 @@ export interface DashboardSnapshot {
   readonly sourceHealth: Readonly<
     Record<'arxiv' | 'github', SourceHealth> & Partial<Record<DiscoverySource, SourceHealth>>
   >
+  readonly sourceHealthDetails: Readonly<
+    Record<'arxiv' | 'github', SourceHealthDetail> &
+      Partial<Record<DiscoverySource, SourceHealthDetail>>
+  >
   readonly counts: {
     readonly total: number
     readonly arxiv: number
@@ -81,6 +92,10 @@ export interface TheRSSApi {
   setTriageState(id: string, state: TriageState): Promise<DashboardSnapshot>
   getModelProvider(): Promise<ModelProviderSummary | null>
   saveModelProvider(input: ModelProviderInput): Promise<ModelProviderSummary>
+  testModelProvider(input: ModelProviderInput): Promise<ProviderConnectionResult>
+  clearModelProviderCredential(): Promise<ModelProviderSummary>
+  setSettingsDirty(isDirty: boolean): void
+  confirmDiscardSettings(): Promise<boolean>
   getDiscoverPersonalizationSettings(): Promise<DiscoverPersonalizationSettings | null>
   saveDiscoverPersonalizationPrompt(prompt: string): Promise<DiscoverPersonalizationSettings>
   getLocalAgentStatuses(): Promise<readonly LocalAgentStatus[]>

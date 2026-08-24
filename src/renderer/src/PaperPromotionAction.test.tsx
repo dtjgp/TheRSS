@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { TheRSSApi } from '../../shared/api'
@@ -125,6 +125,23 @@ describe('PaperPromotionAction', () => {
     expect(
       screen.queryByRole('button', { name: 'Confirm local promotion' })
     ).not.toBeInTheDocument()
+  })
+
+  it('renders a persisted receipt in the separate detail status host when provided', async () => {
+    document.body.innerHTML = '<div id="promotion-status-host"></div>'
+    const bridge = api({ getLatestLlmWikiPromotion: vi.fn().mockResolvedValue(receipt) })
+
+    render(
+      <PaperPromotionAction
+        api={bridge}
+        itemId={preview.itemId}
+        statusTargetId="promotion-status-host"
+      />
+    )
+
+    const host = document.getElementById('promotion-status-host')!
+    expect(await within(host).findByRole('status')).toHaveTextContent(receipt.summary)
+    expect(screen.getByRole('button', { name: 'Promote to llm-wiki' })).toBeVisible()
   })
 
   it('closes a consumed preview and exposes a retryable error when confirmation fails', async () => {

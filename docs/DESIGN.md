@@ -27,7 +27,8 @@ while leaving durable literature/knowledge ownership to specialized tools.
   run the validated plan through TheRSS source adapters without model-controlled browsing.
 - Show local Discover result volume, preserved historical Today volume, and the persisted
   deep-analysis ledger without introducing telemetry.
-- Expose only the 22 sources that passed the live retrieval gate, with explicit priority, research-axis, and provenance.
+- Expose only the 22 sources that passed the dated retrieval gate, with explicit priority, full
+  research-area labels, provenance, and separately timestamped current health.
 - Make personal development updates fast without requiring paid Apple signing.
 
 ## Non-goals
@@ -239,6 +240,13 @@ Initial protocols:
 - Anthropic-compatible
 
 Provider metadata and encrypted credential ciphertext are stored in SQLite; plaintext encryption/decryption occurs only in Electron main through the OS-backed secret service. Analysis artifacts store provider profile ID/name, model, prompt version, source-snapshot hash, content, timestamp, and token usage internally. Stale state and request status are deferred.
+
+Settings exposes a bounded explicit connection test for the current unsaved provider draft. The
+draft is validated through the same HTTPS/loopback rules as persistence, remains in Electron main
+for the request, and is never saved implicitly. The result contract distinguishes success,
+authentication rejection, DNS failure, missing model/route, timeout, protocol mismatch, and other
+network failure without returning the key or untrusted response body. Saved ciphertext can be
+replaced by saving a new key or cleared through a separate explicit action.
 
 Analysis prompt selection follows normalized item kind. `paper` records use the versioned
 `llm-wiki-paper-l1-v1` contract and render their result directly after the discovery summary; every

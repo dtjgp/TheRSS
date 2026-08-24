@@ -45,6 +45,15 @@ const SOURCE_HEALTH = new Set<PersistedSourceHealth>([
   'failed'
 ])
 
+function boundedSourceError(value: string): string {
+  return value
+    .replaceAll(/\b(?:hf|ghp|github_pat)_[A-Za-z0-9_-]+\b/gu, '[redacted credential]')
+    .replaceAll(/\/(?:Users|home)\/[^\s:]+/gu, '[local path]')
+    .replaceAll(/\s+/gu, ' ')
+    .trim()
+    .slice(0, 300)
+}
+
 interface DashboardRow {
   id: string
   source: DiscoverySource
@@ -66,6 +75,7 @@ interface SourceRunRow {
   source: DiscoverySource
   status: PersistedSourceHealth
   completed_at: string
+  error_message: string | null
   result_count: number | null
 }
 
@@ -1374,6 +1384,21 @@ export class ResearchRepository {
       : null
   }
 
+  clearModelProviderCredential(
+    id = 'default',
+    updatedAt = new Date().toISOString()
+  ): StoredModelProvider {
+    const result = this.#database
+      .prepare(
+        `UPDATE model_provider
+         SET secret_ciphertext = NULL, updated_at = ?
+         WHERE id = ?`
+      )
+      .run(updatedAt, id)
+    if (result.changes !== 1) throw new Error('Configure a model provider first')
+    return this.getModelProvider(id)!
+  }
+
   saveAnalysis(
     artifact: AnalysisArtifact,
     usage: { readonly inputTokens: number | null; readonly outputTokens: number | null }
@@ -1537,7 +1562,7 @@ export class ResearchRepository {
     const items = this.listDashboardItems()
     const savedItems = this.listSavedItems()
     const sourceRuns = this.#database
-      .prepare('SELECT source, status, completed_at, result_count FROM source_run')
+      .prepare('SELECT source, status, completed_at, error_message, result_count FROM source_run')
       .all() as SourceRunRow[]
     const healthFor = (source: DiscoverySource): SourceHealth => {
       const run = sourceRuns.find((candidate) => candidate.source === source)
@@ -1547,6 +1572,19 @@ export class ResearchRepository {
     const sourceHealth = Object.fromEntries(
       ACTIVE_TODAY_SOURCE_IDS.map((source) => [source, healthFor(source)])
     ) as DashboardSnapshot['sourceHealth']
+    const sourceHealthDetails = Object.fromEntries(
+      ACTIVE_TODAY_SOURCE_IDS.map((source) => {
+        const run = sourceRuns.find((candidate) => candidate.source === source)
+        return [
+          source,
+          {
+            status: healthFor(source),
+            observedAt: run?.completed_at ?? null,
+            errorMessage: run?.error_message ? boundedSourceError(run.error_message) : null
+          }
+        ]
+      })
+    ) as DashboardSnapshot['sourceHealthDetails']
     const configuredSources = new Set<DiscoverySource>(
       ACTIVE_TODAY_SOURCE_IDS.filter((source) => source !== 'arxiv' && source !== 'github')
     )
@@ -1582,6 +1620,7 @@ export class ResearchRepository {
       profileName: profile?.name ?? null,
       lastRefreshAt: refreshTimes.at(-1) ?? null,
       sourceHealth,
+      sourceHealthDetails,
       counts: {
         total: items.length,
         arxiv: items.filter((item) => item.source === 'arxiv').length,

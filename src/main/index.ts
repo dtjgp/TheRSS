@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import { env } from 'node:process'
 import { randomUUID } from 'node:crypto'
 import Database from 'better-sqlite3'
-import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, screen, shell } from 'electron'
 import { z } from 'zod'
 import { LocalAgentService } from '../core/agents/localAgentService'
 import { AnalysisService } from '../core/analysis/analysisService'
@@ -10,7 +10,7 @@ import { DiscoverPlannerService } from '../core/discover/discoverPlanner'
 import { DiscoverService } from '../core/discover/discoverService'
 import { DiscoveryService } from '../core/discovery/discoveryService'
 import { interestProfileSchema } from '../core/interests/interestProfile'
-import { runPromptWithModel } from '../core/models/modelGateway'
+import { runPromptWithModel, testModelProviderConnection } from '../core/models/modelGateway'
 import { ProviderService, type SecretCipher } from '../core/models/providerService'
 import { ResearchRepository } from '../core/storage/researchRepository'
 import { LlmWikiPromotionService } from '../core/integrations/llmWikiPromotionService'
@@ -39,6 +39,7 @@ import {
 } from './e2eFixtures'
 import { githubTokenFromEnvironment, huggingFaceTokenFromEnvironment } from './sourceCredentials'
 import { createLlmWikiPromotionRuntime } from './llmWikiPromotionRuntime'
+import { readWindowState, writeWindowState, type WindowBounds } from './windowState'
 
 const triageInputSchema = z.object({
   id: z.string().trim().min(1).max(300),
@@ -63,6 +64,22 @@ const discoverResultInputSchema = z
 const discoverAnalysisInputSchema = discoverResultInputSchema.extend({
   runner: z.enum(['model-provider', 'codex', 'claude']).default('model-provider')
 })
+const settingsDirtySchema = z.boolean()
+const dirtySettingsWindows = new WeakSet<Electron.WebContents>()
+
+async function confirmDiscardSettings(window: BrowserWindow): Promise<boolean> {
+  const choice = await dialog.showMessageBox(window, {
+    type: 'warning',
+    title: 'Discard unsaved settings?',
+    message: 'Your Settings changes have not been saved.',
+    detail: 'Discard the edits and leave Settings?',
+    buttons: ['Keep Editing', 'Discard Changes'],
+    cancelId: 0,
+    defaultId: 0,
+    noLink: true
+  })
+  return choice.response === 1
+}
 
 class ElectronSecretCipher implements SecretCipher {
   isAvailable(): boolean {
@@ -137,6 +154,35 @@ function registerIpcHandlers(
   ipcMain.handle(IPC_CHANNELS.saveModelProvider, (_event, candidate: unknown) =>
     providerService.save(candidate)
   )
+  ipcMain.handle(IPC_CHANNELS.testModelProvider, (_event, candidate: unknown) => {
+    const profile = providerService.getConnectionTestProfile(candidate)
+    return useE2eFixtures
+      ? {
+          status: 'connected' as const,
+          message: `Fixture connection accepted ${profile.model} without a network request.`,
+          testedAt: new Date().toISOString()
+        }
+      : testModelProviderConnection(profile)
+  })
+  ipcMain.handle(IPC_CHANNELS.clearModelProviderCredential, () => providerService.clearCredential())
+  ipcMain.on(IPC_CHANNELS.setSettingsDirty, (event, candidate: unknown) => {
+    const parsed = settingsDirtySchema.safeParse(candidate)
+    if (!parsed.success) return
+    if (parsed.data) dirtySettingsWindows.add(event.sender)
+    else dirtySettingsWindows.delete(event.sender)
+  })
+  ipcMain.handle(IPC_CHANNELS.confirmDiscardSettings, async (event) => {
+    if (!dirtySettingsWindows.has(event.sender)) return true
+    if (useE2eFixtures) {
+      dirtySettingsWindows.delete(event.sender)
+      return true
+    }
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window || window.isDestroyed()) return false
+    const shouldDiscard = await confirmDiscardSettings(window)
+    if (shouldDiscard) dirtySettingsWindows.delete(event.sender)
+    return shouldDiscard
+  })
   ipcMain.handle(IPC_CHANNELS.getDiscoverPersonalizationSettings, () =>
     repository.getDiscoverPersonalizationSettings()
   )
@@ -210,11 +256,14 @@ function isSafeExternalUrl(value: string): boolean {
   }
 }
 
-function createWindow(): BrowserWindow {
+async function createWindow(useE2eFixtures: boolean): Promise<BrowserWindow> {
   const isMac = process.platform === 'darwin'
+  const fallbackBounds: WindowBounds = { x: 80, y: 60, width: 1360, height: 880 }
+  const statePath = join(app.getPath('userData'), 'window-state.json')
+  const workAreas = screen.getAllDisplays().map((display) => display.workArea)
+  const restoredState = await readWindowState(statePath, fallbackBounds, workAreas)
   const window = new BrowserWindow({
-    width: 1360,
-    height: 880,
+    ...restoredState.bounds,
     minWidth: 820,
     minHeight: 600,
     title: 'TheRSS',
@@ -235,7 +284,10 @@ function createWindow(): BrowserWindow {
     }
   })
 
-  window.once('ready-to-show', () => window.show())
+  window.once('ready-to-show', () => {
+    if (restoredState.maximized) window.maximize()
+    window.show()
+  })
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (isSafeExternalUrl(url)) {
       void shell.openExternal(url)
@@ -249,10 +301,50 @@ function createWindow(): BrowserWindow {
     void window.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
+  let stateSaveTimer: ReturnType<typeof setTimeout> | null = null
+  const persistWindowState = () => {
+    if (window.isDestroyed()) return
+    if (stateSaveTimer) clearTimeout(stateSaveTimer)
+    stateSaveTimer = setTimeout(() => {
+      stateSaveTimer = null
+      void writeWindowState(statePath, {
+        bounds: window.getNormalBounds(),
+        maximized: window.isMaximized()
+      }).catch(() => undefined)
+    }, 200)
+  }
+  window.on('move', persistWindowState)
+  window.on('resize', persistWindowState)
+  window.on('maximize', persistWindowState)
+  window.on('unmaximize', persistWindowState)
+
+  let allowClose = false
+  let closePromptPending = false
+  window.on('close', (event) => {
+    if (allowClose || !dirtySettingsWindows.has(window.webContents)) return
+    event.preventDefault()
+    if (closePromptPending) return
+    closePromptPending = true
+    const decision = useE2eFixtures ? Promise.resolve(true) : confirmDiscardSettings(window)
+    void decision
+      .then((shouldDiscard) => {
+        if (!shouldDiscard || window.isDestroyed()) return
+        dirtySettingsWindows.delete(window.webContents)
+        allowClose = true
+        window.close()
+      })
+      .finally(() => {
+        closePromptPending = false
+      })
+  })
+  window.on('closed', () => {
+    if (stateSaveTimer) clearTimeout(stateSaveTimer)
+  })
+
   return window
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   const database = new Database(join(app.getPath('userData'), 'therss.sqlite'))
   const repository = new ResearchRepository(database)
   repository.reconcileInterruptedLlmWikiPromotions()
@@ -424,7 +516,7 @@ app.whenReady().then(() => {
     promotionService,
     useE2eFixtures
   )
-  createWindow()
+  await createWindow(useE2eFixtures)
   Menu.setApplicationMenu(
     Menu.buildFromTemplate(
       createApplicationMenuTemplate((command) => {
@@ -440,16 +532,30 @@ app.whenReady().then(() => {
     event.preventDefault()
     if (shutdownStarted) return
     shutdownStarted = true
-    void promotionService.disposeAll().then(() => {
+    void (async () => {
+      const dirtyWindow = BrowserWindow.getAllWindows().find((window) =>
+        dirtySettingsWindows.has(window.webContents)
+      )
+      const shouldQuit = dirtyWindow
+        ? useE2eFixtures || (await confirmDiscardSettings(dirtyWindow))
+        : true
+      if (!shouldQuit) {
+        shutdownStarted = false
+        return
+      }
+      for (const window of BrowserWindow.getAllWindows()) {
+        dirtySettingsWindows.delete(window.webContents)
+      }
+      await promotionService.disposeAll()
       repository.close()
       shutdownCompleted = true
       app.quit()
-    })
+    })()
   })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
+      void createWindow(useE2eFixtures)
     }
   })
 })

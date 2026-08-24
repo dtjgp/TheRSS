@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import type { SourceContentSnapshot, TheRSSApi } from '../../shared/api'
+import type { DashboardSnapshot, SourceContentSnapshot, TheRSSApi } from '../../shared/api'
 import { SourceCatalogView } from './SourceCatalogView'
 
 function sourceSnapshot(
@@ -26,30 +26,150 @@ function sourceSnapshot(
 
 function createSourceApi(
   initial: SourceContentSnapshot = sourceSnapshot('folo:302')
-): Pick<TheRSSApi, 'getSourceContent' | 'refreshSourceContent'> {
+): Pick<TheRSSApi, 'getDashboard' | 'getSourceContent' | 'refreshSourceContent'> {
   return {
+    getDashboard: vi.fn().mockResolvedValue({
+      date: '2026-08-24',
+      profileName: null,
+      lastRefreshAt: null,
+      sourceHealth: { arxiv: 'idle', github: 'idle', [initial.source]: 'healthy' },
+      sourceHealthDetails: {
+        arxiv: { status: 'idle', observedAt: null, errorMessage: null },
+        github: { status: 'idle', observedAt: null, errorMessage: null },
+        [initial.source]: {
+          status: 'healthy',
+          observedAt: '2026-08-24T12:00:00.000Z',
+          errorMessage: null
+        }
+      },
+      counts: { total: 0, arxiv: 0, github: 0, unread: 0 },
+      items: [],
+      savedItems: []
+    }),
     getSourceContent: vi.fn().mockResolvedValue(initial),
     refreshSourceContent: vi.fn().mockResolvedValue(initial)
   }
 }
 
 function renderCatalog(
-  api: Pick<TheRSSApi, 'getSourceContent' | 'refreshSourceContent'> = createSourceApi()
+  api: Pick<
+    TheRSSApi,
+    'getDashboard' | 'getSourceContent' | 'refreshSourceContent'
+  > = createSourceApi(),
+  sourceHealth?: DashboardSnapshot['sourceHealth'],
+  sourceHealthDetails?: DashboardSnapshot['sourceHealthDetails'],
+  attentionOnly = false,
+  onAttentionOnlyChange = vi.fn(),
+  onDashboardChange = vi.fn()
 ) {
-  return render(<SourceCatalogView api={api} />)
+  return render(
+    <SourceCatalogView
+      api={api}
+      sourceHealth={sourceHealth}
+      sourceHealthDetails={sourceHealthDetails}
+      attentionOnly={attentionOnly}
+      onAttentionOnlyChange={onAttentionOnlyChange}
+      onDashboardChange={onDashboardChange}
+    />
+  )
 }
 
 describe('SourceCatalogView', () => {
-  it('shows only the 22 previously live-verified sources', () => {
+  it('shows only the 22 configured sources that passed the previous verification gate', () => {
     renderCatalog()
 
-    expect(screen.getByRole('heading', { name: '22 live-verified research sources' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: '22 configured research sources' })).toBeVisible()
+    expect(screen.getByText(/dated deployment verification on August 19, 2026/i)).toBeVisible()
+    expect(screen.queryByText(/dated live-verification gate/i)).not.toBeInTheDocument()
     const summary = screen.getByRole('group', { name: 'Source catalog summary' })
-    expect(within(summary).getByLabelText('Live-verified sources')).toHaveTextContent('22')
+    expect(within(summary).getByLabelText('Configured sources')).toHaveTextContent('22')
     expect(screen.getAllByRole('article')).toHaveLength(22)
     expect(screen.queryByText('X (Twitter)')).not.toBeInTheDocument()
     expect(screen.queryByText('3GPP Specifications')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Pending integrations/i })).not.toBeInTheDocument()
+  })
+
+  it('separates configured membership, current health, and cached index freshness', async () => {
+    const user = userEvent.setup()
+    const api = createSourceApi(sourceSnapshot('arxiv'))
+    renderCatalog(api, {
+      arxiv: 'failed',
+      github: 'healthy',
+      'folo:302': 'partial'
+    })
+
+    const summary = screen.getByRole('group', { name: 'Source catalog summary' })
+    expect(within(summary).getByLabelText('Last recorded ready')).toHaveTextContent('1')
+    expect(within(summary).getByLabelText('Needs attention')).toHaveTextContent('2')
+    expect(within(summary).getByLabelText('Not checked')).toHaveTextContent('19')
+    expect(screen.getByText(/catalog membership is not a live-health claim/i)).toBeVisible()
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'arXiv')
+    await user.click(screen.getByRole('button', { name: 'Browse arXiv recent content' }))
+
+    expect(await screen.findByText('Last recorded health')).toBeVisible()
+    expect(screen.getByText('Failed')).toBeVisible()
+    expect(screen.getByText('Cached snapshot')).toBeVisible()
+    expect(screen.getByText(/does not prove that the source is currently reachable/i)).toBeVisible()
+    expect(screen.getByText(/Latest indexed item:/i)).toBeVisible()
+  })
+
+  it('shows observed-at evidence and the bounded recorded failure reason', async () => {
+    const user = userEvent.setup()
+    const api = createSourceApi(sourceSnapshot('arxiv'))
+    renderCatalog(
+      api,
+      { arxiv: 'failed', github: 'idle' },
+      {
+        arxiv: {
+          status: 'failed',
+          observedAt: '2026-08-24T08:30:00.000Z',
+          errorMessage: 'Timed out after the bounded retry window'
+        },
+        github: { status: 'idle', observedAt: null, errorMessage: null }
+      }
+    )
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'arXiv')
+    await user.click(screen.getByRole('button', { name: 'Browse arXiv recent content' }))
+
+    expect(await screen.findByText(/recorded Aug 24, 2026/i)).toBeVisible()
+    expect(screen.getByText('Timed out after the bounded retry window')).toBeVisible()
+  })
+
+  it('filters to sources needing attention through a controlled accessible filter', async () => {
+    const onAttentionOnlyChange = vi.fn()
+    const user = userEvent.setup()
+    renderCatalog(
+      createSourceApi(),
+      { arxiv: 'failed', github: 'healthy', 'folo:302': 'partial' },
+      undefined,
+      true,
+      onAttentionOnlyChange
+    )
+
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    const filter = screen.getByRole('button', { name: 'Show sources needing attention' })
+    expect(filter).toHaveAttribute('aria-pressed', 'true')
+    await user.click(filter)
+    expect(onAttentionOnlyChange).toHaveBeenCalledWith(false)
+  })
+
+  it('uses full research-area names and keeps adapter provenance out of directory cards', async () => {
+    const user = userEvent.setup()
+    renderCatalog()
+    await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'OpenAI')
+
+    const card = screen.getByRole('heading', { name: 'OpenAI' }).closest('article')!
+    expect(card).toHaveTextContent('Model compression & edge AI')
+    expect(card).toHaveTextContent('Agents & behavior')
+    expect(card).not.toHaveTextContent('Folo 1543')
+    expect(card).not.toHaveTextContent('Active adapter')
+
+    await user.click(screen.getByRole('button', { name: 'Browse OpenAI recent content' }))
+    const provenance = await screen.findByText('Source provenance')
+    await user.click(provenance)
+    expect(screen.getByText(/Folo 1543/u)).toBeVisible()
   })
 
   it('filters the retained set by text, priority, and research axis', async () => {
@@ -149,7 +269,7 @@ describe('SourceCatalogView', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Back to source directory' }))
-    expect(screen.getByRole('heading', { name: '22 live-verified research sources' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: '22 configured research sources' })).toBeVisible()
   })
 
   it('automatically refreshes an empty active non-metered source', async () => {
@@ -184,6 +304,7 @@ describe('SourceCatalogView', () => {
 
     expect(await screen.findByText('OpenAI recent update')).toBeVisible()
     expect(api.refreshSourceContent).toHaveBeenCalledWith('folo:182')
+    await waitFor(() => expect(api.getDashboard).toHaveBeenCalledOnce())
   })
 
   it('shows the bounded real source error instead of a generic empty-state message', async () => {

@@ -1168,3 +1168,60 @@ GitHub `main` and `git ls-remote` agree at `303889f2345123201560a8dd216fd42e1f82
   had run immediately before the final verification-note append, so it did not cover that last edit.
   Format the changed planning files, rerun the complete gate, and push a corrective documentation
   commit; do not bypass the required check.
+
+## Phase 38 — Complete product-design remediation and local beta update
+
+### Goal
+
+Close every still-open 2026-08-24 software-design audit finding, validate the complete macOS
+experience and provider security boundary, then reversibly update the installed local beta.
+
+### Execution
+
+- [x] Move Personal context and Model provider into focused Settings panes with unsaved-change
+      protection and keep Discover/Saved as the primary product destinations.
+- [x] Add bounded classified provider connection testing plus explicit credential clear/replace,
+      including cross-endpoint credential non-reuse.
+- [x] Add timestamped source-health evidence, actionable attention filtering, full research-area
+      labels, and collapsed engineering provenance.
+- [x] Add a persistent accessible Saved list/detail divider, validated window restoration, separate
+      promotion receipt status, contrast/forced-colors rules, 200% zoom, and AX-tree verification.
+- [x] Extract Settings and split renderer CSS by feature; align product/design/README terminology.
+- [x] Run full, security, Electron, package, installed-binary, hash, backup, and SQLite verification.
+
+### Status
+
+**Phase 38 complete.** `npm run check` passes 52 files / 328 tests with 90.46% statements, 80.47%
+branches, 93.99% functions, and 93.43% lines. Source-build Electron E2E passes 2/2; the production
+dependency audit reports zero vulnerabilities. The installed executable passes packaged smoke and
+full desktop E2E. Release and installed `app.asar` SHA-256 match at
+`660b14781f643a6c0a2d7cb51e53afb5472f3df6b299d079bf518537054eafa5`; the previous app and SQLite
+backup are retained at timestamp `2026-08-24T14-14-54-159Z`, and both live/backup database integrity
+checks return `ok`. Figma final append was attempted but blocked before mutation by the authenticated
+Starter plan's MCP call limit. No commit, push, publication, live source/provider call, or llm-wiki
+write was performed.
+
+## Phase 39 — Remove superseded app backups and publish all work
+
+### Goal
+
+Delete only the superseded local application backup bundles while preserving the active app and
+database recovery artifacts, then commit the full verified worktree and land it on protected GitHub
+`main`.
+
+### Execution
+
+- [x] Validate exact backup-app targets, active bundle identity, live database, and SQLite backups.
+- [x] Remove only the validated `TheRSS Dev.backup-*.app` bundles.
+- [x] Refresh Git/GitHub state, run final release/security gates, and review the complete worktree.
+- [ ] Create one Conventional Commit, push the current feature branch, pass required GitHub checks,
+      and merge through the supported protected-main strategy.
+- [ ] Verify local/remote/main convergence and report final cleanup and publication evidence.
+
+### Status
+
+**Phase 39 in progress.** The single validated obsolete app bundle was removed permanently. The
+active app and both live/backup SQLite integrity checks remain valid. A clean
+`codex/complete-design-remediation` branch now starts from tree-identical current `origin/main` and
+preserves the full worktree. Final `npm run check`, Electron 2/2, production dependency audit, and
+full-worktree security/size/type scans pass; authorized full staging is next.

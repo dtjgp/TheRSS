@@ -12,9 +12,9 @@ const snapshot: AnalyticsSnapshot = {
   windowDays: 7,
   trackingStartedAt: '2026-08-15T09:01:00.000Z',
   totals: {
-    searchResults: 14,
-    todayResults: 9,
-    discoverResults: 5,
+    searchResults: 20,
+    todayResults: 12,
+    discoverResults: 8,
     deepAnalyses: 2,
     analyzedPapers: 1
   },
@@ -68,9 +68,12 @@ describe('DataAnalyticsView', () => {
 
     expect(await screen.findByRole('heading', { name: 'Data Analytics' })).toBeVisible()
     const summary = screen.getByRole('group', { name: 'Analytics summary' })
-    expect(within(summary).getByLabelText('Search results')).toHaveTextContent('14')
-    expect(within(summary).getByLabelText('Search results')).toHaveTextContent(
-      '9 legacy Today · 5 Discover'
+    expect(within(summary).getByLabelText('Lifetime returned records')).toHaveTextContent('20')
+    expect(within(summary).getByLabelText('Lifetime returned records')).toHaveTextContent(
+      '12 legacy Today · 8 Discover'
+    )
+    expect(within(summary).getByLabelText('Lifetime returned records')).toHaveTextContent(
+      '14 in last 7 local days'
     )
     expect(within(summary).getByLabelText('Deep analyses')).toHaveTextContent('2')
     expect(within(summary).getByLabelText('Analyzed papers')).toHaveTextContent('1')
@@ -127,7 +130,7 @@ describe('DataAnalyticsView', () => {
     expect(await screen.findByText('The local analytics could not be loaded.')).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Retry analytics' }))
 
-    expect(await screen.findByLabelText('Search results')).toHaveTextContent('14')
+    expect(await screen.findByLabelText('Lifetime returned records')).toHaveTextContent('20')
     expect(getAnalytics).toHaveBeenCalledTimes(2)
   })
 })
