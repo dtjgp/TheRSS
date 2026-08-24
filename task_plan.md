@@ -1214,14 +1214,16 @@ database recovery artifacts, then commit the full verified worktree and land it 
 - [x] Validate exact backup-app targets, active bundle identity, live database, and SQLite backups.
 - [x] Remove only the validated `TheRSS Dev.backup-*.app` bundles.
 - [x] Refresh Git/GitHub state, run final release/security gates, and review the complete worktree.
-- [ ] Create one Conventional Commit, push the current feature branch, pass required GitHub checks,
+- [x] Create one Conventional Commit, push the current feature branch, pass required GitHub checks,
       and merge through the supported protected-main strategy.
-- [ ] Verify local/remote/main convergence and report final cleanup and publication evidence.
+- [x] Verify local/remote/main convergence and report final cleanup and publication evidence.
 
 ### Status
 
-**Phase 39 in progress.** The single validated obsolete app bundle was removed permanently. The
-active app and both live/backup SQLite integrity checks remain valid. A clean
-`codex/complete-design-remediation` branch now starts from tree-identical current `origin/main` and
-preserves the full worktree. Final `npm run check`, Electron 2/2, production dependency audit, and
-full-worktree security/size/type scans pass; authorized full staging is next.
+**Phase 39 complete.** The single validated obsolete app bundle was removed permanently while the
+active app, live database, and retained SQLite backup remained intact. Full-worktree commit
+`1087771` passed the ECC pre-push lint/typecheck/328-test/build gate and was published through PR
+#15 after required GitHub `quality` passed. The repository-supported rebase merge produced
+`origin/main` SHA `a514197d66976f1303063453f58f752d7a545bbb`; `git ls-remote` agrees, and its tree SHA
+`7cc6148753a7e624c9abcf8a94d09b8de299b47d` exactly matches the verified feature commit. No branch
+protection was bypassed and no remote branch was deleted.
