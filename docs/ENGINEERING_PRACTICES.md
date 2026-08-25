@@ -12,6 +12,14 @@ TheRSS applies published Google engineering-practice principles in a form suitab
 
 ## TheRSS operating model
 
+### Canonical change workflow
+
+All non-trivial features, refactors, migrations, security-boundary changes, and user-visible work
+follow [`DEVELOPMENT_WORKFLOW.md`](DEVELOPMENT_WORKFLOW.md). The reusable contract is
+[`templates/CHANGE_CONTRACT.md`](templates/CHANGE_CONTRACT.md). The workflow makes product fit,
+uncertainty, acceptance intent, implementation scope, independent review, and evidence closeout
+explicit before work can be called complete.
+
 ### Design before broad implementation
 
 Cross-cutting features require a short design document or Architecture Decision Record containing:
@@ -30,10 +38,18 @@ Cross-cutting features require a short design document or Architecture Decision 
 - Refactoring is separated from feature behavior when separation improves reviewability.
 - Generated lock files and mechanical scaffolding are identified explicitly.
 - Every commit keeps the app buildable and the deterministic test suite runnable.
+- Owned `.ts` and `.tsx` files under `src/`, including tests, stay at or below 800 lines. Generated
+  declarations are excluded. A temporary exception requires a reviewed ADR with an owner, reason,
+  narrower target, and removal verifier.
 
 ### Review standard
 
 A change is acceptable when it measurably improves the product/codebase and passes its relevant gates. Perfection is not required, but known correctness, security, evidence, or data-loss defects cannot be deferred as polish.
+
+Independent review is a separate diff pass after implementation, not a continuation of the coding
+stream. It checks contract fit, accidental scope growth, test weakening, boundary changes, migration
+and rollback behavior, and user/data impact. The reviewer may be another agent or a fresh human
+pass, but findings and resolutions must be recorded.
 
 ### Quality gates
 
@@ -42,6 +58,7 @@ A change is acceptable when it measurably improves the product/codebase and pass
 | Formatting/lint                 |                 Required | Required |
 | Type checking                   |                 Required | Required |
 | Relevant unit/integration tests |                 Required | Required |
+| Architecture/source-size policy |                 Required | Required |
 | Global coverage >= 80%          |                Monitored | Required |
 | Critical E2E                    |        When flow changes | Required |
 | Dependency audit                | When dependencies change | Required |

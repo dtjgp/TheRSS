@@ -1,5 +1,49 @@
 # TheRSS Goals
 
+## Completed goal: Development workflow hardening
+
+### Objective
+
+Make the agreed Feature Intake → Capability Contract → uncertainty reducer → frozen acceptance →
+TDD → verification → independent review → evidence-closeout workflow executable, and repair the
+current objective structural violations without changing product behavior.
+
+### Observable success criteria
+
+- `AGENTS.md` routes non-trivial work through one canonical workflow and reusable change contract.
+- The workflow distinguishes UI prototypes, technical spikes, and failing-test reproduction.
+- Acceptance intent cannot be weakened silently, and independent diff review is an explicit gate.
+- An automated architecture check enforces the owned-source line limit in `npm run check`.
+- Current owned TypeScript/TSX files satisfy the enforced limit without weakening public APIs,
+  SQLite migrations, evidence boundaries, or renderer behavior.
+
+### Verifiers
+
+- Focused RED/GREEN architecture-policy and affected-feature tests
+- `npm run check:architecture`
+- `npm run check`
+- `npm run test:e2e`
+- storage/security/diff review and final source-size inventory
+
+### Stop condition
+
+The goal is complete when the workflow and template are durable, automated structural checks pass,
+all current violations in their enforced scope are repaired, full checks and Electron E2E pass, and
+judgment-only residual risks are recorded rather than silently treated as compliant.
+
+### Completion evidence (2026-08-25)
+
+- Canonical workflow: `docs/DEVELOPMENT_WORKFLOW.md`; reusable contract:
+  `docs/templates/CHANGE_CONTRACT.md`.
+- `npm run check:architecture` enforces the 800-line owned TypeScript/TSX boundary and passes.
+- `npm run check` passed 54 files / 330 tests with 90.46% statements, 80.59% branches, 94.05%
+  functions, and 93.37% lines; all builds passed.
+- Electron E2E passed 2/2 outside the restricted desktop sandbox.
+- Production dependency audit reported zero vulnerabilities; added-line secret and debug scans were
+  clean.
+- No product behavior, SQLite schema, package/install state, Git commit, push, or publication was
+  changed by this goal.
+
 ## Completed goal: Discover-centered retrieval
 
 ### Objective
