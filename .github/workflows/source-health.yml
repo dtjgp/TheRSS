@@ -33,16 +33,27 @@ jobs:
 
       - name: Probe arXiv and GitHub adapters
         id: primary
+        env:
+          # Without this the runner's shared IP hits the unauthenticated GitHub search
+          # rate limit and reports 403 as a source regression every run.
+          THERSS_GITHUB_TOKEN: ${{ github.token }}
         run: |
-          set -o pipefail
-          npm run smoke:sources --silent 2>&1 | tee -a source-health-report.txt
+          # A single transient timeout must not be reported as a source regression. The
+          # project's own history records exactly this: a failing probe followed by an
+          # immediate clean rerun. Retry once before believing the failure.
+          probe() { npm run smoke:sources --silent >/tmp/primary.txt 2>&1; }
+          if ! probe; then sleep 30; probe || failed=1; fi
+          tee -a source-health-report.txt < /tmp/primary.txt
+          exit "${failed:-0}"
 
       - name: Probe configured sources
         id: configured
         if: always()
         run: |
-          set -o pipefail
-          npm run smoke:configured-sources --silent 2>&1 | tee -a source-health-report.txt
+          probe() { npm run smoke:configured-sources --silent >/tmp/configured.txt 2>&1; }
+          if ! probe; then sleep 30; probe || failed=1; fi
+          tee -a source-health-report.txt < /tmp/configured.txt
+          exit "${failed:-0}"
 
       - name: Summarize
         if: always()
