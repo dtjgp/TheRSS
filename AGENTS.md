@@ -16,16 +16,21 @@ architectural change is worse.
 1. This file (`AGENTS.md`)
 2. The nearest feature test and source files
 
+**Before any non-trivial feature, refactor, migration, or user-visible change:**
+
+3. `docs/DEVELOPMENT_WORKFLOW.md`
+4. Start from `docs/templates/CHANGE_CONTRACT.md` in the task's durable work directory
+
 **Before any change to product behavior or a user-visible surface:**
 
-3. `PRODUCT.md`
-4. `GOALS.md` — current objective and stop condition
+5. `PRODUCT.md`
+6. `GOALS.md` — current objective and stop condition
 
 **Before architectural, storage, adapter, or security work:**
 
-5. `docs/DESIGN.md`
-6. `docs/ENGINEERING_PRACTICES.md`
-7. The relevant ADR in `docs/decisions/`
+7. `docs/DESIGN.md`
+8. `docs/ENGINEERING_PRACTICES.md`
+9. The relevant ADR in `docs/decisions/`
 
 **On demand only:**
 
@@ -61,10 +66,17 @@ architectural change is worse.
 
 ## Development workflow
 
+- Classify non-trivial work and follow `docs/DEVELOPMENT_WORKFLOW.md`; do not start implementation
+  until the Feature Intake, Capability Contract, uncertainty reducer, acceptance contract, verifier,
+  and stop condition are explicit.
 - Follow TDD: add a failing test, implement the smallest coherent behavior, refactor with tests green.
+- Acceptance tests may change only when the reviewed contract changes; never weaken a test merely
+  to accommodate an implementation.
 - Keep changes self-contained and reviewable. Tests and documentation ship with the behavior they cover.
 - Preserve a working build after every commit.
 - Owned code must maintain at least 80% statements, branches, functions, and lines.
+- Owned TypeScript/TSX source and test files under `src/` must remain at or below 800 lines; the
+  architecture check fails closed unless a reviewed ADR defines a narrower temporary exception.
 - Do not use live arXiv, GitHub, or model calls in automated tests; use deterministic fixtures and explicit opt-in smoke tests.
 - Validate with `npm run check` before commit and the full release gate before publishing.
 
