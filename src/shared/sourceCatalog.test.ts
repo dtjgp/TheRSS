@@ -43,9 +43,9 @@ describe('SOURCE_CATALOG', () => {
   })
 
   it('keeps the larger raw catalog dormant and out of the current product surface', () => {
-    expect(sourceCatalogData).toHaveLength(105)
+    expect(sourceCatalogData).toHaveLength(32)
     expect(sourceCatalogData.filter((source) => source.acquisition === 'active')).toHaveLength(22)
-    expect(SOURCE_CATALOG.some((source) => source.id === 'folo:2')).toBe(false)
+    expect(SOURCE_CATALOG.some((source) => source.id === 'official:3gpp')).toBe(false)
     expect(SOURCE_CATALOG.some((source) => source.name === '3GPP Specifications')).toBe(false)
     expect(SOURCE_CATALOG.some((source) => source.acquisition !== 'active')).toBe(false)
   })

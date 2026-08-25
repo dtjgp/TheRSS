@@ -20,7 +20,15 @@ It is one architectural decision, eleven scoped tasks, and a naming clarificatio
 Treating these as 83 separate items is what has kept them undecided. Grouped, the whole
 backlog resolves in one architectural call plus a short task list.
 
-## Decision 1 — RSSHub: adopt or drop (72 entries)
+## Decision 1 — RSSHub: RESOLVED, dropped (72 entries)
+
+> **Resolved 2026-08-25 by [ADR 0009](decisions/0009-no-rsshub-expansion.md): dropped.** All 72
+> entries were deleted, along with `folo:2` (X/Twitter). The catalog is now 32 entries. The
+> analysis below is retained for context, with one correction: RSSHub was already a production
+> dependency for 5 of the 20 deployed sources, so the decision was about not _expanding_ it
+> rather than about avoiding it. Those 5 remain an open risk.
+
+### Original analysis
 
 All 72 carry `acquisition: "rsshub_candidate"` and the note `低摩擦RSSHub候选`. They are
 low-friction only _if_ RSSHub exists as a dependency. By priority: **A 24, B 46, C 2**.
