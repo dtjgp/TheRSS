@@ -127,11 +127,22 @@
 
 ## GitHub closeout
 
-- Product commit: `b1f89d9 feat(ui): add contextual research status`.
-- History reconciliation merge: `599db7f merge: reconcile published Apple-native history`.
-- The merge retained local three-commit Apple-native history and remote PR #29 squash history.
-- `git diff --stat b1f89d9..599db7f` is empty, proving the reconciliation merge changed no product
-  content.
-- Local and remote branch inventories each contain only `main`; there are no old branches to delete.
-- Pre-push divergence after reconciliation: local main ahead 6, behind 0.
-- Final documentation commit, push, and remote SHA verification: pending.
+- The first direct main push re-ran lint, typecheck, 57/382 tests, and build successfully, then GitHub
+  rejected it because protected main requires a PR, two status checks, and no merge commits.
+- The verified tree was replayed cleanly from `origin/main` as product commit `39759bf` and evidence
+  commit `761e629`; `git diff --stat 8289055..761e629` was empty and the clean branch contained no
+  merge commits.
+- PR [#30](https://github.com/dtjgp/TheRSS/pull/30) passed CI run `32881892062`: both `quality` and
+  `desktop` completed successfully, including audit, Electron E2E, unsigned package, and package
+  smoke.
+- GitHub squash-merged PR #30 as
+  `e227b14134282d5a683489a89ea9a90eb0499aa7 feat(ui): add contextual research status (#30)`.
+- GitHub automatically deleted the remote temporary branch. The attempted explicit deletion found
+  no remote ref, and `git fetch --prune` confirmed it gone.
+- Before local cleanup, the clean PR branch, previous local main, and `origin/main` all resolved to
+  tree `96ff2c9d47289a94936dab8a9b537469f596522f` with empty diffs.
+- Local `main` was pointed to the verified squash commit without changing files; the exact temporary
+  local branch was then deleted.
+- Product-closeout inventory contained only local `main` and remote `main`; divergence was `0 0`.
+- `HEAD`, `origin/main`, and live `git ls-remote` all matched
+  `e227b14134282d5a683489a89ea9a90eb0499aa7`.

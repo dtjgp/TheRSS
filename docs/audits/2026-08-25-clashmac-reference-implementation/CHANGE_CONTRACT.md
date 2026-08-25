@@ -151,8 +151,10 @@
 - **Residual risks/blockers:** personal beta remains unsigned/unnotarized. The top-bar secondary text
   intentionally hides at <=920 px but remains available in wide layouts and the underlying view
   state remains visible in its destination surface.
-- **Rollback path:** revert feature commit `b1f89d9`; restore the retained previous app and SQLite
-  backup listed in `notes.md`. The merge commit changes no tree content.
-- **Git/install/push/publication state:** app installed and verified; local/remote branch inventory
-  contains only main; feature and reconciliation commits complete; final evidence commit and push
-  pending.
+- **Rollback path:** revert GitHub squash commit
+  `e227b14134282d5a683489a89ea9a90eb0499aa7`; restore the retained previous app and SQLite backup
+  listed in `notes.md`.
+- **Git/install/push/publication state:** app installed and verified; PR #30 passed both required CI
+  jobs and squash-merged; GitHub removed the temporary remote branch; the proven-equivalent local
+  branch was deleted; product closeout had only main with local, tracking, and live remote SHA all
+  equal to `e227b14134282d5a683489a89ea9a90eb0499aa7`.

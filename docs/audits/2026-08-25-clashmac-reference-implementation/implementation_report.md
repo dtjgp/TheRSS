@@ -1,7 +1,7 @@
 # Implementation Report: ClashMac-reference UI/UX adaptation
 
-Status: implementation, validation, installation, and branch reconciliation complete; final push
-pending.
+Status: complete — implemented, validated, installed, merged through protected PR #30, and verified
+on GitHub main.
 
 ## Outcome
 
@@ -32,7 +32,10 @@ image are current.
 
 ## Git and release result
 
-Only `main` exists locally and remotely; no old branch target exists to delete. Local Apple-native
-history and the content-identical remote PR #29 squash were reconciled in merge `599db7f` without a
-tree change. The verified local beta is installed at `~/Applications/TheRSS Dev.app`; prior app and
-database backups are retained. Final documentation commit and GitHub push remain the last step.
+Only `main` exists locally and remotely; no old branch target remains. The protected direct-push
+path correctly rejected a local merge commit, so the byte-identical verified tree was replayed on a
+clean temporary branch. PR #30 passed both required CI jobs and was squash-merged as
+`e227b14134282d5a683489a89ea9a90eb0499aa7`. GitHub removed the remote branch, the proven-equivalent
+local branch was deleted, and local main, origin/main, and the live remote ref matched at closeout.
+The verified local beta is installed at `~/Applications/TheRSS Dev.app`; prior app and database
+backups are retained.
