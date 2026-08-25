@@ -2,8 +2,19 @@ import { join } from 'node:path'
 import { env } from 'node:process'
 import { randomUUID } from 'node:crypto'
 import Database from 'better-sqlite3'
-import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, screen, shell } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  safeStorage,
+  screen,
+  shell,
+  systemPreferences
+} from 'electron'
 import { z } from 'zod'
+import { resolveSystemAccentName } from '../core/appearance/systemAccent'
 import { LocalAgentService } from '../core/agents/localAgentService'
 import { AnalysisService } from '../core/analysis/analysisService'
 import { DiscoverPlannerService } from '../core/discover/discoverPlanner'
@@ -17,6 +28,7 @@ import { LlmWikiPromotionService } from '../core/integrations/llmWikiPromotionSe
 import { LlmWikiVaultAdapter } from '../core/integrations/llmWikiVaultAdapter'
 import { discoverSearchRequestSchema } from '../shared/discover'
 import type { DiscoverySource } from '../shared/discovery'
+import type { SystemAccentName } from '../shared/appearance'
 import { IPC_CHANNELS } from '../shared/ipc'
 import {
   LLM_WIKI_PROMOTION_PREVIEW_VERSION,
@@ -95,6 +107,19 @@ class ElectronSecretCipher implements SecretCipher {
   }
 }
 
+/**
+ * Only macOS and Windows expose an accent colour. Any failure resolves to null so the
+ * renderer keeps its default blue rather than surfacing an appearance error.
+ */
+function readSystemAccent(): SystemAccentName | null {
+  if (process.platform !== 'darwin' && process.platform !== 'win32') return null
+  try {
+    return resolveSystemAccentName(systemPreferences.getAccentColor())
+  } catch {
+    return null
+  }
+}
+
 function registerIpcHandlers(
   repository: ResearchRepository,
   discoveryService: DiscoveryService,
@@ -105,6 +130,7 @@ function registerIpcHandlers(
   promotionService: LlmWikiPromotionService,
   useE2eFixtures: boolean
 ): void {
+  ipcMain.handle(IPC_CHANNELS.getSystemAccent, () => readSystemAccent())
   ipcMain.handle(IPC_CHANNELS.getDashboard, () => repository.getDashboardSnapshot())
   ipcMain.handle(IPC_CHANNELS.getSourceContent, (_event, source: unknown) =>
     repository.getSourceContentSnapshot(discoverySourceSchema.parse(source))
@@ -524,6 +550,15 @@ app.whenReady().then(async () => {
       }, process.platform === 'darwin')
     )
   )
+
+  if (process.platform === 'darwin' || process.platform === 'win32') {
+    systemPreferences.on('accent-color-changed', () => {
+      const accent = readSystemAccent()
+      for (const window of BrowserWindow.getAllWindows()) {
+        window.webContents.send(IPC_CHANNELS.systemAccentChanged, accent)
+      }
+    })
+  }
 
   let shutdownStarted = false
   let shutdownCompleted = false

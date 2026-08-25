@@ -71,3 +71,61 @@ describe('createApplicationMenuTemplate', () => {
     expect(send).toHaveBeenCalledWith('open-settings')
   })
 })
+
+describe('createApplicationMenuTemplate macOS command completeness', () => {
+  it('exposes a Help menu so macOS can inject its Help search field', () => {
+    const send = vi.fn()
+    const template = createApplicationMenuTemplate(send, true)
+
+    const help = template.find((item) => item.role === 'help')
+    expect(help).toBeDefined()
+    expect(help?.label).toBe('Help')
+
+    const helpSubmenu = Array.isArray(help?.submenu) ? help.submenu : []
+    const helpItem = helpSubmenu.find((item) => item.label === 'TheRSS Help')
+    expect(helpItem).toBeDefined()
+
+    helpItem?.click?.({} as never, undefined as never, {} as never)
+    expect(send).toHaveBeenCalledWith('open-help')
+  })
+
+  it('provides the standard View zoom commands', () => {
+    const viewMenu = submenuFor(createApplicationMenuTemplate(vi.fn(), true), 'View')
+
+    expect(viewMenu.map((item) => item.role)).toEqual(
+      expect.arrayContaining(['resetZoom', 'zoomIn', 'zoomOut'])
+    )
+  })
+
+  it('gives Dismiss Selected the macOS Command+Backspace accelerator', () => {
+    const signalMenu = submenuFor(createApplicationMenuTemplate(vi.fn(), true), 'Signal')
+
+    expect(signalMenu).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: 'Dismiss Selected',
+          accelerator: 'CommandOrControl+Backspace'
+        })
+      ])
+    )
+  })
+
+  it('frees Command+S so it keeps its universal Save meaning', () => {
+    const template = createApplicationMenuTemplate(vi.fn(), true)
+    const everyAccelerator = template.flatMap((item) =>
+      (Array.isArray(item.submenu) ? item.submenu : []).map((entry) => entry.accelerator)
+    )
+
+    expect(everyAccelerator).not.toContain('CommandOrControl+S')
+
+    const signalMenu = submenuFor(template, 'Signal')
+    expect(signalMenu).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: 'Save Selected',
+          accelerator: 'Shift+CommandOrControl+D'
+        })
+      ])
+    )
+  })
+})

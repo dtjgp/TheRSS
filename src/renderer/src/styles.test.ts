@@ -215,3 +215,59 @@ describe('Apple semantic color system', () => {
     }
   })
 })
+
+describe('macOS system accent', () => {
+  it('defaults to blue so an unresolved accent changes nothing', () => {
+    expect(stylesheet).toContain('--system-accent: var(--system-blue);')
+    expect(stylesheet).toContain('--on-system-accent: var(--on-accent);')
+  })
+
+  it('maps every resolvable accent name onto an already contrast-tuned token', () => {
+    const expectedPairs = [
+      ['blue', '--system-blue'],
+      ['purple', '--system-purple'],
+      ['red', '--system-red'],
+      ['orange', '--system-orange'],
+      ['green', '--system-green'],
+      ['teal', '--system-teal'],
+      ['cyan', '--system-cyan'],
+      ['indigo', '--system-indigo'],
+      ['gray', '--system-gray']
+    ] as const
+
+    for (const [name, token] of expectedPairs) {
+      const block = new RegExp(
+        `:root\\[data-system-accent='${name}'\\]\\s*\\{[^}]*--system-accent: var\\(${token}\\);`
+      )
+      expect(stylesheet).toMatch(block)
+    }
+  })
+
+  it('darkens the foreground on the orange accent instead of keeping white', () => {
+    expect(stylesheet).toMatch(
+      /:root\[data-system-accent='orange'\]\s*\{[^}]*--on-system-accent: var\(--on-orange\);/
+    )
+  })
+
+  it('tints native form controls, text selection, and focus rings', () => {
+    expect(stylesheet).toContain('accent-color: var(--system-accent);')
+    expect(stylesheet).toMatch(
+      /::selection\s*\{[^}]*background-color: color-mix\(in srgb, var\(--system-accent\) 28%, transparent\);/
+    )
+    expect(stylesheet).toContain(
+      'outline: 3px solid color-mix(in srgb, var(--system-accent) 55%, transparent);'
+    )
+  })
+
+  it('leaves the per-view identity accents untouched', () => {
+    // The system accent must not leak into the view accents the product design owns.
+    expect(stylesheet).toMatch(/\.app-shell\[data-view='saved'\]/)
+    expect(stylesheet).not.toMatch(/--view-accent: var\(--system-accent\)/)
+  })
+
+  it('surrenders the accent to Highlight under forced colors', () => {
+    const forcedColorsBlock = stylesheet.slice(stylesheet.indexOf('@media (forced-colors: active)'))
+    expect(forcedColorsBlock).toContain('--system-accent: Highlight;')
+    expect(forcedColorsBlock).toContain('--on-system-accent: HighlightText;')
+  })
+})

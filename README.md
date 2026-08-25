@@ -20,6 +20,8 @@ TheRSS 是一个本地优先的研究发现桌面应用：你可以用自然语�
 - 对符合条件的 arXiv 论文使用 **Promote to llm-wiki**：TheRSS 先下载发现记录对应的精确版本 PDF，调用本地 Codex 生成全文分析并展示目标路径预览；只有用户再次确认后，才按照 vault 的治理规则写入 PDF、来源 sidecar、L2 论文笔记、Topic/Method 反向链接和审计记录。
 - 通过只读 Model Context Protocol（MCP）服务向 Codex、Claude Code 或其他兼容客户端开放本地候选项。
 - 所有 Discover 会话、Saved 状态和分析记录仅保存在本机；当前不提供账号登录或跨设备同步。
+- 控件、文本选区和焦点环跟随系统设置中的强调色（System Settings > Appearance），并在用户更改时实时更新；各视图自身的标识色（Discover 蓝、Saved 琥珀、Sources 青、Analytics 靛）保持不变。
+- 菜单栏提供 macOS 标准命令：Help 菜单、View 缩放（⌘0/⌘+/⌘-）、Dismiss Selected（⌘⌫）；Save Selected 改用 ⇧⌘D，把 ⌘S 让回给系统通用的“保存”语义。
 - 界面统一使用 macOS Apple 系统字体：正文与控件使用 SF Pro Text，展示标题使用 SF Pro Display；应用不再打包第三方字体文件。
 - 侧栏可以折叠，并支持鼠标拖动或键盘在 184–360 px 范围内调整宽度；Settings 固定在底部应用工具区、紧邻来源状态，不会打断主要研究导航。
 - 在 macOS 上构建并以可回滚方式安装 `~/Applications/TheRSS Dev.app`，升级前自动备份 SQLite 数据库。
@@ -49,9 +51,9 @@ API key 不会返回给渲染进程，也不会以明文写入 SQLite；应用�
 
 应用不会在启动时隐式发起 22 个来源请求。每次外部检索都由 Discover 中的显式操作触发；失败不会删除上一轮会话或 Saved 数据。
 
-## 当前验证状态（2026-08-24）
+## 当前验证状态（2026-08-25）
 
-- 完整质量门禁通过：52 个测试文件、328 个测试。覆盖率统计范围为 `src/core` 与 `src/shared`（约 8,395 行领域代码）：statements 90.46%、branches 80.47%、functions 93.99%、lines 93.43%。Electron 主进程、preload、渲染层与 MCP 入口（约 5,245 行）不计入该百分比，由类型检查、渲染层单元测试和 Electron E2E 分别覆盖。
+- 完整质量门禁通过：55 个测试文件、360 个测试。覆盖率统计范围为 `src/core` 与 `src/shared`（约 8,395 行领域代码）：statements 90.49%、branches 80.59%、functions 93.73%、lines 93.40%。Electron 主进程、preload、渲染层与 MCP 入口（约 5,245 行）不计入该百分比，由类型检查、渲染层单元测试和 Electron E2E 分别覆盖。
 - 最近一次真实联网来源复检为 2026-08-19，最终通过 22/22 来源：arXiv 定向检索返回 3 条、近期批次 200 条，GitHub 返回 25 条，其余配置来源最终通过 20/20。
 - 科学网使用官方 HTTPS RSS；C114 使用固定 HTTPS 桌面首页、移动端故障回退、受限 `gb18030` 解码和专用纯文本归一化器。
 - Electron 端到端流程 2/2 通过，覆盖 Settings 底部工具区及侧栏几何位置、侧栏缩放/折叠、Settings/Provider、Personal Prompt、个性化 Discover、Saved 可调分栏、Sources health、forced colors、200% zoom、窗口恢复、llm-wiki 确认边界和 Apple 系统字体。

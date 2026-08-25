@@ -51,6 +51,11 @@
   --view-accent-text: var(--system-blue-text);
   --view-accent-strong: #0066d6;
 
+  /* macOS system accent. Tints controls, text selection, and focus rings only.
+     Per-view identity accents stay under the .app-shell[data-view] rules. */
+  --system-accent: var(--system-blue);
+  --on-system-accent: var(--on-accent);
+
   /* Compact aliases retained for the existing component vocabulary. */
   --ink: var(--label);
   --paper: var(--system-grouped-background);
@@ -64,6 +69,55 @@
   --sidebar: rgba(244, 244, 246, 0.84);
   --sidebar-text: var(--label);
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+/* Resolved from systemPreferences.getAccentColor() via resolveSystemAccentName().
+   Absent attribute keeps the default blue. */
+:root[data-system-accent='blue'] {
+  --system-accent: var(--system-blue);
+}
+
+:root[data-system-accent='purple'] {
+  --system-accent: var(--system-purple);
+}
+
+:root[data-system-accent='red'] {
+  --system-accent: var(--system-red);
+}
+
+:root[data-system-accent='orange'] {
+  --system-accent: var(--system-orange);
+  --on-system-accent: var(--on-orange);
+}
+
+:root[data-system-accent='green'] {
+  --system-accent: var(--system-green);
+}
+
+:root[data-system-accent='teal'] {
+  --system-accent: var(--system-teal);
+}
+
+:root[data-system-accent='cyan'] {
+  --system-accent: var(--system-cyan);
+}
+
+:root[data-system-accent='indigo'] {
+  --system-accent: var(--system-indigo);
+}
+
+:root[data-system-accent='gray'] {
+  --system-accent: var(--system-gray);
+}
+
+/* Native control tinting: checkboxes, radios, range, and progress inherit this. */
+:root {
+  accent-color: var(--system-accent);
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--system-accent) 28%, transparent);
+  color: var(--label);
 }
 
 * {
@@ -105,7 +159,7 @@ a:focus-visible,
 select:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline: 3px solid color-mix(in srgb, var(--system-accent) 55%, transparent);
   outline-offset: 2px;
 }
 

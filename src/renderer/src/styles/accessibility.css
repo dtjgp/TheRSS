@@ -52,6 +52,8 @@
     --view-accent: Highlight;
     --view-accent-text: HighlightText;
     --view-accent-strong: Highlight;
+    --system-accent: Highlight;
+    --on-system-accent: HighlightText;
   }
 
   * {
