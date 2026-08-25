@@ -11,6 +11,7 @@ const api: TheRSSApi = {
     ipcRenderer.on(IPC_CHANNELS.appCommand, handleCommand)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.appCommand, handleCommand)
   },
+  showContextMenu: (target) => ipcRenderer.invoke(IPC_CHANNELS.showContextMenu, target),
   getSystemAccent: () => ipcRenderer.invoke(IPC_CHANNELS.getSystemAccent),
   onSystemAccentChange: (listener) => {
     const handleAccent = (_event: Electron.IpcRendererEvent, accent: unknown) => {

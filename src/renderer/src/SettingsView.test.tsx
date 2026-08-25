@@ -9,6 +9,7 @@ import { SettingsView } from './SettingsView'
 function settingsApi(): TheRSSApi {
   return {
     onAppCommand: vi.fn().mockReturnValue(() => undefined),
+    showContextMenu: vi.fn().mockResolvedValue({ action: 'none' }),
     getSystemAccent: vi.fn().mockResolvedValue(null),
     onSystemAccentChange: vi.fn().mockReturnValue(() => undefined),
     getDashboard: vi.fn(),

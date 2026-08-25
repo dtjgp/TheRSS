@@ -18,6 +18,7 @@ export function isAppCommand(value: unknown): value is AppCommand {
 
 export const IPC_CHANNELS = {
   appCommand: 'app:command',
+  showContextMenu: 'menu:show-context',
   getSystemAccent: 'appearance:get-system-accent',
   systemAccentChanged: 'appearance:system-accent-changed',
   getDashboard: 'dashboard:get',
