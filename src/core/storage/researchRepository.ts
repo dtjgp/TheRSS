@@ -19,21 +19,35 @@ import type {
   SourceHealth,
   TriageState
 } from '../../shared/api'
-import type { ModelProtocol, ModelProviderSummary } from '../../shared/models'
+import type { ModelProviderSummary } from '../../shared/models'
 import type { AnalysisArtifact } from '../../shared/models'
 import {
-  DISCOVER_PERSONALIZATION_PROMPT_MAX_LENGTH,
   discoverPersonalizationPromptSchema,
   type DiscoverPersonalizationSettings
 } from '../../shared/personalization'
 import { localDateKey } from '../../shared/date'
 import { parseDiscoverPlan } from '../discover/discoverPlan'
 import { buildAnalyticsSnapshot } from './analyticsRepository'
-import { ACTIVE_TODAY_SOURCE_IDS, isDiscoverySource } from '../../shared/sourceIdentity'
+import { migrateResearchDatabase } from './researchSchema'
 import {
-  llmWikiPromotionReceiptSchema,
-  type LlmWikiPromotionReceipt
-} from '../../shared/llmWikiPromotion'
+  clearModelProviderCredential,
+  getModelProvider,
+  saveModelProvider,
+  type StoredModelProvider
+} from './modelProviderStore'
+import {
+  getLatestAnalysis,
+  getLatestLlmWikiPromotionReceipt,
+  reconcileInterruptedLlmWikiPromotions,
+  saveAnalysis,
+  saveLlmWikiPromotionReceipt
+} from './analysisArtifactStore'
+import { parseStringList } from './rowParsers'
+
+// Re-exported so consumers keep importing the storage facade rather than its internals.
+export type { StoredModelProvider } from './modelProviderStore'
+import { ACTIVE_TODAY_SOURCE_IDS, isDiscoverySource } from '../../shared/sourceIdentity'
+import type { LlmWikiPromotionReceipt } from '../../shared/llmWikiPromotion'
 
 const TRIAGE_STATES = new Set<TriageState>(['new', 'viewed', 'saved', 'dismissed'])
 type PersistedSourceHealth = Exclude<SourceHealth, 'no_results'>
@@ -77,38 +91,6 @@ interface SourceRunRow {
   completed_at: string
   error_message: string | null
   result_count: number | null
-}
-
-export interface StoredModelProvider {
-  readonly id: string
-  readonly name: string
-  readonly protocol: ModelProtocol
-  readonly baseUrl: string
-  readonly model: string
-  readonly secretCiphertext: Buffer | null
-  readonly updatedAt: string
-}
-
-interface ModelProviderRow {
-  id: string
-  name: string
-  protocol: ModelProtocol
-  base_url: string
-  model: string
-  secret_ciphertext: Buffer | null
-  updated_at: string
-}
-
-interface AnalysisArtifactRow {
-  id: string
-  item_id: string
-  provider_id: string
-  provider_name: string
-  model: string
-  prompt_version: string
-  source_hash: string
-  content: string
-  created_at: string
 }
 
 interface DiscoverSessionRow {
@@ -165,37 +147,6 @@ interface DiscoveryRecordRow {
   stars: number | null
 }
 
-interface LlmWikiPromotionReceiptRow {
-  id: string
-  item_id: string
-  arxiv_id: string
-  status: LlmWikiPromotionReceipt['status']
-  runner: string
-  version: string
-  prompt_version: string
-  source_hash: string
-  contract_hash: string
-  evidence_tier: LlmWikiPromotionReceipt['evidenceTier']
-  summary: string
-  created_paths_json: string
-  updated_paths_json: string
-  pdf_path: string | null
-  sidecar_path: string | null
-  note_path: string | null
-  audit_path: string | null
-  blockers_json: string
-  started_at: string
-  completed_at: string | null
-}
-
-function parseStringList(value: string): string[] {
-  const parsed: unknown = JSON.parse(value)
-  if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === 'string')) {
-    throw new Error('The local index contains an invalid string list')
-  }
-  return [...parsed]
-}
-
 function parseDiscoverProvenance(value: string): DiscoverSnapshot['provenance'] {
   const parsed: unknown = JSON.parse(value)
   if (
@@ -239,411 +190,7 @@ export class ResearchRepository {
 
   constructor(database: Database.Database, options: { readonly migrate?: boolean } = {}) {
     this.#database = database
-    if (options.migrate !== false) this.#migrate()
-  }
-
-  #migrate(): void {
-    this.#database.pragma('journal_mode = WAL')
-    this.#database.pragma('foreign_keys = OFF')
-    const migrate = this.#database.transaction(() => {
-      this.#database.exec(`
-      CREATE TABLE IF NOT EXISTS interest_profile (
-        singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
-        profile_json TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS discover_personalization (
-        singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
-        prompt TEXT NOT NULL CHECK (
-          length(prompt) <= ${DISCOVER_PERSONALIZATION_PROMPT_MAX_LENGTH}
-        ),
-        updated_at TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS discovery_item (
-        id TEXT PRIMARY KEY,
-        source TEXT NOT NULL,
-        item_kind TEXT NOT NULL
-          CHECK (item_kind IN ('paper', 'repository', 'article', 'model', 'dataset', 'post')),
-        external_id TEXT NOT NULL,
-        title TEXT NOT NULL,
-        summary TEXT NOT NULL,
-        url TEXT NOT NULL,
-        published_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        authors_json TEXT NOT NULL,
-        categories_json TEXT NOT NULL,
-        topics_json TEXT NOT NULL,
-        language TEXT,
-        stars INTEGER,
-        score REAL NOT NULL,
-        excluded INTEGER NOT NULL CHECK (excluded IN (0, 1)),
-        reasons_json TEXT NOT NULL,
-        in_daily_inbox INTEGER NOT NULL DEFAULT 1 CHECK (in_daily_inbox IN (0, 1)),
-        triage_state TEXT NOT NULL DEFAULT 'new'
-          CHECK (triage_state IN ('new', 'viewed', 'saved', 'dismissed')),
-        triage_updated_at TEXT NOT NULL,
-        first_seen_at TEXT NOT NULL,
-        last_seen_at TEXT NOT NULL
-      );
-
-      CREATE INDEX IF NOT EXISTS discovery_item_inbox
-        ON discovery_item(excluded, triage_state, score DESC, published_at DESC);
-
-      CREATE TABLE IF NOT EXISTS source_run (
-        source TEXT PRIMARY KEY,
-        status TEXT NOT NULL CHECK (status IN ('idle', 'refreshing', 'healthy', 'partial', 'failed')),
-        completed_at TEXT NOT NULL,
-        error_message TEXT,
-        result_count INTEGER
-      );
-
-      CREATE TABLE IF NOT EXISTS source_search_event (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        source TEXT NOT NULL,
-        status TEXT NOT NULL CHECK (status IN ('healthy', 'partial', 'failed')),
-        completed_at TEXT NOT NULL,
-        result_count INTEGER NOT NULL CHECK (result_count >= 0)
-      );
-
-      CREATE INDEX IF NOT EXISTS source_search_event_by_time
-        ON source_search_event(completed_at DESC, id DESC);
-
-      CREATE TABLE IF NOT EXISTS model_provider (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        protocol TEXT NOT NULL
-          CHECK (protocol IN ('openai-compatible', 'anthropic-compatible')),
-        base_url TEXT NOT NULL,
-        model TEXT NOT NULL,
-        secret_ciphertext BLOB,
-        updated_at TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS analysis_artifact (
-        id TEXT PRIMARY KEY,
-        item_id TEXT NOT NULL REFERENCES discovery_item(id) ON DELETE CASCADE,
-        provider_id TEXT NOT NULL,
-        provider_name TEXT NOT NULL,
-        model TEXT NOT NULL,
-        prompt_version TEXT NOT NULL,
-        source_hash TEXT NOT NULL,
-        content TEXT NOT NULL,
-        input_tokens INTEGER,
-        output_tokens INTEGER,
-        created_at TEXT NOT NULL
-      );
-
-      CREATE INDEX IF NOT EXISTS analysis_artifact_by_item
-        ON analysis_artifact(item_id, created_at DESC);
-
-      CREATE TABLE IF NOT EXISTS llm_wiki_promotion_receipt (
-        sequence INTEGER PRIMARY KEY AUTOINCREMENT,
-        id TEXT NOT NULL UNIQUE,
-        item_id TEXT NOT NULL REFERENCES discovery_item(id) ON DELETE CASCADE,
-        arxiv_id TEXT NOT NULL,
-        status TEXT NOT NULL CHECK (
-          status IN (
-            'running', 'completed', 'partial', 'blocked',
-            'no-change', 'no-source', 'skipped', 'failed'
-          )
-        ),
-        runner TEXT NOT NULL CHECK (runner = 'codex'),
-        version TEXT NOT NULL,
-        prompt_version TEXT NOT NULL,
-        source_hash TEXT NOT NULL,
-        contract_hash TEXT NOT NULL,
-        evidence_tier TEXT NOT NULL CHECK (
-          evidence_tier IN ('pending', 'full-text-verified', 'partial', 'no-source')
-        ),
-        summary TEXT NOT NULL,
-        created_paths_json TEXT NOT NULL,
-        updated_paths_json TEXT NOT NULL,
-        pdf_path TEXT,
-        sidecar_path TEXT,
-        note_path TEXT,
-        audit_path TEXT,
-        blockers_json TEXT NOT NULL,
-        started_at TEXT NOT NULL,
-        completed_at TEXT
-      );
-
-      CREATE INDEX IF NOT EXISTS llm_wiki_promotion_receipt_by_item
-        ON llm_wiki_promotion_receipt(item_id, sequence DESC);
-
-      CREATE TABLE IF NOT EXISTS discover_session (
-        id TEXT PRIMARY KEY,
-        intent TEXT NOT NULL,
-        runner TEXT NOT NULL CHECK (runner IN ('model-provider', 'codex', 'claude')),
-        status TEXT NOT NULL CHECK (status IN ('completed', 'partial', 'no_results', 'failed')),
-        plan_json TEXT NOT NULL,
-        provenance_json TEXT NOT NULL,
-        created_at TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS discover_source_run (
-        session_id TEXT NOT NULL REFERENCES discover_session(id) ON DELETE CASCADE,
-        source TEXT NOT NULL,
-        status TEXT NOT NULL
-          CHECK (status IN ('not_searched', 'healthy', 'partial', 'no_results', 'failed')),
-        result_count INTEGER NOT NULL CHECK (result_count >= 0),
-        error_message TEXT,
-        PRIMARY KEY(session_id, source)
-      );
-
-      CREATE TABLE IF NOT EXISTS discover_result (
-        session_id TEXT NOT NULL REFERENCES discover_session(id) ON DELETE CASCADE,
-        item_id TEXT NOT NULL,
-        source TEXT NOT NULL,
-        item_kind TEXT NOT NULL
-          CHECK (item_kind IN ('paper', 'repository', 'article', 'model', 'dataset', 'post')),
-        external_id TEXT NOT NULL,
-        title TEXT NOT NULL,
-        summary TEXT NOT NULL,
-        url TEXT NOT NULL,
-        published_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        authors_json TEXT NOT NULL,
-        categories_json TEXT NOT NULL,
-        topics_json TEXT NOT NULL,
-        language TEXT,
-        stars INTEGER,
-        score REAL NOT NULL,
-        reasons_json TEXT NOT NULL,
-        result_rank INTEGER NOT NULL CHECK (result_rank >= 0),
-        PRIMARY KEY(session_id, item_id)
-      );
-
-      CREATE INDEX IF NOT EXISTS discover_session_latest
-        ON discover_session(created_at DESC, id DESC);
-    `)
-
-      const analysisColumns = new Set(
-        (this.#database.pragma('table_info(analysis_artifact)') as Array<{ name: string }>).map(
-          (column) => column.name
-        )
-      )
-      if (!analysisColumns.has('source_hash')) {
-        this.#database.exec(
-          "ALTER TABLE analysis_artifact ADD COLUMN source_hash TEXT NOT NULL DEFAULT 'legacy-unavailable'"
-        )
-      }
-
-      const sourceRunColumns = new Set(
-        (this.#database.pragma('table_info(source_run)') as Array<{ name: string }>).map(
-          (column) => column.name
-        )
-      )
-      if (!sourceRunColumns.has('result_count')) {
-        this.#database.exec('ALTER TABLE source_run ADD COLUMN result_count INTEGER')
-      }
-
-      const discoveryColumns = new Set(
-        (this.#database.pragma('table_info(discovery_item)') as Array<{ name: string }>).map(
-          (column) => column.name
-        )
-      )
-      if (!discoveryColumns.has('triage_updated_at')) {
-        this.#database.exec('ALTER TABLE discovery_item ADD COLUMN triage_updated_at TEXT')
-        this.#database.exec(
-          'UPDATE discovery_item SET triage_updated_at = last_seen_at WHERE triage_updated_at IS NULL'
-        )
-      }
-      if (!discoveryColumns.has('in_daily_inbox')) {
-        this.#database.exec(
-          'ALTER TABLE discovery_item ADD COLUMN in_daily_inbox INTEGER NOT NULL DEFAULT 1'
-        )
-      }
-
-      const discoveryDefinition = this.#database
-        .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'discovery_item'")
-        .get() as { sql: string }
-      if (
-        !discoveryColumns.has('item_kind') ||
-        discoveryDefinition.sql.includes("source IN ('arxiv', 'github')")
-      ) {
-        const itemKindExpression = discoveryColumns.has('item_kind')
-          ? 'item_kind'
-          : "CASE source WHEN 'arxiv' THEN 'paper' WHEN 'github' THEN 'repository' ELSE 'article' END"
-        this.#database.exec(`
-          CREATE TABLE discovery_item_generic (
-            id TEXT PRIMARY KEY,
-            source TEXT NOT NULL,
-            item_kind TEXT NOT NULL
-              CHECK (item_kind IN ('paper', 'repository', 'article', 'model', 'dataset', 'post')),
-            external_id TEXT NOT NULL,
-            title TEXT NOT NULL,
-            summary TEXT NOT NULL,
-            url TEXT NOT NULL,
-            published_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            authors_json TEXT NOT NULL,
-            categories_json TEXT NOT NULL,
-            topics_json TEXT NOT NULL,
-            language TEXT,
-            stars INTEGER,
-            score REAL NOT NULL,
-            excluded INTEGER NOT NULL CHECK (excluded IN (0, 1)),
-            reasons_json TEXT NOT NULL,
-            in_daily_inbox INTEGER NOT NULL DEFAULT 1 CHECK (in_daily_inbox IN (0, 1)),
-            triage_state TEXT NOT NULL DEFAULT 'new'
-              CHECK (triage_state IN ('new', 'viewed', 'saved', 'dismissed')),
-            triage_updated_at TEXT NOT NULL,
-            first_seen_at TEXT NOT NULL,
-            last_seen_at TEXT NOT NULL
-          );
-          INSERT INTO discovery_item_generic(
-            id, source, item_kind, external_id, title, summary, url, published_at, updated_at,
-            authors_json, categories_json, topics_json, language, stars, score, excluded,
-            reasons_json, in_daily_inbox, triage_state, triage_updated_at, first_seen_at, last_seen_at
-          )
-          SELECT id, source, ${itemKindExpression}, external_id, title, summary, url,
-                 published_at, updated_at, authors_json, categories_json, topics_json,
-                 language, stars, score, excluded, reasons_json, in_daily_inbox,
-                 triage_state, triage_updated_at, first_seen_at, last_seen_at
-          FROM discovery_item;
-          DROP TABLE discovery_item;
-          ALTER TABLE discovery_item_generic RENAME TO discovery_item;
-          CREATE INDEX discovery_item_inbox
-            ON discovery_item(excluded, triage_state, score DESC, published_at DESC);
-        `)
-      }
-
-      for (const table of ['source_run', 'source_search_event'] as const) {
-        const definition = this.#database
-          .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?")
-          .get(table) as { sql: string }
-        if (!definition.sql.includes("source IN ('arxiv', 'github')")) continue
-        if (table === 'source_run') {
-          this.#database.exec(`
-            CREATE TABLE source_run_generic (
-              source TEXT PRIMARY KEY,
-              status TEXT NOT NULL CHECK (status IN ('idle', 'refreshing', 'healthy', 'partial', 'failed')),
-              completed_at TEXT NOT NULL,
-              error_message TEXT,
-              result_count INTEGER
-            );
-            INSERT INTO source_run_generic SELECT * FROM source_run;
-            DROP TABLE source_run;
-            ALTER TABLE source_run_generic RENAME TO source_run;
-          `)
-        } else {
-          this.#database.exec(`
-            CREATE TABLE source_search_event_generic (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              source TEXT NOT NULL,
-              status TEXT NOT NULL CHECK (status IN ('healthy', 'partial', 'failed')),
-              completed_at TEXT NOT NULL,
-              result_count INTEGER NOT NULL CHECK (result_count >= 0)
-            );
-            INSERT INTO source_search_event_generic SELECT * FROM source_search_event;
-            DROP TABLE source_search_event;
-            ALTER TABLE source_search_event_generic RENAME TO source_search_event;
-            CREATE INDEX source_search_event_by_time
-              ON source_search_event(completed_at DESC, id DESC);
-          `)
-        }
-      }
-
-      const discoverSourceRunDefinition = this.#database
-        .prepare(
-          "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'discover_source_run'"
-        )
-        .get() as { sql: string }
-      if (
-        discoverSourceRunDefinition.sql.includes("source IN ('arxiv', 'github')") ||
-        !discoverSourceRunDefinition.sql.includes("'partial'")
-      ) {
-        this.#database.exec(`
-          CREATE TABLE discover_source_run_generic (
-            session_id TEXT NOT NULL REFERENCES discover_session(id) ON DELETE CASCADE,
-            source TEXT NOT NULL,
-            status TEXT NOT NULL
-              CHECK (status IN ('not_searched', 'healthy', 'partial', 'no_results', 'failed')),
-            result_count INTEGER NOT NULL CHECK (result_count >= 0),
-            error_message TEXT,
-            PRIMARY KEY(session_id, source)
-          );
-          INSERT INTO discover_source_run_generic(
-            session_id, source, status, result_count, error_message
-          )
-          SELECT session_id, source, status, result_count, error_message
-          FROM discover_source_run;
-          DROP TABLE discover_source_run;
-          ALTER TABLE discover_source_run_generic RENAME TO discover_source_run;
-        `)
-      }
-
-      const discoverResultColumns = new Set(
-        (this.#database.pragma('table_info(discover_result)') as Array<{ name: string }>).map(
-          (column) => column.name
-        )
-      )
-      const discoverResultDefinition = this.#database
-        .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'discover_result'")
-        .get() as { sql: string }
-      if (
-        !discoverResultColumns.has('item_kind') ||
-        discoverResultDefinition.sql.includes("source IN ('arxiv', 'github')")
-      ) {
-        const itemKindExpression = discoverResultColumns.has('item_kind')
-          ? 'item_kind'
-          : "CASE source WHEN 'arxiv' THEN 'paper' WHEN 'github' THEN 'repository' ELSE 'article' END"
-        this.#database.exec(`
-          CREATE TABLE discover_result_generic (
-            session_id TEXT NOT NULL REFERENCES discover_session(id) ON DELETE CASCADE,
-            item_id TEXT NOT NULL,
-            source TEXT NOT NULL,
-            item_kind TEXT NOT NULL
-              CHECK (item_kind IN ('paper', 'repository', 'article', 'model', 'dataset', 'post')),
-            external_id TEXT NOT NULL,
-            title TEXT NOT NULL,
-            summary TEXT NOT NULL,
-            url TEXT NOT NULL,
-            published_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            authors_json TEXT NOT NULL,
-            categories_json TEXT NOT NULL,
-            topics_json TEXT NOT NULL,
-            language TEXT,
-            stars INTEGER,
-            score REAL NOT NULL,
-            reasons_json TEXT NOT NULL,
-            result_rank INTEGER NOT NULL CHECK (result_rank >= 0),
-            PRIMARY KEY(session_id, item_id)
-          );
-          INSERT INTO discover_result_generic(
-            session_id, item_id, source, item_kind, external_id, title, summary, url,
-            published_at, updated_at, authors_json, categories_json, topics_json,
-            language, stars, score, reasons_json, result_rank
-          )
-          SELECT session_id, item_id, source, ${itemKindExpression}, external_id, title,
-                 summary, url, published_at, updated_at, authors_json, categories_json,
-                 topics_json, language, stars, score, reasons_json, result_rank
-          FROM discover_result;
-          DROP TABLE discover_result;
-          ALTER TABLE discover_result_generic RENAME TO discover_result;
-        `)
-      }
-
-      // Account synchronization was withdrawn. Remove any local encrypted credential and
-      // bookkeeping tables while keeping the user's local research data intact.
-      this.#database.exec(`
-        DROP TABLE IF EXISTS google_sync_conflict;
-        DROP TABLE IF EXISTS google_sync_account;
-        DROP TABLE IF EXISTS sync_local_state;
-      `)
-    })
-    try {
-      migrate()
-    } finally {
-      this.#database.pragma('foreign_keys = ON')
-    }
-    const foreignKeyViolations = this.#database.pragma('foreign_key_check') as unknown[]
-    if (foreignKeyViolations.length > 0) {
-      throw new Error('The local index migration introduced a foreign-key violation')
-    }
+    if (options.migrate !== false) migrateResearchDatabase(database)
   }
 
   saveInterestProfile(profile: InterestProfile, updatedAt = new Date().toISOString()): void {
@@ -1334,227 +881,41 @@ export class ResearchRepository {
     profile: Omit<ModelProviderSummary, 'hasCredential'>,
     secretCiphertext: Buffer | undefined
   ): StoredModelProvider {
-    this.#database
-      .prepare(
-        `INSERT INTO model_provider(
-           id, name, protocol, base_url, model, secret_ciphertext, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET
-           name = excluded.name,
-           protocol = excluded.protocol,
-           base_url = excluded.base_url,
-           model = excluded.model,
-           secret_ciphertext = COALESCE(
-             excluded.secret_ciphertext,
-             model_provider.secret_ciphertext
-           ),
-           updated_at = excluded.updated_at`
-      )
-      .run(
-        profile.id,
-        profile.name,
-        profile.protocol,
-        profile.baseUrl,
-        profile.model,
-        secretCiphertext ?? null,
-        profile.updatedAt
-      )
-
-    return this.getModelProvider(profile.id)!
+    return saveModelProvider(this.#database, profile, secretCiphertext)
   }
 
   getModelProvider(id = 'default'): StoredModelProvider | null {
-    const row = this.#database
-      .prepare(
-        `SELECT id, name, protocol, base_url, model, secret_ciphertext, updated_at
-         FROM model_provider WHERE id = ?`
-      )
-      .get(id) as ModelProviderRow | undefined
-
-    return row
-      ? {
-          id: row.id,
-          name: row.name,
-          protocol: row.protocol,
-          baseUrl: row.base_url,
-          model: row.model,
-          secretCiphertext: row.secret_ciphertext,
-          updatedAt: row.updated_at
-        }
-      : null
+    return getModelProvider(this.#database, id)
   }
 
   clearModelProviderCredential(
     id = 'default',
     updatedAt = new Date().toISOString()
   ): StoredModelProvider {
-    const result = this.#database
-      .prepare(
-        `UPDATE model_provider
-         SET secret_ciphertext = NULL, updated_at = ?
-         WHERE id = ?`
-      )
-      .run(updatedAt, id)
-    if (result.changes !== 1) throw new Error('Configure a model provider first')
-    return this.getModelProvider(id)!
+    return clearModelProviderCredential(this.#database, id, updatedAt)
   }
 
   saveAnalysis(
     artifact: AnalysisArtifact,
     usage: { readonly inputTokens: number | null; readonly outputTokens: number | null }
   ): void {
-    this.#database
-      .prepare(
-        `INSERT INTO analysis_artifact(
-           id, item_id, provider_id, provider_name, model, prompt_version,
-           source_hash, content, input_tokens, output_tokens, created_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        artifact.id,
-        artifact.itemId,
-        artifact.providerId,
-        artifact.providerName,
-        artifact.model,
-        artifact.promptVersion,
-        artifact.sourceHash,
-        artifact.content,
-        usage.inputTokens,
-        usage.outputTokens,
-        artifact.createdAt
-      )
+    saveAnalysis(this.#database, artifact, usage)
   }
 
   saveLlmWikiPromotionReceipt(receipt: LlmWikiPromotionReceipt): void {
-    const validated = llmWikiPromotionReceiptSchema.parse(receipt)
-    this.#database
-      .prepare(
-        `INSERT INTO llm_wiki_promotion_receipt(
-           id, item_id, arxiv_id, status, runner, version, prompt_version,
-           source_hash, contract_hash, evidence_tier, summary,
-           created_paths_json, updated_paths_json, pdf_path, sidecar_path,
-           note_path, audit_path, blockers_json, started_at, completed_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        validated.id,
-        validated.itemId,
-        validated.arxivId,
-        validated.status,
-        validated.runner,
-        validated.version,
-        validated.promptVersion,
-        validated.sourceHash,
-        validated.contractHash,
-        validated.evidenceTier,
-        validated.summary,
-        JSON.stringify(validated.createdPaths),
-        JSON.stringify(validated.updatedPaths),
-        validated.pdfPath,
-        validated.sidecarPath,
-        validated.notePath,
-        validated.auditPath,
-        JSON.stringify(validated.blockers),
-        validated.startedAt,
-        validated.completedAt
-      )
+    saveLlmWikiPromotionReceipt(this.#database, receipt)
   }
 
   getLatestLlmWikiPromotionReceipt(itemId: string): LlmWikiPromotionReceipt | null {
-    const row = this.#database
-      .prepare(
-        `SELECT id, item_id, arxiv_id, status, runner, version, prompt_version,
-                source_hash, contract_hash, evidence_tier, summary,
-                created_paths_json, updated_paths_json, pdf_path, sidecar_path,
-                note_path, audit_path, blockers_json, started_at, completed_at
-         FROM llm_wiki_promotion_receipt
-         WHERE item_id = ?
-         ORDER BY sequence DESC
-         LIMIT 1`
-      )
-      .get(itemId) as LlmWikiPromotionReceiptRow | undefined
-    if (!row) return null
-
-    return llmWikiPromotionReceiptSchema.parse({
-      version: row.version,
-      id: row.id,
-      itemId: row.item_id,
-      arxivId: row.arxiv_id,
-      status: row.status,
-      runner: row.runner,
-      promptVersion: row.prompt_version,
-      sourceHash: row.source_hash,
-      contractHash: row.contract_hash,
-      evidenceTier: row.evidence_tier,
-      summary: row.summary,
-      createdPaths: parseStringList(row.created_paths_json),
-      updatedPaths: parseStringList(row.updated_paths_json),
-      pdfPath: row.pdf_path,
-      sidecarPath: row.sidecar_path,
-      notePath: row.note_path,
-      auditPath: row.audit_path,
-      blockers: parseStringList(row.blockers_json),
-      startedAt: row.started_at,
-      completedAt: row.completed_at
-    })
+    return getLatestLlmWikiPromotionReceipt(this.#database, itemId)
   }
 
   reconcileInterruptedLlmWikiPromotions(completedAt = new Date().toISOString()): number {
-    const itemIds = this.#database
-      .prepare(
-        `SELECT current.item_id
-         FROM llm_wiki_promotion_receipt AS current
-         WHERE current.status = 'running'
-           AND current.sequence = (
-             SELECT MAX(latest.sequence)
-             FROM llm_wiki_promotion_receipt AS latest
-             WHERE latest.item_id = current.item_id
-           )`
-      )
-      .pluck()
-      .all() as string[]
-    for (const itemId of itemIds) {
-      const running = this.getLatestLlmWikiPromotionReceipt(itemId)
-      if (!running || running.status !== 'running') continue
-      this.saveLlmWikiPromotionReceipt({
-        ...running,
-        id: `interrupted:${running.id}`.slice(0, 300),
-        status: 'partial',
-        evidenceTier: 'partial',
-        summary:
-          'The previous app session ended without a terminal vault receipt; inspect llm-wiki before retrying.',
-        blockers: ['The previous promotion outcome is unknown after application interruption.'],
-        completedAt
-      })
-    }
-    return itemIds.length
+    return reconcileInterruptedLlmWikiPromotions(this.#database, completedAt)
   }
 
   getLatestAnalysis(itemId: string): AnalysisArtifact | null {
-    const row = this.#database
-      .prepare(
-        `SELECT id, item_id, provider_id, provider_name, model, prompt_version,
-                source_hash, content, created_at
-         FROM analysis_artifact
-         WHERE item_id = ?
-         ORDER BY created_at DESC, id DESC
-         LIMIT 1`
-      )
-      .get(itemId) as AnalysisArtifactRow | undefined
-
-    return row
-      ? {
-          id: row.id,
-          itemId: row.item_id,
-          providerId: row.provider_id,
-          providerName: row.provider_name,
-          model: row.model,
-          promptVersion: row.prompt_version,
-          sourceHash: row.source_hash,
-          content: row.content,
-          createdAt: row.created_at
-        }
-      : null
+    return getLatestAnalysis(this.#database, itemId)
   }
 
   getDashboardSnapshot(now = new Date()): DashboardSnapshot {
