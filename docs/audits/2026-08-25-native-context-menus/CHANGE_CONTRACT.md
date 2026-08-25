@@ -117,13 +117,19 @@ SettingsView.test}.tsx|ts`, and this contract.
 - **`npm run check`:** passed. 56 test files / 379 tests. Statements 90.42%, branches 80.80%,
   functions 93.49%, lines 93.29% — all above the 80% floor.
 - **Electron E2E:** 2/2 passed.
-- **Live opt-in checks NOT run:**
-  - A real secondary click producing a rendered macOS menu was **not performed**. The renderer
-    dispatch and the main-process construction are unit-tested, but `Menu.popup()` has **no executed
-    runtime evidence**.
-  - Clipboard contents after Copy Link / Copy Title / Copy Citation were **not verified on a live
-    machine**; only `buildCopyPayload` is tested.
-  - `shell.openExternal` was **not observed** opening a browser.
+- **Runtime evidence added 2026-08-25 via `npm run smoke:native`:** a real secondary click on a
+  Discover result invoked `Menu.popup()` exactly once on a live window, and the resulting native menu
+  carried exactly `Open in Browser, Copy Link, ---, Copy Title, Copy Citation, ---, Save to Saved,
+Analyze…`. Invoking the real entry handlers wrote
+  `https://arxiv.org/abs/2608.99999` (Copy Link), `Semantic expansion search for edge intelligence`
+  (Copy Title), and `Semantic expansion search for edge intelligence. arXiv. 2026-08-14.
+https://arxiv.org/abs/2608.99999` (Copy Citation) to the real clipboard, and Open in Browser
+  reached `shell.openExternal` with that exact https URL.
+- **Live opt-in checks still NOT run:**
+  - The **visual appearance** of the native menu was not captured; the check reads its item model,
+    not a screenshot.
+  - The Saved-row menu was exercised only through unit tests, not through the smoke check.
+  - No live provider or live source call was made.
 - **Residual risks/blockers:**
   - Promote is absent from the menu at runtime, per the amendment above.
   - The Sources view still has no context menu.

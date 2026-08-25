@@ -26,6 +26,7 @@
     "smoke:credentials": "electron scripts/smoke-safe-storage.mjs",
     "smoke:mcp": "npm run build:mcp --silent && node scripts/smoke-mcp.mjs",
     "smoke:package": "node scripts/smoke-packaged-app.mjs",
+    "smoke:native": "npm run build --silent && node scripts/smoke-native-surfaces.mjs",
     "smoke:sources": "tsx scripts/smoke-sources.ts",
     "smoke:configured-sources": "tsx scripts/smoke-configured-sources.ts",
     "mcp:serve": "node out/mcp/stdio.js",

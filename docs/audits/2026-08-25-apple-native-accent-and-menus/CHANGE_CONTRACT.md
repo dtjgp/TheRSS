@@ -148,11 +148,17 @@ SettingsView.test.tsx,styles.css,styles.test.ts}`, `src/renderer/src/styles/acce
 - **Electron E2E:** 2/2 passed, re-run after the `useSystemAccent` extraction.
 - **Security/dependency/migration/package evidence:** no dependency added, so no new audit surface;
   no migration; no packaging change. Working tree contains no secrets.
-- **Live opt-in checks NOT run:**
-  - Changing the accent in System Settings > Appearance and observing a live update was **not
-    performed** — it requires mutating the user's system settings. The subscription path
-    (`systemPreferences.on('accent-color-changed')` -> broadcast -> `onSystemAccentChange`) is wired
-    and typechecked but has **no executed runtime evidence**.
+- **Runtime evidence added 2026-08-25 via `npm run smoke:native`:** a launched Electron instance
+  reported the real OS accent `007AFFFF`, main resolved it to `blue`, the renderer applied
+  `data-system-accent="blue"`, and `--system-accent` computed to `#007aff` both at the root and on a
+  component. The menu bar was read back from the live `Menu.getApplicationMenu()`: a `help`-role menu
+  is installed, `View` carries `resetzoom`/`zoomin`/`zoomout`, `Dismiss Selected` carries
+  `CommandOrControl+Backspace`, `Save Selected` carries `Shift+CommandOrControl+D`, and no Signal
+  entry binds `CommandOrControl+S`.
+- **Live opt-in checks still NOT run:**
+  - The machine's accent is the stock blue, so only the default path was exercised end to end. A
+    **non-blue** accent, and the `accent-color-changed` subscription firing on a live change, remain
+    without runtime evidence. The hex-to-name mapping for all eight stock accents is unit-tested.
   - No rendered screenshot matrix was captured for the non-blue accents.
   - No live provider or live source call was made.
 - **Residual risks/blockers:**
