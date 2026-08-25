@@ -41,14 +41,22 @@ function SourceMark({ source }: { readonly source: DashboardItem['source'] }) {
 function SignalListItem({
   item,
   isSelected,
-  onSelect
+  onSelect,
+  onShowContextMenu
 }: {
   readonly item: DashboardItem
   readonly isSelected: boolean
   readonly onSelect: () => void
+  readonly onShowContextMenu: () => void
 }) {
   return (
-    <li className={`signal-row ${isSelected ? 'signal-row--selected' : ''}`}>
+    <li
+      className={`signal-row ${isSelected ? 'signal-row--selected' : ''}`}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        onShowContextMenu()
+      }}
+    >
       <button
         type="button"
         className="signal-row__select"
@@ -178,6 +186,32 @@ export function SignalWorkspace({
     return () => window.removeEventListener('keydown', handleKeyboardTriage)
   }, [items, onAnalyze, onTriage, selectItem, selectedIndex, selectedItem])
 
+  const showItemContextMenu = useCallback(
+    (item: DashboardItem) => {
+      void api
+        .showContextMenu({
+          kind: 'saved-item',
+          itemId: item.id,
+          title: item.title,
+          url: item.url,
+          sourceLabel: sourceDisplayName(item.source),
+          publishedAt: item.publishedAt,
+          isSaved: item.triageState === 'saved',
+          canAnalyze: isPaperAnalysisCandidate(item),
+          // See the DiscoverView note: promotion keeps its single confirmation gate.
+          canPromote: false
+        })
+        .then((outcome) => {
+          if (outcome.action === 'save') return onTriage(item.id, 'saved')
+          if (outcome.action === 'unsave') return onTriage(item.id, 'viewed')
+          if (outcome.action === 'analyze') return onAnalyze(item.id)
+          return undefined
+        })
+        .catch(() => undefined)
+    },
+    [api, onAnalyze, onTriage]
+  )
+
   if (!selectedItem) return null
 
   const isSaved = selectedItem.triageState === 'saved'
@@ -216,6 +250,11 @@ export function SignalWorkspace({
                 item={item}
                 isSelected={item.id === selectedItem.id}
                 onSelect={() => selectItem(item, false)}
+                onShowContextMenu={() => {
+                  // macOS selects the row a secondary click lands on.
+                  selectItem(item, false)
+                  showItemContextMenu(item)
+                }}
               />
             ))}
           </ol>

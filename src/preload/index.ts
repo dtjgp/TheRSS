@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { TheRSSApi } from '../shared/api'
 import { IPC_CHANNELS, isAppCommand } from '../shared/ipc'
+import { isSystemAccentName } from '../shared/appearance'
 
 const api: TheRSSApi = {
   onAppCommand: (listener) => {
@@ -9,6 +10,15 @@ const api: TheRSSApi = {
     }
     ipcRenderer.on(IPC_CHANNELS.appCommand, handleCommand)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.appCommand, handleCommand)
+  },
+  showContextMenu: (target) => ipcRenderer.invoke(IPC_CHANNELS.showContextMenu, target),
+  getSystemAccent: () => ipcRenderer.invoke(IPC_CHANNELS.getSystemAccent),
+  onSystemAccentChange: (listener) => {
+    const handleAccent = (_event: Electron.IpcRendererEvent, accent: unknown) => {
+      listener(isSystemAccentName(accent) ? accent : null)
+    }
+    ipcRenderer.on(IPC_CHANNELS.systemAccentChanged, handleAccent)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.systemAccentChanged, handleAccent)
   },
   getDashboard: () => ipcRenderer.invoke(IPC_CHANNELS.getDashboard),
   getSourceContent: (source) => ipcRenderer.invoke(IPC_CHANNELS.getSourceContent, source),

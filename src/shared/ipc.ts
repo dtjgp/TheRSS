@@ -6,7 +6,8 @@ export const APP_COMMANDS = [
   'save-selected',
   'dismiss-selected',
   'analyze-selected',
-  'undo-triage'
+  'undo-triage',
+  'open-help'
 ] as const
 
 export type AppCommand = (typeof APP_COMMANDS)[number]
@@ -17,6 +18,9 @@ export function isAppCommand(value: unknown): value is AppCommand {
 
 export const IPC_CHANNELS = {
   appCommand: 'app:command',
+  showContextMenu: 'menu:show-context',
+  getSystemAccent: 'appearance:get-system-accent',
+  systemAccentChanged: 'appearance:system-accent-changed',
   getDashboard: 'dashboard:get',
   getSourceContent: 'sources:get-content',
   refreshSourceContent: 'sources:refresh-content',

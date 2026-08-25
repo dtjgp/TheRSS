@@ -151,6 +151,9 @@ export function createDiscoverSnapshot(): DiscoverSnapshot {
 export function createApi(snapshot: DashboardSnapshot = emptyDashboard): TheRSSApi {
   return {
     onAppCommand: vi.fn().mockReturnValue(() => undefined),
+    showContextMenu: vi.fn().mockResolvedValue({ action: 'none' }),
+    getSystemAccent: vi.fn().mockResolvedValue(null),
+    onSystemAccentChange: vi.fn().mockReturnValue(() => undefined),
     getDashboard: vi.fn().mockResolvedValue(snapshot),
     getSourceContent: vi.fn(),
     refreshSourceContent: vi.fn(),

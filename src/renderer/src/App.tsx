@@ -19,6 +19,7 @@ import type { AnalysisArtifact, AnalysisRunner, LocalAgentStatus } from '../../s
 import { DiscoverView } from './DiscoverView'
 import { DataAnalyticsView } from './DataAnalyticsView'
 import { SignalWorkspace } from './SignalWorkspace'
+import { useSystemAccent } from './useSystemAccent'
 import { SourceCatalogView } from './SourceCatalogView'
 import { SettingsView } from './SettingsView'
 import type { DiscoverySource } from '../../shared/discovery'
@@ -410,10 +411,16 @@ export function App({ api }: AppProps) {
     }
   }, [activeView, api, selectedSignalId])
 
+  useSystemAccent(api)
+
   useEffect(
     () =>
       api.onAppCommand((command) => {
         switch (command) {
+          case 'open-help':
+            // Routed through the main process' vetted external-URL handler.
+            window.open('https://github.com/dtjgp/TheRSS#readme', '_blank', 'noreferrer')
+            return
           case 'open-settings':
             void navigate('settings')
             return

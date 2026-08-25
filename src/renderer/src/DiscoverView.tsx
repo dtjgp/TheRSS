@@ -87,11 +87,37 @@ function DiscoverCard({
   readonly api: TheRSSApi
   readonly sessionId: string
 }) {
+  const handleContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault()
+    void api
+      .showContextMenu({
+        kind: 'discover-result',
+        itemId: item.id,
+        sessionId,
+        title: item.title,
+        url: item.url,
+        sourceLabel: sourceDisplayName(item.source),
+        publishedAt: item.publishedAt,
+        isSaved: item.saved,
+        canAnalyze: item.kind === 'paper',
+        // Promotion stays with PaperPromotionAction so the confirmation gate required
+        // by ADR 0008 keeps a single implementation. See the contract amendment.
+        canPromote: false
+      })
+      .then((outcome) => {
+        if (outcome.action === 'save' || outcome.action === 'unsave') return onToggleSave(item.id)
+        if (outcome.action === 'analyze') return onAnalyze(item.id)
+        return undefined
+      })
+      .catch(() => undefined)
+  }
+
   return (
     <article
       className="signal-card"
       style={{ '--card-index': Math.min(index, 5) } as React.CSSProperties}
       data-testid="discover-result"
+      onContextMenu={handleContextMenu}
     >
       <div className="signal-card__meta">
         <span className={`source-mark source-mark--${sourceStyleToken(item.source)}`}>

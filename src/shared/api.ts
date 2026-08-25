@@ -11,6 +11,8 @@ import type {
 import type { DiscoverSearchRequest, DiscoverSnapshot } from './discover'
 import type { AnalyticsSnapshot } from './analytics'
 import type { AppCommand } from './ipc'
+import type { SystemAccentName } from './appearance'
+import type { ContextMenuOutcome, ContextMenuTarget } from './contextMenu'
 import type { DiscoveryItemKind, DiscoverySource } from './discovery'
 import type { LlmWikiPromotionPreview, LlmWikiPromotionReceipt } from './llmWikiPromotion'
 
@@ -79,6 +81,9 @@ export interface DashboardSnapshot {
 
 export interface TheRSSApi {
   onAppCommand(listener: (command: AppCommand) => void): () => void
+  showContextMenu(target: ContextMenuTarget): Promise<ContextMenuOutcome>
+  getSystemAccent(): Promise<SystemAccentName | null>
+  onSystemAccentChange(listener: (accent: SystemAccentName | null) => void): () => void
   getDashboard(): Promise<DashboardSnapshot>
   getSourceContent(source: DiscoverySource): Promise<SourceContentSnapshot>
   refreshSourceContent(source: DiscoverySource): Promise<SourceContentSnapshot>

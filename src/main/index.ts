@@ -2,8 +2,21 @@ import { join } from 'node:path'
 import { env } from 'node:process'
 import { randomUUID } from 'node:crypto'
 import Database from 'better-sqlite3'
-import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, screen, shell } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  clipboard,
+  Menu,
+  safeStorage,
+  screen,
+  shell,
+  systemPreferences
+} from 'electron'
 import { z } from 'zod'
+import { resolveSystemAccentName } from '../core/appearance/systemAccent'
+import { buildContextMenuTemplate, buildCopyPayload } from '../core/menus/contextMenu'
 import { LocalAgentService } from '../core/agents/localAgentService'
 import { AnalysisService } from '../core/analysis/analysisService'
 import { DiscoverPlannerService } from '../core/discover/discoverPlanner'
@@ -17,6 +30,12 @@ import { LlmWikiPromotionService } from '../core/integrations/llmWikiPromotionSe
 import { LlmWikiVaultAdapter } from '../core/integrations/llmWikiVaultAdapter'
 import { discoverSearchRequestSchema } from '../shared/discover'
 import type { DiscoverySource } from '../shared/discovery'
+import type { SystemAccentName } from '../shared/appearance'
+import {
+  contextMenuTargetSchema,
+  isRendererContextMenuAction,
+  type ContextMenuOutcome
+} from '../shared/contextMenu'
 import { IPC_CHANNELS } from '../shared/ipc'
 import {
   LLM_WIKI_PROMOTION_PREVIEW_VERSION,
@@ -95,6 +114,19 @@ class ElectronSecretCipher implements SecretCipher {
   }
 }
 
+/**
+ * Only macOS and Windows expose an accent colour. Any failure resolves to null so the
+ * renderer keeps its default blue rather than surfacing an appearance error.
+ */
+function readSystemAccent(): SystemAccentName | null {
+  if (process.platform !== 'darwin' && process.platform !== 'win32') return null
+  try {
+    return resolveSystemAccentName(systemPreferences.getAccentColor())
+  } catch {
+    return null
+  }
+}
+
 function registerIpcHandlers(
   repository: ResearchRepository,
   discoveryService: DiscoveryService,
@@ -105,6 +137,49 @@ function registerIpcHandlers(
   promotionService: LlmWikiPromotionService,
   useE2eFixtures: boolean
 ): void {
+  ipcMain.handle(
+    IPC_CHANNELS.showContextMenu,
+    async (event, candidate: unknown): Promise<ContextMenuOutcome> => {
+      const target = contextMenuTargetSchema.parse(candidate)
+      const window = BrowserWindow.fromWebContents(event.sender)
+      if (!window) return { action: 'none' }
+
+      // Every label and behaviour is derived here from the typed descriptor. The
+      // renderer supplies data only, so no feed- or model-derived string can become
+      // an executable menu command.
+      return await new Promise<ContextMenuOutcome>((resolve) => {
+        let outcome: ContextMenuOutcome = { action: 'none' }
+
+        const template = buildContextMenuTemplate(target).map((entry) => {
+          if (entry.type === 'separator') return { type: 'separator' as const }
+          return {
+            label: entry.label,
+            click: () => {
+              if (entry.action === 'open-external') {
+                if (isSafeExternalUrl(target.url)) void shell.openExternal(target.url)
+                return
+              }
+              const payload = buildCopyPayload(target, entry.action)
+              if (payload !== null) {
+                clipboard.writeText(payload)
+                return
+              }
+              if (!isRendererContextMenuAction(entry.action)) return
+              outcome = target.sessionId
+                ? { action: entry.action, itemId: target.itemId, sessionId: target.sessionId }
+                : { action: entry.action, itemId: target.itemId }
+            }
+          }
+        })
+
+        Menu.buildFromTemplate(template).popup({
+          window,
+          callback: () => resolve(outcome)
+        })
+      })
+    }
+  )
+  ipcMain.handle(IPC_CHANNELS.getSystemAccent, () => readSystemAccent())
   ipcMain.handle(IPC_CHANNELS.getDashboard, () => repository.getDashboardSnapshot())
   ipcMain.handle(IPC_CHANNELS.getSourceContent, (_event, source: unknown) =>
     repository.getSourceContentSnapshot(discoverySourceSchema.parse(source))
@@ -524,6 +599,15 @@ app.whenReady().then(async () => {
       }, process.platform === 'darwin')
     )
   )
+
+  if (process.platform === 'darwin' || process.platform === 'win32') {
+    systemPreferences.on('accent-color-changed', () => {
+      const accent = readSystemAccent()
+      for (const window of BrowserWindow.getAllWindows()) {
+        window.webContents.send(IPC_CHANNELS.systemAccentChanged, accent)
+      }
+    })
+  }
 
   let shutdownStarted = false
   let shutdownCompleted = false

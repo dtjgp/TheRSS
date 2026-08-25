@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DashboardSnapshot } from '../../shared/api'
@@ -401,5 +401,79 @@ describe('App', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Discover failed. Configure or check the selected model provider.'
     )
+  })
+})
+
+describe('Discover result context menu', () => {
+  async function renderDiscoverResults() {
+    const api = createApi()
+    const snapshot = createDiscoverSnapshot()
+    vi.mocked(api.searchDiscover).mockResolvedValue(snapshot)
+    const user = userEvent.setup()
+    render(<App api={api} />)
+
+    await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
+    await user.click(screen.getByRole('button', { name: 'Expand and search' }))
+    const cards = await screen.findAllByTestId('discover-result')
+    return { api, cards, snapshot }
+  }
+
+  it('sends the main process a typed descriptor for the right-clicked paper', async () => {
+    const { api, cards, snapshot } = await renderDiscoverResults()
+    const paper = snapshot.items[0]!
+
+    fireEvent.contextMenu(cards[0]!)
+
+    await waitFor(() => expect(api.showContextMenu).toHaveBeenCalledTimes(1))
+    expect(api.showContextMenu).toHaveBeenCalledWith({
+      kind: 'discover-result',
+      itemId: paper.id,
+      sessionId: snapshot.id,
+      title: paper.title,
+      url: paper.url,
+      sourceLabel: sourceDisplayName(paper.source),
+      publishedAt: paper.publishedAt,
+      isSaved: false,
+      canAnalyze: true,
+      canPromote: false
+    })
+  })
+
+  it('marks a non-paper result as not analysable', async () => {
+    const { api, cards, snapshot } = await renderDiscoverResults()
+    const repositoryIndex = snapshot.items.findIndex((item) => item.kind === 'repository')
+    expect(repositoryIndex).toBeGreaterThanOrEqual(0)
+
+    fireEvent.contextMenu(cards[repositoryIndex]!)
+
+    await waitFor(() => expect(api.showContextMenu).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(api.showContextMenu).mock.calls[0]![0]).toMatchObject({
+      itemId: snapshot.items[repositoryIndex]!.id,
+      canAnalyze: false
+    })
+  })
+
+  it('runs the existing save flow when the menu returns save', async () => {
+    const { api, cards, snapshot } = await renderDiscoverResults()
+    vi.mocked(api.showContextMenu).mockResolvedValue({
+      action: 'save',
+      itemId: snapshot.items[0]!.id,
+      sessionId: snapshot.id
+    })
+
+    fireEvent.contextMenu(cards[0]!)
+
+    await waitFor(() =>
+      expect(api.saveDiscoverResult).toHaveBeenCalledWith(snapshot.id, snapshot.items[0]!.id)
+    )
+  })
+
+  it('suppresses the browser menu so only the native menu appears', async () => {
+    const { cards } = await renderDiscoverResults()
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+
+    fireEvent(cards[0]!, event)
+
+    expect(event.defaultPrevented).toBe(true)
   })
 })

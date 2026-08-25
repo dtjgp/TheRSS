@@ -69,6 +69,11 @@ export function createApplicationMenuTemplate(
         accelerator: isMac ? 'Control+Command+S' : 'CommandOrControl+Shift+S',
         click: () => send('toggle-sidebar')
       },
+      { type: 'separator' },
+      { role: 'resetZoom' },
+      { role: 'zoomIn' },
+      { role: 'zoomOut' },
+      { type: 'separator' },
       { role: 'togglefullscreen' }
     ]
   }
@@ -77,11 +82,17 @@ export function createApplicationMenuTemplate(
     label: 'Signal',
     submenu: [
       {
+        // Command+S keeps its universal Save meaning; Shift+Command+D is the
+        // add-to-shelf idiom used by Mac reading and bookmarking apps.
         label: 'Save Selected',
-        accelerator: 'CommandOrControl+S',
+        accelerator: 'Shift+CommandOrControl+D',
         click: () => send('save-selected')
       },
-      { label: 'Dismiss Selected', click: () => send('dismiss-selected') },
+      {
+        label: 'Dismiss Selected',
+        accelerator: 'CommandOrControl+Backspace',
+        click: () => send('dismiss-selected')
+      },
       {
         label: 'Analyze Selected',
         accelerator: 'CommandOrControl+Shift+A',
@@ -101,5 +112,16 @@ export function createApplicationMenuTemplate(
     ]
   }
 
-  return [appMenu, fileMenu, editMenu, viewMenu, signalMenu, windowMenu]
+  const helpMenu: MenuItemConstructorOptions = {
+    label: 'Help',
+    role: 'help',
+    submenu: [
+      {
+        label: 'TheRSS Help',
+        click: () => send('open-help')
+      }
+    ]
+  }
+
+  return [appMenu, fileMenu, editMenu, viewMenu, signalMenu, windowMenu, helpMenu]
 }
