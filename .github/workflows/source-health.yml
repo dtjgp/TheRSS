@@ -33,6 +33,10 @@ jobs:
 
       - name: Probe arXiv and GitHub adapters
         id: primary
+        env:
+          # Without this the runner's shared IP hits the unauthenticated GitHub search
+          # rate limit and reports 403 as a source regression every run.
+          THERSS_GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -o pipefail
           npm run smoke:sources --silent 2>&1 | tee -a source-health-report.txt

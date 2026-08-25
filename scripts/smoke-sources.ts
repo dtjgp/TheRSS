@@ -2,6 +2,11 @@ import { log } from 'node:console'
 import { fetchArxivItems, fetchArxivRecentItems } from '../src/core/sources/arxiv/arxivClient'
 import { fetchGitHubRadarItems } from '../src/core/sources/github/githubClient'
 
+// Unauthenticated GitHub search is rate limited per source IP. That is fine on a
+// developer machine but returns 403 from shared CI runners, so allow an optional token
+// exactly as the Hugging Face adapter does. Public discovery still works without one.
+const githubToken = process.env.THERSS_GITHUB_TOKEN?.trim()
+
 const [papers, recentPapers, repositories] = await Promise.all([
   fetchArxivItems(
     {
@@ -18,7 +23,7 @@ const [papers, recentPapers, repositories] = await Promise.all([
       topics: ['model-compression'],
       languages: []
     },
-    { maxQueries: 1 }
+    { maxQueries: 1, ...(githubToken ? { token: githubToken } : {}) }
   )
 ])
 
