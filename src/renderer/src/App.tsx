@@ -4,15 +4,7 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent
 } from 'react'
-import {
-  BarChart3,
-  Compass,
-  Library,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Settings,
-  Star
-} from 'lucide-react'
+import { BarChart3, Compass, Library, Settings, Star } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { DashboardSnapshot, TheRSSApi, TriageState } from '../../shared/api'
 import type { AnalysisArtifact, AnalysisRunner, LocalAgentStatus } from '../../shared/models'
@@ -22,14 +14,14 @@ import { SignalWorkspace } from './SignalWorkspace'
 import { useSystemAccent } from './useSystemAccent'
 import { SourceCatalogView } from './SourceCatalogView'
 import { SettingsView } from './SettingsView'
+import { AppTopbar } from './AppTopbar'
+import type { AppView } from './AppTopbar'
 import type { DiscoverySource } from '../../shared/discovery'
 import { ACTIVE_TODAY_SOURCE_IDS, sourceDisplayName } from '../../shared/sourceIdentity'
 
 interface AppProps {
   readonly api: TheRSSApi
 }
-
-type AppView = 'discover' | 'saved' | 'settings' | 'analytics' | 'sources'
 
 interface NavigationItem {
   readonly view: AppView
@@ -47,8 +39,6 @@ const secondaryNavigationItems: readonly NavigationItem[] = [
   { view: 'analytics', index: '03', label: 'Data Analytics', icon: BarChart3 },
   { view: 'sources', index: '04', label: 'Sources', icon: Library }
 ]
-
-const navigationItems = [...primaryNavigationItems, ...secondaryNavigationItems] as const
 
 const SIDEBAR_WIDTH_STORAGE_KEY = 'therss.sidebar-width'
 const SIDEBAR_MIN_WIDTH = 184
@@ -189,6 +179,14 @@ export function App({ api }: AppProps) {
     (source) => source !== 'arxiv' && source !== 'github'
   )
   const sourceHealthSummary = getSourceHealthSummary(dashboard)
+  const savedFilterLabel =
+    sourceFilter === 'all'
+      ? 'All sources'
+      : sourceFilter === 'arxiv'
+        ? 'arXiv only'
+        : sourceFilter === 'github'
+          ? 'GitHub only'
+          : sourceDisplayName(sourceFilter)
   const sidebarMaximumWidth = maximumSidebarWidth(viewportWidth)
   const sidebarWidth = Math.min(preferredSidebarWidth, sidebarMaximumWidth)
 
@@ -571,36 +569,16 @@ export function App({ api }: AppProps) {
       />
 
       <main ref={mainRef}>
-        <header className="topbar">
-          <div className="topbar__leading">
-            <button
-              type="button"
-              className="toolbar-button"
-              aria-label={isSidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
-              aria-pressed={isSidebarCollapsed}
-              onClick={() => setIsSidebarCollapsed((current) => !current)}
-            >
-              {isSidebarCollapsed ? (
-                <PanelLeftOpen aria-hidden="true" size={17} strokeWidth={1.8} />
-              ) : (
-                <PanelLeftClose aria-hidden="true" size={17} strokeWidth={1.8} />
-              )}
-            </button>
-            <div className="topbar__identity">
-              <span className="profile-name">
-                {activeView === 'settings'
-                  ? 'Settings'
-                  : navigationItems.find((item) => item.view === activeView)?.label}
-              </span>
-              <span className="dateline">{dashboard?.date ?? 'Loading local index…'}</span>
-            </div>
-          </div>
-          {activeView === 'settings' && settingsDirty && (
-            <span className="topbar__unsaved" role="status">
-              Unsaved changes
-            </span>
-          )}
-        </header>
+        <AppTopbar
+          activeView={activeView}
+          dashboard={dashboard}
+          date={dashboard?.date ?? null}
+          isSidebarCollapsed={isSidebarCollapsed}
+          onToggleSidebar={() => setIsSidebarCollapsed((current) => !current)}
+          savedCount={viewItems.length}
+          savedFilterLabel={savedFilterLabel}
+          settingsDirty={settingsDirty}
+        />
 
         {error && (
           <div className="error-banner" role="alert">

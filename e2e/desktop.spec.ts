@@ -129,7 +129,33 @@ test('Discover-first search across every deployed source', async () => {
       name: 'Choose sources, 22 of 22 selected'
     })
     await expect(sourcePicker).toHaveAttribute('aria-expanded', 'false')
+    const viewContext = page.getByRole('group', { name: 'View context' })
+    await expect(viewContext).toContainText('22 sources')
+    await expect(viewContext).toContainText(/Sources ready|need attention|sources pending/u)
     await capture(page, '01-discover-first.png')
+    if (!isBaselineCapture) {
+      const originalBounds = await application.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0]!.getBounds()
+      )
+      await application.evaluate(({ BrowserWindow }, bounds) => {
+        BrowserWindow.getAllWindows()[0]?.setBounds({ ...bounds, width: 820, height: 700 })
+      }, originalBounds)
+      await page.waitForTimeout(250)
+      await expect(viewContext.locator('.topbar-context__secondary')).toHaveCSS('display', 'none')
+      expect(
+        await page.evaluate(() =>
+          Math.max(
+            document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            document.body.scrollWidth - document.body.clientWidth
+          )
+        )
+      ).toBeLessThanOrEqual(1)
+      await capture(page, '01a-discover-820.png')
+      await application.evaluate(({ BrowserWindow }, bounds) => {
+        BrowserWindow.getAllWindows()[0]?.setBounds(bounds)
+      }, originalBounds)
+      await page.waitForTimeout(250)
+    }
     await sourcePicker.click()
     const sourceGroup = page.getByRole('group', { name: 'Search sources' })
     await expect(sourceGroup.getByRole('checkbox')).toHaveCount(22)
@@ -263,6 +289,8 @@ test('Discover-first search across every deployed source', async () => {
     await discoverArticle.getByRole('button', { name: 'Save result' }).click({ force: true })
     await primaryNavigation.getByRole('button', { name: '02 Saved' }).click()
     await expect(page.getByRole('heading', { name: 'Saved research signals' })).toBeVisible()
+    await expect(viewContext).toContainText('1 saved')
+    await expect(viewContext).toContainText('All sources')
     await expect(
       page.getByRole('button', {
         name: 'Select signal: BAAI structured pruning research fixture'
@@ -304,6 +332,8 @@ test('Discover-first search across every deployed source', async () => {
 
     await page.getByRole('button', { name: 'Settings' }).click()
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+    await expect(viewContext).toContainText('Local settings')
+    await expect(viewContext).toContainText('All changes saved')
     const personalPrompt = page.getByRole('textbox', { name: 'Personal Discover prompt' })
     await expect(personalPrompt).toHaveValue('')
     await page.emulateMedia({ colorScheme: 'dark' })
@@ -426,6 +456,9 @@ test('Discover-first search across every deployed source', async () => {
 
     await researchUtilities.getByRole('button', { name: '03 Data Analytics' }).click()
     await expect(page.getByRole('heading', { name: 'Data Analytics' })).toBeVisible()
+    await expect(viewContext).toContainText('Local only')
+    await expect(viewContext).toContainText('No telemetry')
+    await expect(page.getByLabel('Last 7 local days')).toBeVisible()
     const searchResults = page.getByLabel('Lifetime returned records')
     await expect(searchResults).toContainText('6')
     await expect(searchResults).toContainText('0 legacy Today · 6 Discover')
@@ -436,6 +469,8 @@ test('Discover-first search across every deployed source', async () => {
       await expect(
         page.getByRole('heading', { name: '22 configured research sources' })
       ).toBeVisible()
+      await expect(viewContext).toContainText('22 not checked')
+      await expect(viewContext).toContainText('22 configured')
       await expect(page.locator('.source-catalog-card')).toHaveCount(22)
       await capture(page, '07-sources-directory.png')
       await page

@@ -44,7 +44,12 @@ function AnalyticsContent({ snapshot }: { readonly snapshot: AnalyticsSnapshot }
         <SummaryCard
           label="Lifetime returned records"
           value={snapshot.totals.searchResults}
-          detail={`${snapshot.totals.todayResults} legacy Today · ${snapshot.totals.discoverResults} Discover · ${recentWindowResults} in last ${snapshot.windowDays} local days`}
+          detail={`${snapshot.totals.todayResults} legacy Today · ${snapshot.totals.discoverResults} Discover`}
+        />
+        <SummaryCard
+          label={`Last ${snapshot.windowDays} local days`}
+          value={recentWindowResults}
+          detail="Persisted returned-record window"
         />
         <SummaryCard
           label="Deep analyses"
