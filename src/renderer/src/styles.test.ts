@@ -120,6 +120,24 @@ describe('Apple semantic color system', () => {
     expect(narrowRules).toMatch(/\.discover-source-picker\s*\{[^}]*grid-column:\s*1\s*\/\s*-1;/su)
   })
 
+  it('keeps the contextual top bar and four-metric Analytics strip responsive', () => {
+    expect(stylesheet).toMatch(
+      /\.topbar-context\s*\{[^}]*display:\s*flex;[^}]*border:\s*1px solid var\(--separator\);/su
+    )
+    expect(stylesheet).toMatch(
+      /\.topbar-context::before\s*\{[^}]*border-radius:\s*50%;[^}]*content:\s*'';/su
+    )
+    expect(stylesheet).toMatch(
+      /\.analytics-summary\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\);/su
+    )
+
+    const narrowRules = stylesheet.slice(stylesheet.indexOf('@media (max-width: 920px)'))
+    expect(narrowRules).toMatch(
+      /\.analytics-summary\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/su
+    )
+    expect(narrowRules).toMatch(/\.topbar-context__secondary\s*\{[^}]*display:\s*none;/su)
+  })
+
   it('uses an opaque placeholder token with normal-text contrast in both appearances', () => {
     const contrastRatio = (foreground: string, background: string): number => {
       const luminance = (hex: string) => {

@@ -72,11 +72,13 @@ describe('DataAnalyticsView', () => {
     expect(within(summary).getByLabelText('Lifetime returned records')).toHaveTextContent(
       '12 legacy Today · 8 Discover'
     )
-    expect(within(summary).getByLabelText('Lifetime returned records')).toHaveTextContent(
-      '14 in last 7 local days'
+    expect(within(summary).getByLabelText('Last 7 local days')).toHaveTextContent('14')
+    expect(within(summary).getByLabelText('Last 7 local days')).toHaveTextContent(
+      'Persisted returned-record window'
     )
     expect(within(summary).getByLabelText('Deep analyses')).toHaveTextContent('2')
     expect(within(summary).getByLabelText('Analyzed papers')).toHaveTextContent('1')
+    expect(within(summary).getAllByRole('article')).toHaveLength(4)
 
     const daily = screen.getByRole('table', { name: 'Daily search and analysis activity' })
     expect(within(daily).getByRole('columnheader', { name: 'Legacy Today' })).toBeVisible()
@@ -114,6 +116,7 @@ describe('DataAnalyticsView', () => {
 
     expect(await screen.findByText('No search activity recorded yet.')).toBeVisible()
     expect(screen.getByText('No deep analyses recorded yet.')).toBeVisible()
+    expect(screen.getByLabelText('Last 7 local days')).toHaveTextContent('0')
     expect(
       screen.getByText(/Legacy Today history starts when this analytics version records it/i)
     ).toBeVisible()

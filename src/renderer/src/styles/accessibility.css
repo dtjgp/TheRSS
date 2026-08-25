@@ -105,6 +105,12 @@
     border: 1px solid Canvas;
   }
 
+  .topbar-context::before {
+    forced-color-adjust: none;
+    background: CanvasText;
+    border: 1px solid Canvas;
+  }
+
   .error-banner,
   .form-error,
   .source-health-record,
