@@ -33,7 +33,7 @@ push a verified `main` to GitHub.
 - [x] Phase 6: Update README and run independent diff/security review
 - [x] Phase 7: Run full check, Electron E2E, screenshot matrix, package/install smoke
 - [x] Phase 8: Integrate every branch, rerun affected gates, delete obsolete branches
-- [ ] Phase 9: Push final main, verify remote state, and close evidence
+- [x] Phase 9: Push final main through the protected PR path, verify remote state, and close evidence
 
 ## Key decisions
 
@@ -65,7 +65,15 @@ push a verified `main` to GitHub.
   approved rerun reached one README conflict caused by old versus new verification counts; the
   current 57-file/382-test evidence was retained, the conflict was resolved, and the merge tree was
   proven identical to the pre-merge feature commit.
+- Direct `main` push passed the ECC pre-push gates but GitHub correctly rejected it because protected
+  main requires a PR, two checks, and no merge commits. The verified tree was replayed without merge
+  commits on `codex/contextual-status-release`, PR #30 passed both CI jobs, and GitHub squash-merged it.
+- The local `gh` token was stale and repository auto-merge is disabled, so the authenticated GitHub
+  connector created and merged PR #30 after CI. GitHub deleted the remote temporary branch; the exact
+  local temporary branch was deleted only after all local/remote/squash trees matched.
 
 ## Status
 
-**Currently in Phase 9** - Committing final evidence, pushing `main`, and verifying the remote SHA.
+**Complete** - PR #30 is merged, the verified app is installed, only main remains, and local main,
+`origin/main`, and the live remote ref matched `e227b14134282d5a683489a89ea9a90eb0499aa7` at product
+closeout.
