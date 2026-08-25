@@ -86,6 +86,10 @@ and package smoke pass; live source/model execution remains an explicit opt-in v
 
 ## Deferred
 
+The 83 dormant `sourceCatalogData.json` entries are triaged in
+[SOURCE_CATALOG_BACKLOG.md](SOURCE_CATALOG_BACKLOG.md): they reduce to one RSSHub
+adopt-or-drop decision covering 72 entries, plus 11 individually scoped adapters.
+
 - Account login and cross-device synchronization. The experimental Google Drive implementation was withdrawn on 2026-08-16; the current product contains no login or Sync surface.
 - Official GitHub Trending HTML adapter.
 - Learned recommendations.
