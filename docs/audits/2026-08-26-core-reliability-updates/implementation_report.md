@@ -27,9 +27,17 @@ Status: complete in source/package scope.
   `80d54e0b63fb900fa2b536c3fb9b72681fbe248edd6fde9b047feeb24d246005`.
 - Scoped installer/migration/search closeout: 9/9 tests.
 
-## Boundaries
+## Authorized release closure
 
-No live app replacement, commit, push, PR, merge, tag, GitHub Release, signing/notarization, live
-provider/source request, or real llm-wiki write was performed. Local search currently uses bounded
-parameterized SQLite scans; FTS5 remains an optional performance optimization if local volume grows
-materially.
+- Commit `9a9710c` was pushed to `origin/codex/core-reliability-updates`; PR #33 targets protected
+  `main` and remains unmerged.
+- `/Users/dtjgp/Applications/TheRSS Dev.app` now matches the verified package hash
+  `80d54e0b63fb900fa2b536c3fb9b72681fbe248edd6fde9b047feeb24d246005`.
+- The prior app and database are retained at timestamp `2026-08-26T15-16-36-207Z`; both current and
+  backup SQLite integrity checks returned `ok`.
+- The completed install receipt is under Application Support `install-receipts/`; installed smoke
+  and installed-binary desktop E2E 1/1 passed with temporary user data.
+
+No merge, tag, GitHub Release, signing/notarization, live provider/source request, or real llm-wiki
+write was performed. Local search currently uses bounded parameterized SQLite scans; FTS5 remains an
+optional performance optimization if local volume grows materially.

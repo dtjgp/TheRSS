@@ -127,5 +127,7 @@
   local search may need FTS5 only if data volume materially outgrows bounded scans.
 - **Rollback path:** revert repository changes; additive SQLite cancellation states remain readable;
   installer keeps previous app/database backups and failed replacement artifact when applicable.
-- **Git/install/push/publication state:** working tree intentionally uncommitted on local `main`; no
-  installed or remote state changed.
+- **Git/install/push/publication state:** after separate user authorization, commit `9a9710c` was
+  pushed to `codex/core-reliability-updates`, PR #33 was opened against protected `main`, and the
+  installed app was replaced recoverably. Release/installed hashes match; current/backup SQLite,
+  installed smoke, and installed E2E pass. PR merge and release publication remain unperformed.

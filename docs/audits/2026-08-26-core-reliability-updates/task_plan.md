@@ -95,5 +95,6 @@ stale when its source changes. Add local unified search only after those invaria
 ## Status
 
 **Complete** — all scoped core reliability and local-search behavior, migrations, tests, E2E,
-dependency audit, package build/smoke, documentation, and independent diff review are closed. Live
-installation and Git publication remain outside this request.
+dependency audit, package build/smoke, documentation, independent diff review, subsequent authorized
+branch publication, PR #33 creation, and recoverable installed-app replacement are closed. Merge and
+GitHub Release publication remain outside this request.

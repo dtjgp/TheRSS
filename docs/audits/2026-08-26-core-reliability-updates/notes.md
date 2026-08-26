@@ -40,4 +40,23 @@
   `80d54e0b63fb900fa2b536c3fb9b72681fbe248edd6fde9b047feeb24d246005`.
 - Isolated installer/migration/local-search closeout: 3 files / 9 tests passed.
 - `git diff --check`, added-line credential/private-key/debug scan, and architecture line limits
-  passed. `main` remains uncommitted and no live app/database was replaced.
+  passed before publication.
+
+## Subsequent authorized release closure
+
+- Commit: `9a9710c61d0ef35f1aa6e07c2370a0cf75f56d36` on
+  `codex/core-reliability-updates`; local/tracking/live remote SHA equality verified.
+- Pull request: <https://github.com/dtjgp/TheRSS/pull/33> targeting protected `main`; not merged.
+- Installed target: `/Users/dtjgp/Applications/TheRSS Dev.app`; release/installed `app.asar` both
+  `80d54e0b63fb900fa2b536c3fb9b72681fbe248edd6fde9b047feeb24d246005`.
+- Previous app retained:
+  `/Users/dtjgp/Applications/TheRSS Dev.backup-2026-08-26T15-16-36-207Z.app`, hash
+  `965e29105a807e1c218b8bd21dbaf91a9c567019ebe0ad9ea324cb39dd6957da`.
+- Database backup:
+  `/Users/dtjgp/Library/Application Support/therss/backups/therss-2026-08-26T15-16-36-207Z.sqlite`;
+  current and backup databases both returned `PRAGMA integrity_check = ok`.
+- Completed receipt:
+  `/Users/dtjgp/Library/Application Support/therss/install-receipts/install-2026-08-26T15-16-36-207Z.json`;
+  scoped install lock was released.
+- Installed package smoke passed and installed-binary desktop E2E passed 1/1 using temporary user
+  data.

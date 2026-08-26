@@ -38,8 +38,11 @@ the production dependency audit found zero vulnerabilities; the unsigned arm64 p
 smoke passed; isolated install/migration/search tests passed. The packaged `app.asar` is
 `80d54e0b63fb900fa2b536c3fb9b72681fbe248edd6fde9b047feeb24d246005`.
 
-Live app replacement, commit, push, PR, release publication, live provider/source access, and real
-llm-wiki writes were deliberately not performed by this goal.
+The implementation goal initially closed without external mutation. After separate explicit user
+authorization, commit `9a9710c` was pushed to `codex/core-reliability-updates`, PR #33 was opened,
+and the verified app replaced the installed personal beta with a recoverable app/database backup
+and completed install receipt. Merge, release publication, live provider/source access, and real
+llm-wiki writes remain unperformed.
 
 ## Completed goal: Development workflow hardening
 
