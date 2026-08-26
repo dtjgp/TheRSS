@@ -69,6 +69,7 @@
   --sidebar: rgba(244, 244, 246, 0.84);
   --sidebar-text: var(--label);
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  --selection-radius: 7px;
 }
 
 /* Resolved from systemPreferences.getAccentColor() via resolveSystemAccentName().
@@ -358,7 +359,7 @@ nav {
   text-align: left;
   background: transparent;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--selection-radius);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -1756,6 +1757,17 @@ main {
 
   .discover-source-picker {
     grid-column: 1 / -1;
+  }
+
+  .discover-result-list > .today-view__heading {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .discover-result-filters {
+    align-self: flex-start;
+    grid-template-columns: repeat(2, minmax(0, 68px));
   }
 }
 

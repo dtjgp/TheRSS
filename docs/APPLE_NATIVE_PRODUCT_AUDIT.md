@@ -186,3 +186,11 @@ Apple 系统颜色在原生控件中是动态颜色；把名称和固定 hex 搬
   SF Pro Text 系统栈与克制的分组表面；不打包或分发第三方字体，也不在内容平面叠加
   Liquid Glass 或装饰性特效。
 - **验证**：`npm run check` 通过 43 个测试文件 / 237 个测试；Electron E2E 1/1 通过，包含 Apple 字体运行时断言；关键浅色截图均已检查；unsigned macOS 包已通过可回滚流程安装，且已安装可执行文件通过隔离启动与 preload smoke。
+
+## 10. 2026-08-26 Discover 列表—详情收敛
+
+- **已完成 N12**：Discover 的重复大卡片结果流改为与 Saved 一致的可调列表—详情工作区；紧凑行负责扫描，单一详情负责完整摘要、匹配理由、Saved、paper-only Analyze、llm-wiki promotion 和原生右键菜单。
+- **交互与状态**：点击与方向键移动使用 roving focus；筛选后选择确定性回退；24 条渐进展示、Search details、22 来源 outcome、provenance 和 evidence boundary 均保持原语义。
+- **响应式与可访问性**：820 px 下列表与详情纵向堆叠；结果筛选器宽屏 4 列、窄屏 2 列、极窄容器 1 列；暗色、forced-colors 和键盘 focus 已由当前 Electron fixture 验证。
+- **后续残余已解决**：2026-08-26 zoom-aware Shell 切片将用户手动偏好与受限视口下的有效紧凑态分离；renderer 宽度低于 760 px 时侧栏自动紧凑，恢复空间后还原先前手动状态。200% Electron 截图中的结果标题、筛选器和主内容不再被展开侧栏挤压。
+- **验证边界**：`npm run check` 通过 57 个测试文件 / 382 个测试；Electron E2E 2/2 通过。未执行 live provider/source、安装替换、Git commit/push 或第三方写入。

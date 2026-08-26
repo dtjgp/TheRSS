@@ -17,6 +17,7 @@ interface AppTopbarProps {
   readonly dashboard: DashboardSnapshot | null
   readonly date: string | null
   readonly isSidebarCollapsed: boolean
+  readonly isSidebarConstrained: boolean
   readonly onToggleSidebar: () => void
   readonly savedCount: number
   readonly savedFilterLabel: string
@@ -142,8 +143,15 @@ export function AppTopbar(props: AppTopbarProps) {
         <button
           type="button"
           className="toolbar-button"
-          aria-label={props.isSidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+          aria-label={
+            props.isSidebarConstrained
+              ? 'Sidebar compact at current zoom'
+              : props.isSidebarCollapsed
+                ? 'Show sidebar'
+                : 'Hide sidebar'
+          }
           aria-pressed={props.isSidebarCollapsed}
+          disabled={props.isSidebarConstrained}
           onClick={props.onToggleSidebar}
         >
           {props.isSidebarCollapsed ? (

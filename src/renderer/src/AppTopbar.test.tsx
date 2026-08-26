@@ -24,6 +24,7 @@ const defaultProps = {
   dashboard: dashboardWithHealth(),
   date: '2026-08-25',
   isSidebarCollapsed: false,
+  isSidebarConstrained: false,
   onToggleSidebar: vi.fn(),
   savedCount: 4,
   savedFilterLabel: 'All sources',
@@ -94,5 +95,17 @@ describe('AppTopbar', () => {
       'aria-pressed',
       'true'
     )
+
+    rerender(
+      <AppTopbar
+        {...defaultProps}
+        dashboard={null}
+        date={null}
+        isSidebarCollapsed
+        isSidebarConstrained
+        onToggleSidebar={onToggleSidebar}
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Sidebar compact at current zoom' })).toBeDisabled()
   })
 })

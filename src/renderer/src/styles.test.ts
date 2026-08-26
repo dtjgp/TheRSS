@@ -93,13 +93,23 @@ describe('Apple semantic color system', () => {
     )
   })
 
-  it('keeps long Discover sessions inside a keyboard-scrollable result region', () => {
+  it('uses one rounded selection shape for navigation and Discover filters', () => {
+    expect(stylesheet).toContain('--selection-radius: 7px;')
+    expect(stylesheet).toMatch(/\.nav-item\s*\{[^}]*border-radius:\s*var\(--selection-radius\);/su)
     expect(stylesheet).toMatch(
-      /\.discover-result-list\s*\{[^}]*overflow-y:\s*auto;[^}]*overscroll-behavior:\s*contain;[^}]*scrollbar-gutter:\s*stable;/su
+      /\.discover-result-filters button\s*\{[^}]*border-radius:\s*var\(--selection-radius\);/su
+    )
+  })
+
+  it('keeps long Discover sessions inside independently scrollable list-detail panes', () => {
+    expect(stylesheet).toMatch(
+      /\.discover-result-list\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*overflow:\s*hidden;/su
     )
     expect(stylesheet).toMatch(
-      /\.discover-result-list\s*>\s*\.today-view__heading\s*\{[^}]*position:\s*sticky;/su
+      /#discover-visible-results\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-height:\s*0;/su
     )
+    expect(stylesheet).toMatch(/\.signal-list\s*\{[^}]*overflow-y:\s*auto;/su)
+    expect(stylesheet).toMatch(/\.signal-detail\s*\{[^}]*overflow-y:\s*auto;/su)
   })
 
   it('keeps Personal Prompt controls on the full Settings panel width', () => {
@@ -118,6 +128,25 @@ describe('Apple semantic color system', () => {
       /\.discover-controls\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto;/su
     )
     expect(narrowRules).toMatch(/\.discover-source-picker\s*\{[^}]*grid-column:\s*1\s*\/\s*-1;/su)
+    expect(narrowRules).toMatch(
+      /\.discover-result-list\s*>\s*\.today-view__heading\s*\{[^}]*flex-direction:\s*column;/su
+    )
+    expect(stylesheet).toMatch(
+      /\.discover-result-filters\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*68px\)\);[^}]*max-width:\s*100%;/su
+    )
+    expect(narrowRules).toMatch(
+      /\.discover-result-filters\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*68px\)\);/su
+    )
+    expect(stylesheet).toMatch(/\.discover-result-list\s*\{[^}]*container-type:\s*inline-size;/su)
+    expect(stylesheet).toMatch(
+      /\.discover-result-list\s*>\s*\.today-view__heading\s*>\s*div\s*\{[^}]*min-width:\s*0;[^}]*max-width:\s*100%;/su
+    )
+    expect(stylesheet).toMatch(
+      /@container\s*\(max-width:\s*520px\)\s*\{[\s\S]*?\.discover-result-filters\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*68px\);/su
+    )
+    expect(stylesheet).toMatch(
+      /@container\s*\(max-width:\s*520px\)\s*\{[\s\S]*?\.discover-result-list\s*>\s*\.today-view__heading h2\s*\{[^}]*font-size:\s*18px;[^}]*overflow-wrap:\s*anywhere;/su
+    )
   })
 
   it('keeps the contextual top bar and four-metric Analytics strip responsive', () => {
@@ -168,14 +197,14 @@ describe('Apple semantic color system', () => {
   })
 
   it('keeps large-result and Saved triage controls compact and visible', () => {
-    const discoverSummaryRule = stylesheet.match(/\.discover-card__summary\s*\{([^}]*)\}/su)?.[1]
+    const discoverSummaryRule = stylesheet.match(/\.signal-row__summary\s*\{([^}]*)\}/su)?.[1]
     const savedSummaryRule = stylesheet.match(
       /\.signal-detail__summary\[data-expanded='false'\]\s*\{([^}]*)\}/su
     )?.[1]
-    expect(discoverSummaryRule).toContain('-webkit-line-clamp: 3;')
+    expect(discoverSummaryRule).toContain('-webkit-line-clamp: 2;')
     expect(discoverSummaryRule).toContain('overflow: hidden;')
     expect(stylesheet).toMatch(
-      /\.discover-result-pagination\s*\{[^}]*position:\s*sticky;[^}]*bottom:\s*0;/su
+      /\.discover-result-pagination\s*\{[^}]*position:\s*relative;[^}]*flex:\s*0 0 auto;/su
     )
     expect(stylesheet).toMatch(
       /\.signal-detail__actions\s*\{[^}]*position:\s*sticky;[^}]*top:\s*0;/su

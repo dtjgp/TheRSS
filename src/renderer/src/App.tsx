@@ -44,6 +44,7 @@ const SIDEBAR_WIDTH_STORAGE_KEY = 'therss.sidebar-width'
 const SIDEBAR_MIN_WIDTH = 184
 const SIDEBAR_MAX_WIDTH = 360
 const SIDEBAR_KEYBOARD_STEP = 8
+const SIDEBAR_CONSTRAINED_VIEWPORT_WIDTH = 760
 const MAIN_CONTENT_MIN_WIDTH = 640
 
 interface SidebarResizeDrag {
@@ -189,6 +190,8 @@ export function App({ api }: AppProps) {
           : sourceDisplayName(sourceFilter)
   const sidebarMaximumWidth = maximumSidebarWidth(viewportWidth)
   const sidebarWidth = Math.min(preferredSidebarWidth, sidebarMaximumWidth)
+  const isSidebarConstrained = viewportWidth <= SIDEBAR_CONSTRAINED_VIEWPORT_WIDTH
+  const isSidebarEffectivelyCollapsed = isSidebarCollapsed || isSidebarConstrained
 
   const updateSidebarWidth = useCallback(
     (width: number, persist: boolean) => {
@@ -205,7 +208,7 @@ export function App({ api }: AppProps) {
   )
 
   const startSidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (isSidebarCollapsed || event.button !== 0) return
+    if (isSidebarEffectivelyCollapsed || event.button !== 0) return
     event.preventDefault()
     event.currentTarget.setPointerCapture?.(event.pointerId)
     sidebarResizeDragRef.current = {
@@ -429,7 +432,7 @@ export function App({ api }: AppProps) {
             void navigate('discover')
             return
           case 'toggle-sidebar':
-            setIsSidebarCollapsed((current) => !current)
+            if (!isSidebarConstrained) setIsSidebarCollapsed((current) => !current)
             return
           case 'undo-triage':
             void undoLastTriage()
@@ -458,6 +461,7 @@ export function App({ api }: AppProps) {
       analyzeItem,
       api,
       dashboard,
+      isSidebarConstrained,
       navigate,
       selectedSignalId,
       undoLastTriage,
@@ -467,8 +471,9 @@ export function App({ api }: AppProps) {
 
   return (
     <div
-      className={`app-shell ${isSidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''} ${isSidebarResizing ? 'app-shell--sidebar-resizing' : ''}`}
+      className={`app-shell ${isSidebarEffectivelyCollapsed ? 'app-shell--sidebar-collapsed' : ''} ${isSidebarResizing ? 'app-shell--sidebar-resizing' : ''}`}
       data-view={activeView}
+      data-sidebar-constrained={String(isSidebarConstrained)}
       style={{ '--sidebar-width': `${sidebarWidth}px` } as CSSProperties}
     >
       <aside className="sidebar">
@@ -489,7 +494,7 @@ export function App({ api }: AppProps) {
                 className={`nav-item ${activeView === item.view ? 'nav-item--active' : ''}`}
                 aria-current={activeView === item.view ? 'page' : undefined}
                 aria-label={`${item.index} ${item.label}`}
-                title={isSidebarCollapsed ? item.label : undefined}
+                title={isSidebarEffectivelyCollapsed ? item.label : undefined}
                 onClick={() => void navigate(item.view)}
               >
                 <Icon className="nav-item__icon" aria-hidden="true" size={17} strokeWidth={1.8} />
@@ -508,7 +513,7 @@ export function App({ api }: AppProps) {
                 className={`nav-item ${activeView === item.view ? 'nav-item--active' : ''}`}
                 aria-current={activeView === item.view ? 'page' : undefined}
                 aria-label={`${item.index} ${item.label}`}
-                title={isSidebarCollapsed ? item.label : undefined}
+                title={isSidebarEffectivelyCollapsed ? item.label : undefined}
                 onClick={() => {
                   if (item.view === 'sources') setSourceAttentionOnly(false)
                   void navigate(item.view)
@@ -526,7 +531,7 @@ export function App({ api }: AppProps) {
             className={`nav-item sidebar__settings ${activeView === 'settings' ? 'nav-item--active' : ''}`}
             aria-current={activeView === 'settings' ? 'page' : undefined}
             aria-label="Settings"
-            title={isSidebarCollapsed ? 'Settings' : undefined}
+            title={isSidebarEffectivelyCollapsed ? 'Settings' : undefined}
             onClick={() => void navigate('settings')}
           >
             <Settings className="nav-item__icon" aria-hidden="true" size={17} strokeWidth={1.8} />
@@ -557,8 +562,8 @@ export function App({ api }: AppProps) {
         aria-valuemax={sidebarMaximumWidth}
         aria-valuenow={sidebarWidth}
         aria-valuetext={`${sidebarWidth} pixels`}
-        hidden={isSidebarCollapsed}
-        tabIndex={isSidebarCollapsed ? -1 : 0}
+        hidden={isSidebarEffectivelyCollapsed}
+        tabIndex={isSidebarEffectivelyCollapsed ? -1 : 0}
         title="Drag to resize sidebar"
         onPointerDown={startSidebarResize}
         onPointerMove={moveSidebarResize}
@@ -573,7 +578,8 @@ export function App({ api }: AppProps) {
           activeView={activeView}
           dashboard={dashboard}
           date={dashboard?.date ?? null}
-          isSidebarCollapsed={isSidebarCollapsed}
+          isSidebarCollapsed={isSidebarEffectivelyCollapsed}
+          isSidebarConstrained={isSidebarConstrained}
           onToggleSidebar={() => setIsSidebarCollapsed((current) => !current)}
           savedCount={viewItems.length}
           savedFilterLabel={savedFilterLabel}

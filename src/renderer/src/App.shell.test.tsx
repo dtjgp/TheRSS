@@ -235,6 +235,50 @@ describe('App', () => {
     expect(separator).toHaveAttribute('aria-valuemax', '360')
   })
 
+  it('compacts the sidebar only when the renderer viewport is constrained and restores preference', () => {
+    render(<App api={createApi()} />)
+    const shell = document.querySelector<HTMLElement>('.app-shell')
+
+    expect(shell).not.toHaveClass('app-shell--sidebar-collapsed')
+    expect(screen.getByRole('button', { name: 'Hide sidebar' })).toBeEnabled()
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: 820 })
+    fireEvent(window, new Event('resize'))
+    expect(shell).not.toHaveClass('app-shell--sidebar-collapsed')
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: 700 })
+    fireEvent(window, new Event('resize'))
+    expect(shell).toHaveClass('app-shell--sidebar-collapsed')
+    expect(shell).toHaveAttribute('data-sidebar-constrained', 'true')
+    expect(screen.getByRole('button', { name: 'Sidebar compact at current zoom' })).toBeDisabled()
+    expect(screen.queryByRole('separator', { name: 'Resize sidebar' })).not.toBeInTheDocument()
+    expect(window.localStorage.getItem('therss.sidebar-width')).toBeNull()
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: 1360 })
+    fireEvent(window, new Event('resize'))
+    expect(shell).not.toHaveClass('app-shell--sidebar-collapsed')
+    expect(shell).toHaveAttribute('data-sidebar-constrained', 'false')
+    expect(screen.getByRole('button', { name: 'Hide sidebar' })).toBeEnabled()
+    expect(screen.getByRole('separator', { name: 'Resize sidebar' })).toBeVisible()
+  })
+
+  it('preserves a manual compact preference across a constrained viewport round trip', async () => {
+    const user = userEvent.setup()
+    render(<App api={createApi()} />)
+    const shell = document.querySelector<HTMLElement>('.app-shell')
+
+    await user.click(screen.getByRole('button', { name: 'Hide sidebar' }))
+    expect(shell).toHaveClass('app-shell--sidebar-collapsed')
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: 700 })
+    fireEvent(window, new Event('resize'))
+    Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: 1360 })
+    fireEvent(window, new Event('resize'))
+
+    expect(shell).toHaveClass('app-shell--sidebar-collapsed')
+    expect(screen.getByRole('button', { name: 'Show sidebar' })).toBeEnabled()
+  })
+
   it('preserves the wider preference when a capped drag returns to its start', () => {
     window.localStorage.setItem('therss.sidebar-width', '296')
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 900 })
