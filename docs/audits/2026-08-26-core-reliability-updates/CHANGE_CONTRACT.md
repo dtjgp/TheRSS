@@ -131,3 +131,7 @@
   pushed to `codex/core-reliability-updates`, PR #33 was opened against protected `main`, and the
   installed app was replaced recoverably. Release/installed hashes match; current/backup SQLite,
   installed smoke, and installed E2E pass. PR merge and release publication remain unperformed.
+- **Subsequent cleanup:** after another explicit request, the exact timestamped app/database backup
+  pair was moved to Trash. The live Application Support directory was unexpectedly observed there,
+  restored intact, and reverified (`integrity_check = ok`) before publication of this note; cause is
+  unproven.

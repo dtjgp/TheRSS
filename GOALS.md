@@ -42,7 +42,8 @@ The implementation goal initially closed without external mutation. After separa
 authorization, commit `9a9710c` was pushed to `codex/core-reliability-updates`, PR #33 was opened,
 and the verified app replaced the installed personal beta with a recoverable app/database backup
 and completed install receipt. Merge, release publication, live provider/source access, and real
-llm-wiki writes remain unperformed.
+llm-wiki writes remain unperformed. The user subsequently requested cleanup of that exact timestamped
+app/database backup pair; both were moved to macOS Trash and the live app/database remained verified.
 
 ## Completed goal: Development workflow hardening
 

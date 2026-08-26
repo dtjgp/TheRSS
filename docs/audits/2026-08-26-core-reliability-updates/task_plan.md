@@ -91,6 +91,10 @@ stale when its source changes. Add local unified search only after those invaria
 - The first final `npm run check` stopped at `format:check` because the new requirements-traceability
   table rows had not been passed through Prettier. Format the document and rerun the full gate from
   the beginning; no code/test failure was reported in that attempt.
+- During later user-authorized cleanup of the exact timestamped app/database backup pair, the whole
+  live Application Support directory was unexpectedly observed in Trash. Restored it intact before
+  continuing; live SQLite integrity, active App hash, and install receipt were reverified. Cause is
+  not established.
 
 ## Status
 

@@ -41,3 +41,9 @@ Status: complete in source/package scope.
 No merge, tag, GitHub Release, signing/notarization, live provider/source request, or real llm-wiki
 write was performed. Local search currently uses bounded parameterized SQLite scans; FTS5 remains an
 optional performance optimization if local volume grows materially.
+
+After this release closure, the user explicitly requested cleanup of the exact timestamped app and
+database backup pair. Both were moved to macOS Trash and remain recoverable there. The live
+Application Support directory was unexpectedly observed in Trash during the operation, restored
+intact without assigning an unproven cause, and its database passed `integrity_check`; the active App
+hash and completed install receipt also remained valid.

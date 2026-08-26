@@ -60,3 +60,19 @@
   scoped install lock was released.
 - Installed package smoke passed and installed-binary desktop E2E passed 1/1 using temporary user
   data.
+
+## User-authorized backup cleanup
+
+- The exact timestamped app backup
+  `/Users/dtjgp/Applications/TheRSS Dev.backup-2026-08-26T15-16-36-207Z.app` and database backup
+  `/Users/dtjgp/Library/Application Support/therss/backups/therss-2026-08-26T15-16-36-207Z.sqlite`
+  were moved to macOS Trash, not permanently erased.
+- During cleanup, the complete live `Application Support/therss` directory was unexpectedly found
+  in Trash. No causal attribution is established. The directory was restored intact to its original
+  path before any documentation commit.
+- After recovery, the live database returned `PRAGMA integrity_check = ok`, the completed install
+  receipt remained present, and the active installed `app.asar` still matched
+  `80d54e0b63fb900fa2b536c3fb9b72681fbe248edd6fde9b047feeb24d246005`.
+- Recoverable Trash targets are:
+  `/Users/dtjgp/.Trash/TheRSS Dev.backup-2026-08-26T15-16-36-207Z.app` and
+  `/Users/dtjgp/.Trash/therss-2026-08-26T15-16-36-207Z.sqlite`.
