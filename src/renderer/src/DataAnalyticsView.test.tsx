@@ -64,7 +64,24 @@ function apiWith(getAnalytics: TheRSSApi['getAnalytics']): TheRSSApi {
 
 describe('DataAnalyticsView', () => {
   it('shows separated daily search volume and the analyzed-item history', async () => {
-    render(<DataAnalyticsView api={apiWith(vi.fn().mockResolvedValue(snapshot))} />)
+    const api = apiWith(vi.fn().mockResolvedValue(snapshot))
+    api.getAnalysisArtifact = vi.fn().mockResolvedValue({
+      freshness: 'stale',
+      currentSourceHash: 'c'.repeat(64),
+      artifact: {
+        id: 'analysis-2',
+        itemId: 'github:owner/repo',
+        providerId: 'local-agent:codex',
+        providerName: 'Codex CLI',
+        model: 'codex-cli',
+        promptVersion: 'discovery-analysis-v1',
+        sourceHash: 'b'.repeat(64),
+        content: 'Historical analysis content.',
+        createdAt: '2026-08-17T11:00:00.000Z'
+      }
+    })
+    const user = userEvent.setup()
+    render(<DataAnalyticsView api={api} />)
 
     expect(await screen.findByRole('heading', { name: 'Data Analytics' })).toBeVisible()
     const summary = screen.getByRole('group', { name: 'Analytics summary' })
@@ -91,6 +108,12 @@ describe('DataAnalyticsView', () => {
     expect(within(history).getByText('DeepSeek · deepseek-chat')).toBeVisible()
     expect(within(history).getByText('Codex CLI · codex-cli')).toBeVisible()
     expect(screen.getByText(/repeated refreshes may include the same result again/i)).toBeVisible()
+
+    await user.click(within(history).getByRole('button', { name: 'Open analysis: owner/repo' }))
+    expect(api.getAnalysisArtifact).toHaveBeenCalledWith('analysis-2')
+    const detail = await screen.findByRole('article', { name: 'Historical analysis detail' })
+    expect(within(detail).getByText('Historical analysis content.')).toBeVisible()
+    expect(within(detail).getByText('Stale — source changed since this analysis')).toBeVisible()
   })
 
   it('shows honest empty states when no activity has been recorded', async () => {

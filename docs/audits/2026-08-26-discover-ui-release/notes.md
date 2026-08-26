@@ -44,3 +44,11 @@
   documented personal-beta boundary.
 - GitHub PR creation was not performed: the connector required explicit PR authorization distinct
   from commit/install/push.
+
+## Subsequent authorized closure
+
+- The user later explicitly authorized PR creation and merge.
+- PR #32 merged the release branch through protected `main`.
+- Current local and remote `main` agree at merge commit `c4a0c66`.
+- The earlier `e9e415a` and PR-blocked entries above remain the accurate pre-authorization snapshot,
+  not the current repository state.

@@ -38,6 +38,7 @@ export interface LocalAgentProcessRequest {
   readonly timeoutMs: number
   readonly maxOutputBytes: number
   readonly environment: NodeJS.ProcessEnv
+  readonly signal?: AbortSignal
 }
 
 type ResolveExecutable = (runner: LocalAgentRunner) => Promise<string | null>
@@ -72,6 +73,7 @@ export function executeBoundedCommand(request: LocalAgentProcessRequest): Promis
       if (settled) return
       settled = true
       clearTimeout(timeout)
+      request.signal?.removeEventListener('abort', abort)
       if (error) reject(error)
       else resolve(value)
     }
@@ -79,10 +81,13 @@ export function executeBoundedCommand(request: LocalAgentProcessRequest): Promis
       child.kill('SIGTERM')
       finish(error)
     }
+    const abort = () => terminate(new Error('Local agent analysis canceled'))
     const timeout = setTimeout(
       () => terminate(new Error(finishErrorMessage('timeout'))),
       request.timeoutMs
     )
+    if (request.signal?.aborted) abort()
+    else request.signal?.addEventListener('abort', abort, { once: true })
 
     child.stdout.on('data', (chunk: Buffer | string) => {
       const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
@@ -275,9 +280,10 @@ export class LocalAgentService {
 
   async planDiscovery(
     prompt: string,
-    runner: LocalAgentRunner
+    runner: LocalAgentRunner,
+    signal?: AbortSignal
   ): Promise<LocalAgentAnalysisResponse> {
-    const content = await this.runPrompt(prompt, runner)
+    const content = await this.runPrompt(prompt, runner, signal)
     return {
       content,
       providerId: `local-agent:${runner}`,
@@ -288,7 +294,7 @@ export class LocalAgentService {
     }
   }
 
-  async runPrompt(prompt: string, runner: LocalAgentRunner): Promise<string> {
+  async runPrompt(prompt: string, runner: LocalAgentRunner, signal?: AbortSignal): Promise<string> {
     const executable = await this.#resolveExecutable(runner)
     if (!executable) throw new Error(`${RUNNER_METADATA[runner].label} was not found`)
 
@@ -300,7 +306,8 @@ export class LocalAgentService {
         cwd: this.#workingDirectory,
         timeoutMs: ANALYSIS_TIMEOUT_MS,
         maxOutputBytes: MAX_OUTPUT_BYTES,
-        environment: sanitizedEnvironment(this.#environment, executable, this.#workingDirectory)
+        environment: sanitizedEnvironment(this.#environment, executable, this.#workingDirectory),
+        ...(signal ? { signal } : {})
       })
     ).trim()
     if (!content) throw new Error('Local agent returned an empty analysis')

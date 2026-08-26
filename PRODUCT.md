@@ -52,7 +52,9 @@ provenance without copying secrets.
    plan/provenance/source-outcome inspector below it. Every selected result has a reversible
    outline/filled Saved star; paper records additionally expose a user-initiated L1 analysis action
    without implicitly saving the paper. arXiv papers also expose the separately confirmed llm-wiki
-   promotion action.
+   promotion action. A run reports validated planning and per-source completion progress, can be
+   canceled without waiting for a hanging source, and can retry only failed, partial, or canceled
+   sources from the persisted plan without invoking the planner again.
 2. **Saved** — one persisted shelf for explicitly retained research signals from every active
    source. A selected saved arXiv paper can enter the same llm-wiki preview/confirmation workflow.
 3. **Settings** — two focused panes for Personal Prompt and one model provider profile, plus local
@@ -61,11 +63,16 @@ provenance without copying secrets.
    cleared explicitly.
 4. **Data Analytics** — a secondary local utility for Discover result-volume reporting, preserved
    historical Today volume, and a provenance-bearing ledger of deeply analyzed research signals.
+   Historical artifacts can be reopened by ID as bounded plain text; their stored source hash is
+   compared with the current local record and labeled current, stale, source-missing, or legacy.
 5. **Sources** — a secondary searchable directory containing only the 22 retained sources, with
    priority, full research-area labels, dated registry provenance, per-source recorded health time,
    and an actionable attention filter. Selecting a source opens an in-app rolling 30-day view;
    arXiv opens the newest available official daily batch. The larger raw catalog remains dormant
    versioned metadata and is not exposed or scheduled.
+6. **Find Local Research** — a Command-F overlay that searches bounded fields across Saved items,
+   persisted Discover sessions, and analysis content in local SQLite. It uses no model, embedding,
+   telemetry, or network request.
 
 Dedicated full-item reading, source weighting, background refresh, and in-app update controls
 remain later surfaces. Legacy Interest profiles,
@@ -97,14 +104,18 @@ Paper promotion remains a separate branch:
 - Duplicate URLs or sufficiently specific titles do not appear twice across active sources in the same inbox.
 - A missing or failing configured model provider does not erase prior Discover sessions or Saved data; detected local Codex/Claude runners remain explicit alternatives.
 - Discover rejects invalid model-generated plans before any source request, distinguishes complete,
-  partial, empty, and failed outcomes per selected source, and never silently treats a browse-only
-  source's unrelated recent records as semantic matches.
+  partial, empty, failed, and canceled outcomes per selected source, and never silently treats a
+  browse-only source's unrelated recent records as semantic matches. Retrying a partial run reuses
+  its validated plan and never reruns a successful source.
 - Personal Prompt input is length/control-character validated at IPC and persistence boundaries;
   the composed planner input is versioned and hashed, and historical provenance records only
   whether personalization was applied. The persisted generated plan remains inspectable derived
   evidence and can reflect terms from the profile.
 - Data Analytics retains historical Today refresh volume separately from explicit Discover volume,
-  derives deep-analysis history only from persisted artifacts, and does not fabricate history.
+  derives deep-analysis history only from persisted artifacts, reopens immutable historical
+  content, and labels source-hash mismatches without rewriting old evidence.
+- Local unified search is parameterized, bounded to 50 results and local indexed data, and never
+  calls a source adapter, model provider, or local agent.
 - The Sources directory and Discover selector expose exactly 22 unique retained HTTPS sources
   (A=7, B=15, C=0) that passed the dated deployment-verification gate; current recorded health and
   observation time remain separate, and deferred catalog entries are absent from the product surface.
@@ -121,4 +132,6 @@ Paper promotion remains a separate branch:
 
 ## Implementation status
 
-The v0.1 initial version is implemented, installed, and published at <https://github.com/dtjgp/TheRSS>. Its local, remote-update, and CI evidence is tracked in `docs/REQUIREMENTS_TRACEABILITY.md`, `GOALS.md`, and `task_plan.md`.
+The v0.2.0 personal beta is implemented, installed, and published at
+<https://github.com/dtjgp/TheRSS>. Its local, remote-update, and CI evidence is tracked in
+`docs/REQUIREMENTS_TRACEABILITY.md`, `GOALS.md`, and `task_plan.md`.

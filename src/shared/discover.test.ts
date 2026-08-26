@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { ACTIVE_TODAY_SOURCE_IDS } from './sourceIdentity'
-import { DISCOVER_SOURCE_IDS, discoverSearchRequestSchema } from './discover'
+import {
+  DISCOVER_SOURCE_IDS,
+  discoverRunProgressSchema,
+  discoverSearchRequestSchema
+} from './discover'
 
 describe('discoverSearchRequestSchema', () => {
   it('trims a semantic intent and accepts each supported runner', () => {
@@ -84,6 +88,32 @@ describe('discoverSearchRequestSchema', () => {
         intent: 'edge intelligence',
         runner: 'codex',
         sources: ['folo:999999']
+      })
+    ).toThrow()
+  })
+})
+
+describe('discoverRunProgressSchema', () => {
+  it('accepts bounded typed progress and rejects injected or inconsistent fields', () => {
+    expect(
+      discoverRunProgressSchema.parse({
+        runId: 'discover-run:1',
+        phase: 'searching',
+        completedSources: 1,
+        totalSources: 2,
+        source: 'arxiv',
+        outcome: { status: 'healthy', resultCount: 3, error: null }
+      })
+    ).toMatchObject({ runId: 'discover-run:1', completedSources: 1 })
+    expect(() =>
+      discoverRunProgressSchema.parse({
+        runId: 'discover-run:1',
+        phase: 'searching',
+        completedSources: 3,
+        totalSources: 2,
+        source: 'file:///tmp/secret',
+        outcome: null,
+        command: 'open /tmp/secret'
       })
     ).toThrow()
   })

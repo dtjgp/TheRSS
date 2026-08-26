@@ -198,6 +198,10 @@ describe('ResearchRepository Discover migration', () => {
       )
       .pluck()
       .get() as string
+    const sessionDefinition = database
+      .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'discover_session'")
+      .pluck()
+      .get() as string
     const resultDefinition = database
       .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'discover_result'")
       .pluck()
@@ -212,6 +216,8 @@ describe('ResearchRepository Discover migration', () => {
 
     expect(sourceRunDefinition).not.toContain("source IN ('arxiv', 'github')")
     expect(sourceRunDefinition).toContain("'partial'")
+    expect(sourceRunDefinition).toContain("'canceled'")
+    expect(sessionDefinition).toContain("'canceled'")
     expect(resultDefinition).not.toContain("source IN ('arxiv', 'github')")
     expect(resultColumns.map((column) => column.name)).toContain('item_kind')
     expect(migratedResult).toEqual({
@@ -283,6 +289,34 @@ describe('ResearchRepository Discover migration', () => {
         .pluck()
         .get('folo:64:dataset:edge-corpus')
     ).toBe('dataset')
+    repository.close()
+  })
+
+  it('round-trips a canceled Discover session with explicit canceled source outcomes', () => {
+    const database = new Database(':memory:')
+    const repository = new ResearchRepository(database)
+    const snapshot = discoverSnapshotWithDataset()
+    const canceled = {
+      ...snapshot,
+      status: 'canceled' as const,
+      sourceOutcomes: {
+        ...snapshot.sourceOutcomes,
+        'folo:64': { status: 'canceled' as const, resultCount: 0, error: 'Canceled by user' }
+      },
+      counts: {
+        ...snapshot.counts,
+        total: 0,
+        byKind: { paper: 0, repository: 0, article: 0, model: 0, dataset: 0, post: 0 },
+        bySource: Object.fromEntries(
+          DISCOVER_SOURCE_IDS.map((source) => [source, 0])
+        ) as typeof snapshot.counts.bySource
+      },
+      items: []
+    }
+
+    repository.saveDiscoverSnapshot(canceled)
+
+    expect(repository.getLatestDiscoverSnapshot()).toEqual(canceled)
     repository.close()
   })
 })

@@ -140,4 +140,40 @@ describe('AnalysisService', () => {
     expect(repository.getLatestAnalysis('arxiv:2608.00001')).toEqual(artifact)
     repository.close()
   })
+
+  it('reopens an immutable historical artifact and marks it stale after source changes', async () => {
+    const { repository, providers } = setup()
+    const gateway = vi
+      .fn()
+      .mockResolvedValueOnce({ content: 'Original analysis', inputTokens: 10, outputTokens: 5 })
+      .mockResolvedValueOnce({ content: 'Updated analysis', inputTokens: 11, outputTokens: 6 })
+    const service = new AnalysisService(repository, providers, gateway)
+    await service.analyzeItem('arxiv:2608.00001', {
+      now: new Date('2026-08-15T12:00:00.000Z'),
+      idFactory: () => 'analysis-original'
+    })
+    repository.upsertRankedItems(
+      [
+        {
+          ...rankedItem,
+          item: { ...rankedItem.item, summary: 'A revised source abstract.' }
+        }
+      ],
+      '2026-08-16T12:00:00.000Z'
+    )
+    await service.analyzeItem('arxiv:2608.00001', {
+      now: new Date('2026-08-16T13:00:00.000Z'),
+      idFactory: () => 'analysis-updated'
+    })
+
+    await expect(service.getAnalysisArtifact('analysis-original')).resolves.toMatchObject({
+      freshness: 'stale',
+      artifact: { id: 'analysis-original', content: 'Original analysis' }
+    })
+    await expect(service.getAnalysisArtifact('analysis-updated')).resolves.toMatchObject({
+      freshness: 'current',
+      artifact: { id: 'analysis-updated', content: 'Updated analysis' }
+    })
+    repository.close()
+  })
 })

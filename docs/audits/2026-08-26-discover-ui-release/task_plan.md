@@ -60,6 +60,6 @@ TheRSS Dev.app`.
 
 ## Status
 
-**Complete to the authorized boundary** - two commits are pushed to the scoped remote branch, the
-installed app matches the verified release, and backups/integrity/smoke/E2E pass. Protected `main`
-integration remains blocked only by explicit PR authorization.
+**Complete** - two commits were pushed to the scoped branch, PR #32 was subsequently authorized and
+merged through protected `main`, the installed app matches the verified release, and
+backups/integrity/smoke/E2E pass. Current local and remote `main` agree at `c4a0c66`.

@@ -390,6 +390,19 @@ test('Discover-first search across every deployed source', async () => {
       })
     ).toBeVisible()
     await expect(page.getByRole('group', { name: 'Filter saved signals by source' })).toBeVisible()
+    await application.evaluate(({ Menu }) => {
+      const editMenu = Menu.getApplicationMenu()?.items.find((item) => item.label === 'Edit')
+      editMenu?.submenu?.items.find((item) => item.label === 'Find Local Research')?.click()
+    })
+    const localSearch = page.getByRole('dialog', { name: 'Find research' })
+    await expect(localSearch).toBeVisible()
+    await localSearch.getByRole('searchbox', { name: 'Search local research' }).fill('structured')
+    await page.keyboard.press('Enter')
+    await expect(localSearch.getByRole('list', { name: 'Local search results' })).toContainText(
+      'BAAI structured pruning research fixture'
+    )
+    await page.keyboard.press('Escape')
+    await expect(localSearch).toHaveCount(0)
     const savedActionsBox = await page.locator('.signal-detail__actions').boundingBox()
     const savedSummaryBox = await page.locator('.signal-detail__summary').boundingBox()
     expect(savedActionsBox).not.toBeNull()
@@ -555,6 +568,15 @@ test('Discover-first search across every deployed source', async () => {
     const searchResults = page.getByLabel('Lifetime returned records')
     await expect(searchResults).toContainText('6')
     await expect(searchResults).toContainText('0 legacy Today · 6 Discover')
+    const analysisHistory = page.getByRole('list', { name: 'Deep analysis history' })
+    await analysisHistory
+      .getByRole('button', {
+        name: 'Open analysis: Semantic expansion search for edge intelligence'
+      })
+      .click()
+    await expect(page.getByRole('article', { name: 'Historical analysis detail' })).toContainText(
+      'Current — source snapshot matches'
+    )
     await capture(page, '06-analytics.png')
 
     if (!isBaselineCapture) {

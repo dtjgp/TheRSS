@@ -2,19 +2,27 @@ import type { InterestProfile } from '../core/interests/interestProfile'
 import type { DiscoverPersonalizationSettings } from './personalization'
 import type {
   AnalysisArtifact,
+  AnalysisArtifactState,
   AnalysisRunner,
   LocalAgentStatus,
   ModelProviderInput,
   ModelProviderSummary,
   ProviderConnectionResult
 } from './models'
-import type { DiscoverSearchRequest, DiscoverSnapshot } from './discover'
+import type {
+  DiscoverCancellationReceipt,
+  DiscoverRunProgress,
+  DiscoverSearchRequest,
+  DiscoverSnapshot,
+  DiscoverSource
+} from './discover'
 import type { AnalyticsSnapshot } from './analytics'
 import type { AppCommand } from './ipc'
 import type { SystemAccentName } from './appearance'
 import type { ContextMenuOutcome, ContextMenuTarget } from './contextMenu'
 import type { DiscoveryItemKind, DiscoverySource } from './discovery'
 import type { LlmWikiPromotionPreview, LlmWikiPromotionReceipt } from './llmWikiPromotion'
+import type { LocalSearchResponse } from './localSearch'
 
 export type SourceHealth = 'idle' | 'refreshing' | 'healthy' | 'no_results' | 'partial' | 'failed'
 export type TriageState = 'new' | 'viewed' | 'saved' | 'dismissed'
@@ -90,7 +98,15 @@ export interface TheRSSApi {
   getInterestProfile(): Promise<InterestProfile | null>
   saveInterestProfile(profile: InterestProfile): Promise<DashboardSnapshot>
   refresh(): Promise<DashboardSnapshot>
-  searchDiscover(request: DiscoverSearchRequest): Promise<DiscoverSnapshot>
+  searchLocal(query: string): Promise<LocalSearchResponse>
+  onDiscoverProgress(listener: (progress: DiscoverRunProgress) => void): () => void
+  searchDiscover(request: DiscoverSearchRequest, runId: string): Promise<DiscoverSnapshot>
+  retryDiscover(
+    sessionId: string,
+    sources: readonly DiscoverSource[],
+    runId: string
+  ): Promise<DiscoverSnapshot>
+  cancelDiscover(runId: string): Promise<DiscoverCancellationReceipt>
   getLatestDiscover(): Promise<DiscoverSnapshot | null>
   getAnalytics(): Promise<AnalyticsSnapshot>
   saveDiscoverResult(sessionId: string, itemId: string): Promise<DashboardSnapshot>
@@ -111,6 +127,7 @@ export interface TheRSSApi {
     runner: AnalysisRunner
   ): Promise<AnalysisArtifact>
   getLatestAnalysis(id: string): Promise<AnalysisArtifact | null>
+  getAnalysisArtifact(analysisId: string): Promise<AnalysisArtifactState | null>
   previewLlmWikiPromotion(itemId: string, sessionId?: string): Promise<LlmWikiPromotionPreview>
   confirmLlmWikiPromotion(previewId: string): Promise<LlmWikiPromotionReceipt>
   cancelLlmWikiPromotion(previewId: string): Promise<LlmWikiPromotionReceipt>

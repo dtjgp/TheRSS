@@ -38,6 +38,22 @@ describe('App', () => {
     })
   })
 
+  it('opens and closes local search from the native Command-F command', async () => {
+    const api = createApi()
+    let listener: Parameters<TheRSSApi['onAppCommand']>[0] | null = null
+    vi.mocked(api.onAppCommand).mockImplementation((candidate) => {
+      listener = candidate
+      return () => undefined
+    })
+    const user = userEvent.setup()
+    render(<App api={api} />)
+
+    act(() => listener?.('open-local-search'))
+    expect(await screen.findByRole('dialog', { name: 'Find research' })).toBeVisible()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Find research' })).not.toBeInTheDocument()
+  })
+
   it('loads and saves the optional personal Discover prompt from Settings', async () => {
     const api = createApi()
     vi.mocked(api.getDiscoverPersonalizationSettings).mockResolvedValue({

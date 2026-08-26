@@ -20,6 +20,7 @@ interface ModelPromptOptions extends ModelGatewayOptions {
   readonly systemPrompt: string
   readonly maxTokens?: number
   readonly timeoutMs?: number
+  readonly signal?: AbortSignal
 }
 
 export interface ModelAnalysisResponse {
@@ -226,7 +227,9 @@ export async function runPromptWithModel(
     headers,
     body: JSON.stringify(body),
     redirect: 'error',
-    signal: AbortSignal.timeout(options.timeoutMs ?? 90_000)
+    signal: options.signal
+      ? AbortSignal.any([options.signal, AbortSignal.timeout(options.timeoutMs ?? 90_000)])
+      : AbortSignal.timeout(options.timeoutMs ?? 90_000)
   })
   if (!response.ok) {
     throw new ModelProviderHttpError(response.status)

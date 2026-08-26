@@ -49,6 +49,11 @@ describe('createApplicationMenuTemplate', () => {
     const dismiss = signalMenu.find((item) => item.label === 'Dismiss Selected')
     dismiss?.click?.({} as never, undefined as never, {} as never)
     expect(send).toHaveBeenCalledWith('dismiss-selected')
+
+    const find = submenuFor(template, 'Edit').find((item) => item.label === 'Find Local Research')
+    expect(find).toMatchObject({ accelerator: 'CommandOrControl+F' })
+    find?.click?.({} as never, undefined as never, {} as never)
+    expect(send).toHaveBeenCalledWith('open-local-search')
   })
 
   it('makes Discover the first view and keeps removed Today and Interests surfaces out of menus', () => {

@@ -1,11 +1,13 @@
 # Release Report: Discover UI commit, push, and local installation
 
-Status: complete to the explicitly authorized boundary; protected-main PR awaits separate approval.
+Status: complete; PR #32 merged the verified release into protected `main`.
 
 ## Outcome
 
 - Product commit `52c7bca750f354c30acb8e550f5c12db87548520` created and pushed to
   `origin/codex/discover-ui-release`.
+- PR #32 merged the branch through protected `main`; current local and remote `main` are
+  `c4a0c66`.
 - `/Users/dtjgp/Applications/TheRSS Dev.app` replaced with the verified unsigned package.
 - Installed/release hash equality, metadata, package smoke, installed E2E, and SQLite integrity all
   passed.
@@ -23,11 +25,11 @@ Status: complete to the explicitly authorized boundary; protected-main PR awaits
   for release and installed app.
 - Current/backup SQLite: all `ok`.
 
-## Remote boundary
+## Remote closure
 
-The branch is pushed and live-verified. GitHub `main` is protected and remains at `e9e415a`. The
-available GitHub connector rejected PR creation because the user authorized commit/install/push but
-did not explicitly authorize creating a pull request. No direct-main or other workaround was used.
+The branch was first pushed and verified at the then-authorized boundary. The user subsequently
+authorized PR creation and merge; PR #32 merged without bypassing protected `main`. Local
+`main`, `origin/main`, and the merge commit now agree at `c4a0c66`.
 
 ## Installation boundary
 

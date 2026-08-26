@@ -15,6 +15,7 @@ interface FetchConfiguredHttpOptions {
   readonly now?: Date
   readonly maxResponseBytes?: number
   readonly sleep?: (milliseconds: number) => Promise<void>
+  readonly signal?: AbortSignal
 }
 
 const ALLOWED_CONTENT_TYPES = {
@@ -74,7 +75,9 @@ export async function fetchConfiguredHttpDocument(
             'User-Agent': 'TheRSS/0.2 (local research source client)'
           },
           redirect: 'follow',
-          signal: AbortSignal.timeout(30_000)
+          signal: options.signal
+            ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)])
+            : AbortSignal.timeout(30_000)
         })
         if (response.ok) break
         lastError = new Error(

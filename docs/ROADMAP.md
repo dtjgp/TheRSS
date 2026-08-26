@@ -39,11 +39,16 @@ Deliverables:
 - bounded semantic Discover planning through a configured model, Codex, or Claude, with TheRSS-controlled arXiv/GitHub retrieval and separate session persistence;
 - in-app provider/model/prompt-version/source-hash provenance and evidence boundary.
 - local Data Analytics with separated Today/Discover result volume and deep-analysis provenance history.
+- cancelable Discover execution with per-source progress and plan-preserving failed-source retry;
+- reopenable immutable analysis artifacts with source-hash freshness classification;
+- bounded Command-F search across local Saved, Discover, and analysis records;
 - searchable built-in directory exposing only the 22 sources retained by the dated deployment
   verification; current recorded health is separate, and dormant raw-catalog entries do not enter
   Sources, Today, or Discover.
 
-Exit gate: secret, endpoint, mock-provider, read-only MCP, Discover plan/isolation/failure, analytics aggregation, and provenance tests pass. Stale-result detection remains later hardening.
+Exit gate: secret, endpoint, mock-provider, read-only MCP, Discover
+plan/isolation/cancellation/retry, analytics aggregation, artifact freshness, and provenance tests
+pass.
 
 ## M3 — Personal beta
 
@@ -93,8 +98,10 @@ adopt-or-drop decision covering 72 entries, plus 11 individually scoped adapters
 - Account login and cross-device synchronization. The experimental Google Drive implementation was withdrawn on 2026-08-16; the current product contains no login or Sync surface.
 - Official GitHub Trending HTML adapter.
 - Learned recommendations.
-- Zotero/llm-wiki promotion.
-- Full-text search and stale-analysis detection.
+- Optional Zotero promotion. Confirmation-gated llm-wiki paper promotion is implemented; broader
+  live Topic/Method writer scope remains a separate governance approval.
+- Optional FTS5 indexing if the bounded parameterized local search becomes too slow at materially
+  larger local volumes.
 - Source response caching/cooldown required before background refresh.
 - Background helper while the app is closed.
 - Signed/notarized public self-updates.

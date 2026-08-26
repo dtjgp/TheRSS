@@ -1,6 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { DashboardSnapshot, TheRSSApi } from '../../shared/api'
-import type { DiscoverRunner, DiscoverSnapshot, DiscoverSource } from '../../shared/discover'
+import type {
+  DiscoverRunProgress,
+  DiscoverRunner,
+  DiscoverSnapshot,
+  DiscoverSource
+} from '../../shared/discover'
 import { DISCOVER_SOURCE_IDS } from '../../shared/discover'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
 import type { AnalysisArtifact, LocalAgentStatus } from '../../shared/models'
@@ -15,11 +20,18 @@ interface DiscoverViewProps {
 type DiscoverResultFilter = 'all' | 'paper' | 'repository' | 'other'
 
 const DISCOVER_RESULT_BATCH_SIZE = 24
+let discoverRunSequence = 0
+
+function createDiscoverRunId(): string {
+  discoverRunSequence += 1
+  return `discover-run:${Date.now()}:${discoverRunSequence}`
+}
 
 function statusLabel(snapshot: DiscoverSnapshot): string {
   if (snapshot.status === 'partial') return 'Partial results'
   if (snapshot.status === 'failed') return 'Search failed'
   if (snapshot.status === 'no_results') return 'No results'
+  if (snapshot.status === 'canceled') return 'Search canceled'
   return 'Search complete'
 }
 
@@ -28,6 +40,7 @@ function sourceStatusLabel(status: DiscoverSnapshot['sourceOutcomes'][DiscoverSo
   if (status === 'no_results') return 'No results'
   if (status === 'healthy') return 'Healthy'
   if (status === 'partial') return 'Partial'
+  if (status === 'canceled') return 'Canceled'
   return 'Failed'
 }
 
@@ -60,11 +73,15 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
   const [resultFilter, setResultFilter] = useState<DiscoverResultFilter>('all')
   const [visibleResultCount, setVisibleResultCount] = useState(DISCOVER_RESULT_BATCH_SIZE)
   const [isSearching, setIsSearching] = useState(false)
+  const [progress, setProgress] = useState<DiscoverRunProgress | null>(null)
+  const [runNotice, setRunNotice] = useState<string | null>(null)
   const [savingItemId, setSavingItemId] = useState<string | null>(null)
   const [analyzingItemId, setAnalyzingItemId] = useState<string | null>(null)
   const [analysis, setAnalysis] = useState<AnalysisArtifact | null>(null)
   const [hasPersonalContext, setHasPersonalContext] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const activeRunId = useRef<string | null>(null)
+  const cancellationRequested = useRef(false)
 
   useEffect(() => {
     let active = true
@@ -91,6 +108,14 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
       active = false
     }
   }, [api])
+
+  useEffect(
+    () =>
+      api.onDiscoverProgress((nextProgress) => {
+        if (nextProgress.runId === activeRunId.current) setProgress(nextProgress)
+      }),
+    [api]
+  )
 
   useEffect(() => {
     let active = true
@@ -122,6 +147,16 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
   )
   const visibleItems = filteredItems.slice(0, visibleResultCount)
   const remainingItemCount = Math.max(0, filteredItems.length - visibleItems.length)
+  const retryableSources = useMemo(
+    () =>
+      snapshot
+        ? DISCOVER_SOURCE_IDS.filter((source) => {
+            const status = snapshot.sourceOutcomes[source]!.status
+            return status === 'failed' || status === 'partial' || status === 'canceled'
+          })
+        : [],
+    [snapshot]
+  )
 
   const toggleSource = (source: DiscoverSource) => {
     setSources((current) =>
@@ -135,25 +170,102 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
   const clearSources = () => setSources([])
 
   const search = async () => {
+    const runId = createDiscoverRunId()
+    activeRunId.current = runId
+    cancellationRequested.current = false
     setIsSearching(true)
     setError(null)
+    setRunNotice(null)
+    setProgress({
+      runId,
+      phase: 'planning',
+      completedSources: 0,
+      totalSources: sources.length,
+      source: null,
+      outcome: null
+    })
     try {
-      const nextSnapshot = await api.searchDiscover({
-        intent: intent.trim(),
-        runner,
-        sources: DISCOVER_SOURCE_IDS.filter((source) => sourceSet.has(source))
-      })
+      const nextSnapshot = await api.searchDiscover(
+        {
+          intent: intent.trim(),
+          runner,
+          sources: DISCOVER_SOURCE_IDS.filter((source) => sourceSet.has(source))
+        },
+        runId
+      )
       setSnapshot(nextSnapshot)
       setResultFilter('all')
       setVisibleResultCount(DISCOVER_RESULT_BATCH_SIZE)
+      if (nextSnapshot.status === 'canceled') {
+        setRunNotice('Discover search canceled. Completed source results were preserved.')
+      }
     } catch {
-      setError(
-        runner === 'model-provider'
-          ? 'Discover failed. Configure or check the selected model provider.'
-          : `Discover failed. Confirm ${runner === 'codex' ? 'Codex CLI' : 'Claude Code'} is installed and signed in.`
-      )
+      if (cancellationRequested.current) setRunNotice('Discover search canceled.')
+      else {
+        setError(
+          runner === 'model-provider'
+            ? 'Discover failed. Configure or check the selected model provider.'
+            : `Discover failed. Confirm ${runner === 'codex' ? 'Codex CLI' : 'Claude Code'} is installed and signed in.`
+        )
+      }
     } finally {
-      setIsSearching(false)
+      if (activeRunId.current === runId) {
+        activeRunId.current = null
+        cancellationRequested.current = false
+        setIsSearching(false)
+        setProgress(null)
+      }
+    }
+  }
+
+  const retryIncompleteSources = async () => {
+    if (!snapshot || retryableSources.length === 0) return
+    const runId = createDiscoverRunId()
+    activeRunId.current = runId
+    cancellationRequested.current = false
+    setIsSearching(true)
+    setError(null)
+    setRunNotice(null)
+    setProgress({
+      runId,
+      phase: 'searching',
+      completedSources: 0,
+      totalSources: retryableSources.length,
+      source: null,
+      outcome: null
+    })
+    try {
+      const nextSnapshot = await api.retryDiscover(snapshot.id, retryableSources, runId)
+      setSnapshot(nextSnapshot)
+      setResultFilter('all')
+      setVisibleResultCount(DISCOVER_RESULT_BATCH_SIZE)
+      if (nextSnapshot.status === 'canceled') {
+        setRunNotice('Discover retry canceled. Completed source results were preserved.')
+      }
+    } catch {
+      if (cancellationRequested.current) setRunNotice('Discover retry canceled.')
+      else setError('The incomplete Discover sources could not be retried.')
+    } finally {
+      if (activeRunId.current === runId) {
+        activeRunId.current = null
+        cancellationRequested.current = false
+        setIsSearching(false)
+        setProgress(null)
+      }
+    }
+  }
+
+  const cancelSearch = async () => {
+    const runId = activeRunId.current
+    if (!runId || cancellationRequested.current) return
+    cancellationRequested.current = true
+    setProgress((current) => (current ? { ...current, phase: 'cancel_requested' } : current))
+    try {
+      const receipt = await api.cancelDiscover(runId)
+      if (!receipt.canceled) setRunNotice('The Discover run had already finished.')
+    } catch {
+      cancellationRequested.current = false
+      setError('The Discover cancellation request could not be delivered.')
     }
   }
 
@@ -333,10 +445,35 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
         >
           <span className="activity-spinner" aria-hidden="true" />
           <span>
-            <strong>Expanding intent and searching {sources.length} sources…</strong>
-            <span>Results will appear when the bounded source run completes.</span>
+            <strong>
+              {progress?.phase === 'planning'
+                ? 'Expanding research intent…'
+                : progress?.phase === 'cancel_requested'
+                  ? 'Canceling Discover search…'
+                  : `${progress?.completedSources ?? 0} of ${progress?.totalSources ?? sources.length} sources finished`}
+            </strong>
+            <span>
+              {progress?.phase === 'planning'
+                ? 'No source request starts until the generated plan passes validation.'
+                : 'Completed source outcomes are retained independently.'}
+            </span>
           </span>
+          <button
+            type="button"
+            className="secondary-button"
+            aria-label="Cancel Discover search"
+            disabled={progress?.phase === 'cancel_requested'}
+            onClick={() => void cancelSearch()}
+          >
+            {progress?.phase === 'cancel_requested' ? 'Canceling…' : 'Cancel'}
+          </button>
         </div>
+      )}
+
+      {runNotice && (
+        <p role="status" aria-label="Discover cancellation status" className="discover-run-notice">
+          {runNotice}
+        </p>
       )}
 
       {error && (
@@ -461,6 +598,24 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
               full-paper methods, experiments, and repository quality remain unverified.
             </p>
           </section>
+
+          {retryableSources.length > 0 && !isSearching && (
+            <div className="discover-retry" role="status" aria-label="Incomplete source recovery">
+              <span>
+                {retryableSources.length}{' '}
+                {retryableSources.length === 1 ? 'source is' : 'sources are'} incomplete. Successful
+                sources will not run again.
+              </span>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => void retryIncompleteSources()}
+              >
+                Retry {retryableSources.length} incomplete{' '}
+                {retryableSources.length === 1 ? 'source' : 'sources'}
+              </button>
+            </div>
+          )}
 
           <details
             className="discover-plan discover-search-details"

@@ -9,6 +9,7 @@ import { normalizeConfiguredItem, type NormalizedSourceBatch } from './sourceNor
 
 interface FetchDatedFeedOptions {
   readonly now: Date
+  readonly signal?: AbortSignal
 }
 
 interface DatedFeedDependencies {
@@ -124,7 +125,8 @@ function assertDatedFeedDefinition(
 async function enrichCandidate(
   definition: DatedFeedConfiguredSourceDefinition,
   candidate: FeedCandidate,
-  fetcher: typeof fetch
+  fetcher: typeof fetch,
+  signal?: AbortSignal
 ) {
   if (!candidate.title || !candidate.url) throw new Error('Feed entry is incomplete')
   const articleUrl = new URL(candidate.url)
@@ -142,7 +144,9 @@ async function enrichCandidate(
       'User-Agent': 'TheRSS/0.2 (local research source client)'
     },
     redirect: 'follow',
-    signal: AbortSignal.timeout(30_000)
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(30_000)])
+      : AbortSignal.timeout(30_000)
   })
   if (!response.ok) throw new Error(`Article request failed with status ${response.status}`)
   if (response.url && new URL(response.url).origin !== definition.articleOrigin) {
@@ -182,12 +186,13 @@ export async function fetchDatedFeedSource(
   const document = await (dependencies.fetchDocument ?? fetchConfiguredHttpDocument)(
     definition.id,
     {
-      now: options.now
+      now: options.now,
+      ...(options.signal ? { signal: options.signal } : {})
     }
   )
   const candidates = feedCandidates(document.body, definition.maxItems)
   const results = await mapWithConcurrency(candidates, 4, (candidate) =>
-    enrichCandidate(definition, candidate, dependencies.fetcher ?? fetch)
+    enrichCandidate(definition, candidate, dependencies.fetcher ?? fetch, options.signal)
   )
   return {
     items: results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])),

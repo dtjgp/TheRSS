@@ -158,6 +158,130 @@ describe('DiscoverService', () => {
     expect(result.sourceOutcomes.github.error?.length).toBeLessThanOrEqual(500)
   })
 
+  it('reports planning and each terminal source outcome as bounded progress', async () => {
+    const { service } = setup()
+    const progress = vi.fn()
+
+    await service.search(
+      {
+        intent: 'edge AI pruning',
+        runner: 'codex',
+        sources: ['arxiv', 'github']
+      },
+      { onProgress: progress }
+    )
+
+    expect(progress.mock.calls.map(([event]) => event)).toEqual([
+      {
+        phase: 'planning',
+        completedSources: 0,
+        totalSources: 2,
+        source: null,
+        outcome: null
+      },
+      {
+        phase: 'searching',
+        completedSources: 0,
+        totalSources: 2,
+        source: null,
+        outcome: null
+      },
+      expect.objectContaining({
+        phase: 'searching',
+        completedSources: 1,
+        totalSources: 2,
+        source: 'arxiv',
+        outcome: expect.objectContaining({ status: 'healthy' })
+      }),
+      expect.objectContaining({
+        phase: 'searching',
+        completedSources: 2,
+        totalSources: 2,
+        source: 'github',
+        outcome: expect.objectContaining({ status: 'healthy' })
+      })
+    ])
+  })
+
+  it('persists a canceled terminal snapshot without waiting for active sources', async () => {
+    const controller = new AbortController()
+    let sourceSignal: AbortSignal | undefined
+    const fetchArxiv = vi.fn((_interest: unknown, options?: { readonly signal?: AbortSignal }) => {
+      sourceSignal = options?.signal
+      return new Promise<ReturnType<typeof item>[]>(() => undefined)
+    })
+    const { service, fetchGitHub, repository } = setup({ fetchArxiv, concurrency: 1 })
+
+    const pending = service.search(
+      {
+        intent: 'edge AI pruning',
+        runner: 'codex',
+        sources: ['arxiv', 'github']
+      },
+      { signal: controller.signal }
+    )
+    await vi.waitFor(() => expect(fetchArxiv).toHaveBeenCalledOnce())
+    controller.abort()
+
+    await expect(pending).resolves.toMatchObject({
+      status: 'canceled',
+      items: [],
+      sourceOutcomes: {
+        arxiv: { status: 'canceled' },
+        github: { status: 'canceled' }
+      }
+    })
+    expect(fetchGitHub).not.toHaveBeenCalled()
+    expect(sourceSignal).toBe(controller.signal)
+    expect(sourceSignal?.aborted).toBe(true)
+    expect(repository.saveDiscoverSnapshot).toHaveBeenCalledOnce()
+  })
+
+  it('retries only failed sources from the persisted plan without calling the planner again', async () => {
+    const createSessionId = vi
+      .fn<() => string>()
+      .mockReturnValueOnce('discover-session-1')
+      .mockReturnValueOnce('discover-session-2')
+    const fetchGitHub = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('rate limited'))
+      .mockResolvedValueOnce([
+        item({
+          id: 'github:owner/repo',
+          source: 'github',
+          kind: 'repository',
+          externalId: 'owner/repo',
+          title: 'owner/repo',
+          url: 'https://github.com/owner/repo',
+          categories: [],
+          topics: ['semantic-communication'],
+          language: 'Python'
+        })
+      ])
+    const { service, planner, fetchArxiv } = setup({ createSessionId, fetchGitHub })
+    const first = await service.search({
+      intent: 'edge AI pruning',
+      runner: 'codex',
+      sources: ['arxiv', 'github']
+    })
+
+    const retried = await service.retry(first, ['github'])
+
+    expect(retried).toMatchObject({
+      id: 'discover-session-2',
+      status: 'completed',
+      sourceOutcomes: {
+        arxiv: { status: 'healthy', resultCount: 1 },
+        github: { status: 'healthy', resultCount: 1 }
+      },
+      counts: { total: 2 }
+    })
+    expect(retried.items.map((candidate) => candidate.source)).toEqual(['arxiv', 'github'])
+    expect(planner.plan).toHaveBeenCalledOnce()
+    expect(fetchArxiv).toHaveBeenCalledOnce()
+    expect(fetchGitHub).toHaveBeenCalledTimes(2)
+  })
+
   it('distinguishes all-source failure and successful empty searches', async () => {
     const failed = setup({
       fetchArxiv: vi.fn().mockRejectedValue(new Error('offline')),

@@ -1,5 +1,46 @@
 # TheRSS Goals
 
+## Completed goal: Core reliability updates
+
+### Objective
+
+Close the highest-risk gaps behind the Discover-centered personal beta: accurate release evidence,
+idempotent and auditable local replacement, cancelable/recoverable Discover execution, reopenable
+analysis history with stale detection, and bounded local unified search.
+
+### Observable success criteria
+
+- Identical packaged/installed builds do not create duplicate app/database backups; successful
+  replacement has one structured receipt and preserves an existing database.
+- One renderer owns at most one Discover run. Planning, model/CLI execution, and source HTTP receive
+  the same cancellation signal; completed source outcomes remain distinct and retryable without
+  rerunning the planner or successful sources.
+- Historical analysis artifacts reopen by immutable ID and are classified against the current
+  source hash without overwriting old evidence.
+- Command-F searches bounded Saved, Discover, and analysis fields in local SQLite without a model,
+  source adapter, embedding, telemetry, or network request.
+
+### Verifiers
+
+- Focused RED/GREEN installer, Discover, storage/migration, analysis, local-search, renderer, menu,
+  and preload-boundary tests
+- `npm run check`
+- `npm run test:e2e`
+- `npm audit --audit-level=high`
+- `npm run package:mac` and `npm run smoke:package`
+- scoped diff, secret/debug, architecture, and rollback review
+
+### Stop condition and completion evidence (2026-08-26)
+
+The goal is complete in source/package scope: `npm run check` passed 60 files / 402 tests with
+90.29% statements, 80.15% branches, 93.64% functions, and 93.20% lines; Electron E2E passed 2/2;
+the production dependency audit found zero vulnerabilities; the unsigned arm64 package and package
+smoke passed; isolated install/migration/search tests passed. The packaged `app.asar` is
+`80d54e0b63fb900fa2b536c3fb9b72681fbe248edd6fde9b047feeb24d246005`.
+
+Live app replacement, commit, push, PR, release publication, live provider/source access, and real
+llm-wiki writes were deliberately not performed by this goal.
+
 ## Completed goal: Development workflow hardening
 
 ### Objective
@@ -123,7 +164,7 @@ The goal is complete only when every explicit founding requirement has current e
 ## Later goals
 
 - Signed and notarized macOS releases with verified old-to-new automatic replacement.
-- Optional Zotero promotion; llm-wiki paper promotion activation is pending explicit Topic/Method
-  writer-scope approval.
+- Optional Zotero promotion. Confirmation-gated llm-wiki paper promotion is implemented; broader
+  Topic/Method writer scope remains pending explicit governance approval.
 - Optional background refresh while the application is closed.
 - Learned ranking based on explicit user feedback, with explainability retained.

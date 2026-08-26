@@ -15,6 +15,7 @@ import { normalizeC114Document } from './c114Normalizer'
 export interface FetchConfiguredSourceOptions {
   readonly now: Date
   readonly huggingFaceToken?: string
+  readonly signal?: AbortSignal
 }
 
 interface ConfiguredSourceAdapterDependencies {
@@ -48,10 +49,16 @@ export async function fetchConfiguredSourceBatch(
   const fetchHuggingFace = dependencies.fetchHuggingFace ?? fetchHuggingFaceSignals
   const fetchDatedFeed = dependencies.fetchDatedFeed ?? fetchDatedFeedSource
   if (definition.transport === 'dated_feed') {
-    return fetchDatedFeed(definition, { now: options.now })
+    return fetchDatedFeed(definition, {
+      now: options.now,
+      ...(options.signal ? { signal: options.signal } : {})
+    })
   }
   if (definition.transport === 'feed' || definition.transport === 'html') {
-    const document = await fetchHttp(definition.id, { now: options.now })
+    const document = await fetchHttp(definition.id, {
+      now: options.now,
+      ...(options.signal ? { signal: options.signal } : {})
+    })
     return definition.transport === 'feed'
       ? normalizeFeedDocument(document)
       : definition.id === 'folo:611'
@@ -63,7 +70,8 @@ export async function fetchConfiguredSourceBatch(
   return normalizeItems(
     await fetchHuggingFace({
       maxItemsPerKind: 10,
-      ...(options.huggingFaceToken ? { token: options.huggingFaceToken } : {})
+      ...(options.huggingFaceToken ? { token: options.huggingFaceToken } : {}),
+      ...(options.signal ? { signal: options.signal } : {})
     })
   )
 }

@@ -43,6 +43,8 @@
 - **Git:** feature commit `52c7bca` pushed to `origin/codex/discover-ui-release`; live remote branch
   matches. Protected `main` remains at `e9e415a` because non-draft PR creation requires separate
   explicit authorization and was rejected by policy.
+- **Subsequent closure:** the user later explicitly authorized PR creation and merge; PR #32 merged
+  through protected `main`, and current local/remote `main` agree at `c4a0c66`.
 - **Install:** exact target replaced twice recoverably after the first long operation's output was
   truncated; two app and two database backups retained.
 - **Package identity:** release and installed `app.asar` hashes both

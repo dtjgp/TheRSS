@@ -31,6 +31,7 @@ import {
   type StoredModelProvider
 } from './modelProviderStore'
 import {
+  getAnalysisArtifact as readAnalysisArtifact,
   getLatestAnalysis,
   getLatestLlmWikiPromotionReceipt,
   reconcileInterruptedLlmWikiPromotions,
@@ -38,6 +39,8 @@ import {
   saveLlmWikiPromotionReceipt
 } from './analysisArtifactStore'
 import { parseStringList } from './rowParsers'
+import { searchLocal as searchPersistedLocal } from './localSearchStore'
+import type { LocalSearchResponse } from '../../shared/localSearch'
 import {
   getLatestDiscoverSnapshot as readLatestDiscoverSnapshot,
   materializeDiscoverResultForAnalysis as materializeResultForAnalysis,
@@ -487,6 +490,10 @@ export class ResearchRepository {
     return readLatestDiscoverSnapshot(this.#database)
   }
 
+  searchLocal(query: string): LocalSearchResponse {
+    return searchPersistedLocal(this.#database, query)
+  }
+
   saveDiscoverResult(
     sessionId: string,
     itemId: string,
@@ -594,6 +601,10 @@ export class ResearchRepository {
 
   getLatestAnalysis(itemId: string): AnalysisArtifact | null {
     return getLatestAnalysis(this.#database, itemId)
+  }
+
+  getAnalysisArtifact(analysisId: string): AnalysisArtifact | null {
+    return readAnalysisArtifact(this.#database, analysisId)
   }
 
   getDashboardSnapshot(now = new Date()): DashboardSnapshot {

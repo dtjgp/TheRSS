@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import type { AnalysisArtifact, AnalysisRunner, LocalAgentRunner } from '../../shared/models'
+import type {
+  AnalysisArtifact,
+  AnalysisArtifactState,
+  AnalysisRunner,
+  LocalAgentRunner
+} from '../../shared/models'
 import type { LocalAgentAnalysisResponse } from '../agents/localAgentService'
 import {
   analysisPromptVersionFor,
@@ -81,5 +86,21 @@ export class AnalysisService {
     }
     this.#repository.saveAnalysis(artifact, response)
     return artifact
+  }
+
+  async getAnalysisArtifact(analysisId: string): Promise<AnalysisArtifactState | null> {
+    const artifact = this.#repository.getAnalysisArtifact(analysisId)
+    if (!artifact) return null
+    if (artifact.sourceHash === 'legacy-unavailable') {
+      return { artifact, freshness: 'legacy_unavailable', currentSourceHash: null }
+    }
+    const item = this.#repository.getDiscoveryItem(artifact.itemId)
+    if (!item) return { artifact, freshness: 'source_missing', currentSourceHash: null }
+    const currentSourceHash = hashAnalysisSource(item)
+    return {
+      artifact,
+      freshness: currentSourceHash === artifact.sourceHash ? 'current' : 'stale',
+      currentSourceHash
+    }
   }
 }

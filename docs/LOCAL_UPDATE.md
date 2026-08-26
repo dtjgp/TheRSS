@@ -10,7 +10,18 @@
 npm run install:local
 ```
 
-它执行以下步骤：构建应用；若数据库存在则调用 SQLite 在线备份；用 macOS `ditto` 复制 bundle 以保留 framework 符号链接；验证关键链接和 `icudtl.dat`；保留上一版应用；最后原子切换安装目录。
+它执行以下步骤：获取 `~/Library/Application Support/therss/install.lock`；比较 packaged 与
+installed `app.asar` 哈希；若数据库存在则先验证并调用 SQLite 在线备份；用 macOS `ditto`
+复制 bundle 以保留 framework 符号链接；验证关键链接、`icudtl.dat`、安装后哈希与数据库
+完整性；保留上一版应用；最后原子切换安装目录并在 `install-receipts/` 写入结构化完成
+回执。无论成功或失败，当前进程都会释放安装锁。
+
+若已安装应用与 packaged `app.asar` 完全一致，命令会在生成重复备份前停止。只有明确需要
+重装同一构建时才运行：
+
+```bash
+npm run install:local -- --force
+```
 
 ## 从 GitHub 更新
 
@@ -25,6 +36,7 @@ npm run update:local
 ## 恢复
 
 - 数据库备份位于 `~/Library/Application Support/therss/backups/`。
+- 成功安装回执位于 `~/Library/Application Support/therss/install-receipts/`。
 - 旧应用位于 `~/Applications/TheRSS Dev.backup-<timestamp>.app`。
 - 如果新版本不能启动，先退出 TheRSS，再把当前 `TheRSS Dev.app` 移到其他明确位置，然后将选定备份重命名为 `TheRSS Dev.app`。
 - 如果数据库迁移出现问题，先保留当前数据库，再从对应时间戳备份恢复。不要在应用运行时直接覆盖数据库。

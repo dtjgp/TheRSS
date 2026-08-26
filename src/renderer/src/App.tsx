@@ -18,6 +18,7 @@ import { AppTopbar } from './AppTopbar'
 import type { AppView } from './AppTopbar'
 import type { DiscoverySource } from '../../shared/discovery'
 import { ACTIVE_TODAY_SOURCE_IDS, sourceDisplayName } from '../../shared/sourceIdentity'
+import { LocalSearchPanel } from './LocalSearchPanel'
 
 interface AppProps {
   readonly api: TheRSSApi
@@ -136,6 +137,7 @@ export function App({ api }: AppProps) {
   const [lastTriageAction, setLastTriageAction] = useState<LastTriageAction | null>(null)
   const [isTriageToastVisible, setIsTriageToastVisible] = useState(false)
   const [settingsDirty, setSettingsDirty] = useState(false)
+  const [isLocalSearchOpen, setIsLocalSearchOpen] = useState(false)
 
   const navigate = useCallback(
     async (view: AppView) => {
@@ -424,6 +426,9 @@ export function App({ api }: AppProps) {
             return
           case 'open-settings':
             void navigate('settings')
+            return
+          case 'open-local-search':
+            setIsLocalSearchOpen(true)
             return
           case 'show-saved':
             void navigate('saved')
@@ -754,6 +759,9 @@ export function App({ api }: AppProps) {
           </div>
         )}
       </main>
+      {isLocalSearchOpen && (
+        <LocalSearchPanel api={api} onClose={() => setIsLocalSearchOpen(false)} />
+      )}
     </div>
   )
 }

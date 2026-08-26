@@ -229,6 +229,24 @@ describe('executeBoundedCommand', () => {
     ).rejects.toThrow('timed out')
   })
 
+  it('terminates a process when its Discover run is canceled', async () => {
+    const controller = new AbortController()
+    const pending = executeBoundedCommand({
+      executable: process.execPath,
+      args: ['-e', 'setTimeout(() => {}, 2000)'],
+      stdin: '',
+      cwd: TEST_WORKING_DIRECTORY,
+      timeoutMs: 2_000,
+      maxOutputBytes: 100,
+      environment: process.env,
+      signal: controller.signal
+    })
+
+    controller.abort()
+
+    await expect(pending).rejects.toThrow('Local agent analysis canceled')
+  })
+
   it('returns a generic failure without exposing stderr', async () => {
     await expect(
       executeBoundedCommand({
