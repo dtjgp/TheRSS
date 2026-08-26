@@ -47,10 +47,12 @@ provenance without copying secrets.
    Codex CLI, or Claude Code. The user can search any subset of all 22 deployed sources, inspect the
    executed plan and each source outcome, and filter the persisted result session by record type
    without rerunning the model or adapters. Source selection is summarized until requested; after a
-   run, ranked records occupy a keyboard-scrollable region before a collapsed
-   plan/provenance/source-outcome inspector. Every result has a reversible outline/filled Saved star;
-   paper records additionally expose a user-initiated L1 analysis action without implicitly saving
-   the paper. arXiv papers also expose the separately confirmed llm-wiki promotion action.
+   run, ranked records occupy a resizable list-detail workspace with compact scan rows, roving
+   keyboard selection, independently scrollable list/detail panes, and a collapsed
+   plan/provenance/source-outcome inspector below it. Every selected result has a reversible
+   outline/filled Saved star; paper records additionally expose a user-initiated L1 analysis action
+   without implicitly saving the paper. arXiv papers also expose the separately confirmed llm-wiki
+   promotion action.
 2. **Saved** — one persisted shelf for explicitly retained research signals from every active
    source. A selected saved arXiv paper can enter the same llm-wiki preview/confirmation workflow.
 3. **Settings** — two focused panes for Personal Prompt and one model provider profile, plus local

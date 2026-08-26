@@ -184,53 +184,52 @@ test('Discover-first search across every deployed source', async () => {
     const searchDetails = page.getByLabel('Discover search details')
     await expect(searchDetails).not.toHaveAttribute('open', '')
 
-    const discoverPaper = page
-      .locator('article')
-      .filter({ hasText: 'Semantic expansion search for edge intelligence' })
-    const discoverRepository = page
-      .locator('article')
-      .filter({ hasText: 'TheRSS/semantic-fixture' })
-    const discoverArticle = page
-      .locator('article')
-      .filter({ hasText: 'BAAI structured pruning research fixture' })
-    await expect(discoverPaper).toBeVisible()
-    await expect(discoverRepository).toBeVisible()
-    await expect(discoverArticle).toBeVisible()
-    await expect(discoverArticle.getByText('北京智源人工智能研究院')).toBeVisible()
-    await expect(discoverArticle.getByText('Article')).toBeVisible()
+    const discoverList = page.getByRole('list', { name: 'Discover result list' })
+    const discoverPaperRow = discoverList.getByRole('button', {
+      name: 'Select result: Semantic expansion search for edge intelligence'
+    })
+    const discoverRepositoryRow = discoverList.getByRole('button', {
+      name: 'Select result: TheRSS/semantic-fixture'
+    })
+    const discoverArticleRow = discoverList.getByRole('button', {
+      name: 'Select result: BAAI structured pruning research fixture'
+    })
+    const selectedDiscover = page.getByRole('article', { name: 'Selected Discover result' })
+    await expect(discoverPaperRow).toBeVisible()
+    await expect(discoverRepositoryRow).toBeVisible()
+    await expect(discoverArticleRow).toBeVisible()
+    await expect(discoverArticleRow.getByText('北京智源人工智能研究院')).toBeVisible()
+    await expect(discoverArticleRow.getByText('Article')).toBeVisible()
+    await expect(
+      selectedDiscover.getByRole('heading', {
+        name: 'Semantic expansion search for edge intelligence'
+      })
+    ).toBeVisible()
+    await discoverPaperRow.click()
+    await page.keyboard.press('ArrowDown')
+    await expect(
+      selectedDiscover.getByRole('heading', {
+        name: 'BAAI structured pruning research fixture'
+      })
+    ).toBeVisible()
+    await discoverPaperRow.click()
     const resultRegion = page.getByRole('region', { name: 'Discover results' })
     await expect(resultRegion).toHaveAttribute('tabindex', '0')
-    expect(
-      await resultRegion.evaluate((element) => ({
-        clientHeight: element.clientHeight,
-        overflowY: getComputedStyle(element).overflowY,
-        scrollHeight: element.scrollHeight
-      }))
-    ).toMatchObject({ overflowY: 'auto' })
-    expect(
-      await resultRegion.evaluate((element) => element.scrollHeight > element.clientHeight)
-    ).toBe(true)
-    await resultRegion.evaluate((element) => {
-      element.scrollTop = element.scrollHeight
+    await expect(resultRegion).toHaveCSS('overflow-y', 'hidden')
+    await expect(discoverList).toHaveCSS('overflow-y', 'auto')
+    await expect(selectedDiscover).toHaveCSS('overflow-y', 'auto')
+    const discoverListDivider = page.getByRole('separator', {
+      name: 'Resize Discover result list'
     })
-    expect(await resultRegion.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
-    await resultRegion.evaluate((element) => {
-      element.scrollTop = 0
-    })
-    const paperSave = discoverPaper.getByRole('button', { name: 'Save result' })
+    await expect(discoverListDivider).toBeVisible()
+    const paperSave = selectedDiscover.getByRole('button', { name: 'Save result' })
     await expect(paperSave).toHaveAttribute('aria-pressed', 'false')
     await expect(paperSave.locator('[data-save-star]')).toHaveAttribute('fill', 'none')
-    await expect(discoverPaper.getByRole('button', { name: 'Analyze paper' })).toBeVisible()
-    await expect(discoverRepository.getByRole('button', { name: 'Analyze paper' })).toHaveCount(0)
-    await expect(discoverArticle.getByRole('button', { name: 'Analyze paper' })).toHaveCount(0)
-    await expect(discoverPaper.getByRole('button', { name: 'Promote to llm-wiki' })).toBeVisible()
+    await expect(selectedDiscover.getByRole('button', { name: 'Analyze paper' })).toBeVisible()
     await expect(
-      discoverRepository.getByRole('button', { name: 'Promote to llm-wiki' })
-    ).toHaveCount(0)
-    await expect(discoverArticle.getByRole('button', { name: 'Promote to llm-wiki' })).toHaveCount(
-      0
-    )
-    await discoverPaper.getByRole('button', { name: 'Promote to llm-wiki' }).click()
+      selectedDiscover.getByRole('button', { name: 'Promote to llm-wiki' })
+    ).toBeVisible()
+    await selectedDiscover.getByRole('button', { name: 'Promote to llm-wiki' }).click()
     const promotionDialog = page.getByRole('dialog', { name: 'Promote paper to llm-wiki' })
     await expect(promotionDialog).toContainText('Destination: local llm-wiki vault')
     await expect(promotionDialog).not.toContainText(poisonVault)
@@ -240,11 +239,13 @@ test('Discover-first search across every deployed source', async () => {
     await capture(page, '02a-llm-wiki-promotion-preview.png')
     await promotionDialog.getByRole('button', { name: 'Cancel promotion' }).click()
     await expect(promotionDialog).toHaveCount(0)
-    await discoverPaper.getByRole('button', { name: 'Promote to llm-wiki' }).click()
+    await selectedDiscover.getByRole('button', { name: 'Promote to llm-wiki' }).click()
     await page.getByRole('button', { name: 'Confirm local promotion' }).click()
-    await expect(discoverPaper.getByRole('status')).toContainText('without writing the real vault')
-    await discoverPaper.getByRole('button', { name: 'Analyze paper' }).click()
-    await expect(discoverPaper.getByLabel('L1 paper analysis result')).toContainText(
+    await expect(selectedDiscover.getByRole('status')).toContainText(
+      'without writing the real vault'
+    )
+    await selectedDiscover.getByRole('button', { name: 'Analyze paper' }).click()
+    await expect(selectedDiscover.getByLabel('L1 paper analysis result')).toContainText(
       'llm-wiki-paper-l1-v1'
     )
     await expect(paperSave).toHaveAttribute('aria-pressed', 'false')
@@ -258,6 +259,89 @@ test('Discover-first search across every deployed source', async () => {
     await page.waitForTimeout(1_200)
     await capture(page, '02-discover-results.png')
 
+    if (!isBaselineCapture) {
+      const shell = page.locator('.app-shell')
+      const activeDiscoverNav = primaryNavigation.getByRole('button', { name: '01 Discover' })
+      const allDiscoverResults = page
+        .getByRole('group', { name: 'Filter Discover results' })
+        .getByRole('button', { name: 'All 3' })
+      const selectedControlRadii = await Promise.all([
+        activeDiscoverNav.evaluate((element) => getComputedStyle(element).borderRadius),
+        allDiscoverResults.evaluate((element) => getComputedStyle(element).borderRadius)
+      ])
+      expect(selectedControlRadii).toEqual(['7px', '7px'])
+
+      const discoverWideBounds = await application.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0]!.getBounds()
+      )
+      await application.evaluate(({ BrowserWindow }, bounds) => {
+        BrowserWindow.getAllWindows()[0]?.setBounds({ ...bounds, width: 820, height: 700 })
+      }, discoverWideBounds)
+      await page.waitForTimeout(250)
+      await expect(shell).not.toHaveClass(/app-shell--sidebar-collapsed/)
+      await resultRegion.evaluate((element) => element.scrollIntoView({ block: 'start' }))
+      await capture(page, '02a-discover-results-820.png')
+      await application.evaluate(({ BrowserWindow }, bounds) => {
+        BrowserWindow.getAllWindows()[0]?.setBounds(bounds)
+      }, discoverWideBounds)
+      await page.waitForTimeout(250)
+      await resultRegion.evaluate((element) => element.scrollIntoView({ block: 'start' }))
+
+      await page.emulateMedia({ colorScheme: 'dark' })
+      await capture(page, '02b-discover-results-dark.png')
+      await page.emulateMedia({ colorScheme: 'light' })
+
+      await application.evaluate(({ BrowserWindow }) => {
+        BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(2)
+      })
+      await page.waitForTimeout(150)
+      await expect(shell).toHaveClass(/app-shell--sidebar-collapsed/)
+      await expect(shell).toHaveAttribute('data-sidebar-constrained', 'true')
+      await expect(
+        page.getByRole('button', { name: 'Sidebar compact at current zoom' })
+      ).toBeDisabled()
+      await expect(page.getByRole('separator', { name: 'Resize sidebar' })).toBeHidden()
+      await expect(page.locator('.sidebar')).toHaveCSS('width', '84px')
+      await resultRegion.evaluate((element) => element.scrollIntoView({ block: 'start' }))
+      expect(
+        await resultRegion
+          .getByRole('heading', { name: 'Ranked source records' })
+          .evaluate((element) => element.scrollWidth - element.clientWidth)
+      ).toBeLessThanOrEqual(1)
+      const discoverZoomOverflow = await page.evaluate(() => ({
+        document: Math.max(
+          document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          document.body.scrollWidth - document.body.clientWidth
+        ),
+        main: Math.max(
+          document.querySelector('main')!.scrollWidth - document.querySelector('main')!.clientWidth,
+          0
+        )
+      }))
+      expect(discoverZoomOverflow.document).toBeLessThanOrEqual(1)
+      expect(discoverZoomOverflow.main).toBeLessThanOrEqual(1)
+      await capture(page, '02c-discover-results-200-percent.png')
+      await application.evaluate(({ BrowserWindow }) => {
+        BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(1)
+      })
+      await page.waitForTimeout(150)
+      await expect(shell).not.toHaveClass(/app-shell--sidebar-collapsed/)
+      await expect(shell).toHaveAttribute('data-sidebar-constrained', 'false')
+      await expect(page.getByRole('button', { name: 'Hide sidebar' })).toBeEnabled()
+      await expect(page.getByRole('separator', { name: 'Resize sidebar' })).toBeVisible()
+
+      const discoverCdp = await page.context().newCDPSession(page)
+      await discoverCdp.send('Emulation.setEmulatedMedia', {
+        features: [{ name: 'forced-colors', value: 'active' }]
+      })
+      await resultRegion.focus()
+      for (let index = 0; index < 5; index += 1) await page.keyboard.press('Tab')
+      await expect(discoverPaperRow).toBeFocused()
+      await expect(discoverPaperRow).toHaveCSS('outline-style', 'solid')
+      await capture(page, '02d-discover-results-forced-colors.png')
+      await discoverCdp.send('Emulation.setEmulatedMedia', { features: [] })
+    }
+
     await page.getByRole('button', { name: /Search details/u }).click()
     await expect(searchDetails.getByText('Codex CLI · codex-cli')).toBeVisible()
     const outcomes = page.getByRole('list', { name: 'Source outcomes' })
@@ -266,13 +350,22 @@ test('Discover-first search across every deployed source', async () => {
 
     const resultFilters = page.getByRole('group', { name: 'Filter Discover results' })
     await resultFilters.getByRole('button', { name: 'Other 1' }).click()
-    await expect(discoverPaper).toHaveCount(0)
-    await expect(discoverRepository).toHaveCount(0)
-    await expect(discoverArticle).toBeVisible()
+    await expect(discoverPaperRow).toHaveCount(0)
+    await expect(discoverRepositoryRow).toHaveCount(0)
+    await expect(discoverArticleRow).toBeVisible()
+    await expect(
+      selectedDiscover.getByRole('heading', {
+        name: 'BAAI structured pruning research fixture'
+      })
+    ).toBeVisible()
+    await expect(selectedDiscover.getByRole('button', { name: 'Analyze paper' })).toHaveCount(0)
+    await expect(selectedDiscover.getByRole('button', { name: 'Promote to llm-wiki' })).toHaveCount(
+      0
+    )
     await capture(page, '03-discover-other.png')
 
-    await discoverArticle.getByRole('button', { name: 'Save result' }).click({ force: true })
-    const removeSavedArticle = discoverArticle.getByRole('button', {
+    await selectedDiscover.getByRole('button', { name: 'Save result' }).click({ force: true })
+    const removeSavedArticle = selectedDiscover.getByRole('button', {
       name: 'Remove result from Saved'
     })
     await expect(removeSavedArticle).toHaveAttribute('aria-pressed', 'true')
@@ -282,11 +375,11 @@ test('Discover-first search across every deployed source', async () => {
     )
     await capture(page, '03b-discover-star-saved.png')
     await removeSavedArticle.click({ force: true })
-    await expect(discoverArticle.getByRole('button', { name: 'Save result' })).toHaveAttribute(
+    await expect(selectedDiscover.getByRole('button', { name: 'Save result' })).toHaveAttribute(
       'aria-pressed',
       'false'
     )
-    await discoverArticle.getByRole('button', { name: 'Save result' }).click({ force: true })
+    await selectedDiscover.getByRole('button', { name: 'Save result' }).click({ force: true })
     await primaryNavigation.getByRole('button', { name: '02 Saved' }).click()
     await expect(page.getByRole('heading', { name: 'Saved research signals' })).toBeVisible()
     await expect(viewContext).toContainText('1 saved')

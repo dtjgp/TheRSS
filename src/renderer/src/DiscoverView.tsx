@@ -1,18 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Sparkles } from 'lucide-react'
 import type { DashboardSnapshot, TheRSSApi } from '../../shared/api'
-import type {
-  DiscoverResultItem,
-  DiscoverRunner,
-  DiscoverSnapshot,
-  DiscoverSource
-} from '../../shared/discover'
+import type { DiscoverRunner, DiscoverSnapshot, DiscoverSource } from '../../shared/discover'
 import { DISCOVER_SOURCE_IDS } from '../../shared/discover'
-import { sourceDisplayName, sourceStyleToken } from '../../shared/sourceIdentity'
+import { sourceDisplayName } from '../../shared/sourceIdentity'
 import type { AnalysisArtifact, LocalAgentStatus } from '../../shared/models'
-import { AnalysisPanel } from './AppSections'
-import { SaveStar } from './SaveStar'
-import { PaperPromotionAction } from './PaperPromotionAction'
+import { DiscoverResultWorkspace } from './DiscoverResultWorkspace'
 
 interface DiscoverViewProps {
   readonly api: TheRSSApi
@@ -29,11 +21,6 @@ function statusLabel(snapshot: DiscoverSnapshot): string {
   if (snapshot.status === 'failed') return 'Search failed'
   if (snapshot.status === 'no_results') return 'No results'
   return 'Search complete'
-}
-
-function resultKindLabel(item: DiscoverResultItem): string {
-  if (item.kind === 'repository') return 'Repository'
-  return item.kind.charAt(0).toUpperCase() + item.kind.slice(1)
 }
 
 function sourceStatusLabel(status: DiscoverSnapshot['sourceOutcomes'][DiscoverSource]['status']) {
@@ -61,118 +48,6 @@ function ChipGroup({
         ))}
       </div>
     </div>
-  )
-}
-
-function DiscoverCard({
-  item,
-  index,
-  isSaving,
-  isSaveDisabled,
-  analysis,
-  isAnalyzing,
-  onToggleSave,
-  onAnalyze,
-  api,
-  sessionId
-}: {
-  readonly item: DiscoverResultItem
-  readonly index: number
-  readonly isSaving: boolean
-  readonly isSaveDisabled: boolean
-  readonly analysis: AnalysisArtifact | null
-  readonly isAnalyzing: boolean
-  readonly onToggleSave: (itemId: string) => Promise<void>
-  readonly onAnalyze: (itemId: string) => Promise<void>
-  readonly api: TheRSSApi
-  readonly sessionId: string
-}) {
-  const handleContextMenu = (event: React.MouseEvent) => {
-    event.preventDefault()
-    void api
-      .showContextMenu({
-        kind: 'discover-result',
-        itemId: item.id,
-        sessionId,
-        title: item.title,
-        url: item.url,
-        sourceLabel: sourceDisplayName(item.source),
-        publishedAt: item.publishedAt,
-        isSaved: item.saved,
-        canAnalyze: item.kind === 'paper',
-        // Promotion stays with PaperPromotionAction so the confirmation gate required
-        // by ADR 0008 keeps a single implementation. See the contract amendment.
-        canPromote: false
-      })
-      .then((outcome) => {
-        if (outcome.action === 'save' || outcome.action === 'unsave') return onToggleSave(item.id)
-        if (outcome.action === 'analyze') return onAnalyze(item.id)
-        return undefined
-      })
-      .catch(() => undefined)
-  }
-
-  return (
-    <article
-      className="signal-card"
-      style={{ '--card-index': Math.min(index, 5) } as React.CSSProperties}
-      data-testid="discover-result"
-      onContextMenu={handleContextMenu}
-    >
-      <div className="signal-card__meta">
-        <span className={`source-mark source-mark--${sourceStyleToken(item.source)}`}>
-          {sourceDisplayName(item.source)}
-        </span>
-        <span>{resultKindLabel(item)}</span>
-        <span>{new Date(item.publishedAt).toLocaleDateString()}</span>
-        <span className="signal-card__score">signal {item.score}</span>
-      </div>
-      <h3>
-        <a href={item.url} target="_blank" rel="noreferrer">
-          {item.title}
-        </a>
-      </h3>
-      <p className="discover-card__summary">{item.summary}</p>
-      <div className="reason-list" aria-label="Discover match reasons">
-        {item.reasons.map((reason) => (
-          <span key={reason}>{reason}</span>
-        ))}
-      </div>
-      <div className="signal-card__actions">
-        <button
-          type="button"
-          className="discover-save-button save-button"
-          aria-label={item.saved ? 'Remove result from Saved' : 'Save result'}
-          aria-pressed={item.saved}
-          aria-busy={isSaving}
-          title={item.saved ? 'Remove from Saved' : 'Save this result'}
-          disabled={isSaveDisabled}
-          onClick={() => void onToggleSave(item.id)}
-        >
-          <SaveStar isSaved={item.saved} />
-        </button>
-        {item.kind === 'paper' && (
-          <button
-            type="button"
-            className="text-button discover-analysis-button"
-            aria-label="Analyze paper"
-            disabled={isAnalyzing}
-            onClick={() => void onAnalyze(item.id)}
-          >
-            <Sparkles aria-hidden="true" size={16} strokeWidth={1.8} />
-            <span>{isAnalyzing ? 'Analyzing…' : 'Analyze paper'}</span>
-          </button>
-        )}
-        {item.source === 'arxiv' && item.kind === 'paper' ? (
-          <PaperPromotionAction api={api} itemId={item.id} sessionId={sessionId} />
-        ) : null}
-      </div>
-      {analysis?.itemId === item.id && (
-        <div className="discover-card__analysis">
-          <AnalysisPanel artifact={analysis} />
-        </div>
-      )}
-    </article>
   )
 }
 
@@ -545,22 +420,18 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
               </div>
             ) : (
               <>
-                <div className="signal-grid" id="discover-visible-results">
-                  {visibleItems.map((item, index) => (
-                    <DiscoverCard
-                      key={`${snapshot.id}-${item.id}`}
-                      item={item}
-                      index={index}
-                      isSaving={savingItemId === item.id}
-                      isSaveDisabled={savingItemId !== null}
-                      analysis={analysis?.itemId === item.id ? analysis : null}
-                      isAnalyzing={analyzingItemId === item.id}
-                      onToggleSave={toggleSaveResult}
-                      onAnalyze={analyzeResult}
-                      api={api}
-                      sessionId={snapshot.id}
-                    />
-                  ))}
+                <div id="discover-visible-results">
+                  <DiscoverResultWorkspace
+                    api={api}
+                    items={visibleItems}
+                    analysis={analysis}
+                    analyzingItemId={analyzingItemId}
+                    savingItemId={savingItemId}
+                    isSaveDisabled={savingItemId !== null}
+                    sessionId={snapshot.id}
+                    onToggleSave={toggleSaveResult}
+                    onAnalyze={analyzeResult}
+                  />
                 </div>
                 <div className="discover-result-pagination">
                   <p role="status" aria-label="Discover result count">

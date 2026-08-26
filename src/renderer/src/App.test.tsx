@@ -109,10 +109,15 @@ describe('App', () => {
     expect(baaiOutcome).toHaveTextContent('1 results')
     expect(baaiOutcome).toHaveTextContent('One malformed feed record was rejected.')
 
-    const baaiCard = screen.getByText('BAAI edge intelligence briefing').closest('article')
-    expect(baaiCard).not.toBeNull()
-    expect(within(baaiCard as HTMLElement).getByText('北京智源人工智能研究院')).toBeVisible()
-    expect(within(baaiCard as HTMLElement).getByText('Article')).toBeVisible()
+    const resultList = screen.getByRole('list', { name: 'Discover result list' })
+    await user.click(
+      within(resultList).getByRole('button', {
+        name: 'Select result: BAAI edge intelligence briefing'
+      })
+    )
+    const selectedDetail = screen.getByRole('article', { name: 'Selected Discover result' })
+    expect(within(selectedDetail).getByText('北京智源人工智能研究院')).toBeVisible()
+    expect(within(selectedDetail).getByText('Article')).toBeVisible()
   })
 
   it('shows honest indeterminate progress while a bounded Discover run is pending', async () => {
@@ -156,34 +161,36 @@ describe('App', () => {
     expect(status).not.toHaveTextContent('Private profile text')
   })
 
-  it('caps staggered result entrance delays after the first six cards', async () => {
+  it('uses one selectable Discover list-detail workspace for fast scanning', async () => {
     const api = createApi()
-    const snapshot = createDiscoverSnapshot()
-    const items = Array.from({ length: 8 }, (_, index) => ({
-      ...snapshot.items[0]!,
-      id: `arxiv:discover-${index}`,
-      externalId: `discover-${index}`,
-      title: `Discover paper ${index}`,
-      url: `https://arxiv.org/abs/discover-${index}`
-    }))
-    vi.mocked(api.searchDiscover).mockResolvedValue({
-      ...snapshot,
-      counts: {
-        ...snapshot.counts,
-        total: items.length,
-        byKind: { ...snapshot.counts.byKind, paper: items.length }
-      },
-      items
-    })
     const user = userEvent.setup()
     render(<App api={api} />)
 
     await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
     await user.click(screen.getByRole('button', { name: 'Expand and search' }))
 
-    const cards = await screen.findAllByTestId('discover-result')
-    expect(cards).toHaveLength(8)
-    expect(cards[7]).toHaveStyle('--card-index: 5')
+    const resultList = await screen.findByRole('list', { name: 'Discover result list' })
+    const resultRows = within(resultList).getAllByRole('button', { name: /Select result:/u })
+    const detail = screen.getByRole('article', { name: 'Selected Discover result' })
+
+    expect(resultRows).toHaveLength(3)
+    expect(resultRows[0]).toHaveAttribute('aria-current', 'true')
+    expect(
+      within(detail).getByRole('heading', {
+        name: 'Structured pruning for semantic communication'
+      })
+    ).toBeVisible()
+    expect(screen.getByRole('separator', { name: 'Resize Discover result list' })).toBeVisible()
+
+    await user.click(
+      within(resultList).getByRole('button', { name: 'Select result: discover/repo' })
+    )
+    expect(within(detail).getByRole('heading', { name: 'discover/repo' })).toBeVisible()
+
+    await user.keyboard('{ArrowDown}')
+    expect(
+      within(detail).getByRole('heading', { name: 'BAAI edge intelligence briefing' })
+    ).toBeVisible()
   })
 
   it('progressively reveals a large Discover session with correct heading levels', async () => {
@@ -215,19 +222,19 @@ describe('App', () => {
     const user = userEvent.setup()
     render(<App api={api} />)
 
-    const cards = await screen.findAllByTestId('discover-result')
-    expect(cards).toHaveLength(24)
+    const resultList = await screen.findByRole('list', { name: 'Discover result list' })
+    expect(within(resultList).getAllByRole('button', { name: /Select result:/u })).toHaveLength(24)
     const results = screen.getByRole('region', { name: 'Discover results' })
     expect(
       within(results).getByRole('status', { name: 'Discover result count' })
     ).toHaveTextContent('Showing 24 of 30 results')
-    expect(within(results).getAllByRole('heading', { level: 3 })).toHaveLength(24)
+    expect(within(results).getAllByRole('heading', { level: 3 })).toHaveLength(1)
     expect(
       within(results).getByRole('heading', { level: 2, name: 'Ranked source records' })
     ).toBeVisible()
 
     await user.click(within(results).getByRole('button', { name: 'Show 6 more results' }))
-    expect(await screen.findAllByTestId('discover-result')).toHaveLength(30)
+    expect(within(resultList).getAllByRole('button', { name: /Select result:/u })).toHaveLength(30)
     expect(
       within(results).getByRole('status', { name: 'Discover result count' })
     ).toHaveTextContent('Showing all 30 results')
@@ -241,16 +248,32 @@ describe('App', () => {
     await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
     await user.click(screen.getByRole('button', { name: 'Expand and search' }))
     const filters = await screen.findByRole('group', { name: 'Filter Discover results' })
+    const resultList = screen.getByRole('list', { name: 'Discover result list' })
+    const selectedDetail = screen.getByRole('article', { name: 'Selected Discover result' })
 
     await user.click(within(filters).getByRole('button', { name: 'Papers 1' }))
-    expect(screen.getByText('Structured pruning for semantic communication')).toBeVisible()
-    expect(screen.queryByText('discover/repo')).not.toBeInTheDocument()
+    expect(
+      within(selectedDetail).getByRole('heading', {
+        name: 'Structured pruning for semantic communication'
+      })
+    ).toBeVisible()
+    expect(
+      within(resultList).queryByRole('button', { name: 'Select result: discover/repo' })
+    ).not.toBeInTheDocument()
     await user.click(within(filters).getByRole('button', { name: 'Repositories 1' }))
-    expect(screen.getByText('discover/repo')).toBeVisible()
-    expect(screen.queryByText('BAAI edge intelligence briefing')).not.toBeInTheDocument()
+    expect(within(selectedDetail).getByRole('heading', { name: 'discover/repo' })).toBeVisible()
+    expect(
+      within(resultList).queryByRole('button', {
+        name: 'Select result: BAAI edge intelligence briefing'
+      })
+    ).not.toBeInTheDocument()
     await user.click(within(filters).getByRole('button', { name: 'Other 1' }))
-    expect(screen.getByText('BAAI edge intelligence briefing')).toBeVisible()
-    expect(screen.queryByText('discover/repo')).not.toBeInTheDocument()
+    expect(
+      within(selectedDetail).getByRole('heading', { name: 'BAAI edge intelligence briefing' })
+    ).toBeVisible()
+    expect(
+      within(resultList).queryByRole('button', { name: 'Select result: discover/repo' })
+    ).not.toBeInTheDocument()
     expect(api.searchDiscover).toHaveBeenCalledOnce()
   })
 
@@ -277,8 +300,14 @@ describe('App', () => {
 
     await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
     await user.click(screen.getByRole('button', { name: 'Expand and search' }))
-    const card = (await screen.findByText('BAAI edge intelligence briefing')).closest('article')
-    await user.click(within(card as HTMLElement).getByRole('button', { name: 'Save result' }))
+    const resultList = await screen.findByRole('list', { name: 'Discover result list' })
+    await user.click(
+      within(resultList).getByRole('button', {
+        name: 'Select result: BAAI edge intelligence briefing'
+      })
+    )
+    const selectedDetail = screen.getByRole('article', { name: 'Selected Discover result' })
+    await user.click(within(selectedDetail).getByRole('button', { name: 'Save result' }))
     expect(api.saveDiscoverResult).toHaveBeenCalledWith(
       'discover-session-1',
       'folo:302:discover-article'
@@ -299,10 +328,8 @@ describe('App', () => {
 
     await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
     await user.click(screen.getByRole('button', { name: 'Expand and search' }))
-    const paperCard = (
-      await screen.findByText('Structured pruning for semantic communication')
-    ).closest('article') as HTMLElement
-    const saveButton = within(paperCard).getByRole('button', { name: 'Save result' })
+    const selectedDetail = await screen.findByRole('article', { name: 'Selected Discover result' })
+    const saveButton = within(selectedDetail).getByRole('button', { name: 'Save result' })
 
     expect(saveButton).toHaveAttribute('aria-pressed', 'false')
     expect(saveButton).not.toHaveTextContent('Save result')
@@ -310,7 +337,7 @@ describe('App', () => {
 
     await user.click(saveButton)
     expect(api.saveDiscoverResult).toHaveBeenCalledWith('discover-session-1', 'arxiv:discover')
-    const removeButton = within(paperCard).getByRole('button', {
+    const removeButton = within(selectedDetail).getByRole('button', {
       name: 'Remove result from Saved'
     })
     expect(removeButton).toHaveAttribute('aria-pressed', 'true')
@@ -318,7 +345,7 @@ describe('App', () => {
 
     await user.click(removeButton)
     expect(api.setTriageState).toHaveBeenCalledWith('arxiv:discover', 'viewed')
-    expect(within(paperCard).getByRole('button', { name: 'Save result' })).toHaveAttribute(
+    expect(within(selectedDetail).getByRole('button', { name: 'Save result' })).toHaveAttribute(
       'aria-pressed',
       'false'
     )
@@ -333,37 +360,46 @@ describe('App', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Search with' }), 'codex')
     await user.click(screen.getByRole('button', { name: 'Expand and search' }))
 
-    const paperCard = (
-      await screen.findByText('Structured pruning for semantic communication')
-    ).closest('article') as HTMLElement
-    const paperActions = paperCard.querySelector('.signal-card__actions') as HTMLElement
+    const resultList = await screen.findByRole('list', { name: 'Discover result list' })
+    const selectedDetail = screen.getByRole('article', { name: 'Selected Discover result' })
+    const paperActions = selectedDetail.querySelector('.signal-detail__actions') as HTMLElement
     expect(
       within(paperActions)
         .getAllByRole('button')
         .map((button) => button.getAttribute('aria-label'))
     ).toEqual(['Save result', 'Analyze paper', 'Promote to llm-wiki'])
 
-    const repositoryCard = screen.getByText('discover/repo').closest('article') as HTMLElement
-    const articleCard = screen
-      .getByText('BAAI edge intelligence briefing')
-      .closest('article') as HTMLElement
-    expect(within(repositoryCard).queryByRole('button', { name: 'Analyze paper' })).toBeNull()
-    expect(within(articleCard).queryByRole('button', { name: 'Analyze paper' })).toBeNull()
+    await user.click(
+      within(resultList).getByRole('button', { name: 'Select result: discover/repo' })
+    )
+    expect(within(selectedDetail).queryByRole('button', { name: 'Analyze paper' })).toBeNull()
+    await user.click(
+      within(resultList).getByRole('button', {
+        name: 'Select result: BAAI edge intelligence briefing'
+      })
+    )
+    expect(within(selectedDetail).queryByRole('button', { name: 'Analyze paper' })).toBeNull()
 
-    await user.click(within(paperActions).getByRole('button', { name: 'Analyze paper' }))
+    await user.click(
+      within(resultList).getByRole('button', {
+        name: 'Select result: Structured pruning for semantic communication'
+      })
+    )
+
+    await user.click(within(selectedDetail).getByRole('button', { name: 'Analyze paper' }))
     expect(api.analyzeDiscoverResult).toHaveBeenCalledWith(
       'discover-session-1',
       'arxiv:discover',
       'codex'
     )
     expect(api.saveDiscoverResult).not.toHaveBeenCalled()
-    expect(within(paperCard).getByRole('button', { name: 'Save result' })).toHaveAttribute(
+    expect(within(selectedDetail).getByRole('button', { name: 'Save result' })).toHaveAttribute(
       'aria-pressed',
       'false'
     )
-    expect(await within(paperCard).findByLabelText('L1 paper analysis result')).toHaveTextContent(
-      'abstract-only / provisional'
-    )
+    expect(
+      await within(selectedDetail).findByLabelText('L1 paper analysis result')
+    ).toHaveTextContent('abstract-only / provisional')
   })
 
   it('restores the exact source subset from the latest Discover session', async () => {

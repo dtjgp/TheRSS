@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TheRSS Discover list-detail prototype</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+        --label: #1d1d1f;
+        --secondary: #626267;
+        --surface: #ffffff;
+        --grouped: #f2f2f7;
+        --line: rgba(60, 60, 67, 0.29);
+        --indigo: #4542b5;
+        --indigo-soft: color-mix(in srgb, #5856d6 12%, transparent);
+        --focus: #007aff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-width: 720px;
+        margin: 0;
+        color: var(--label);
+        background: var(--grouped);
+      }
+
+      button,
+      select {
+        font: inherit;
+      }
+
+      button:focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 2px;
+      }
+
+      .page {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 34px 28px 48px;
+      }
+
+      .eyebrow,
+      .section-label {
+        margin: 0 0 10px;
+        color: var(--indigo);
+        font-size: 11px;
+        font-weight: 750;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+        letter-spacing: -0.035em;
+      }
+
+      h1 {
+        font-size: 42px;
+      }
+
+      .intro {
+        max-width: 760px;
+        margin: 12px 0 28px;
+        color: var(--secondary);
+        font-size: 16px;
+        line-height: 1.5;
+      }
+
+      .results {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--surface);
+      }
+
+      .results-header {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 22px 24px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .results-header h2 {
+        font-size: 28px;
+      }
+
+      .filters {
+        display: flex;
+        gap: 6px;
+      }
+
+      .filters button {
+        min-width: 72px;
+        padding: 8px 12px;
+        border: 1px solid transparent;
+        border-radius: 9px;
+        color: var(--secondary);
+        background: transparent;
+        cursor: pointer;
+      }
+
+      .filters button[aria-pressed='true'] {
+        border-color: color-mix(in srgb, var(--indigo) 26%, transparent);
+        color: var(--indigo);
+        background: var(--indigo-soft);
+      }
+
+      .filters strong,
+      .filters span {
+        display: block;
+      }
+
+      .filters span {
+        margin-top: 2px;
+        font-size: 11px;
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: minmax(260px, 34%) minmax(0, 1fr);
+        min-height: 510px;
+      }
+
+      .list-pane {
+        border-right: 1px solid var(--line);
+        background: color-mix(in srgb, var(--grouped) 54%, var(--surface));
+      }
+
+      .list-heading {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        color: var(--secondary);
+        font-size: 12px;
+      }
+
+      .list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .row {
+        display: block;
+        width: 100%;
+        padding: 14px;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        color: inherit;
+        text-align: left;
+        background: transparent;
+        cursor: pointer;
+      }
+
+      .row[aria-current='true'] {
+        box-shadow: inset 3px 0 var(--indigo);
+        background: var(--indigo-soft);
+      }
+
+      .row-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--secondary);
+        font-size: 11px;
+      }
+
+      .source {
+        padding: 2px 6px;
+        border-radius: 5px;
+        color: white;
+        background: #0066d6;
+        font-size: 10px;
+        font-weight: 750;
+      }
+
+      .score {
+        margin-left: auto;
+      }
+
+      .row strong,
+      .row-summary {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+      }
+
+      .row strong {
+        margin-top: 8px;
+        -webkit-line-clamp: 2;
+        font-size: 14px;
+        line-height: 1.25;
+      }
+
+      .row-summary {
+        margin-top: 6px;
+        color: var(--secondary);
+        -webkit-line-clamp: 2;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .detail {
+        padding: 30px 34px 38px;
+      }
+
+      .detail-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--secondary);
+        font-size: 12px;
+      }
+
+      .position {
+        margin-left: auto;
+      }
+
+      .detail h2 {
+        max-width: 780px;
+        margin-top: 24px;
+        font-size: clamp(30px, 4vw, 48px);
+        line-height: 1.02;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 22px 0 20px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .actions button,
+      .details-summary {
+        padding: 9px 13px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        color: var(--label);
+        background: color-mix(in srgb, var(--grouped) 74%, var(--surface));
+      }
+
+      .actions .primary {
+        color: var(--indigo);
+        background: var(--indigo-soft);
+      }
+
+      .summary {
+        max-width: 780px;
+        font-size: 16px;
+        line-height: 1.55;
+      }
+
+      .reasons {
+        margin-top: 32px;
+        padding-top: 20px;
+        border-top: 1px solid var(--line);
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+
+      .chips span {
+        padding: 5px 8px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--secondary);
+        font-size: 12px;
+      }
+
+      .boundary {
+        margin: 0;
+        padding: 14px 20px;
+        border-top: 1px solid var(--line);
+        color: var(--secondary);
+        font-size: 12px;
+      }
+
+      details {
+        margin-top: 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--surface);
+      }
+
+      .details-summary {
+        display: flex;
+        justify-content: space-between;
+        border: 0;
+        cursor: pointer;
+      }
+
+      details p {
+        margin: 0;
+        padding: 0 16px 16px;
+        color: var(--secondary);
+      }
+
+      @media (max-width: 900px) {
+        body {
+          min-width: 0;
+        }
+
+        .page {
+          padding: 24px 18px 36px;
+        }
+
+        h1 {
+          font-size: 34px;
+        }
+
+        .results-header {
+          align-items: start;
+          flex-direction: column;
+        }
+
+        .filters {
+          width: 100%;
+        }
+
+        .filters button {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .list-pane {
+          max-height: 260px;
+          overflow: auto;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .detail {
+          padding: 24px 22px 30px;
+        }
+
+        .detail h2 {
+          font-size: 34px;
+        }
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --label: #f5f5f7;
+          --secondary: #b5b5bb;
+          --surface: #1c1c1e;
+          --grouped: #000000;
+          --line: rgba(84, 84, 88, 0.72);
+          --indigo: #8b88ff;
+          --indigo-soft: rgba(94, 92, 230, 0.2);
+          --focus: #0a84ff;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <p class="eyebrow">Discover results</p>
+      <h1>Ranked source records</h1>
+      <p class="intro">
+        Scan compact evidence first. Keep one selected record open for its full summary, actions,
+        and match rationale.
+      </p>
+
+      <section class="results" aria-label="Discover results prototype">
+        <header class="results-header">
+          <div>
+            <p class="section-label">Current session</p>
+            <h2>3 ranked records</h2>
+          </div>
+          <div class="filters" role="group" aria-label="Filter prototype results">
+            <button type="button" data-filter="all" aria-pressed="true">
+              <strong>3</strong><span>All</span>
+            </button>
+            <button type="button" data-filter="paper" aria-pressed="false">
+              <strong>1</strong><span>Papers</span>
+            </button>
+            <button type="button" data-filter="repository" aria-pressed="false">
+              <strong>1</strong><span>Repos</span>
+            </button>
+            <button type="button" data-filter="article" aria-pressed="false">
+              <strong>1</strong><span>Other</span>
+            </button>
+          </div>
+        </header>
+
+        <div class="workspace" id="workspace">
+          <aside class="list-pane" aria-label="Discover result list">
+            <div class="list-heading">
+              <strong id="list-count">3 results</strong><span>↑↓ move</span>
+            </div>
+            <ol class="list" id="result-list"></ol>
+          </aside>
+          <article class="detail" aria-label="Selected Discover result" id="detail"></article>
+        </div>
+        <p class="boundary">
+          Discovery evidence only. Full-paper methods, experiments, and repository quality remain
+          unverified.
+        </p>
+      </section>
+
+      <details>
+        <summary class="details-summary">
+          <strong>Search details</strong><span>Partial results</span>
+        </summary>
+        <p>
+          Plan, provenance, and 22 independently recorded source outcomes remain inspectable here.
+        </p>
+      </details>
+    </main>
+
+    <script>
+      const records = [
+        {
+          id: 'paper',
+          kind: 'paper',
+          source: 'ARXIV',
+          date: '8/18/2026',
+          score: 61,
+          title: 'Structured pruning for semantic communication',
+          summary:
+            'A semantic communication paper that studies structured pruning under explicit edge deployment constraints. The prototype keeps the full abstract in one stable detail pane rather than repeating it in every scan row.',
+          reasons: ['Title matches structured pruning', 'arXiv category cs.LG'],
+          actions: ['Save', 'Analyze paper', 'Promote to llm-wiki']
+        },
+        {
+          id: 'repository',
+          kind: 'repository',
+          source: 'GITHUB',
+          date: '8/18/2026',
+          score: 48,
+          title: 'discover/repo',
+          summary:
+            'A repository for reproducible semantic communication and model-compression experiments.',
+          reasons: ['GitHub topic model-compression', 'Primary language Python'],
+          actions: ['Save']
+        },
+        {
+          id: 'article',
+          kind: 'article',
+          source: 'BAAI',
+          date: '8/18/2026',
+          score: 39,
+          title: 'BAAI edge intelligence briefing',
+          summary: 'A configured-source article selected from the bounded recent-content window.',
+          reasons: ['Recent-window content matches edge intelligence'],
+          actions: ['Save']
+        }
+      ]
+
+      let filter = 'all'
+      let selectedId = records[0].id
+
+      const filteredRecords = () =>
+        records.filter((record) => filter === 'all' || record.kind === filter)
+
+      function render() {
+        const visible = filteredRecords()
+        if (!visible.some((record) => record.id === selectedId)) selectedId = visible[0]?.id ?? ''
+        const selected = visible.find((record) => record.id === selectedId)
+
+        document.querySelector('#list-count').textContent = `${visible.length} results`
+        document.querySelector('#result-list').innerHTML = visible
+          .map(
+            (record) => `
+              <li>
+                <button class="row" type="button" data-id="${record.id}" aria-current="${record.id === selectedId}">
+                  <span class="row-meta"><span class="source">${record.source}</span><span>${record.date}</span><span>${record.kind}</span><span class="score">${record.score}</span></span>
+                  <strong>${record.title}</strong>
+                  <span class="row-summary">${record.summary}</span>
+                </button>
+              </li>`
+          )
+          .join('')
+
+        document.querySelector('#detail').innerHTML = selected
+          ? `
+              <div class="detail-meta"><span class="source">${selected.source}</span><span>${selected.date}</span><span>signal ${selected.score}</span><span class="position">${visible.indexOf(selected) + 1} of ${visible.length}</span></div>
+              <h2>${selected.title}</h2>
+              <div class="actions">${selected.actions.map((action, index) => `<button type="button" class="${index === 0 ? 'primary' : ''}">${action}</button>`).join('')}</div>
+              <p class="summary">${selected.summary}</p>
+              <section class="reasons"><p class="section-label">Why this matched</p><div class="chips">${selected.reasons.map((reason) => `<span>${reason}</span>`).join('')}</div></section>`
+          : '<p>No results in this filter.</p>'
+
+        document.querySelectorAll('.row').forEach((row) => {
+          row.addEventListener('click', () => {
+            selectedId = row.dataset.id
+            render()
+            document.querySelector(`[data-id="${selectedId}"]`)?.focus()
+          })
+        })
+      }
+
+      document.querySelectorAll('[data-filter]').forEach((button) => {
+        button.addEventListener('click', () => {
+          filter = button.dataset.filter
+          document.querySelectorAll('[data-filter]').forEach((candidate) => {
+            candidate.setAttribute('aria-pressed', String(candidate === button))
+          })
+          render()
+        })
+      })
+
+      document.querySelector('#workspace').addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+        const visible = filteredRecords()
+        const current = Math.max(
+          0,
+          visible.findIndex((record) => record.id === selectedId)
+        )
+        const delta = event.key === 'ArrowDown' ? 1 : -1
+        selectedId =
+          visible[Math.max(0, Math.min(current + delta, visible.length - 1))]?.id ?? selectedId
+        event.preventDefault()
+        render()
+        document.querySelector(`[data-id="${selectedId}"]`)?.focus()
+      })
+
+      render()
+    </script>
+  </body>
+</html>

@@ -370,23 +370,30 @@
 }
 
 .discover-result-list {
+  display: flex;
+  flex-direction: column;
   height: clamp(420px, calc(100vh - 112px), 840px);
   padding: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
   background: var(--secondary-system-grouped-background);
   border: 1px solid var(--separator);
   border-radius: 12px;
+  container-type: inline-size;
   scrollbar-gutter: stable;
 }
 
 .discover-result-list > .today-view__heading {
-  position: sticky;
+  position: relative;
   z-index: 1;
-  top: 0;
+  flex: 0 0 auto;
   background: color-mix(in srgb, var(--secondary-system-grouped-background) 94%, transparent);
   backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.discover-result-list > .today-view__heading > div {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .discover-result-list:focus-visible {
@@ -394,20 +401,22 @@
   outline-offset: 2px;
 }
 
-.discover-result-list .signal-grid {
-  grid-template-columns: minmax(0, 1fr);
+#discover-visible-results {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
-.discover-result-list .signal-card {
+.discover-result-workspace {
+  flex: 1 1 auto;
   min-height: 0;
-  padding: 24px 28px 22px;
 }
 
 .discover-result-pagination {
-  position: sticky;
+  position: relative;
   z-index: 1;
-  bottom: 0;
   display: flex;
+  flex: 0 0 auto;
   gap: 16px;
   align-items: center;
   justify-content: space-between;
@@ -448,17 +457,22 @@
 }
 
 .discover-result-filters {
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 68px));
+  gap: 6px;
   align-items: stretch;
+  max-width: 100%;
 }
 
 .discover-result-filters button {
-  min-width: 76px;
+  width: 100%;
+  min-width: 0;
   padding: 7px 11px;
   color: var(--muted);
   text-align: left;
   background: transparent;
   border: 1px solid transparent;
+  border-radius: var(--selection-radius);
   cursor: pointer;
 }
 
@@ -486,9 +500,23 @@
   outline-offset: 2px;
 }
 
+@container (max-width: 520px) {
+  .discover-result-list > .today-view__heading h2 {
+    font-size: 18px;
+    overflow-wrap: anywhere;
+  }
+
+  .discover-result-filters {
+    grid-template-columns: minmax(0, 68px);
+  }
+}
+
 .discover-evidence-boundary {
-  margin: 24px 0 0;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 11px 28px 13px;
   color: var(--muted);
+  border-top: 1px solid var(--line);
   font-size: 12px;
   line-height: 1.5;
 }
