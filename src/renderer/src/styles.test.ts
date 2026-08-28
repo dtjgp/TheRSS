@@ -316,6 +316,17 @@ describe('Apple semantic color system', () => {
     expect(summaryItem).not.toMatch(/padding:/u)
   })
 
+  it('wraps the terminal Discover summary inside compact and zoomed viewports', () => {
+    const compact = stylesheet.slice(
+      stylesheet.indexOf('@media (max-width: 720px)'),
+      stylesheet.indexOf('.discover-run-notice')
+    )
+    expect(compact).toMatch(/\.discover-search-details > summary\s*\{[^}]*flex-wrap:\s*wrap;/su)
+    expect(compact).toMatch(
+      /\.discover-run-summary\s*\{[^}]*order:\s*1;[^}]*flex-basis:\s*100%;[^}]*min-width:\s*0;[^}]*margin-left:\s*0;/su
+    )
+  })
+
   it('owns secondary action geometry and every interaction state', () => {
     const base = stylesheet.match(/\.secondary-button\s*\{([^}]*)\}/su)?.[1]
     expect(base).toBeDefined()

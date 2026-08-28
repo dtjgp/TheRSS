@@ -62,8 +62,12 @@ without deleting user data.
   commit/push/install authorization. The verified branch is already pushed; do not bypass branch
   protection or create/merge a PR until the user explicitly approves both actions. The user granted
   that explicit approval in the next turn, clearing this external-action gate.
+- PR #35's first `desktop` job exposed a real environment-dependent 200% zoom overflow: the CI
+  runner constrained the app window more than the local display, and the terminal Discover summary
+  forced its non-wrapping parent 62px beyond `main`. A deterministic 900px + 200% regression
+  reproduced 117px locally; compact summary wrapping reduced it to zero and restored E2E 2/2.
 
 ## Status
 
-**Phase 3 in progress** - explicit PR/create-and-merge authorization is recorded; refreshing the
-branch evidence, creating the protected-main PR, and waiting for all required checks.
+**Phase 3 in progress** - PR #35 is open; the first desktop failure has a deterministic regression
+and verified local fix. Running the full gate, pushing the correction, and waiting for fresh CI.

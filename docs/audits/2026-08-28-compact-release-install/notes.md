@@ -68,3 +68,18 @@ Dev.backup-2026-08-26T14-03-25-611Z.app`, same identifier/version, `app.asar` SH
 - Do not merge on pending, failed, canceled, or missing required checks.
 - Final main/remote SHA equality and clean-worktree evidence must be read live after the merge; it
   is intentionally not predicted inside this pre-merge artifact.
+
+## PR #35 CI Correction
+
+- First CI run `33183931466`: `quality` passed `npm run check` and the current online production
+  audit; `desktop` failed only the 200% Discover `main` overflow assertion (`62px`). Packaging and
+  packaged smoke were correctly skipped after the failed E2E step.
+- Root cause: the runner's smaller display constrained the fallback 1360px app window; at 200%
+  zoom, `.discover-run-summary` retained a full-line flex basis but
+  `.discover-search-details > summary` could not wrap.
+- Regression: the E2E now explicitly uses a 900px window before 200% zoom. It failed locally at
+  `117px` before the CSS correction, removing display-size dependence from this check.
+- Correction: at <=720px the Search details summary wraps, and the terminal run summary occupies a
+  min-width-zero second row. Content, order in the DOM, ARIA, and evidence states are unchanged.
+- Focused style gate: expected RED 23/24, then GREEN 24/24.
+- Corrected Electron E2E: 2/2 passed, including <=1px document/main overflow.

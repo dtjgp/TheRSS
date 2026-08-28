@@ -366,6 +366,10 @@ test('Discover-first search across every deployed source', async () => {
       await capture(page, '02b-discover-results-dark.png')
       await page.emulateMedia({ colorScheme: 'light' })
 
+      await application.evaluate(({ BrowserWindow }, bounds) => {
+        BrowserWindow.getAllWindows()[0]?.setBounds({ ...bounds, width: 900, height: 700 })
+      }, discoverWideBounds)
+      await page.waitForTimeout(150)
       await application.evaluate(({ BrowserWindow }) => {
         BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(2)
       })
@@ -399,6 +403,9 @@ test('Discover-first search across every deployed source', async () => {
       await application.evaluate(({ BrowserWindow }) => {
         BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(1)
       })
+      await application.evaluate(({ BrowserWindow }, bounds) => {
+        BrowserWindow.getAllWindows()[0]?.setBounds(bounds)
+      }, discoverWideBounds)
       await page.waitForTimeout(150)
       await expect(shell).not.toHaveClass(/app-shell--sidebar-collapsed/)
       await expect(shell).toHaveAttribute('data-sidebar-constrained', 'false')

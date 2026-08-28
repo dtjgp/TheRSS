@@ -26,3 +26,8 @@ number and merged `main` SHA must be verified from live GitHub/Git state rather 
 The production dependency audit used the available local npm cache and reported zero
 vulnerabilities. No current online npm audit is claimed because transmitting dependency metadata to
 the public registry was not authorized.
+
+GitHub PR #35's first `quality` job subsequently ran the current online audit successfully. Its
+first `desktop` job found a real compact-window 200% overflow; the branch now contains a
+deterministic 900px regression and a locally verified minimal wrapping fix. Merge remains gated on
+the corrected revision's fresh CI result.
