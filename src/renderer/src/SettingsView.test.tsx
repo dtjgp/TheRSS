@@ -76,6 +76,8 @@ describe('SettingsView', () => {
     render(<SettingsView api={settingsApi()} localAgents={[]} onDirtyChange={vi.fn()} />)
 
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeVisible()
+    expect(screen.queryByText('APPLICATION SETTINGS')).not.toBeInTheDocument()
+    expect(screen.queryByText('PERSONAL CONTEXT')).not.toBeInTheDocument()
     const tabs = screen.getByRole('tablist', { name: 'Settings sections' })
     expect(screen.getByRole('tab', { name: 'Personal context' })).toHaveAttribute(
       'aria-selected',
@@ -83,6 +85,7 @@ describe('SettingsView', () => {
     )
     await user.click(screen.getByRole('tab', { name: 'Model provider' }))
     expect(screen.getByRole('heading', { name: 'Model provider' })).toBeVisible()
+    expect(screen.queryByText('MODEL PROVIDER')).not.toBeInTheDocument()
     expect(tabs).toContainElement(screen.getByRole('tab', { name: 'Model provider' }))
   })
 

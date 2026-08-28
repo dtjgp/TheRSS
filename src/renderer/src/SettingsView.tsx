@@ -256,7 +256,6 @@ export function SettingsView({ api, localAgents, onDirtyChange }: SettingsViewPr
   return (
     <section className="settings-view">
       <header className="settings-heading">
-        <p className="eyebrow">APPLICATION SETTINGS</p>
         <h1>Settings</h1>
         <p>Configure local research context, model access, and bounded agent availability.</p>
       </header>
@@ -297,7 +296,6 @@ export function SettingsView({ api, localAgents, onDirtyChange }: SettingsViewPr
               onSubmit={(event) => void savePersonalPrompt(event)}
             >
               <div className="settings-panel__heading">
-                <p className="eyebrow">PERSONAL CONTEXT</p>
                 <h2>Personal Discover prompt</h2>
                 <p>
                   Describe stable fields, questions, evidence preferences, methods, and exclusions.
@@ -374,7 +372,6 @@ export function SettingsView({ api, localAgents, onDirtyChange }: SettingsViewPr
               onSubmit={(event) => void saveProvider(event)}
             >
               <div className="settings-panel__heading field--wide">
-                <p className="eyebrow">MODEL PROVIDER</p>
                 <h2>Model provider</h2>
                 <p>
                   Test the unsaved draft before saving. API keys stay in Electron main, are

@@ -80,6 +80,19 @@ architectural change is worse.
 - Do not use live arXiv, GitHub, or model calls in automated tests; use deterministic fixtures and explicit opt-in smoke tests.
 - Validate with `npm run check` before commit and the full release gate before publishing.
 
+## External UI skill integration
+
+- The globally installed `design-taste-frontend` skill is advisory and is not a second product or
+  engineering authority.
+- For any TheRSS UI audit, redesign, visual-polish, layout, motion, or accessibility-visible task
+  that uses that upstream skill, first read `skills/therss-ui-improvement/SKILL.md` and its routed
+  references.
+- Repository product/evidence/security contracts, the accepted change contract, tests, and current
+  rendered behavior override upstream aesthetic defaults and hard bans.
+- Do not import an upstream design system, styling framework, animation library, font, icon family,
+  generated image, synthetic metric, or marketing pattern without an explicit reviewed scope.
+- Present unresolved taste-versus-product conflicts to the user before implementing them.
+
 ## Change review
 
 Review every change for:

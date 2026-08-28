@@ -158,8 +158,15 @@ describe('App', () => {
         outcome: { status: 'healthy', resultCount: 2, error: null }
       })
     )
-    const progress = screen.getByRole('status', { name: 'Discover search progress' })
+    const pipeline = screen.getByRole('region', { name: 'Discover run pipeline' })
+    const progress = within(pipeline).getByRole('status', { name: 'Discover run progress' })
     expect(progress).toHaveTextContent('3 of 22 sources finished')
+    expect(within(progress).getAllByRole('listitem')).toHaveLength(3)
+    expect(within(progress).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(pipeline).getByRole('button', { name: 'Cancel Discover search' })).toBeVisible()
+    expect(
+      within(progress).getByRole('progressbar', { name: 'Source search progress' })
+    ).toHaveAttribute('value', '3')
     await user.click(screen.getByRole('button', { name: 'Cancel Discover search' }))
     expect(api.cancelDiscover).toHaveBeenCalledWith(runId)
 

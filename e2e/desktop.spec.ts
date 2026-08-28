@@ -27,6 +27,7 @@ test('Discover-first search across every deployed source', async () => {
             ...env,
             HOME: userDataDirectory,
             THERSS_E2E_FIXTURES: '1',
+            THERSS_E2E_DISCOVER_DELAY: '1',
             THERSS_LLM_WIKI_PATH: poisonVault
           }
         }
@@ -36,6 +37,7 @@ test('Discover-first search across every deployed source', async () => {
             ...env,
             HOME: userDataDirectory,
             THERSS_E2E_FIXTURES: '1',
+            THERSS_E2E_DISCOVER_DELAY: '1',
             THERSS_LLM_WIKI_PATH: poisonVault
           }
         }
@@ -180,6 +182,75 @@ test('Discover-first search across every deployed source', async () => {
     await page.getByRole('combobox', { name: 'Search with' }).selectOption('codex')
     await page.getByRole('button', { name: 'Expand and search' }).click()
 
+    const activePipeline = page.getByRole('region', { name: 'Discover run pipeline' })
+    const liveProgress = activePipeline.getByRole('status', { name: 'Discover run progress' })
+    const cancelDiscover = activePipeline.getByRole('button', { name: 'Cancel Discover search' })
+    await expect(liveProgress).toContainText('Expanding research intent')
+    await expect(liveProgress.getByRole('button')).toHaveCount(0)
+    await expect(cancelDiscover).toBeVisible()
+    await expect(cancelDiscover).toBeEnabled()
+    await expect(cancelDiscover).toHaveCSS('border-radius', '7px')
+    await expect(cancelDiscover).toHaveCSS('cursor', 'pointer')
+    await expect(cancelDiscover).toHaveCSS('opacity', '1')
+    await capture(page, '01b-discover-planning.png')
+
+    await expect(liveProgress).toContainText('Searching selected sources')
+    await expect(liveProgress.locator('.discover-run-card__header span')).toHaveCSS(
+      'font-size',
+      '11px'
+    )
+    await expect(liveProgress.locator('.discover-run-stage__copy > span').first()).toHaveCSS(
+      'font-size',
+      '11px'
+    )
+    await expect(liveProgress.locator('.discover-run-stage__value').first()).toHaveCSS(
+      'font-size',
+      '11px'
+    )
+    await capture(page, '01c-discover-searching.png')
+
+    if (!isBaselineCapture) {
+      const activeWideBounds = await application.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0]!.getBounds()
+      )
+      await application.evaluate(({ BrowserWindow }, bounds) => {
+        BrowserWindow.getAllWindows()[0]?.setBounds({ ...bounds, width: 820, height: 700 })
+      }, activeWideBounds)
+      await page.waitForTimeout(150)
+      await expect(activePipeline).toBeVisible()
+      expect(
+        await page.evaluate(() =>
+          Math.max(
+            document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            document.body.scrollWidth - document.body.clientWidth
+          )
+        )
+      ).toBeLessThanOrEqual(1)
+      await capture(page, '01d-discover-searching-820.png')
+
+      await page.emulateMedia({ colorScheme: 'dark' })
+      await capture(page, '01e-discover-searching-dark.png')
+      await page.emulateMedia({ colorScheme: 'light' })
+
+      const activeCdp = await page.context().newCDPSession(page)
+      await activeCdp.send('Emulation.setEmulatedMedia', {
+        features: [{ name: 'forced-colors', value: 'active' }]
+      })
+      await capture(page, '01f-discover-searching-forced-colors.png')
+      await activeCdp.send('Emulation.setEmulatedMedia', { features: [] })
+
+      await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
+      const currentStageMarker = liveProgress.locator(
+        ".discover-run-stage[data-state='current'] .discover-run-stage__marker"
+      )
+      await expect(currentStageMarker).toHaveCSS('animation-iteration-count', '1')
+      await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'no-preference' })
+      await application.evaluate(({ BrowserWindow }, bounds) => {
+        BrowserWindow.getAllWindows()[0]?.setBounds(bounds)
+      }, activeWideBounds)
+      await page.waitForTimeout(150)
+    }
+
     await expect(page.getByText('Search complete')).toBeVisible()
     const searchDetails = page.getByLabel('Discover search details')
     await expect(searchDetails).not.toHaveAttribute('open', '')
@@ -280,6 +351,10 @@ test('Discover-first search across every deployed source', async () => {
       await page.waitForTimeout(250)
       await expect(shell).not.toHaveClass(/app-shell--sidebar-collapsed/)
       await resultRegion.evaluate((element) => element.scrollIntoView({ block: 'start' }))
+      await expect(searchDetails.locator('.discover-status')).toHaveCSS('white-space', 'nowrap')
+      await expect(
+        searchDetails.getByRole('group', { name: 'Recorded Discover run summary' })
+      ).toBeVisible()
       await capture(page, '02a-discover-results-820.png')
       await application.evaluate(({ BrowserWindow }, bounds) => {
         BrowserWindow.getAllWindows()[0]?.setBounds(bounds)
@@ -437,7 +512,16 @@ test('Discover-first search across every deployed source', async () => {
     await capture(page, '04-saved.png')
 
     await page.getByRole('button', { name: 'Settings' }).click()
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+    const settingsHeading = page.getByRole('heading', { name: 'Settings' })
+    await expect(settingsHeading).toBeVisible()
+    await expect(settingsHeading).toHaveCSS('font-size', '40px')
+    await expect(page.locator('.settings-heading > .eyebrow')).toHaveCount(0)
+    await expect(page.locator('.settings-panel__heading > .eyebrow')).toHaveCount(0)
+    expect(
+      await page
+        .locator('.settings-layout')
+        .evaluate((element) => Math.round(element.getBoundingClientRect().top))
+    ).toBeLessThan(180)
     await expect(viewContext).toContainText('Local settings')
     await expect(viewContext).toContainText('All changes saved')
     const personalPrompt = page.getByRole('textbox', { name: 'Personal Discover prompt' })
@@ -548,6 +632,9 @@ test('Discover-first search across every deployed source', async () => {
     )
     await capture(page, '05b-personalized-discover-ready.png')
     await page.getByRole('button', { name: 'Expand and search' }).click()
+    const personalizedPipeline = page.getByRole('region', { name: 'Discover run pipeline' })
+    await expect(personalizedPipeline).toBeVisible()
+    await expect(personalizedPipeline).toHaveCount(0, { timeout: 10_000 })
     await expect(page.getByText('Search complete')).toBeVisible()
     await page.getByRole('button', { name: /Search details/u }).click()
     await expect(page.getByLabel('Discover search details')).toContainText(

@@ -1,0 +1,6 @@
+interface:
+  display_name: 'TheRSS UI Improvement'
+  short_description: 'Contract-safe UI audit and polish for TheRSS'
+  default_prompt: 'Use $therss-ui-improvement to audit this TheRSS UI problem, expose decision gates, and propose the smallest verified improvement.'
+policy:
+  allow_implicit_invocation: true

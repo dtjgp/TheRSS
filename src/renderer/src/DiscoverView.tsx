@@ -10,6 +10,7 @@ import { DISCOVER_SOURCE_IDS } from '../../shared/discover'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
 import type { AnalysisArtifact, LocalAgentStatus } from '../../shared/models'
 import { DiscoverResultWorkspace } from './DiscoverResultWorkspace'
+import { DiscoverRunStatus, DiscoverRunSummary } from './DiscoverRunStatus'
 
 interface DiscoverViewProps {
   readonly api: TheRSSApi
@@ -437,37 +438,8 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
         </div>
       </form>
 
-      {isSearching && (
-        <div
-          className="discover-search-progress"
-          role="status"
-          aria-label="Discover search progress"
-        >
-          <span className="activity-spinner" aria-hidden="true" />
-          <span>
-            <strong>
-              {progress?.phase === 'planning'
-                ? 'Expanding research intent…'
-                : progress?.phase === 'cancel_requested'
-                  ? 'Canceling Discover search…'
-                  : `${progress?.completedSources ?? 0} of ${progress?.totalSources ?? sources.length} sources finished`}
-            </strong>
-            <span>
-              {progress?.phase === 'planning'
-                ? 'No source request starts until the generated plan passes validation.'
-                : 'Completed source outcomes are retained independently.'}
-            </span>
-          </span>
-          <button
-            type="button"
-            className="secondary-button"
-            aria-label="Cancel Discover search"
-            disabled={progress?.phase === 'cancel_requested'}
-            onClick={() => void cancelSearch()}
-          >
-            {progress?.phase === 'cancel_requested' ? 'Canceling…' : 'Cancel'}
-          </button>
-        </div>
+      {isSearching && progress && (
+        <DiscoverRunStatus progress={progress} onCancel={() => void cancelSearch()} />
       )}
 
       {runNotice && (
@@ -629,6 +601,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
                 <strong>Search details</strong>
                 <span>Plan, provenance, and {DISCOVER_SOURCE_IDS.length} source outcomes</span>
               </span>
+              <DiscoverRunSummary snapshot={snapshot} />
             </summary>
             <div className="discover-search-details__body">
               <div className="discover-source-outcomes" role="list" aria-label="Source outcomes">
