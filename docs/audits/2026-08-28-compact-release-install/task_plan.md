@@ -25,9 +25,9 @@ without deleting user data.
 
 - [x] Phase 1: Resolve Git publication scope and the exact old-version deletion target.
 - [x] Phase 2: Run pre-commit verification and record the reviewed change set.
-- [ ] Phase 3: Commit, push, and complete the protected-main publication workflow.
+- [x] Phase 3: Commit, push, and complete the protected-main publication workflow.
 - [x] Phase 4: Build/install the local beta and remove only the proven superseded bundle/content.
-- [ ] Phase 5: Verify Git/install state and close evidence.
+- [x] Phase 5: Verify Git/install state and close evidence.
 
 ## Key Questions
 
@@ -69,5 +69,6 @@ without deleting user data.
 
 ## Status
 
-**Phase 3 in progress** - PR #35 is open; the first desktop failure has a deterministic regression
-and verified local fix. Running the full gate, pushing the correction, and waiting for fresh CI.
+**Complete** - PR #35 passed corrected `quality` and `desktop` gates and was squash-merged to
+`main` at `69a0082c1c1f5452ee9fd341af0bf85a090dbc6e`. Local `main`, `origin/main`, and `git ls-remote`
+agree with 0/0 divergence; the final merged app is installed and the superseded app bundle is gone.

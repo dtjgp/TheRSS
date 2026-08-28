@@ -83,3 +83,22 @@ Dev.backup-2026-08-26T14-03-25-611Z.app`, same identifier/version, `app.asar` SH
   min-width-zero second row. Content, order in the DOM, ARIA, and evidence states are unchanged.
 - Focused style gate: expected RED 23/24, then GREEN 24/24.
 - Corrected Electron E2E: 2/2 passed, including <=1px document/main overflow.
+
+## Final Publication and Install Closeout
+
+- Corrected GitHub CI run `33184501803` / run number 94: `quality` and `desktop` completed with
+  `success`; Electron E2E, unsigned macOS packaging, packaged smoke, `npm run check`, and the current
+  online production audit all passed.
+- PR #35 was squash-merged with expected head
+  `61f11889ffdea6bad1a207e25c02392f951c0a47` to `main` commit
+  `69a0082c1c1f5452ee9fd341af0bf85a090dbc6e`.
+- Local `main`, fetched `origin/main`, and `git ls-remote origin refs/heads/main` all equal that SHA;
+  divergence is 0/0 and the worktree was clean before this closeout-only documentation update.
+- The merged revision was repackaged and installed at `/Users/dtjgp/Applications/TheRSS Dev.app`.
+  Release and installed `app.asar` SHA-256 match at
+  `4bd232c7baf0b367d39fb8732c90474d98d78b5a38db471821f126dd79374dbd`.
+- Final packaged smoke passed. The live database and final timestamped recovery backup both returned
+  `ok` from read-only immutable `PRAGMA integrity_check`.
+- The final install's superseded app backup
+  `TheRSS Dev.backup-2026-08-28T15-22-59-479Z.app` was deleted permanently after verification.
+  Post-cleanup enumeration retains only the active app; SQLite recovery backups remain preserved.
