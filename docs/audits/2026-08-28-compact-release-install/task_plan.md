@@ -58,8 +58,12 @@ without deleting user data.
   outside-sandbox rerun passed both tests.
 - The first feature-branch creation could not write `.git/refs` inside the read-only Git metadata
   sandbox; the approved scoped rerun created `codex/compact-ui-release` successfully.
+- GitHub rejected PR creation as a separate external mutation not covered by the existing
+  commit/push/install authorization. The verified branch is already pushed; do not bypass branch
+  protection or create/merge a PR until the user explicitly approves both actions. The user granted
+  that explicit approval in the next turn, clearing this external-action gate.
 
 ## Status
 
-**Phase 3 in progress** - local installation and scoped old-bundle cleanup are verified; publishing
-the two local commits through a protected-main PR.
+**Phase 3 in progress** - explicit PR/create-and-merge authorization is recorded; refreshing the
+branch evidence, creating the protected-main PR, and waiting for all required checks.

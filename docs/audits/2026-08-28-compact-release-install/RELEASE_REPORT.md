@@ -2,11 +2,14 @@
 
 ## Status
 
-Local installation and old-app cleanup are complete. Protected-main publication is in progress.
+Local installation and old-app cleanup are complete. The verified feature branch is pushed, and
+explicit authorization to create and merge the protected-main PR has been received. The final PR
+number and merged `main` SHA must be verified from live GitHub/Git state rather than predicted here.
 
 ## Verified Result
 
 - Feature commit: `09afa7a` on `codex/compact-ui-release`.
+- Installation-evidence commit: `6daa297` on `codex/compact-ui-release`.
 - Full gate: 61 files / 411 tests; coverage thresholds, builds, lint, types, formatting, and
   architecture passed.
 - Electron E2E: 2/2 passed.

@@ -60,3 +60,11 @@ Dev.backup-2026-08-26T14-03-25-611Z.app`, same identifier/version, `app.asar` SH
   `TheRSS Dev.backup-2026-08-28T15-04-00-402Z.app`.
 - Post-cleanup enumeration contains only active `/Users/dtjgp/Applications/TheRSS Dev.app`.
 - Live data, preferences, receipts, and three SQLite recovery backups remain present.
+
+## Publication Authorization
+
+- The user explicitly approved creating the protected-main PR and merging it after all required
+  checks pass.
+- Do not merge on pending, failed, canceled, or missing required checks.
+- Final main/remote SHA equality and clean-worktree evidence must be read live after the merge; it
+  is intentionally not predicted inside this pre-merge artifact.
