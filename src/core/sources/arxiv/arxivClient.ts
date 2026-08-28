@@ -14,6 +14,7 @@ interface FetchArxivOptions {
   readonly maxAttempts?: number
   readonly sleep?: (milliseconds: number) => Promise<void>
   readonly now?: Date
+  readonly signal?: AbortSignal
 }
 
 const parsedItemSchema = z.object({
@@ -137,7 +138,9 @@ async function fetchArxivUrl(url: string, options: FetchArxivOptions): Promise<D
         Accept: 'application/atom+xml',
         'User-Agent': ARXIV_USER_AGENT
       },
-      signal: AbortSignal.timeout(30_000)
+      signal: options.signal
+        ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)])
+        : AbortSignal.timeout(30_000)
     })
 
     if (response.ok) {

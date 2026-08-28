@@ -160,7 +160,14 @@ export function createApi(snapshot: DashboardSnapshot = emptyDashboard): TheRSSA
     getInterestProfile: vi.fn().mockResolvedValue(null),
     saveInterestProfile: vi.fn().mockResolvedValue(snapshot),
     refresh: vi.fn().mockResolvedValue(snapshot),
+    searchLocal: vi.fn().mockResolvedValue({ query: '', results: [] }),
+    onDiscoverProgress: vi.fn().mockReturnValue(() => undefined),
     searchDiscover: vi.fn().mockResolvedValue(createDiscoverSnapshot()),
+    retryDiscover: vi.fn().mockResolvedValue(createDiscoverSnapshot()),
+    cancelDiscover: vi.fn().mockImplementation(async (runId: string) => ({
+      runId,
+      canceled: true
+    })),
     getLatestDiscover: vi.fn().mockResolvedValue(null),
     getAnalytics: vi.fn().mockResolvedValue({
       generatedAt: '2026-08-19T12:00:00.000Z',
@@ -241,6 +248,7 @@ export function createApi(snapshot: DashboardSnapshot = emptyDashboard): TheRSSA
       createdAt: '2026-08-20T12:00:00.000Z'
     }),
     getLatestAnalysis: vi.fn().mockResolvedValue(null),
+    getAnalysisArtifact: vi.fn().mockResolvedValue(null),
     previewLlmWikiPromotion: vi.fn(),
     confirmLlmWikiPromotion: vi.fn(),
     cancelLlmWikiPromotion: vi.fn(),

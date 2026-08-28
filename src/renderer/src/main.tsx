@@ -7,6 +7,7 @@ import './styles/discover.css'
 import './styles/analytics.css'
 import './styles/sources.css'
 import './styles/workspace.css'
+import './styles/local-search.css'
 import './styles/accessibility.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

@@ -21,8 +21,8 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 beta (v0.2.0): Discover-centered retrieval over the 22 live-verified sources, confirmation-gated
 llm-wiki promotion, and the Apple-native design pass. Builds remain unsigned.
 
-The active development-workflow hardening goal is tracked in [`GOALS.md`](GOALS.md) and
-[`docs/audits/2026-08-25-development-workflow-hardening/task_plan.md`](docs/audits/2026-08-25-development-workflow-hardening/task_plan.md).
+The active core-reliability work is tracked in [`GOALS.md`](GOALS.md) and
+[`docs/audits/2026-08-26-core-reliability-updates/task_plan.md`](docs/audits/2026-08-26-core-reliability-updates/task_plan.md).
 Deferred product work remains in [`docs/ROADMAP.md`](docs/ROADMAP.md); completed phase execution
 records live in [`docs/history/PHASE_EXECUTION_HISTORY.md`](docs/history/PHASE_EXECUTION_HISTORY.md).
 

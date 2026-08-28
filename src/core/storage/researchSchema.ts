@@ -142,7 +142,8 @@ export function migrateResearchDatabase(database: Database.Database): void {
       id TEXT PRIMARY KEY,
       intent TEXT NOT NULL,
       runner TEXT NOT NULL CHECK (runner IN ('model-provider', 'codex', 'claude')),
-      status TEXT NOT NULL CHECK (status IN ('completed', 'partial', 'no_results', 'failed')),
+      status TEXT NOT NULL
+        CHECK (status IN ('completed', 'partial', 'no_results', 'failed', 'canceled')),
       plan_json TEXT NOT NULL,
       provenance_json TEXT NOT NULL,
       created_at TEXT NOT NULL
@@ -152,7 +153,9 @@ export function migrateResearchDatabase(database: Database.Database): void {
       session_id TEXT NOT NULL REFERENCES discover_session(id) ON DELETE CASCADE,
       source TEXT NOT NULL,
       status TEXT NOT NULL
-        CHECK (status IN ('not_searched', 'healthy', 'partial', 'no_results', 'failed')),
+        CHECK (
+          status IN ('not_searched', 'healthy', 'partial', 'no_results', 'failed', 'canceled')
+        ),
       result_count INTEGER NOT NULL CHECK (result_count >= 0),
       error_message TEXT,
       PRIMARY KEY(session_id, source)
@@ -312,6 +315,29 @@ export function migrateResearchDatabase(database: Database.Database): void {
       }
     }
 
+    const discoverSessionDefinition = database
+      .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'discover_session'")
+      .get() as { sql: string }
+    if (!discoverSessionDefinition.sql.includes("'canceled'")) {
+      database.exec(`
+        CREATE TABLE discover_session_cancelable (
+          id TEXT PRIMARY KEY,
+          intent TEXT NOT NULL,
+          runner TEXT NOT NULL CHECK (runner IN ('model-provider', 'codex', 'claude')),
+          status TEXT NOT NULL
+            CHECK (status IN ('completed', 'partial', 'no_results', 'failed', 'canceled')),
+          plan_json TEXT NOT NULL,
+          provenance_json TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        );
+        INSERT INTO discover_session_cancelable SELECT * FROM discover_session;
+        DROP TABLE discover_session;
+        ALTER TABLE discover_session_cancelable RENAME TO discover_session;
+        CREATE INDEX discover_session_latest
+          ON discover_session(created_at DESC, id DESC);
+      `)
+    }
+
     const discoverSourceRunDefinition = database
       .prepare(
         "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'discover_source_run'"
@@ -319,14 +345,17 @@ export function migrateResearchDatabase(database: Database.Database): void {
       .get() as { sql: string }
     if (
       discoverSourceRunDefinition.sql.includes("source IN ('arxiv', 'github')") ||
-      !discoverSourceRunDefinition.sql.includes("'partial'")
+      !discoverSourceRunDefinition.sql.includes("'partial'") ||
+      !discoverSourceRunDefinition.sql.includes("'canceled'")
     ) {
       database.exec(`
         CREATE TABLE discover_source_run_generic (
           session_id TEXT NOT NULL REFERENCES discover_session(id) ON DELETE CASCADE,
           source TEXT NOT NULL,
           status TEXT NOT NULL
-            CHECK (status IN ('not_searched', 'healthy', 'partial', 'no_results', 'failed')),
+            CHECK (
+              status IN ('not_searched', 'healthy', 'partial', 'no_results', 'failed', 'canceled')
+            ),
           result_count INTEGER NOT NULL CHECK (result_count >= 0),
           error_message TEXT,
           PRIMARY KEY(session_id, source)

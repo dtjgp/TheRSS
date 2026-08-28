@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AnalyticsSnapshot } from '../../shared/analytics'
+import type { AnalysisArtifactState } from '../../shared/models'
 import { sourceDisplayName, sourceStyleToken } from '../../shared/sourceIdentity'
 import type { TheRSSApi } from '../../shared/api'
 
@@ -25,9 +26,40 @@ function SummaryCard({
   )
 }
 
-function AnalyticsContent({ snapshot }: { readonly snapshot: AnalyticsSnapshot }) {
+function freshnessLabel(state: AnalysisArtifactState): string {
+  if (state.freshness === 'current') return 'Current — source snapshot matches'
+  if (state.freshness === 'stale') return 'Stale — source changed since this analysis'
+  if (state.freshness === 'source_missing') return 'Source record is no longer available'
+  return 'Legacy artifact — source hash unavailable'
+}
+
+function AnalyticsContent({
+  api,
+  snapshot
+}: {
+  readonly api: TheRSSApi
+  readonly snapshot: AnalyticsSnapshot
+}) {
   const maxDailyResults = Math.max(1, ...snapshot.daily.map((day) => day.searchResults))
   const recentWindowResults = snapshot.daily.reduce((total, day) => total + day.searchResults, 0)
+  const [selectedAnalysis, setSelectedAnalysis] = useState<AnalysisArtifactState | null>(null)
+  const [analysisError, setAnalysisError] = useState<string | null>(null)
+  const [loadingAnalysisId, setLoadingAnalysisId] = useState<string | null>(null)
+
+  const openAnalysis = async (analysisId: string) => {
+    setLoadingAnalysisId(analysisId)
+    setAnalysisError(null)
+    try {
+      const state = await api.getAnalysisArtifact(analysisId)
+      if (!state) throw new Error('Analysis artifact not found')
+      setSelectedAnalysis(state)
+    } catch {
+      setSelectedAnalysis(null)
+      setAnalysisError('The historical analysis artifact could not be opened.')
+    } finally {
+      setLoadingAnalysisId(null)
+    }
+  }
 
   return (
     <section className="analytics-view">
@@ -151,17 +183,55 @@ function AnalyticsContent({ snapshot }: { readonly snapshot: AnalyticsSnapshot }
                   {sourceDisplayName(item.source).toLocaleUpperCase()}
                 </span>
                 <div>
-                  <a href={item.url} target="_blank" rel="noreferrer">
+                  <button
+                    type="button"
+                    className="analytics-history__open"
+                    aria-label={`Open analysis: ${item.title}`}
+                    disabled={loadingAnalysisId === item.analysisId}
+                    onClick={() => void openAnalysis(item.analysisId)}
+                  >
                     {item.title}
-                  </a>
+                  </button>
                   <span>
-                    {item.providerName} · {item.model}
+                    <span>
+                      {item.providerName} · {item.model}
+                    </span>
+                    {' · '}
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Open source: ${item.title}`}
+                    >
+                      Source
+                    </a>
                   </span>
                 </div>
                 <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time>
               </li>
             ))}
           </ol>
+        )}
+        {analysisError && <p role="alert">{analysisError}</p>}
+        {selectedAnalysis && (
+          <article className="analysis-history-detail" aria-label="Historical analysis detail">
+            <header>
+              <div>
+                <p className="eyebrow">PERSISTED ARTIFACT</p>
+                <h3>{selectedAnalysis.artifact.providerName}</h3>
+              </div>
+              <span
+                className={`analysis-freshness analysis-freshness--${selectedAnalysis.freshness}`}
+              >
+                {freshnessLabel(selectedAnalysis)}
+              </span>
+            </header>
+            <p className="analysis-history-detail__provenance">
+              {selectedAnalysis.artifact.model} · {selectedAnalysis.artifact.promptVersion} · source{' '}
+              {selectedAnalysis.artifact.sourceHash.slice(0, 12)}
+            </p>
+            <pre>{selectedAnalysis.artifact.content}</pre>
+          </article>
         )}
       </section>
     </section>
@@ -223,5 +293,5 @@ export function DataAnalyticsView({ api }: DataAnalyticsViewProps) {
     )
   }
 
-  return <AnalyticsContent snapshot={snapshot} />
+  return <AnalyticsContent api={api} snapshot={snapshot} />
 }

@@ -87,11 +87,14 @@ describe('App', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Search with' }), 'codex')
     await user.click(screen.getByRole('button', { name: 'Expand and search' }))
 
-    expect(api.searchDiscover).toHaveBeenCalledWith({
-      intent: 'semantic communication pruning for edge deployment',
-      runner: 'codex',
-      sources: ACTIVE_TODAY_SOURCE_IDS
-    })
+    expect(api.searchDiscover).toHaveBeenCalledWith(
+      {
+        intent: 'semantic communication pruning for edge deployment',
+        runner: 'codex',
+        sources: ACTIVE_TODAY_SOURCE_IDS
+      },
+      expect.any(String)
+    )
     expect(await screen.findByText('Partial results')).toBeVisible()
     const results = screen.getByLabelText('Discover results')
     const searchDetails = screen.getByLabelText('Discover search details')
@@ -120,31 +123,76 @@ describe('App', () => {
     expect(within(selectedDetail).getByText('Article')).toBeVisible()
   })
 
-  it('shows honest indeterminate progress while a bounded Discover run is pending', async () => {
+  it('shows per-source progress and cancels the active Discover run by run ID', async () => {
     const api = createApi()
-    let resolveSearch: ((snapshot: DiscoverSnapshot) => void) | undefined
+    let progressListener: Parameters<typeof api.onDiscoverProgress>[0] | undefined
+    vi.mocked(api.onDiscoverProgress).mockImplementation((listener) => {
+      progressListener = listener
+      return () => undefined
+    })
+    let rejectSearch: ((error: Error) => void) | undefined
     vi.mocked(api.searchDiscover).mockImplementation(
       () =>
-        new Promise((resolve) => {
-          resolveSearch = resolve
+        new Promise((_, reject) => {
+          rejectSearch = reject
         })
     )
+    vi.mocked(api.cancelDiscover).mockImplementation(async (runId) => {
+      rejectSearch?.(new Error('Discover search canceled'))
+      return { runId, canceled: true }
+    })
     const user = userEvent.setup()
     render(<App api={api} />)
 
     await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
     await user.click(screen.getByRole('button', { name: 'Expand and search' }))
 
-    const progress = screen.getByRole('status', { name: 'Discover search progress' })
-    expect(progress).toHaveTextContent('Expanding intent and searching 22 sources…')
-    expect(progress).not.toHaveTextContent(/\d+%/u)
-
-    await act(async () => resolveSearch?.(createDiscoverSnapshot()))
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('status', { name: 'Discover search progress' })
-      ).not.toBeInTheDocument()
+    const runId = vi.mocked(api.searchDiscover).mock.calls[0]![1]
+    await act(async () =>
+      progressListener?.({
+        runId,
+        phase: 'searching',
+        completedSources: 3,
+        totalSources: 22,
+        source: 'arxiv',
+        outcome: { status: 'healthy', resultCount: 2, error: null }
+      })
     )
+    const progress = screen.getByRole('status', { name: 'Discover search progress' })
+    expect(progress).toHaveTextContent('3 of 22 sources finished')
+    await user.click(screen.getByRole('button', { name: 'Cancel Discover search' }))
+    expect(api.cancelDiscover).toHaveBeenCalledWith(runId)
+
+    expect(
+      await screen.findByRole('status', { name: 'Discover cancellation status' })
+    ).toHaveTextContent('Discover search canceled')
+  })
+
+  it('retries only failed or partial sources without starting a new planner search', async () => {
+    const api = createApi()
+    const snapshot = createDiscoverSnapshot()
+    vi.mocked(api.getLatestDiscover).mockResolvedValue(snapshot)
+    vi.mocked(api.retryDiscover).mockResolvedValue({
+      ...snapshot,
+      id: 'discover-session-2',
+      status: 'completed',
+      sourceOutcomes: {
+        ...snapshot.sourceOutcomes,
+        'folo:302': { status: 'healthy', resultCount: 1, error: null }
+      }
+    })
+    const user = userEvent.setup()
+    render(<App api={api} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Retry 1 incomplete source' }))
+
+    expect(api.retryDiscover).toHaveBeenCalledWith(
+      'discover-session-1',
+      ['folo:302'],
+      expect.any(String)
+    )
+    expect(api.searchDiscover).not.toHaveBeenCalled()
+    expect(await screen.findByText('Search complete')).toBeVisible()
   })
 
   it('shows whether personalization is active without echoing the private prompt', async () => {

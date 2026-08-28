@@ -13,6 +13,7 @@ interface FetchGitHubOptions {
   readonly token?: string | undefined
   readonly maxQueries?: number
   readonly maxResponseBytes?: number
+  readonly signal?: AbortSignal
 }
 
 const repositorySchema = z.object({
@@ -84,7 +85,9 @@ export async function fetchGitHubRadarItems(
     url.searchParams.set('per_page', '25')
     const response = await fetcher(url.toString(), {
       headers,
-      signal: AbortSignal.timeout(30_000)
+      signal: options.signal
+        ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)])
+        : AbortSignal.timeout(30_000)
     })
     if (!response.ok) {
       throw new Error(`GitHub request failed with status ${response.status}`)

@@ -3,6 +3,12 @@ import type { DiscoveryItem, DiscoveryItemKind, DiscoverySource } from './discov
 import { ACTIVE_TODAY_SOURCE_IDS } from './sourceIdentity'
 
 export const discoverRunnerSchema = z.enum(['model-provider', 'codex', 'claude'])
+export const discoverRunIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(100)
+  .regex(/^[A-Za-z0-9:_-]+$/u)
 export const DISCOVER_SOURCE_IDS: readonly DiscoverySource[] = ACTIVE_TODAY_SOURCE_IDS
 const discoverSourceValues = [...DISCOVER_SOURCE_IDS] as [DiscoverySource, ...DiscoverySource[]]
 export const discoverSourceSchema = z.enum(discoverSourceValues)
@@ -49,14 +55,62 @@ export interface DiscoverPlannerProvenance {
   readonly createdAt: string
 }
 
-export type DiscoverSourceStatus = 'not_searched' | 'healthy' | 'partial' | 'no_results' | 'failed'
-export type DiscoverStatus = 'completed' | 'partial' | 'no_results' | 'failed'
+export type DiscoverSourceStatus =
+  'not_searched' | 'healthy' | 'partial' | 'no_results' | 'failed' | 'canceled'
+export type DiscoverStatus = 'completed' | 'partial' | 'no_results' | 'failed' | 'canceled'
 
 export interface DiscoverSourceOutcome {
   readonly status: DiscoverSourceStatus
   readonly resultCount: number
   readonly error: string | null
 }
+
+export interface DiscoverProgress {
+  readonly phase: 'planning' | 'searching' | 'cancel_requested'
+  readonly completedSources: number
+  readonly totalSources: number
+  readonly source: DiscoverSource | null
+  readonly outcome: DiscoverSourceOutcome | null
+}
+
+export interface DiscoverRunProgress extends DiscoverProgress {
+  readonly runId: string
+}
+
+export interface DiscoverCancellationReceipt {
+  readonly runId: string
+  readonly canceled: boolean
+}
+
+const discoverSourceOutcomeSchema = z
+  .object({
+    status: z.enum(['not_searched', 'healthy', 'partial', 'no_results', 'failed', 'canceled']),
+    resultCount: z.number().int().min(0).max(100),
+    error: z.string().max(500).nullable()
+  })
+  .strict()
+
+const discoverProgressObjectSchema = z
+  .object({
+    phase: z.enum(['planning', 'searching', 'cancel_requested']),
+    completedSources: z.number().int().min(0).max(DISCOVER_SOURCE_IDS.length),
+    totalSources: z.number().int().min(1).max(DISCOVER_SOURCE_IDS.length),
+    source: discoverSourceSchema.nullable(),
+    outcome: discoverSourceOutcomeSchema.nullable()
+  })
+  .strict()
+
+export const discoverRunProgressSchema = discoverProgressObjectSchema
+  .extend({ runId: discoverRunIdSchema })
+  .strict()
+  .superRefine((progress, context) => {
+    if (progress.completedSources > progress.totalSources) {
+      context.addIssue({ code: 'custom', message: 'Completed sources exceed the run total' })
+    }
+    if ((progress.source === null) !== (progress.outcome === null)) {
+      context.addIssue({ code: 'custom', message: 'Source progress requires a matching outcome' })
+    }
+  })
 
 export interface DiscoverResultItem extends DiscoveryItem {
   readonly score: number

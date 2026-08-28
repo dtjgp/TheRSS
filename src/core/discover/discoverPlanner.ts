@@ -14,11 +14,13 @@ interface DiscoverPlannerDependencies {
   readonly getPersonalizationPrompt?: () => string | null
   readonly planWithModel: (
     prompt: string,
-    profile: ModelExecutionProfile
+    profile: ModelExecutionProfile,
+    signal?: AbortSignal
   ) => Promise<ModelAnalysisResponse>
   readonly planWithLocalAgent: (
     prompt: string,
-    runner: LocalAgentRunner
+    runner: LocalAgentRunner,
+    signal?: AbortSignal
   ) => Promise<LocalAgentAnalysisResponse>
 }
 
@@ -113,7 +115,7 @@ export class DiscoverPlannerService {
     this.#dependencies = dependencies
   }
 
-  async plan(request: DiscoverSearchRequest, now = new Date()) {
+  async plan(request: DiscoverSearchRequest, now = new Date(), signal?: AbortSignal) {
     const personalizationPrompt = this.#dependencies.getPersonalizationPrompt?.() ?? null
     const prompt = buildDiscoverPlannerPrompt(request, personalizationPrompt)
     let response: ModelAnalysisResponse | LocalAgentAnalysisResponse
@@ -123,12 +125,16 @@ export class DiscoverPlannerService {
 
     if (request.runner === 'model-provider') {
       const profile = this.#dependencies.getModelProfile()
-      response = await this.#dependencies.planWithModel(prompt, profile)
+      response = signal
+        ? await this.#dependencies.planWithModel(prompt, profile, signal)
+        : await this.#dependencies.planWithModel(prompt, profile)
       providerId = profile.id
       providerName = profile.name
       model = profile.model
     } else {
-      const localResponse = await this.#dependencies.planWithLocalAgent(prompt, request.runner)
+      const localResponse = signal
+        ? await this.#dependencies.planWithLocalAgent(prompt, request.runner, signal)
+        : await this.#dependencies.planWithLocalAgent(prompt, request.runner)
       response = localResponse
       providerId = localResponse.providerId
       providerName = localResponse.providerName

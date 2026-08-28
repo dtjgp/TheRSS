@@ -52,3 +52,11 @@ export interface AnalysisArtifact {
   readonly content: string
   readonly createdAt: string
 }
+
+export type AnalysisFreshness = 'current' | 'stale' | 'source_missing' | 'legacy_unavailable'
+
+export interface AnalysisArtifactState {
+  readonly artifact: AnalysisArtifact
+  readonly freshness: AnalysisFreshness
+  readonly currentSourceHash: string | null
+}

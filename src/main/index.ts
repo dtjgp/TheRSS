@@ -28,7 +28,13 @@ import { ProviderService, type SecretCipher } from '../core/models/providerServi
 import { ResearchRepository } from '../core/storage/researchRepository'
 import { LlmWikiPromotionService } from '../core/integrations/llmWikiPromotionService'
 import { LlmWikiVaultAdapter } from '../core/integrations/llmWikiVaultAdapter'
-import { discoverSearchRequestSchema } from '../shared/discover'
+import {
+  discoverRunIdSchema,
+  discoverSearchRequestSchema,
+  discoverSourceSchema,
+  type DiscoverRunProgress,
+  type DiscoverSource
+} from '../shared/discover'
 import type { DiscoverySource } from '../shared/discovery'
 import type { SystemAccentName } from '../shared/appearance'
 import {
@@ -46,6 +52,7 @@ import {
 } from '../shared/llmWikiPromotion'
 import { discoverPersonalizationPromptSchema } from '../shared/personalization'
 import { isDiscoverySource } from '../shared/sourceIdentity'
+import { localSearchQuerySchema } from '../shared/localSearch'
 import { createApplicationMenuTemplate } from './applicationMenu'
 import {
   e2eAnalysis,
@@ -83,6 +90,13 @@ const discoverResultInputSchema = z
 const discoverAnalysisInputSchema = discoverResultInputSchema.extend({
   runner: z.enum(['model-provider', 'codex', 'claude']).default('model-provider')
 })
+const discoverRetryInputSchema = z
+  .object({
+    sessionId: itemIdSchema,
+    sources: z.array(discoverSourceSchema).min(1).max(22),
+    runId: discoverRunIdSchema
+  })
+  .strict()
 const settingsDirtySchema = z.boolean()
 const dirtySettingsWindows = new WeakSet<Electron.WebContents>()
 
@@ -137,6 +151,19 @@ function registerIpcHandlers(
   promotionService: LlmWikiPromotionService,
   useE2eFixtures: boolean
 ): void {
+  const activeDiscoverRuns = new Map<
+    number,
+    { readonly runId: string; readonly controller: AbortController }
+  >()
+  const discoverProgress = (
+    event: Electron.IpcMainInvokeEvent,
+    runId: string,
+    progress: Omit<DiscoverRunProgress, 'runId'>
+  ) => {
+    if (!event.sender.isDestroyed()) {
+      event.sender.send(IPC_CHANNELS.discoverProgress, { ...progress, runId })
+    }
+  }
   ipcMain.handle(
     IPC_CHANNELS.showContextMenu,
     async (event, candidate: unknown): Promise<ContextMenuOutcome> => {
@@ -205,13 +232,84 @@ function registerIpcHandlers(
       ...(huggingFaceToken ? { huggingFaceToken } : {})
     })
   })
-  ipcMain.handle(IPC_CHANNELS.searchDiscover, (_event, candidate: unknown) => {
-    const githubToken = githubTokenFromEnvironment(env)
-    const huggingFaceToken = huggingFaceTokenFromEnvironment(env)
-    return discoverService.search(discoverSearchRequestSchema.parse(candidate), {
-      ...(githubToken ? { githubToken } : {}),
-      ...(huggingFaceToken ? { huggingFaceToken } : {})
-    })
+  ipcMain.handle(IPC_CHANNELS.searchLocal, (_event, query: unknown) =>
+    repository.searchLocal(localSearchQuerySchema.parse(query))
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.searchDiscover,
+    async (event, candidate: unknown, runIdCandidate: unknown) => {
+      const runId = discoverRunIdSchema.parse(runIdCandidate)
+      if (activeDiscoverRuns.has(event.sender.id)) {
+        throw new Error('A Discover run is already active for this window')
+      }
+      const controller = new AbortController()
+      activeDiscoverRuns.set(event.sender.id, { runId, controller })
+      const cancelOnDestroy = () => controller.abort()
+      event.sender.once('destroyed', cancelOnDestroy)
+      const githubToken = githubTokenFromEnvironment(env)
+      const huggingFaceToken = huggingFaceTokenFromEnvironment(env)
+      try {
+        return await discoverService.search(discoverSearchRequestSchema.parse(candidate), {
+          ...(githubToken ? { githubToken } : {}),
+          ...(huggingFaceToken ? { huggingFaceToken } : {}),
+          signal: controller.signal,
+          onProgress: (progress) => discoverProgress(event, runId, progress)
+        })
+      } finally {
+        if (activeDiscoverRuns.get(event.sender.id)?.runId === runId) {
+          activeDiscoverRuns.delete(event.sender.id)
+        }
+        event.sender.removeListener('destroyed', cancelOnDestroy)
+      }
+    }
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.retryDiscover,
+    async (
+      event,
+      sessionIdCandidate: unknown,
+      sourcesCandidate: unknown,
+      runIdCandidate: unknown
+    ) => {
+      const input = discoverRetryInputSchema.parse({
+        sessionId: sessionIdCandidate,
+        sources: sourcesCandidate,
+        runId: runIdCandidate
+      })
+      const previous = repository.getLatestDiscoverSnapshot()
+      if (!previous || previous.id !== input.sessionId) {
+        throw new Error('Only the latest persisted Discover session can be retried')
+      }
+      if (activeDiscoverRuns.has(event.sender.id)) {
+        throw new Error('A Discover run is already active for this window')
+      }
+      const controller = new AbortController()
+      activeDiscoverRuns.set(event.sender.id, { runId: input.runId, controller })
+      const cancelOnDestroy = () => controller.abort()
+      event.sender.once('destroyed', cancelOnDestroy)
+      const githubToken = githubTokenFromEnvironment(env)
+      const huggingFaceToken = huggingFaceTokenFromEnvironment(env)
+      try {
+        return await discoverService.retry(previous, input.sources as readonly DiscoverSource[], {
+          ...(githubToken ? { githubToken } : {}),
+          ...(huggingFaceToken ? { huggingFaceToken } : {}),
+          signal: controller.signal,
+          onProgress: (progress) => discoverProgress(event, input.runId, progress)
+        })
+      } finally {
+        if (activeDiscoverRuns.get(event.sender.id)?.runId === input.runId) {
+          activeDiscoverRuns.delete(event.sender.id)
+        }
+        event.sender.removeListener('destroyed', cancelOnDestroy)
+      }
+    }
+  )
+  ipcMain.handle(IPC_CHANNELS.cancelDiscover, (event, runIdCandidate: unknown) => {
+    const runId = discoverRunIdSchema.parse(runIdCandidate)
+    const activeRun = activeDiscoverRuns.get(event.sender.id)
+    const canceled = activeRun?.runId === runId
+    if (canceled) activeRun.controller.abort()
+    return { runId, canceled }
   })
   ipcMain.handle(IPC_CHANNELS.getLatestDiscover, () => repository.getLatestDiscoverSnapshot())
   ipcMain.handle(IPC_CHANNELS.getAnalytics, () => repository.getAnalyticsSnapshot())
@@ -281,6 +379,9 @@ function registerIpcHandlers(
   )
   ipcMain.handle(IPC_CHANNELS.getLatestAnalysis, (_event, id: unknown) =>
     repository.getLatestAnalysis(itemIdSchema.parse(id))
+  )
+  ipcMain.handle(IPC_CHANNELS.getAnalysisArtifact, (_event, analysisId: unknown) =>
+    analysisService.getAnalysisArtifact(itemIdSchema.parse(analysisId))
   )
   ipcMain.handle(IPC_CHANNELS.previewLlmWikiPromotion, (event, candidate: unknown) => {
     const validated = llmWikiPromotionPreviewRequestSchema.parse(candidate)
@@ -478,11 +579,12 @@ app.whenReady().then(async () => {
       : providerService.getExecutionProfile.bind(providerService),
     planWithModel: useE2eFixtures
       ? async () => ({ content: fixturePlan, inputTokens: 20, outputTokens: 50 })
-      : (prompt, profile) =>
+      : (prompt, profile, signal) =>
           runPromptWithModel(prompt, profile, {
             systemPrompt:
               'You generate bounded academic search plans. Return one JSON object only and never claim retrieval.',
-            maxTokens: 800
+            maxTokens: 800,
+            ...(signal ? { signal } : {})
           }),
     getPersonalizationPrompt: () => repository.getDiscoverPersonalizationSettings()?.prompt ?? null,
     planWithLocalAgent: useE2eFixtures
@@ -595,7 +697,10 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(
     Menu.buildFromTemplate(
       createApplicationMenuTemplate((command) => {
-        BrowserWindow.getFocusedWindow()?.webContents.send(IPC_CHANNELS.appCommand, command)
+        const targetWindow =
+          BrowserWindow.getFocusedWindow() ??
+          BrowserWindow.getAllWindows().find((window) => !window.isDestroyed())
+        targetWindow?.webContents.send(IPC_CHANNELS.appCommand, command)
       }, process.platform === 'darwin')
     )
   )

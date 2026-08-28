@@ -46,7 +46,13 @@ export function createApplicationMenuTemplate(
       { role: 'cut' },
       { role: 'copy' },
       { role: 'paste' },
-      { role: 'selectAll' }
+      { role: 'selectAll' },
+      { type: 'separator' },
+      {
+        label: 'Find Local Research',
+        accelerator: 'CommandOrControl+F',
+        click: () => send('open-local-search')
+      }
     ]
   }
 

@@ -14,6 +14,7 @@ interface FetchHuggingFaceOptions {
   readonly token?: string
   readonly maxItemsPerKind?: number
   readonly maxResponseBytes?: number
+  readonly signal?: AbortSignal
 }
 
 const hubIdSchema = z
@@ -94,7 +95,9 @@ async function fetchJson(
 
   const response = await (options.fetcher ?? fetch)(url.toString(), {
     headers,
-    signal: AbortSignal.timeout(30_000)
+    signal: options.signal
+      ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)])
+      : AbortSignal.timeout(30_000)
   })
   if (!response.ok) {
     throw new Error(`Hugging Face ${label} request failed with status ${response.status}`)

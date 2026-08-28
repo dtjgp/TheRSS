@@ -125,6 +125,7 @@ describe('modelGateway', () => {
   })
 
   it('runs a bounded JSON-planning prompt through the configured provider', async () => {
+    const controller = new AbortController()
     const fetcher = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -137,7 +138,8 @@ describe('modelGateway', () => {
     await runPromptWithModel('Discover prompt', provider(), {
       fetcher,
       systemPrompt: 'Return JSON only.',
-      maxTokens: 800
+      maxTokens: 800,
+      signal: controller.signal
     })
 
     const [, request] = fetcher.mock.calls[0] as [string, RequestInit]
@@ -148,6 +150,9 @@ describe('modelGateway', () => {
     expect(body.max_tokens).toBe(800)
     expect(body.messages[0]).toEqual({ role: 'system', content: 'Return JSON only.' })
     expect(body.messages[1]).toEqual({ role: 'user', content: 'Discover prompt' })
+    expect(request.signal?.aborted).toBe(false)
+    controller.abort()
+    expect(request.signal?.aborted).toBe(true)
   })
 
   it('calls an Anthropic-compatible provider using the messages protocol', async () => {

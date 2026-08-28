@@ -41,6 +41,20 @@ interface LlmWikiPromotionReceiptRow {
   completed_at: string | null
 }
 
+function analysisArtifactFromRow(row: AnalysisArtifactRow): AnalysisArtifact {
+  return {
+    id: row.id,
+    itemId: row.item_id,
+    providerId: row.provider_id,
+    providerName: row.provider_name,
+    model: row.model,
+    promptVersion: row.prompt_version,
+    sourceHash: row.source_hash,
+    content: row.content,
+    createdAt: row.created_at
+  }
+}
+
 export function saveAnalysis(
   database: Database.Database,
   artifact: AnalysisArtifact,
@@ -197,17 +211,20 @@ export function getLatestAnalysis(
     )
     .get(itemId) as AnalysisArtifactRow | undefined
 
-  return row
-    ? {
-        id: row.id,
-        itemId: row.item_id,
-        providerId: row.provider_id,
-        providerName: row.provider_name,
-        model: row.model,
-        promptVersion: row.prompt_version,
-        sourceHash: row.source_hash,
-        content: row.content,
-        createdAt: row.created_at
-      }
-    : null
+  return row ? analysisArtifactFromRow(row) : null
+}
+
+export function getAnalysisArtifact(
+  database: Database.Database,
+  analysisId: string
+): AnalysisArtifact | null {
+  const row = database
+    .prepare(
+      `SELECT id, item_id, provider_id, provider_name, model, prompt_version,
+              source_hash, content, created_at
+       FROM analysis_artifact
+       WHERE id = ?`
+    )
+    .get(analysisId) as AnalysisArtifactRow | undefined
+  return row ? analysisArtifactFromRow(row) : null
 }

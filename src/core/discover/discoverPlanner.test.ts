@@ -96,6 +96,31 @@ describe('DiscoverPlannerService', () => {
     }
   )
 
+  it('forwards cancellation to the selected planner gateway', async () => {
+    const controller = new AbortController()
+    const planWithLocalAgent = vi.fn().mockResolvedValue({
+      content,
+      providerId: 'local-agent:codex',
+      providerName: 'Codex CLI',
+      model: 'codex-cli',
+      inputTokens: null,
+      outputTokens: null
+    })
+    const planner = new DiscoverPlannerService({
+      getModelProfile: vi.fn(),
+      planWithModel: vi.fn(),
+      planWithLocalAgent
+    })
+
+    await planner.plan(
+      { intent: 'edge AI pruning', runner: 'codex', sources: ['arxiv'] },
+      new Date('2026-08-26T10:00:00.000Z'),
+      controller.signal
+    )
+
+    expect(planWithLocalAgent).toHaveBeenCalledWith(expect.any(String), 'codex', controller.signal)
+  })
+
   it('builds a JSON-only, no-tools prompt whose bounded fields are a shared semantic profile', () => {
     const prompt = buildDiscoverPlannerPrompt({
       intent: 'Find semantic communications work',
