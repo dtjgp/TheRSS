@@ -55,13 +55,12 @@ import { isDiscoverySource } from '../shared/sourceIdentity'
 import { localSearchQuerySchema } from '../shared/localSearch'
 import { createApplicationMenuTemplate } from './applicationMenu'
 import {
+  createE2eDiscoverFetchers,
   e2eAnalysis,
-  e2eDiscoverConfiguredArticle,
-  e2eDiscoverPaper,
-  e2eDiscoverRepository,
   e2eConfiguredArticle,
   e2ePaper,
-  e2eRepository
+  e2eRepository,
+  waitForE2eDiscoverStage
 } from './e2eFixtures'
 import { githubTokenFromEnvironment, huggingFaceTokenFromEnvironment } from './sourceCredentials'
 import { createLlmWikiPromotionRuntime } from './llmWikiPromotionRuntime'
@@ -525,6 +524,7 @@ app.whenReady().then(async () => {
   const repository = new ResearchRepository(database)
   repository.reconcileInterruptedLlmWikiPromotions()
   const useE2eFixtures = env.THERSS_E2E_FIXTURES === '1'
+  const delayE2eDiscover = useE2eFixtures && env.THERSS_E2E_DISCOVER_DELAY === '1'
   const discoveryService = new DiscoveryService(
     repository,
     useE2eFixtures
@@ -578,7 +578,10 @@ app.whenReady().then(async () => {
         })
       : providerService.getExecutionProfile.bind(providerService),
     planWithModel: useE2eFixtures
-      ? async () => ({ content: fixturePlan, inputTokens: 20, outputTokens: 50 })
+      ? async () => {
+          await waitForE2eDiscoverStage(delayE2eDiscover)
+          return { content: fixturePlan, inputTokens: 20, outputTokens: 50 }
+        }
       : (prompt, profile, signal) =>
           runPromptWithModel(prompt, profile, {
             systemPrompt:
@@ -588,29 +591,23 @@ app.whenReady().then(async () => {
           }),
     getPersonalizationPrompt: () => repository.getDiscoverPersonalizationSettings()?.prompt ?? null,
     planWithLocalAgent: useE2eFixtures
-      ? async (_prompt, runner) => ({
-          content: fixturePlan,
-          providerId: `local-agent:${runner}`,
-          providerName: runner === 'codex' ? 'Codex CLI' : 'Claude Code',
-          model: runner === 'codex' ? 'codex-cli' : 'claude-code',
-          inputTokens: null,
-          outputTokens: null
-        })
+      ? async (_prompt, runner) => {
+          await waitForE2eDiscoverStage(delayE2eDiscover)
+          return {
+            content: fixturePlan,
+            providerId: `local-agent:${runner}`,
+            providerName: runner === 'codex' ? 'Codex CLI' : 'Claude Code',
+            model: runner === 'codex' ? 'codex-cli' : 'claude-code',
+            inputTokens: null,
+            outputTokens: null
+          }
+        }
       : localAgentService.planDiscovery.bind(localAgentService)
   })
   const discoverService = new DiscoverService({
     planner: discoverPlanner,
     repository,
-    ...(useE2eFixtures
-      ? {
-          fetchArxiv: async () => [e2eDiscoverPaper],
-          fetchGitHub: async () => [e2eDiscoverRepository],
-          fetchConfiguredSource: async (definition) => ({
-            items: definition.id === 'folo:302' ? [e2eDiscoverConfiguredArticle] : [],
-            rejectedCount: 0
-          })
-        }
-      : {})
+    ...(useE2eFixtures ? createE2eDiscoverFetchers(delayE2eDiscover) : {})
   })
   const analysisService = new AnalysisService(
     repository,

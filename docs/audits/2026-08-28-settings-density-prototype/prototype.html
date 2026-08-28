@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>TheRSS Settings density prototype</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+        --label: #1d1d1f;
+        --secondary-label: #626267;
+        --tertiary-label: rgba(60, 60, 67, 0.3);
+        --canvas: #f2f2f7;
+        --surface: #ffffff;
+        --field: #f2f2f7;
+        --fill: rgba(120, 120, 128, 0.16);
+        --fill-strong: rgba(120, 120, 128, 0.2);
+        --line: rgba(60, 60, 67, 0.29);
+        --opaque-line: #c6c6c8;
+        --accent: #af52de;
+        --accent-strong: #7f2ea2;
+        --accent-soft: rgba(175, 82, 222, 0.12);
+        --success: #176b2c;
+        --selection-radius: 7px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-width: 410px;
+        min-height: 560px;
+        margin: 0;
+        overflow: hidden;
+        color: var(--label);
+        background: var(--canvas);
+      }
+
+      button,
+      input,
+      textarea,
+      select {
+        color: inherit;
+        font: inherit;
+      }
+
+      button:focus-visible,
+      input:focus-visible,
+      textarea:focus-visible,
+      select:focus-visible {
+        outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+        outline-offset: 2px;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 196px minmax(0, 1fr);
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        padding: 28px 10px 18px;
+        background: color-mix(in srgb, var(--surface) 82%, transparent);
+        border-right: 1px solid var(--line);
+      }
+
+      .brand {
+        display: grid;
+        grid-template-columns: 36px 1fr;
+        gap: 10px;
+        align-items: center;
+        padding: 0 8px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        color: white;
+        background: linear-gradient(145deg, #5856d6, #007aff);
+        border-radius: 9px;
+        font-weight: 700;
+      }
+
+      .brand strong,
+      .brand span {
+        display: block;
+      }
+
+      .brand span {
+        margin-top: 4px;
+        color: var(--secondary-label);
+        font-size: 9px;
+        letter-spacing: 0.04em;
+      }
+
+      .sidebar nav {
+        display: grid;
+        gap: 4px;
+        margin-top: 18px;
+      }
+
+      .nav-item {
+        min-height: 38px;
+        padding: 8px 10px;
+        text-align: left;
+        background: transparent;
+        border: 0;
+        border-radius: var(--selection-radius);
+        font-size: 13px;
+      }
+
+      .nav-item[data-current='true'] {
+        color: var(--label);
+        background: var(--accent-soft);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+      }
+
+      .sidebar-settings {
+        margin-top: auto;
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+      }
+
+      .content {
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .topbar {
+        display: flex;
+        height: 52px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 18px;
+        background: color-mix(in srgb, var(--surface) 76%, transparent);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .topbar strong,
+      .topbar span {
+        display: block;
+      }
+
+      .topbar span {
+        color: var(--secondary-label);
+        font-size: 10px;
+      }
+
+      .topbar-state {
+        padding: 5px 10px;
+        color: var(--secondary-label);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        font-size: 11px;
+      }
+
+      .viewport {
+        height: calc(100vh - 52px);
+        overflow: auto;
+      }
+
+      .settings-view {
+        width: min(1040px, 100%);
+        margin: 0 auto;
+      }
+
+      .settings-heading h1,
+      .panel-heading h2 {
+        margin: 0;
+        font-family:
+          'SF Pro Display',
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        letter-spacing: -0.04em;
+      }
+
+      .eyebrow {
+        margin: 0;
+        color: var(--accent-strong);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .settings-heading > p:last-child,
+      .panel-heading > p:last-child {
+        max-width: 680px;
+        margin: 0;
+        color: var(--secondary-label);
+        line-height: 1.6;
+      }
+
+      .settings-layout {
+        display: grid;
+        grid-template-columns: 190px minmax(0, 1fr);
+        align-items: start;
+      }
+
+      .settings-tabs {
+        display: grid;
+        gap: 4px;
+        padding: 5px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+      }
+
+      .settings-tabs button {
+        min-height: 38px;
+        padding: 8px 10px;
+        text-align: left;
+        background: transparent;
+        border: 0;
+        border-radius: 8px;
+        color: var(--secondary-label);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .settings-tabs button[aria-selected='true'] {
+        color: var(--label);
+        background: var(--fill);
+        box-shadow: inset 0 0 0 1px var(--opaque-line);
+      }
+
+      .panel {
+        min-width: 0;
+      }
+
+      .panel form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+      }
+
+      .panel-heading,
+      .field-wide,
+      .form-guidance,
+      .form-footer {
+        grid-column: 1 / -1;
+      }
+
+      .field {
+        display: grid;
+        gap: 8px;
+      }
+
+      .field > span {
+        color: var(--secondary-label);
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 170px;
+        padding: 13px;
+        resize: vertical;
+        background: var(--field);
+        border: 1px solid var(--opaque-line);
+        border-radius: 8px;
+        line-height: 1.5;
+      }
+
+      .form-guidance {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+        gap: 14px;
+        color: var(--secondary-label);
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      .privacy {
+        margin: 0;
+        padding: 12px 14px;
+        background: var(--fill);
+        border-radius: 9px;
+      }
+
+      .form-footer {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        justify-content: space-between;
+        color: var(--secondary-label);
+        font-size: 11px;
+      }
+
+      .primary-button {
+        min-height: 30px;
+        padding: 6px 12px;
+        color: white;
+        background: var(--accent-strong);
+        border: 0;
+        border-radius: var(--selection-radius);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .mode-switch {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        padding: 5px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 11px;
+      }
+
+      .mode-switch button {
+        min-height: 30px;
+        padding: 5px 10px;
+        background: transparent;
+        border: 0;
+        border-radius: 7px;
+        font-size: 11px;
+      }
+
+      .mode-switch button[aria-pressed='true'] {
+        color: var(--label);
+        background: var(--fill);
+      }
+
+      .measure {
+        margin: 0 4px;
+        color: var(--secondary-label);
+        font-size: 10px;
+        white-space: nowrap;
+      }
+
+      .app[data-mode='current'] .settings-view {
+        padding: clamp(42px, 7vw, 82px) clamp(28px, 6vw, 76px) 72px;
+      }
+
+      .app[data-mode='current'] .settings-heading {
+        margin-bottom: 28px;
+      }
+
+      .app[data-mode='current'] .settings-heading h1 {
+        margin: 8px 0 10px;
+        font-size: clamp(38px, 5.2vw, 64px);
+        line-height: 0.98;
+      }
+
+      .app[data-mode='current'] .settings-heading > p:last-child {
+        font-size: 14px;
+      }
+
+      .app[data-mode='current'] .settings-layout {
+        gap: 28px;
+      }
+
+      .app[data-mode='current'] .panel form {
+        gap: 18px;
+        padding: 24px;
+      }
+
+      .app[data-mode='current'] .panel-heading h2 {
+        margin: 5px 0 8px;
+        font-size: clamp(25px, 3vw, 34px);
+      }
+
+      .app[data-mode='current'] .panel-heading > p:last-child {
+        font-size: 13px;
+      }
+
+      .app[data-mode='compact'] .settings-view {
+        width: min(1100px, 100%);
+        padding: 30px 40px 48px;
+      }
+
+      .app[data-mode='compact'] .settings-heading {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 18px;
+        align-items: end;
+        margin-bottom: 18px;
+      }
+
+      .app[data-mode='compact'] .settings-heading > .eyebrow,
+      .app[data-mode='compact'] .panel-heading > .eyebrow {
+        display: none;
+      }
+
+      .app[data-mode='compact'] .settings-heading h1 {
+        margin: 0 0 5px;
+        font-size: 40px;
+        line-height: 1;
+      }
+
+      .app[data-mode='compact'] .settings-heading > p:last-child {
+        padding-bottom: 3px;
+        font-size: 13px;
+      }
+
+      .app[data-mode='compact'] .settings-layout {
+        grid-template-columns: 176px minmax(0, 1fr);
+        gap: 20px;
+      }
+
+      .app[data-mode='compact'] .panel form {
+        gap: 16px;
+        padding: 20px;
+      }
+
+      .app[data-mode='compact'] .panel-heading h2 {
+        margin: 0 0 6px;
+        font-size: 28px;
+      }
+
+      .app[data-mode='compact'] .panel-heading > p:last-child {
+        font-size: 12px;
+      }
+
+      @media (max-width: 920px) {
+        .settings-view,
+        .app[data-mode='current'] .settings-view,
+        .app[data-mode='compact'] .settings-view {
+          padding: 26px 24px 48px;
+        }
+
+        .settings-layout,
+        .app[data-mode='compact'] .settings-layout {
+          grid-template-columns: 1fr;
+          gap: 16px;
+        }
+
+        .settings-tabs {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .panel form {
+          grid-template-columns: 1fr;
+          padding: 18px;
+        }
+
+        .panel-heading,
+        .field-wide,
+        .form-guidance,
+        .form-footer {
+          grid-column: 1;
+        }
+
+        .app[data-mode='current'] .settings-heading,
+        .app[data-mode='compact'] .settings-heading {
+          display: block;
+          margin-bottom: 16px;
+        }
+
+        .app[data-mode='compact'] .settings-heading > p:last-child {
+          padding-bottom: 0;
+        }
+
+        .app[data-mode='current'] .settings-heading h1,
+        .app[data-mode='compact'] .settings-heading h1 {
+          margin: 0 0 5px;
+          font-size: 34px;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .app {
+          grid-template-columns: 84px minmax(0, 1fr);
+        }
+
+        .brand {
+          display: block;
+          padding-inline: 14px;
+        }
+
+        .brand-copy,
+        .nav-label {
+          display: none;
+        }
+
+        .nav-item {
+          text-align: center;
+        }
+
+        .settings-tabs {
+          grid-template-columns: 1fr;
+        }
+
+        .form-guidance {
+          grid-template-columns: 1fr;
+        }
+
+        .form-footer {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .topbar-state,
+        .measure {
+          display: none;
+        }
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --label: #f5f5f7;
+          --secondary-label: #a9a9af;
+          --tertiary-label: rgba(235, 235, 245, 0.3);
+          --canvas: #000000;
+          --surface: #1c1c1e;
+          --field: #2c2c2e;
+          --fill: rgba(120, 120, 128, 0.32);
+          --fill-strong: rgba(120, 120, 128, 0.36);
+          --line: rgba(84, 84, 88, 0.65);
+          --opaque-line: #38383a;
+          --accent: #bf5af2;
+          --accent-strong: #bf5af2;
+          --accent-soft: rgba(191, 90, 242, 0.16);
+          --success: #5dd879;
+        }
+      }
+
+      @media (forced-colors: active) {
+        :root {
+          --label: CanvasText;
+          --secondary-label: CanvasText;
+          --canvas: Canvas;
+          --surface: Canvas;
+          --field: Canvas;
+          --line: ButtonText;
+          --opaque-line: ButtonText;
+          --accent: Highlight;
+          --accent-strong: Highlight;
+          --accent-soft: Highlight;
+        }
+
+        * {
+          box-shadow: none !important;
+        }
+
+        button,
+        textarea {
+          border: 1px solid ButtonText;
+        }
+
+        button[aria-selected='true'],
+        button[aria-pressed='true'] {
+          color: HighlightText;
+          background: Highlight;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app" data-mode="compact">
+      <aside class="sidebar" aria-label="Application navigation">
+        <div class="brand">
+          <span class="brand-mark">TR</span>
+          <div class="brand-copy">
+            <strong>TheRSS</strong>
+            <span>research signal desk</span>
+          </div>
+        </div>
+        <nav aria-label="Primary navigation">
+          <button class="nav-item" type="button"><span class="nav-label">Discover</span></button>
+          <button class="nav-item" type="button"><span class="nav-label">Saved</span></button>
+          <button class="nav-item" type="button">
+            <span class="nav-label">Data Analytics</span>
+          </button>
+          <button class="nav-item" type="button"><span class="nav-label">Sources</span></button>
+        </nav>
+        <div class="sidebar-settings">
+          <button class="nav-item" data-current="true" type="button">
+            <span class="nav-label">Settings</span>
+          </button>
+        </div>
+      </aside>
+
+      <div class="content">
+        <header class="topbar">
+          <div><strong>Settings</strong><span>2026-08-28</span></div>
+          <div class="mode-switch" role="group" aria-label="Prototype density mode">
+            <button type="button" data-mode="current" aria-pressed="false">Current</button>
+            <button type="button" data-mode="compact" aria-pressed="true">Compact</button>
+            <p class="measure" role="status" aria-live="polite">Measuring workspace…</p>
+          </div>
+          <span class="topbar-state">Local settings · All changes saved</span>
+        </header>
+        <div class="viewport">
+          <main class="settings-view">
+            <header class="settings-heading">
+              <p class="eyebrow">Application settings</p>
+              <h1>Settings</h1>
+              <p>Configure local research context, model access, and bounded agent availability.</p>
+            </header>
+
+            <div class="settings-layout">
+              <div class="settings-tabs" role="tablist" aria-label="Settings sections">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected="true"
+                  aria-controls="settings-personal-panel"
+                >
+                  Personal context
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="settings-provider-panel"
+                >
+                  Model provider
+                </button>
+              </div>
+
+              <section
+                class="panel"
+                id="settings-personal-panel"
+                role="tabpanel"
+                aria-label="Personal context"
+              >
+                <form>
+                  <div class="panel-heading">
+                    <p class="eyebrow">Personal context</p>
+                    <h2>Personal Discover prompt</h2>
+                    <p>
+                      Describe stable fields, questions, evidence preferences, methods, and
+                      exclusions. The current Discover question remains the primary instruction.
+                    </p>
+                  </div>
+
+                  <label class="field field-wide">
+                    <span>Personal Discover prompt</span>
+                    <textarea aria-label="Personal Discover prompt" rows="7">
+I research edge intelligence and energy systems. Prioritize reproducible evaluations and explicit resource budgets.</textarea>
+                  </label>
+
+                  <div class="form-guidance">
+                    <p>
+                      A short profile is usually enough. Clear the field and save to disable
+                      personalization.
+                    </p>
+                    <p class="privacy">
+                      Stored only in local SQLite. Your full text is sent to the selected model,
+                      Codex, or Claude only when you run Discover. Source sites receive generated
+                      search terms, which can reflect this context. Never include secrets or
+                      confidential drafts.
+                    </p>
+                  </div>
+
+                  <div class="form-footer">
+                    <span>115/4000 characters · active for future Discover runs</span>
+                    <button class="primary-button" type="button">
+                      Save personal Discover prompt
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const app = document.querySelector('.app')
+      const modeButtons = [...document.querySelectorAll('[data-mode]')]
+      const measure = document.querySelector('.measure')
+
+      const renderMode = (mode) => {
+        app.dataset.mode = mode
+        modeButtons.forEach((button) => {
+          button.setAttribute('aria-pressed', String(button.dataset.mode === mode))
+        })
+        requestAnimationFrame(() => {
+          const top = Math.round(
+            document.querySelector('.settings-layout').getBoundingClientRect().top
+          )
+          measure.textContent = `Workspace starts at ${top}px`
+        })
+      }
+
+      const requestedMode = new URLSearchParams(location.search).get('mode')
+      renderMode(requestedMode === 'current' ? 'current' : 'compact')
+      modeButtons.forEach((button) => {
+        button.addEventListener('click', () => renderMode(button.dataset.mode))
+      })
+      window.addEventListener('resize', () => renderMode(app.dataset.mode))
+    </script>
+  </body>
+</html>

@@ -52,9 +52,11 @@ provenance without copying secrets.
    plan/provenance/source-outcome inspector below it. Every selected result has a reversible
    outline/filled Saved star; paper records additionally expose a user-initiated L1 analysis action
    without implicitly saving the paper. arXiv papers also expose the separately confirmed llm-wiki
-   promotion action. A run reports validated planning and per-source completion progress, can be
-   canceled without waiting for a hanging source, and can retry only failed, partial, or canceled
-   sources from the persisted plan without invoking the planner again.
+   promotion action. An active run exposes a three-stage Plan query -> Search selected sources ->
+   Assemble session pipeline with native source progress and the latest completed-source outcome;
+   the terminal Search details summary retains the source and record counts. A run can be canceled
+   without waiting for a hanging source and can retry only failed, partial, or canceled sources from
+   the persisted plan without invoking the planner again.
 2. **Saved** — one persisted shelf for explicitly retained research signals from every active
    source. A selected saved arXiv paper can enter the same llm-wiki preview/confirmation workflow.
 3. **Settings** — two focused panes for Personal Prompt and one model provider profile, plus local

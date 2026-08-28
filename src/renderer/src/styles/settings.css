@@ -317,38 +317,42 @@
 }
 
 .settings-view {
-  width: min(1040px, 100%);
+  width: min(1100px, 100%);
   margin: 0 auto;
-  padding: clamp(42px, 7vw, 82px) clamp(28px, 6vw, 76px) 72px;
+  padding: 30px 40px 48px;
 }
 
 .settings-heading {
-  max-width: 720px;
-  margin-bottom: 28px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: end;
+  margin-bottom: 18px;
 }
 
 .settings-heading h1 {
-  margin: 8px 0 10px;
+  margin: 0;
   color: var(--label);
   font-family: var(--font-apple-display);
-  font-size: clamp(38px, 5.2vw, 64px);
+  font-size: 40px;
   font-weight: 700;
   letter-spacing: -0.045em;
-  line-height: 0.98;
+  line-height: 1;
 }
 
 .settings-heading > p:last-child {
-  max-width: 620px;
+  max-width: 680px;
   margin: 0;
+  padding-bottom: 3px;
   color: var(--secondary-label);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.65;
 }
 
 .settings-layout {
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
-  gap: 28px;
+  grid-template-columns: 176px minmax(0, 1fr);
+  gap: 20px;
   align-items: start;
 }
 
@@ -398,8 +402,8 @@
 .settings-panel form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  padding: 24px;
+  gap: 16px;
+  padding: 20px;
   border: 1px solid var(--separator);
   border-radius: 16px;
   background: var(--secondary-system-grouped-background);
@@ -415,10 +419,10 @@
 }
 
 .settings-panel__heading h2 {
-  margin: 5px 0 8px;
+  margin: 0 0 6px;
   color: var(--label);
   font-family: var(--font-apple-display);
-  font-size: clamp(25px, 3vw, 34px);
+  font-size: 28px;
   font-weight: 690;
   letter-spacing: -0.035em;
 }
@@ -426,7 +430,7 @@
 .settings-panel__heading > p:last-child {
   margin: 0;
   color: var(--secondary-label);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.6;
 }
 
@@ -535,7 +539,21 @@
 
 @media (max-width: 920px) {
   .settings-view {
-    padding: 34px 24px 56px;
+    padding: 26px 24px 48px;
+  }
+
+  .settings-heading {
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  .settings-heading h1 {
+    margin: 0 0 5px;
+    font-size: 34px;
+  }
+
+  .settings-heading > p:last-child {
+    padding-bottom: 0;
   }
 
   .settings-layout {

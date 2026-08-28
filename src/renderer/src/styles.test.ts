@@ -119,6 +119,40 @@ describe('Apple semantic color system', () => {
     expect(stylesheet).toMatch(/\.settings-panel\s+\.field--wide[^}]*grid-column:\s*1\s*\/\s*-1/su)
   })
 
+  it('uses the approved compact Settings geometry with a narrow fallback', () => {
+    expect(stylesheet).toMatch(
+      /\.settings-view\s*\{[^}]*width:\s*min\(1100px,\s*100%\);[^}]*padding:\s*30px 40px 48px;/su
+    )
+    expect(stylesheet).toMatch(
+      /\.settings-heading\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*auto minmax\(0,\s*1fr\);[^}]*gap:\s*18px;[^}]*align-items:\s*end;[^}]*margin-bottom:\s*18px;/su
+    )
+    expect(stylesheet).toMatch(
+      /\.settings-heading h1\s*\{[^}]*margin:\s*0;[^}]*font-size:\s*40px;[^}]*line-height:\s*1;/su
+    )
+    expect(stylesheet).toMatch(
+      /\.settings-layout\s*\{[^}]*grid-template-columns:\s*176px minmax\(0,\s*1fr\);[^}]*gap:\s*20px;/su
+    )
+    expect(stylesheet).toMatch(/\.settings-panel form\s*\{[^}]*gap:\s*16px;[^}]*padding:\s*20px;/su)
+    expect(stylesheet).toMatch(
+      /\.settings-panel__heading h2\s*\{[^}]*margin:\s*0 0 6px;[^}]*font-size:\s*28px;/su
+    )
+
+    const narrow = stylesheet.slice(
+      stylesheet.indexOf('@media (max-width: 920px)'),
+      stylesheet.indexOf('@media (max-width: 620px)')
+    )
+    expect(narrow).toMatch(/\.settings-view\s*\{[^}]*padding:\s*26px 24px 48px;/su)
+    expect(narrow).toMatch(
+      /\.settings-heading\s*\{[^}]*display:\s*block;[^}]*margin-bottom:\s*16px;/su
+    )
+    expect(narrow).toMatch(
+      /\.settings-heading h1\s*\{[^}]*margin:\s*0 0 5px;[^}]*font-size:\s*34px;/su
+    )
+    expect(narrow).toMatch(
+      /\.settings-layout\s*\{[^}]*grid-template-columns:\s*1fr;[^}]*gap:\s*16px;/su
+    )
+  })
+
   it('gives the Discover source summary a full row at the minimum desktop width', () => {
     const narrowStart = stylesheet.indexOf('@media (max-width: 920px)')
     const narrowEnd = stylesheet.indexOf('@media (prefers-color-scheme: dark)')
@@ -260,6 +294,69 @@ describe('Apple semantic color system', () => {
       expect(rule, selector).toBeDefined()
       expect(rule, selector).not.toMatch(/font-size:\s*(?:8|9|10)px;/u)
     }
+  })
+
+  it('keeps Discover run microcopy readable and the terminal summary unboxed', () => {
+    for (const selector of [
+      '.discover-run-card__header span',
+      '.discover-run-stage__copy > span',
+      '.discover-run-stage__value',
+      '.discover-run-summary'
+    ]) {
+      const escaped = selector.replaceAll(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+      const rule = stylesheet.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'su'))?.[1]
+      expect(rule, selector).toBeDefined()
+      expect(rule, selector).not.toMatch(/font-size:\s*(?:8|9|10)px;/u)
+    }
+
+    const summaryItem = stylesheet.match(/\.discover-run-summary__item\s*\{([^}]*)\}/su)?.[1]
+    expect(summaryItem).toBeDefined()
+    expect(summaryItem).not.toMatch(/background:/u)
+    expect(summaryItem).not.toMatch(/border-radius:/u)
+    expect(summaryItem).not.toMatch(/padding:/u)
+  })
+
+  it('wraps the terminal Discover summary inside compact and zoomed viewports', () => {
+    const compact = stylesheet.slice(
+      stylesheet.indexOf('@media (max-width: 720px)'),
+      stylesheet.indexOf('.discover-run-notice')
+    )
+    expect(compact).toMatch(/\.discover-search-details > summary\s*\{[^}]*flex-wrap:\s*wrap;/su)
+    expect(compact).toMatch(
+      /\.discover-run-summary\s*\{[^}]*order:\s*1;[^}]*flex-basis:\s*100%;[^}]*min-width:\s*0;[^}]*margin-left:\s*0;/su
+    )
+  })
+
+  it('owns secondary action geometry and every interaction state', () => {
+    const base = stylesheet.match(/\.secondary-button\s*\{([^}]*)\}/su)?.[1]
+    expect(base).toBeDefined()
+    for (const declaration of [
+      'display: inline-flex;',
+      'min-height: 30px;',
+      'padding: 6px 12px;',
+      'color: var(--label);',
+      'background: var(--secondary-system-fill);',
+      'border: 1px solid var(--separator);',
+      'border-radius: var(--selection-radius);',
+      'font-size: 12px;',
+      'font-weight: 550;',
+      'cursor: pointer;'
+    ]) {
+      expect(base).toContain(declaration)
+    }
+    expect(base).toContain('background-color 140ms ease')
+    expect(base).toContain('border-color 140ms ease')
+    expect(base).toContain('transform 100ms ease')
+
+    expect(stylesheet).toMatch(
+      /\.secondary-button:hover:not\(:disabled\)\s*\{[^}]*background:\s*var\(--system-fill\);[^}]*border-color:\s*var\(--opaque-separator\);/su
+    )
+    expect(stylesheet).toMatch(
+      /\.secondary-button:active:not\(:disabled\)\s*\{[^}]*transform:\s*translateY\(1px\);/su
+    )
+    expect(stylesheet).toMatch(
+      /\.secondary-button:disabled\s*\{[^}]*cursor:\s*default;[^}]*opacity:\s*0\.52;[^}]*transform:\s*none;/su
+    )
   })
 })
 

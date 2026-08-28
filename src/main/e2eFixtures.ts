@@ -78,6 +78,34 @@ export const e2eDiscoverConfiguredArticle: DiscoveryItem = {
   url: 'https://www.baai.ac.cn/news/discover-fixture'
 }
 
+export async function waitForE2eDiscoverStage(enabled: boolean): Promise<void> {
+  if (!enabled) return
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 750)
+  })
+}
+
+export function createE2eDiscoverFetchers(delayEnabled: boolean) {
+  const wait = () => waitForE2eDiscoverStage(delayEnabled)
+  return {
+    fetchArxiv: async () => {
+      await wait()
+      return [e2eDiscoverPaper]
+    },
+    fetchGitHub: async () => {
+      await wait()
+      return [e2eDiscoverRepository]
+    },
+    fetchConfiguredSource: async (definition: { readonly id: string }) => {
+      await wait()
+      return {
+        items: definition.id === 'folo:302' ? [e2eDiscoverConfiguredArticle] : [],
+        rejectedCount: 0
+      }
+    }
+  }
+}
+
 export async function e2eAnalysis(): Promise<ModelAnalysisResponse> {
   return {
     content:
