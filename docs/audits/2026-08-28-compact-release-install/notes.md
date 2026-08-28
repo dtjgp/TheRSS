@@ -42,3 +42,21 @@ Dev.backup-2026-08-26T14-03-25-611Z.app`, same identifier/version, `app.asar` SH
 - Offline production dependency audit: 0 vulnerabilities from the available local npm audit cache.
   Online audit is not claimed because its dependency-metadata transmission was not authorized.
 - Secret-pattern, debug-statement, whitespace, diff, and <=800-line architecture scans: pass.
+
+## Completed Local Installation
+
+- `npm run install:local`: pass; unsigned arm64 personal beta installed at
+  `/Users/dtjgp/Applications/TheRSS Dev.app`.
+- Installed bundle identifier/version: `dev.dtjgp.therss` / `0.2.0`.
+- Release and installed `app.asar` SHA-256 match:
+  `8d09ada5fbb8439ad67621ade14793ee8361e3198a565261acd64a5ba809d61a`.
+- Installed executable packaged smoke: pass with an isolated temporary user-data directory.
+- Install receipt:
+  `/Users/dtjgp/Library/Application Support/therss/install-receipts/install-2026-08-28T15-04-00-402Z.json`.
+- Live database and the new timestamped backup both returned `ok` from read-only immutable
+  `PRAGMA integrity_check`.
+- Permanently deleted exactly two verified superseded app bundles:
+  `TheRSS Dev.backup-2026-08-26T14-03-25-611Z.app` and
+  `TheRSS Dev.backup-2026-08-28T15-04-00-402Z.app`.
+- Post-cleanup enumeration contains only active `/Users/dtjgp/Applications/TheRSS Dev.app`.
+- Live data, preferences, receipts, and three SQLite recovery backups remain present.

@@ -26,7 +26,7 @@ without deleting user data.
 - [x] Phase 1: Resolve Git publication scope and the exact old-version deletion target.
 - [x] Phase 2: Run pre-commit verification and record the reviewed change set.
 - [ ] Phase 3: Commit, push, and complete the protected-main publication workflow.
-- [ ] Phase 4: Build/install the local beta and remove only the proven superseded bundle/content.
+- [x] Phase 4: Build/install the local beta and remove only the proven superseded bundle/content.
 - [ ] Phase 5: Verify Git/install state and close evidence.
 
 ## Key Questions
@@ -61,5 +61,5 @@ without deleting user data.
 
 ## Status
 
-**Phase 3 in progress** - the local release gate is green; creating the scoped commit and publishing
-it through a feature branch and protected-main PR.
+**Phase 3 in progress** - local installation and scoped old-bundle cleanup are verified; publishing
+the two local commits through a protected-main PR.
