@@ -75,15 +75,38 @@ function renderCatalog(
 }
 
 describe('SourceCatalogView', () => {
+  it('keeps the configured source list and selected source detail visible together', async () => {
+    const user = userEvent.setup()
+    renderCatalog(createSourceApi(sourceSnapshot('arxiv')))
+
+    const list = screen.getByRole('listbox', { name: 'Configured sources' })
+    expect(within(list).getAllByRole('option')).toHaveLength(22)
+    expect(
+      within(list).getByRole('option', { name: /Browse arXiv recent content/i })
+    ).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('region', { name: 'arXiv source detail' })).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Back to source directory' })
+    ).not.toBeInTheDocument()
+
+    await user.click(within(list).getByRole('option', { name: /Browse GitHub recent content/i }))
+    expect(
+      within(list).getByRole('option', { name: /Browse GitHub recent content/i })
+    ).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('region', { name: 'GitHub source detail' })).toBeVisible()
+  })
+
   it('shows only the 22 configured sources that passed the previous verification gate', () => {
     renderCatalog()
 
-    expect(screen.getByRole('heading', { name: '22 configured research sources' })).toBeVisible()
-    expect(screen.getByText(/dated deployment verification on August 19, 2026/i)).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Sources' })).toBeVisible()
+    expect(screen.getByText(/inspect the 22 retained sources/i)).toBeVisible()
     expect(screen.queryByText(/dated live-verification gate/i)).not.toBeInTheDocument()
     const summary = screen.getByRole('group', { name: 'Source catalog summary' })
     expect(within(summary).getByLabelText('Configured sources')).toHaveTextContent('22')
-    expect(screen.getAllByRole('article')).toHaveLength(22)
+    expect(
+      within(screen.getByRole('listbox', { name: 'Configured sources' })).getAllByRole('option')
+    ).toHaveLength(22)
     expect(screen.queryByText('X (Twitter)')).not.toBeInTheDocument()
     expect(screen.queryByText('3GPP Specifications')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Pending integrations/i })).not.toBeInTheDocument()
@@ -105,10 +128,12 @@ describe('SourceCatalogView', () => {
     expect(screen.getByText(/catalog membership is not a live-health claim/i)).toBeVisible()
 
     await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'arXiv')
-    await user.click(screen.getByRole('button', { name: 'Browse arXiv recent content' }))
+    await user.click(screen.getByRole('option', { name: 'Browse arXiv recent content' }))
 
     expect(await screen.findByText('Last recorded health')).toBeVisible()
-    expect(screen.getByText('Failed')).toBeVisible()
+    expect(
+      within(screen.getByRole('region', { name: 'arXiv source detail' })).getByText('Failed')
+    ).toBeVisible()
     expect(screen.getByText('Cached snapshot')).toBeVisible()
     expect(screen.getByText(/does not prove that the source is currently reachable/i)).toBeVisible()
     expect(screen.getByText(/Latest indexed item:/i)).toBeVisible()
@@ -131,7 +156,7 @@ describe('SourceCatalogView', () => {
     )
 
     await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'arXiv')
-    await user.click(screen.getByRole('button', { name: 'Browse arXiv recent content' }))
+    await user.click(screen.getByRole('option', { name: 'Browse arXiv recent content' }))
 
     expect(await screen.findByText(/recorded Aug 24, 2026/i)).toBeVisible()
     expect(screen.getByText('Timed out after the bounded retry window')).toBeVisible()
@@ -148,7 +173,9 @@ describe('SourceCatalogView', () => {
       onAttentionOnlyChange
     )
 
-    expect(screen.getAllByRole('article')).toHaveLength(2)
+    expect(
+      within(screen.getByRole('listbox', { name: 'Configured sources' })).getAllByRole('option')
+    ).toHaveLength(2)
     const filter = screen.getByRole('button', { name: 'Show sources needing attention' })
     expect(filter).toHaveAttribute('aria-pressed', 'true')
     await user.click(filter)
@@ -160,13 +187,13 @@ describe('SourceCatalogView', () => {
     renderCatalog()
     await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'OpenAI')
 
-    const card = screen.getByRole('heading', { name: 'OpenAI' }).closest('article')!
-    expect(card).toHaveTextContent('Model compression & edge AI')
-    expect(card).toHaveTextContent('Agents & behavior')
-    expect(card).not.toHaveTextContent('Folo 1543')
-    expect(card).not.toHaveTextContent('Active adapter')
+    const sourceOption = screen.getByRole('option', { name: 'Browse OpenAI recent content' })
+    expect(sourceOption).toHaveTextContent('Model compression & edge AI')
+    expect(sourceOption).toHaveTextContent('Agents & behavior')
+    expect(sourceOption).not.toHaveTextContent('Folo 1543')
+    expect(sourceOption).not.toHaveTextContent('Active adapter')
 
-    await user.click(screen.getByRole('button', { name: 'Browse OpenAI recent content' }))
+    await user.click(sourceOption)
     const provenance = await screen.findByText('Source provenance')
     await user.click(provenance)
     expect(screen.getByText(/Folo 1543/u)).toBeVisible()
@@ -177,24 +204,34 @@ describe('SourceCatalogView', () => {
     renderCatalog()
 
     await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'OpenAI')
-    expect(screen.getAllByRole('article')).toHaveLength(1)
-    expect(screen.getByRole('heading', { name: 'OpenAI' })).toBeVisible()
+    expect(
+      within(screen.getByRole('listbox', { name: 'Configured sources' })).getAllByRole('option')
+    ).toHaveLength(1)
+    expect(screen.getByRole('option', { name: 'Browse OpenAI recent content' })).toBeVisible()
 
     await user.clear(screen.getByRole('searchbox', { name: 'Search source catalog' }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Priority' }), 'A')
-    expect(screen.getAllByRole('article')).toHaveLength(7)
+    expect(
+      within(screen.getByRole('listbox', { name: 'Configured sources' })).getAllByRole('option')
+    ).toHaveLength(7)
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Priority' }), 'all')
     await user.selectOptions(screen.getByRole('combobox', { name: 'Research axis' }), 'SG')
-    expect(screen.getAllByRole('article')).toHaveLength(9)
     expect(
-      screen.getByRole('heading', { name: 'National Bureau of Economic Research' })
+      within(screen.getByRole('listbox', { name: 'Configured sources' })).getAllByRole('option')
+    ).toHaveLength(9)
+    expect(
+      screen.getByRole('option', {
+        name: 'Browse National Bureau of Economic Research recent content'
+      })
     ).toBeVisible()
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Research axis' }), 'all')
-    expect(screen.getAllByRole('article')).toHaveLength(22)
-    expect(screen.getByRole('heading', { name: 'arXiv' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'GitHub' })).toBeVisible()
+    expect(
+      within(screen.getByRole('listbox', { name: 'Configured sources' })).getAllByRole('option')
+    ).toHaveLength(22)
+    expect(screen.getByRole('option', { name: 'Browse arXiv recent content' })).toBeVisible()
+    expect(screen.getByRole('option', { name: 'Browse GitHub recent content' })).toBeVisible()
   })
 
   it("refreshes today's arXiv papers without requiring or applying Interests", async () => {
@@ -209,7 +246,7 @@ describe('SourceCatalogView', () => {
     renderCatalog(api)
 
     await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'arXiv')
-    await user.click(screen.getByRole('button', { name: 'Browse arXiv recent content' }))
+    await user.click(screen.getByRole('option', { name: 'Browse arXiv recent content' }))
 
     expect(api.getSourceContent).toHaveBeenCalledWith('arxiv')
     expect(api.refreshSourceContent).toHaveBeenCalledWith('arxiv')
@@ -224,7 +261,7 @@ describe('SourceCatalogView', () => {
     renderCatalog(api)
 
     await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'GitHub')
-    await user.click(screen.getByRole('button', { name: 'Browse GitHub recent content' }))
+    await user.click(screen.getByRole('option', { name: 'Browse GitHub recent content' }))
 
     expect(api.getSourceContent).toHaveBeenCalledWith('github')
     expect(api.refreshSourceContent).not.toHaveBeenCalled()
@@ -256,7 +293,7 @@ describe('SourceCatalogView', () => {
 
     await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), '北京智源')
     await user.click(
-      screen.getByRole('button', { name: 'Browse 北京智源人工智能研究院 recent content' })
+      screen.getByRole('option', { name: 'Browse 北京智源人工智能研究院 recent content' })
     )
 
     expect(api.getSourceContent).toHaveBeenCalledWith('folo:302')
@@ -268,8 +305,10 @@ describe('SourceCatalogView', () => {
       'https://www.baai.ac.cn/news/recent'
     )
 
-    await user.click(screen.getByRole('button', { name: 'Back to source directory' }))
-    expect(screen.getByRole('heading', { name: '22 configured research sources' })).toBeVisible()
+    expect(screen.getByRole('listbox', { name: 'Configured sources' })).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Back to source directory' })
+    ).not.toBeInTheDocument()
   })
 
   it('automatically refreshes an empty active non-metered source', async () => {
@@ -300,7 +339,7 @@ describe('SourceCatalogView', () => {
     renderCatalog(api)
 
     await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'OpenAI')
-    await user.click(screen.getByRole('button', { name: 'Browse OpenAI recent content' }))
+    await user.click(screen.getByRole('option', { name: 'Browse OpenAI recent content' }))
 
     expect(await screen.findByText('OpenAI recent update')).toBeVisible()
     expect(api.refreshSourceContent).toHaveBeenCalledWith('folo:182')
@@ -320,7 +359,7 @@ describe('SourceCatalogView', () => {
       '国家哲学社会科学文献中心'
     )
     await user.click(
-      screen.getByRole('button', {
+      screen.getByRole('option', {
         name: 'Browse 国家哲学社会科学文献中心 recent content'
       })
     )

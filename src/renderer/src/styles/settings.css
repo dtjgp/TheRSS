@@ -334,10 +334,10 @@
   margin: 0;
   color: var(--label);
   font-family: var(--font-apple-display);
-  font-size: 40px;
-  font-weight: 700;
-  letter-spacing: -0.045em;
-  line-height: 1;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
 }
 
 .settings-heading > p:last-child {
@@ -405,8 +405,9 @@
   gap: 16px;
   padding: 20px;
   border: 1px solid var(--separator);
-  border-radius: 16px;
+  border-radius: 11px;
   background: var(--secondary-system-grouped-background);
+  box-shadow: none;
 }
 
 .settings-panel__heading {
@@ -422,9 +423,9 @@
   margin: 0 0 6px;
   color: var(--label);
   font-family: var(--font-apple-display);
-  font-size: 28px;
-  font-weight: 690;
-  letter-spacing: -0.035em;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .settings-panel__heading > p:last-child {
@@ -549,7 +550,7 @@
 
   .settings-heading h1 {
     margin: 0 0 5px;
-    font-size: 34px;
+    font-size: 28px;
   }
 
   .settings-heading > p:last-child {

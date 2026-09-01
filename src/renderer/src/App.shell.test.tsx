@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DashboardSnapshot, TheRSSApi } from '../../shared/api'
@@ -9,6 +9,14 @@ import { createApi, emptyDashboard, resetAppTestEnvironment } from './App.testSu
 
 describe('App', () => {
   beforeEach(resetAppTestEnvironment)
+
+  it('uses a quiet text identity instead of a website-style sidebar brand lockup', () => {
+    render(<App api={createApi()} />)
+
+    expect(screen.getByText('TheRSS')).toBeVisible()
+    expect(screen.queryByText('research signal desk')).not.toBeInTheDocument()
+    expect(screen.queryByText('TR')).not.toBeInTheDocument()
+  })
 
   it('opens Settings from the native command and saves a provider', async () => {
     const api = createApi()
@@ -97,9 +105,7 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: '01 Discover' }))
     expect(api.confirmDiscardSettings).toHaveBeenCalledTimes(2)
-    expect(
-      screen.getByRole('heading', { name: 'Search across your full source desk' })
-    ).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Discover research' })).toBeVisible()
     expect(api.setSettingsDirty).toHaveBeenLastCalledWith(false)
   })
 
@@ -172,9 +178,7 @@ describe('App', () => {
     )
     expect(await screen.findByText('Bounded fixture analysis.')).toBeVisible()
     act(() => listener?.('show-discover'))
-    expect(
-      screen.getByRole('heading', { name: 'Search across your full source desk' })
-    ).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Discover research' })).toBeVisible()
     act(() => listener?.('toggle-sidebar'))
     expect(screen.getByRole('button', { name: 'Show sidebar' })).toBeVisible()
   })
@@ -529,10 +533,10 @@ describe('App', () => {
     const user = userEvent.setup()
     render(<App api={createApi()} />)
     await user.click(screen.getByRole('button', { name: '04 Sources' }))
+    expect(await screen.findByRole('heading', { name: 'Sources' })).toBeVisible()
     expect(
-      await screen.findByRole('heading', { name: '22 configured research sources' })
-    ).toBeVisible()
-    expect(screen.getAllByRole('article')).toHaveLength(22)
+      within(screen.getByRole('listbox', { name: 'Configured sources' })).getAllByRole('option')
+    ).toHaveLength(22)
     expect(screen.getByRole('heading', { name: 'arXiv' })).toBeVisible()
     expect(screen.queryByText('X (Twitter)')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Pending integrations/i })).not.toBeInTheDocument()
@@ -566,7 +570,9 @@ describe('App', () => {
       'aria-pressed',
       'true'
     )
-    expect(screen.getAllByRole('article')).toHaveLength(1)
+    expect(
+      within(screen.getByRole('listbox', { name: 'Configured sources' })).getAllByRole('option')
+    ).toHaveLength(1)
     expect(screen.getByRole('heading', { name: 'arXiv' })).toBeVisible()
   })
 

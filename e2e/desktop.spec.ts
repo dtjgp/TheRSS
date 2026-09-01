@@ -53,22 +53,11 @@ test('Discover-first search across every deployed source', async () => {
 
     expect(rendererErrors).toEqual([])
     expect(page.url()).toContain('/out/renderer/index.html')
-    const brandMark = page.locator('.brand-lockup__index')
-    await expect(brandMark).toBeVisible()
-    expect(
-      await brandMark.evaluate((element) => {
-        const style = getComputedStyle(element)
-        return {
-          display: style.display,
-          alignItems: style.alignItems,
-          justifyItems: style.justifyItems
-        }
-      })
-    ).toEqual({ display: 'grid', alignItems: 'center', justifyItems: 'center' })
+    await expect(page.locator('.sidebar__title')).toHaveText('TheRSS')
+    await expect(page.locator('.brand-lockup__index')).toHaveCount(0)
+    await expect(page.getByText('research signal desk')).toHaveCount(0)
 
-    const discoverHeading = page.getByRole('heading', {
-      name: 'Search across your full source desk'
-    })
+    const discoverHeading = page.getByRole('heading', { name: 'Discover research' })
     await expect(discoverHeading).toBeVisible()
     const appleTypography = await page.evaluate(() => {
       const rootStyle = getComputedStyle(document.documentElement)
@@ -96,10 +85,18 @@ test('Discover-first search across every deployed source', async () => {
     await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible()
     await expect(primaryNavigation.getByText('Today')).toHaveCount(0)
     await expect(primaryNavigation.getByText('Interests')).toHaveCount(0)
-    await expect(page.locator('.nav-item--active .nav-item__icon')).toHaveCSS(
-      'color',
-      isBaselineCapture ? 'rgb(88, 86, 214)' : 'rgb(69, 66, 181)'
-    )
+    if (!isBaselineCapture) {
+      expect(
+        await page.locator('.nav-item--active .nav-item__icon').evaluate((element) => {
+          const probe = document.createElement('span')
+          probe.style.color = 'var(--system-accent)'
+          document.body.append(probe)
+          const matches = getComputedStyle(element).color === getComputedStyle(probe).color
+          probe.remove()
+          return matches
+        })
+      ).toBe(true)
+    }
 
     if (!isBaselineCapture) {
       const applicationMenuLabels = await application.evaluate(({ Menu }) =>
@@ -521,7 +518,7 @@ test('Discover-first search across every deployed source', async () => {
     await page.getByRole('button', { name: 'Settings' }).click()
     const settingsHeading = page.getByRole('heading', { name: 'Settings' })
     await expect(settingsHeading).toBeVisible()
-    await expect(settingsHeading).toHaveCSS('font-size', '40px')
+    await expect(settingsHeading).toHaveCSS('font-size', '30px')
     await expect(page.locator('.settings-heading > .eyebrow')).toHaveCount(0)
     await expect(page.locator('.settings-panel__heading > .eyebrow')).toHaveCount(0)
     expect(
@@ -675,23 +672,22 @@ test('Discover-first search across every deployed source', async () => {
 
     if (!isBaselineCapture) {
       await researchUtilities.getByRole('button', { name: '04 Sources' }).click()
-      await expect(
-        page.getByRole('heading', { name: '22 configured research sources' })
-      ).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible()
       await expect(viewContext).toContainText('22 not checked')
       await expect(viewContext).toContainText('22 configured')
-      await expect(page.locator('.source-catalog-card')).toHaveCount(22)
+      await expect(
+        page.getByRole('listbox', { name: 'Configured sources' }).getByRole('option')
+      ).toHaveCount(22)
       await capture(page, '07-sources-directory.png')
       await page
-        .getByRole('button', { name: 'Browse 北京智源人工智能研究院 recent content' })
+        .getByRole('option', { name: 'Browse 北京智源人工智能研究院 recent content' })
         .click()
       await expect(page.getByRole('heading', { name: '北京智源人工智能研究院' })).toBeVisible()
       await expect(page.getByText('BAAI structured pruning research fixture')).toBeVisible()
       await expect(page.locator('.source-detail-boundary')).toContainText('rolling 30 days')
       await capture(page, '08-source-detail.png')
-      await page.getByRole('button', { name: 'Back to source directory' }).click()
 
-      await page.getByRole('button', { name: 'Browse GitHub recent content' }).click()
+      await page.getByRole('option', { name: 'Browse GitHub recent content' }).click()
       await expect(page.getByRole('heading', { name: 'GitHub' })).toBeVisible()
       await expect(page.getByText('Search GitHub from Discover.')).toBeVisible()
       await expect(page.getByRole('button', { name: 'Refresh recent content' })).toBeDisabled()
@@ -770,9 +766,7 @@ test('Discover-first search across every deployed source', async () => {
         app.emit('activate')
       })
       const reopenedPage = await reopenedWindow
-      await expect(
-        reopenedPage.getByRole('heading', { name: 'Search across your full source desk' })
-      ).toBeVisible()
+      await expect(reopenedPage.getByRole('heading', { name: 'Discover research' })).toBeVisible()
       expect(
         await application.evaluate(({ BrowserWindow }) =>
           BrowserWindow.getAllWindows()[0]!.getBounds()

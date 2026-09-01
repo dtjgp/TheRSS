@@ -119,7 +119,7 @@ describe('Apple semantic color system', () => {
     expect(stylesheet).toMatch(/\.settings-panel\s+\.field--wide[^}]*grid-column:\s*1\s*\/\s*-1/su)
   })
 
-  it('uses the approved compact Settings geometry with a narrow fallback', () => {
+  it('uses the Apple-native compact Settings geometry with a narrow fallback', () => {
     expect(stylesheet).toMatch(
       /\.settings-view\s*\{[^}]*width:\s*min\(1100px,\s*100%\);[^}]*padding:\s*30px 40px 48px;/su
     )
@@ -127,14 +127,14 @@ describe('Apple semantic color system', () => {
       /\.settings-heading\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*auto minmax\(0,\s*1fr\);[^}]*gap:\s*18px;[^}]*align-items:\s*end;[^}]*margin-bottom:\s*18px;/su
     )
     expect(stylesheet).toMatch(
-      /\.settings-heading h1\s*\{[^}]*margin:\s*0;[^}]*font-size:\s*40px;[^}]*line-height:\s*1;/su
+      /\.settings-heading h1\s*\{[^}]*margin:\s*0;[^}]*font-size:\s*30px;[^}]*line-height:\s*1\.08;/su
     )
     expect(stylesheet).toMatch(
       /\.settings-layout\s*\{[^}]*grid-template-columns:\s*176px minmax\(0,\s*1fr\);[^}]*gap:\s*20px;/su
     )
     expect(stylesheet).toMatch(/\.settings-panel form\s*\{[^}]*gap:\s*16px;[^}]*padding:\s*20px;/su)
     expect(stylesheet).toMatch(
-      /\.settings-panel__heading h2\s*\{[^}]*margin:\s*0 0 6px;[^}]*font-size:\s*28px;/su
+      /\.settings-panel__heading h2\s*\{[^}]*margin:\s*0 0 6px;[^}]*font-size:\s*22px;/su
     )
 
     const narrow = stylesheet.slice(
@@ -146,7 +146,7 @@ describe('Apple semantic color system', () => {
       /\.settings-heading\s*\{[^}]*display:\s*block;[^}]*margin-bottom:\s*16px;/su
     )
     expect(narrow).toMatch(
-      /\.settings-heading h1\s*\{[^}]*margin:\s*0 0 5px;[^}]*font-size:\s*34px;/su
+      /\.settings-heading h1\s*\{[^}]*margin:\s*0 0 5px;[^}]*font-size:\s*28px;/su
     )
     expect(narrow).toMatch(
       /\.settings-layout\s*\{[^}]*grid-template-columns:\s*1fr;[^}]*gap:\s*16px;/su
@@ -183,13 +183,17 @@ describe('Apple semantic color system', () => {
     )
   })
 
-  it('keeps the contextual top bar and four-metric Analytics strip responsive', () => {
+  it('keeps the contextual top bar quiet until a state needs emphasis', () => {
     expect(stylesheet).toMatch(
-      /\.topbar-context\s*\{[^}]*display:\s*flex;[^}]*border:\s*1px solid var\(--separator\);/su
+      /\.topbar-context\s*\{[^}]*display:\s*flex;[^}]*border:\s*1px solid transparent;/su
     )
     expect(stylesheet).toMatch(
-      /\.topbar-context::before\s*\{[^}]*border-radius:\s*50%;[^}]*content:\s*'';/su
+      /\.topbar-context\[data-emphasis='true'\]\s*\{[^}]*border-color:\s*var\(--separator\);/su
     )
+    expect(stylesheet).not.toMatch(/\.topbar-context::before\s*\{/su)
+  })
+
+  it('keeps the four-metric Analytics strip responsive', () => {
     expect(stylesheet).toMatch(
       /\.analytics-summary\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\);/su
     )
@@ -407,6 +411,74 @@ describe('macOS system accent', () => {
     // The system accent must not leak into the view accents the product design owns.
     expect(stylesheet).toMatch(/\.app-shell\[data-view='saved'\]/)
     expect(stylesheet).not.toMatch(/--view-accent: var\(--system-accent\)/)
+  })
+
+  it('uses the macOS system accent for primary interaction and navigation selection', () => {
+    expect(stylesheet).toContain(
+      '--system-accent-soft: color-mix(in srgb, var(--system-accent) 16%, transparent);'
+    )
+    expect(stylesheet).toMatch(
+      /\.primary-button\s*\{[^}]*color:\s*var\(--on-system-accent\);[^}]*background:\s*var\(--system-accent\);/su
+    )
+    expect(stylesheet).toMatch(
+      /\.nav-item--active\s*\{[^}]*background:\s*var\(--system-accent-soft\);/su
+    )
+    expect(stylesheet).toMatch(
+      /\.nav-item--active \.nav-item__icon\s*\{[^}]*color:\s*var\(--system-accent\);/su
+    )
+  })
+
+  it('uses native title scales instead of marketing-sized headings', () => {
+    expect(stylesheet).toMatch(
+      /\.analytics-heading h1\s*\{[^}]*font-size:\s*clamp\(28px,\s*3vw,\s*32px\);[^}]*font-weight:\s*600;/su
+    )
+    expect(stylesheet).toMatch(
+      /\.source-catalog-heading h1\s*\{[^}]*font-size:\s*clamp\(28px,\s*3vw,\s*32px\);[^}]*font-weight:\s*600;/su
+    )
+    expect(stylesheet).toMatch(
+      /\.signal-detail__title\s*\{[^}]*font-size:\s*clamp\(28px,\s*3\.2vw,\s*40px\);[^}]*font-weight:\s*600;[^}]*line-height:\s*1\.1;/su
+    )
+  })
+
+  it('provides reduced-transparency and inactive-window fallbacks for custom materials', () => {
+    expect(stylesheet).toContain('@media (prefers-reduced-transparency: reduce)')
+    expect(stylesheet).toMatch(
+      /@media \(prefers-reduced-transparency: reduce\)[\s\S]*\.sidebar,[\s\S]*\.topbar[\s\S]*backdrop-filter:\s*none;/u
+    )
+    expect(stylesheet).toMatch(
+      /:root\[data-window-active='false'\][\s\S]*\.topbar-context[\s\S]*filter:\s*saturate\(0\.55\);/u
+    )
+    expect(rendererEntry).toContain('document.documentElement.dataset.windowActive')
+    expect(rendererEntry).toContain("window.addEventListener('focus'")
+    expect(rendererEntry).toContain("window.addEventListener('blur'")
+  })
+
+  it('uses a compact Sources list-detail workspace instead of a card grid', () => {
+    expect(stylesheet).toMatch(
+      /\.source-catalog-workspace\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(260px,\s*34%\) minmax\(0,\s*1fr\);/su
+    )
+    expect(stylesheet).toMatch(
+      /\.source-catalog-list\s*\{[^}]*overflow-y:\s*auto;[^}]*border-right:\s*1px solid var\(--separator\);/su
+    )
+    expect(stylesheet).toMatch(
+      /\.source-catalog-row\[aria-selected='true'\]\s*\{[^}]*background:\s*var\(--system-accent-soft\);/su
+    )
+    expect(stylesheet).not.toMatch(/\.source-catalog-grid\s*\{/su)
+  })
+
+  it('flattens grouped content surfaces and removes Discover marketing chrome', () => {
+    expect(stylesheet).toMatch(
+      /\.discover-view\s*\{[^}]*gap:\s*18px;[^}]*padding:\s*26px 30px 48px;/su
+    )
+    const discoverForm = stylesheet.match(/\.discover-form\s*\{([^}]*)\}/su)?.[1]
+    expect(discoverForm).toContain('border-radius: 11px;')
+    expect(discoverForm).toContain('box-shadow: none;')
+    expect(stylesheet).toMatch(
+      /\.source-catalog-view\s*\{[^}]*gap:\s*18px;[^}]*padding:\s*26px 30px 48px;/su
+    )
+    expect(stylesheet).toMatch(
+      /\.settings-panel form\s*\{[^}]*border-radius:\s*11px;[^}]*box-shadow:\s*none;/su
+    )
   })
 
   it('surrenders the accent to Highlight under forced colors', () => {

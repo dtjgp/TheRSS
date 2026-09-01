@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>TheRSS Apple-native UI prototype</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+        --label: #1d1d1f;
+        --secondary: #626267;
+        --canvas: #f2f2f7;
+        --surface: #ffffff;
+        --surface-secondary: #f8f8fa;
+        --fill: rgba(120, 120, 128, 0.13);
+        --fill-strong: rgba(120, 120, 128, 0.2);
+        --line: rgba(60, 60, 67, 0.24);
+        --accent: #007aff;
+        --on-accent: #ffffff;
+        --discover: #5856d6;
+        --sources: #b35c00;
+        --success: #176b2c;
+        --warning: #9a5400;
+        --danger: #b42318;
+        --control-radius: 8px;
+        --panel-radius: 11px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --label: #f5f5f7;
+          --secondary: #a9a9af;
+          --canvas: #000000;
+          --surface: #1c1c1e;
+          --surface-secondary: #242426;
+          --fill: rgba(120, 120, 128, 0.24);
+          --fill-strong: rgba(120, 120, 128, 0.32);
+          --line: rgba(235, 235, 245, 0.22);
+          --accent: #0a84ff;
+          --on-accent: #ffffff;
+          --discover: #8e8af7;
+          --sources: #ffb340;
+          --success: #30d158;
+          --warning: #ff9f0a;
+          --danger: #ff453a;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-width: 410px;
+        min-height: 600px;
+        margin: 0;
+        overflow: hidden;
+        color: var(--label);
+        background: var(--canvas);
+      }
+
+      button,
+      input,
+      textarea,
+      select {
+        color: inherit;
+        font: inherit;
+      }
+
+      button:focus-visible,
+      input:focus-visible,
+      textarea:focus-visible,
+      select:focus-visible {
+        outline: 3px solid color-mix(in srgb, var(--accent) 52%, transparent);
+        outline-offset: 2px;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 196px minmax(0, 1fr);
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        padding: 52px 10px 14px;
+        background: color-mix(in srgb, var(--surface) 78%, transparent);
+        border-right: 1px solid var(--line);
+        backdrop-filter: blur(24px) saturate(1.2);
+      }
+
+      .sidebar-title {
+        margin: 0;
+        padding: 0 10px 12px;
+        color: var(--secondary);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .sidebar nav {
+        display: grid;
+        gap: 3px;
+      }
+
+      .nav-item {
+        min-height: 34px;
+        padding: 7px 10px;
+        text-align: left;
+        background: transparent;
+        border: 0;
+        border-radius: var(--control-radius);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+      }
+
+      .nav-item:hover {
+        background: var(--fill);
+      }
+
+      .nav-item[aria-current='page'] {
+        background: color-mix(in srgb, var(--accent) 18%, transparent);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+      }
+
+      .sidebar-utility {
+        margin-top: auto;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+      }
+
+      .sidebar-status {
+        display: block;
+        padding: 9px 10px 2px;
+        color: var(--secondary);
+        font-size: 11px;
+      }
+
+      .shell {
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .toolbar {
+        display: flex;
+        height: 52px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        background: color-mix(in srgb, var(--surface) 78%, transparent);
+        border-bottom: 1px solid var(--line);
+        backdrop-filter: blur(22px) saturate(1.2);
+      }
+
+      .toolbar-leading,
+      .toolbar-actions,
+      .action-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .toolbar-button {
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        background: transparent;
+        border: 0;
+        border-radius: 7px;
+        cursor: pointer;
+      }
+
+      .toolbar-button:hover {
+        background: var(--fill);
+      }
+
+      .toolbar h1 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .toolbar-status {
+        color: var(--secondary);
+        font-size: 11px;
+      }
+
+      .toolbar-status[data-emphasis='true'] {
+        padding: 5px 9px;
+        color: var(--warning);
+        background: color-mix(in srgb, var(--warning) 10%, transparent);
+        border: 1px solid color-mix(in srgb, var(--warning) 28%, transparent);
+        border-radius: 999px;
+      }
+
+      .viewport {
+        height: calc(100vh - 52px);
+        overflow: auto;
+      }
+
+      .screen {
+        display: none;
+      }
+
+      .screen[data-active='true'] {
+        display: block;
+      }
+
+      .workspace {
+        width: min(1220px, 100%);
+        margin: 0 auto;
+        padding: 26px 30px 48px;
+      }
+
+      .page-heading {
+        margin-bottom: 18px;
+      }
+
+      .page-heading h2 {
+        margin: 0;
+        font-family:
+          'SF Pro Display',
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        line-height: 1.08;
+      }
+
+      .page-heading p {
+        max-width: 720px;
+        margin: 7px 0 0;
+        color: var(--secondary);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .group {
+        overflow: hidden;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--panel-radius);
+      }
+
+      .query-group {
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+      }
+
+      label > span,
+      .field-label,
+      .column-label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--secondary);
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      textarea,
+      input,
+      select {
+        width: 100%;
+        min-height: 34px;
+        padding: 7px 9px;
+        color: var(--label);
+        background: var(--surface-secondary);
+        border: 1px solid var(--line);
+        border-radius: var(--control-radius);
+      }
+
+      textarea {
+        min-height: 68px;
+        resize: vertical;
+      }
+
+      .query-controls,
+      .filter-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 190px auto;
+        gap: 10px;
+        align-items: end;
+      }
+
+      .primary-button,
+      .secondary-button {
+        min-height: 32px;
+        padding: 6px 12px;
+        border-radius: var(--control-radius);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .primary-button {
+        color: var(--on-accent);
+        background: var(--accent);
+        border: 1px solid color-mix(in srgb, var(--accent) 82%, black);
+      }
+
+      .secondary-button {
+        color: var(--label);
+        background: var(--fill);
+        border: 1px solid var(--line);
+      }
+
+      .primary-button:active,
+      .secondary-button:active {
+        transform: translateY(1px);
+      }
+
+      .split-view {
+        display: grid;
+        grid-template-columns: minmax(260px, 34%) minmax(0, 1fr);
+        min-height: 500px;
+        margin-top: 18px;
+        overflow: hidden;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--panel-radius);
+      }
+
+      .list-pane {
+        min-width: 0;
+        background: var(--surface-secondary);
+        border-right: 1px solid var(--line);
+      }
+
+      .pane-heading {
+        display: flex;
+        min-height: 38px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 11px;
+        color: var(--secondary);
+        border-bottom: 1px solid var(--line);
+        font-size: 11px;
+      }
+
+      .list-row {
+        display: grid;
+        gap: 5px;
+        width: 100%;
+        min-height: 86px;
+        padding: 11px 12px;
+        text-align: left;
+        background: transparent;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        cursor: pointer;
+      }
+
+      .list-row:hover {
+        background: var(--fill);
+      }
+
+      .list-row[aria-selected='true'] {
+        background: color-mix(in srgb, var(--accent) 16%, transparent);
+        box-shadow: inset 3px 0 var(--accent);
+      }
+
+      .list-row strong {
+        overflow: hidden;
+        font-size: 13px;
+        line-height: 1.25;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .list-row span,
+      .list-row p {
+        margin: 0;
+        color: var(--secondary);
+        font-size: 11px;
+        line-height: 1.35;
+      }
+
+      .detail-pane {
+        min-width: 0;
+        padding: 24px 28px 36px;
+      }
+
+      .detail-meta {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        color: var(--secondary);
+        font-size: 11px;
+      }
+
+      .identity-label {
+        color: var(--discover);
+        font-weight: 600;
+      }
+
+      [data-screen='sources'] .identity-label {
+        color: var(--sources);
+      }
+
+      .detail-pane h3 {
+        max-width: 760px;
+        margin: 17px 0 12px;
+        font-family:
+          'SF Pro Display',
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        font-size: clamp(28px, 3vw, 38px);
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        line-height: 1.1;
+      }
+
+      .detail-pane > p {
+        max-width: 720px;
+        color: var(--secondary);
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .action-row {
+        margin: 18px 0;
+        padding: 10px 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .reason-list,
+      .source-facts {
+        display: grid;
+        gap: 0;
+        max-width: 760px;
+        margin: 18px 0 0;
+        padding: 0;
+        border-top: 1px solid var(--line);
+        list-style: none;
+      }
+
+      .reason-list li,
+      .source-facts li {
+        display: grid;
+        grid-template-columns: 150px minmax(0, 1fr);
+        gap: 16px;
+        padding: 11px 2px;
+        border-bottom: 1px solid var(--line);
+        font-size: 12px;
+      }
+
+      .reason-list span,
+      .source-facts span {
+        color: var(--secondary);
+      }
+
+      .settings-layout {
+        display: grid;
+        grid-template-columns: 168px minmax(0, 1fr);
+        gap: 16px;
+      }
+
+      .settings-tabs {
+        height: fit-content;
+        padding: 5px;
+      }
+
+      .settings-tabs button {
+        width: 100%;
+        min-height: 32px;
+        padding: 6px 8px;
+        text-align: left;
+        background: transparent;
+        border: 0;
+        border-radius: 7px;
+        font-size: 12px;
+      }
+
+      .settings-tabs button[aria-selected='true'] {
+        background: var(--fill-strong);
+      }
+
+      .settings-panel {
+        padding: 18px;
+      }
+
+      .settings-panel h3 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 600;
+      }
+
+      .settings-panel > p {
+        margin: 6px 0 16px;
+        color: var(--secondary);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .form-row {
+        padding: 13px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .form-help {
+        margin: 7px 0 0;
+        color: var(--secondary);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .form-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+      }
+
+      .form-footer span {
+        color: var(--secondary);
+        font-size: 11px;
+      }
+
+      @media (max-width: 920px) {
+        .app {
+          grid-template-columns: 184px minmax(0, 1fr);
+        }
+
+        .workspace {
+          padding: 22px 20px 40px;
+        }
+
+        .query-controls,
+        .filter-row {
+          grid-template-columns: minmax(0, 1fr) auto;
+        }
+
+        .query-controls > :first-child,
+        .filter-row > :first-child {
+          grid-column: 1 / -1;
+        }
+
+        .split-view {
+          grid-template-columns: minmax(230px, 42%) minmax(0, 1fr);
+        }
+
+        .detail-pane {
+          padding: 20px;
+        }
+
+        .settings-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .settings-tabs {
+          display: flex;
+        }
+      }
+
+      @media (prefers-contrast: more) {
+        :root {
+          --line: rgba(60, 60, 67, 0.58);
+        }
+      }
+
+      @media (forced-colors: active) {
+        :root {
+          --label: CanvasText;
+          --secondary: CanvasText;
+          --canvas: Canvas;
+          --surface: Canvas;
+          --surface-secondary: Canvas;
+          --line: ButtonText;
+          --accent: Highlight;
+          --on-accent: HighlightText;
+        }
+
+        * {
+          box-shadow: none !important;
+        }
+      }
+
+      @media (prefers-reduced-transparency: reduce) {
+        .sidebar,
+        .toolbar {
+          background: var(--surface);
+          backdrop-filter: none;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar" aria-label="Application navigation">
+        <p class="sidebar-title">TheRSS</p>
+        <nav>
+          <button class="nav-item" type="button" data-target="discover" aria-current="page">
+            Discover
+          </button>
+          <button class="nav-item" type="button">Saved</button>
+          <button class="nav-item" type="button">Data Analytics</button>
+          <button class="nav-item" type="button" data-target="sources">Sources</button>
+        </nav>
+        <div class="sidebar-utility">
+          <button class="nav-item" type="button" data-target="settings">Settings</button>
+          <span class="sidebar-status">Local index ready</span>
+        </div>
+      </aside>
+
+      <div class="shell">
+        <header class="toolbar">
+          <div class="toolbar-leading">
+            <button
+              class="toolbar-button"
+              type="button"
+              title="Hide sidebar"
+              aria-label="Hide sidebar"
+            >
+              ◫
+            </button>
+            <h1 id="view-title">Discover</h1>
+          </div>
+          <div class="toolbar-actions">
+            <span class="toolbar-status" id="view-status">22 sources configured</span>
+          </div>
+        </header>
+
+        <div class="viewport">
+          <main class="screen workspace" data-screen="discover" data-active="true">
+            <header class="page-heading">
+              <h2>Discover research</h2>
+              <p>
+                Expand one question into a bounded, inspectable search across selected local
+                sources.
+              </p>
+            </header>
+
+            <section class="group query-group" aria-label="Discover query">
+              <label>
+                <span>Research question</span>
+                <textarea>semantic communication pruning for edge deployment</textarea>
+              </label>
+              <div class="query-controls">
+                <label>
+                  <span>Sources</span>
+                  <select>
+                    <option>22 selected</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Search with</span>
+                  <select>
+                    <option>Codex CLI</option>
+                  </select>
+                </label>
+                <button class="primary-button" type="button">Expand and search</button>
+              </div>
+            </section>
+
+            <section class="split-view" aria-label="Discover results">
+              <div class="list-pane">
+                <div class="pane-heading">
+                  <strong>3 results</strong><span>Use arrow keys to move</span>
+                </div>
+                <button class="list-row" type="button" role="option" aria-selected="true">
+                  <span>arXiv · Paper · signal 46</span>
+                  <strong>Semantic expansion search for edge intelligence</strong>
+                  <p>Matches semantic communication and structured pruning.</p>
+                </button>
+                <button class="list-row" type="button" role="option" aria-selected="false">
+                  <span>BAAI · Article · signal 46</span>
+                  <strong>Structured pruning research fixture</strong>
+                  <p>Configured source with bounded discovery evidence.</p>
+                </button>
+                <button class="list-row" type="button" role="option" aria-selected="false">
+                  <span>GitHub · Repository · signal 41</span>
+                  <strong>TheRSS semantic fixture</strong>
+                  <p>Repository metadata for edge inference.</p>
+                </button>
+              </div>
+              <article class="detail-pane">
+                <div class="detail-meta">
+                  <span class="identity-label">arXiv</span><span>Paper</span><span>signal 46</span>
+                </div>
+                <h3>Semantic expansion search for edge intelligence</h3>
+                <div class="action-row">
+                  <button class="secondary-button" type="button">Save</button>
+                  <button class="secondary-button" type="button">Analyze paper</button>
+                  <button class="primary-button" type="button">Promote to llm-wiki</button>
+                </div>
+                <p>
+                  A Discover-only fixture matching semantic communication and structured pruning.
+                </p>
+                <ul class="reason-list">
+                  <li><span>Matched title</span><strong>structured pruning</strong></li>
+                  <li><span>Matched summary</span><strong>semantic communication</strong></li>
+                  <li><span>Evidence boundary</span><strong>Discovery metadata only</strong></li>
+                </ul>
+              </article>
+            </section>
+          </main>
+
+          <main class="screen workspace" data-screen="sources" data-active="false">
+            <header class="page-heading">
+              <h2>Sources</h2>
+              <p>
+                Inspect the 22 retained research sources, their recorded health, and recent local
+                content.
+              </p>
+            </header>
+            <div class="filter-row group" style="padding: 12px">
+              <label
+                ><span>Search sources</span><input value="" placeholder="Name or research area"
+              /></label>
+              <label
+                ><span>Priority</span
+                ><select>
+                  <option>All priorities</option>
+                </select></label
+              >
+              <button class="secondary-button" type="button">Needs attention</button>
+            </div>
+
+            <section class="split-view" aria-label="Source directory">
+              <div class="list-pane" role="listbox" aria-label="Configured sources">
+                <div class="pane-heading">
+                  <strong>22 configured</strong><span>0 need attention</span>
+                </div>
+                <button class="list-row" type="button" role="option" aria-selected="true">
+                  <span>Priority A · Not checked</span><strong>arXiv</strong>
+                  <p>Paper discovery · 5 research axes</p>
+                </button>
+                <button class="list-row" type="button" role="option" aria-selected="false">
+                  <span>Priority A · Not checked</span><strong>GitHub</strong>
+                  <p>Repository discovery · 5 research axes</p>
+                </button>
+                <button class="list-row" type="button" role="option" aria-selected="false">
+                  <span>Priority A · Ready</span><strong>Hugging Face</strong>
+                  <p>Models, datasets, and papers</p>
+                </button>
+                <button class="list-row" type="button" role="option" aria-selected="false">
+                  <span>Priority B · Not checked</span><strong>NBER</strong>
+                  <p>Economics working papers</p>
+                </button>
+              </div>
+              <article class="detail-pane" data-screen="sources">
+                <div class="detail-meta">
+                  <span class="identity-label">Priority A</span
+                  ><span>Not checked this session</span>
+                </div>
+                <h3>arXiv</h3>
+                <p>
+                  Official preprint source with bounded in-app retrieval and explicit local
+                  evidence.
+                </p>
+                <div class="action-row">
+                  <button class="primary-button" type="button">View recent content</button>
+                  <button class="secondary-button" type="button">Open official site</button>
+                </div>
+                <ul class="source-facts">
+                  <li><span>Role</span><strong>Primary paper discovery</strong></li>
+                  <li><span>Acquisition</span><strong>Active bounded adapter</strong></li>
+                  <li>
+                    <span>Latest recorded health</span><strong>No current observation</strong>
+                  </li>
+                  <li>
+                    <span>Research axes</span
+                    ><strong>Edge AI, communications, energy systems</strong>
+                  </li>
+                  <li>
+                    <span>Evidence note</span
+                    ><strong>Catalog membership is not a live-health claim</strong>
+                  </li>
+                </ul>
+              </article>
+            </section>
+          </main>
+
+          <main class="screen workspace" data-screen="settings" data-active="false">
+            <header class="page-heading">
+              <h2>Settings</h2>
+              <p>Configure local research context, model access, and bounded agent availability.</p>
+            </header>
+            <div class="settings-layout">
+              <div class="settings-tabs group" role="tablist" aria-label="Settings sections">
+                <button type="button" role="tab" aria-selected="true">Personal context</button>
+                <button type="button" role="tab" aria-selected="false">Model provider</button>
+              </div>
+              <section class="settings-panel group" role="tabpanel" aria-label="Personal context">
+                <h3>Personal Discover prompt</h3>
+                <p>
+                  Stable fields and evidence preferences that refine explicit Discover questions.
+                </p>
+                <div class="form-row">
+                  <label>
+                    <span>Personal Discover prompt</span>
+                    <textarea rows="7">
+I research edge intelligence and energy systems. Prioritize reproducible evaluations and explicit resource budgets.</textarea>
+                  </label>
+                  <p class="form-help">
+                    Stored only in local SQLite and sent only after an explicit Discover action. Do
+                    not include secrets.
+                  </p>
+                </div>
+                <div class="form-footer">
+                  <span>115 of 4000 characters</span>
+                  <button class="primary-button" type="button">Save personal prompt</button>
+                </div>
+              </section>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const screens = [...document.querySelectorAll('.screen')]
+      const navButtons = [...document.querySelectorAll('[data-target]')]
+      const title = document.querySelector('#view-title')
+      const status = document.querySelector('#view-status')
+      const statusText = {
+        discover: '22 sources configured',
+        sources: '0 need attention',
+        settings: 'All changes saved'
+      }
+
+      const activate = (name) => {
+        screens.forEach((screen) => {
+          screen.dataset.active = String(screen.dataset.screen === name)
+        })
+        navButtons.forEach((button) => {
+          if (button.dataset.target === name) button.setAttribute('aria-current', 'page')
+          else button.removeAttribute('aria-current')
+        })
+        title.textContent =
+          name === 'sources' ? 'Sources' : name === 'settings' ? 'Settings' : 'Discover'
+        status.textContent = statusText[name]
+      }
+
+      navButtons.forEach((button) =>
+        button.addEventListener('click', () => activate(button.dataset.target))
+      )
+      const requestedView = new URLSearchParams(location.search).get('view')
+      if (requestedView === 'sources' || requestedView === 'settings') activate(requestedView)
+    </script>
+  </body>
+</html>

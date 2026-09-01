@@ -38,6 +38,29 @@
   }
 }
 
+:root[data-window-active='false'] .nav-item--active,
+:root[data-window-active='false'] .topbar-context,
+:root[data-window-active='false'] .primary-button {
+  filter: saturate(0.55);
+}
+
+:root[data-window-active='false'] .profile-name,
+:root[data-window-active='false'] .sidebar__title {
+  color: var(--secondary-label);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .sidebar,
+  .topbar,
+  .signal-detail__actions,
+  .discover-run-card,
+  .discover-search-details > summary,
+  .local-search-panel {
+    background: var(--system-background);
+    backdrop-filter: none;
+  }
+}
+
 @media (forced-colors: active) {
   :root {
     --label: CanvasText;
@@ -100,12 +123,6 @@
   }
 
   .status-dot {
-    forced-color-adjust: none;
-    background: CanvasText;
-    border: 1px solid Canvas;
-  }
-
-  .topbar-context::before {
     forced-color-adjust: none;
     background: CanvasText;
     border: 1px solid Canvas;
