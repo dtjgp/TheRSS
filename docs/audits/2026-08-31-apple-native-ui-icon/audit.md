@@ -2,7 +2,7 @@
 
 ## Outcome
 
-The accepted Apple-native renderer and the user-selected monochrome v6 icon are implemented and verified. The recoverable local beta is installed; repository publication is intentionally unperformed.
+The accepted Apple-native renderer and the user-selected monochrome v6 icon are implemented and verified. The recoverable local beta is installed, the README/current screenshot are refreshed, and the protected-main-compatible feature branch is published.
 
 ## UI Result
 
@@ -50,4 +50,4 @@ Representative evidence:
 
 ## Remaining Boundary
 
-The README refresh, commit, and protected-main-compatible feature-branch push are explicitly authorized. PR creation/merge, tags, release, and signed/notarized update remain outside this request. A true editable Icon Composer `.icon` remains a later authoring task; the current PNG/ICNS path is fully verified.
+Feature commit `9d0a214` and the documentation closeout are published on `origin/codex/apple-native-ui-icon`. PR creation/merge, tags, release, and signed/notarized update remain outside this request. A true editable Icon Composer `.icon` remains a later authoring task; the current PNG/ICNS path is fully verified.

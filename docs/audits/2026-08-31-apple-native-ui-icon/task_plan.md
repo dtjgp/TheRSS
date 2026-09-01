@@ -25,7 +25,7 @@ Make TheRSS feel like a focused macOS research utility, then replace the package
 - [x] Phase 8: Package/smoke/icon verification and final evidence closeout.
 - [x] Phase 9: Preserve and normalize the user-selected monochrome source; update the package input and provenance.
 - [x] Phase 10: Repackage, verify macOS decoding, reinstall the local beta recoverably, and close evidence.
-- [ ] Phase 11: Refresh README/current screenshot, rerun full verification, commit, and push the protected-main-compatible branch.
+- [x] Phase 11: Refresh README/current screenshot, rerun full verification, commit, and push the protected-main-compatible branch.
 
 ## Key Questions
 
@@ -56,4 +56,4 @@ Make TheRSS feel like a focused macOS research utility, then replace the package
 
 ## Status
 
-**In progress** - UI/icon/install work is complete; README refresh, final verification, commit, and authorized branch push remain.
+**Complete** - UI/icon/install/README work is complete; feature commit `9d0a214` and this closeout are published on `origin/codex/apple-native-ui-icon`. PR creation/merge and release remain separately authorized actions.
