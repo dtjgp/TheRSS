@@ -51,3 +51,7 @@ Native compositor capture exposed a real pre-existing200% zoom defect hidden by 
 ## CI environment isolation (PR42, initial run33985243539)
 
 Remote quality passed. The new appearance test inherited the runner's reduced-transparency preference (toolbar255 versus normal246), and the Sources desktop test inherited a smaller restored window (permitted narrow fallback scrolled main285px). Product behavior was correct for those modes. The tests now explicitly emulate the normal appearance preferences before testing246px-color roles and explicitly size/assert1360x880 before desktop pane assertions. Existing reduced-transparency/high-contrast and820x700 checks remain unchanged. No product code or assertion threshold is weakened; these are scenario preconditions, not relaxed acceptance.
+
+## Short desktop window correction (second CI33985576935)
+
+Appearance and the original two desktop flows passed. Sources still failed with main scroll285. Downloaded failure image is1024x677: the pre-show1360x880 poll was transient before macOS fitted the displayed window. More importantly, Sources CSS had a601-719px height gap between its desktop grid(min720) and stacked fallback(max600), leaving the base min(620px,70dvh) workspace taller than the remaining space. Freeze a real1024x677 regression scenario after native window visibility, retain all keyboard/scroll assertions, and close that gap by starting the bounded desktop grid at601px. The narrow/<=600px stacked fallback remains intact.

@@ -17,7 +17,7 @@ The desktop now follows Apple's macOS 27 edge-aligned sidebar, semibold selectio
 | 1    | Discover entry    | Removed redundant brand/status framing through the merged Apple branch; now compact titles, clear toolbar, edge sidebar and semibold selection                              | [Before](before/discover.png), [After](after/discover.png)                      |
 | 2    | Results and Saved | Stable content background, compact detail heading and legible metadata; distinct Saved/evidence states remain                                                               | [Results](after/results.png), [Dark](after/results-dark.png)                    |
 | 3    | Settings          | Shared26px heading hierarchy and grouped inputs; original draft/error/confirmation behavior preserved                                                                       | [Settings](after/settings.png)                                                  |
-| 4    | Sources           | Bounded desktop panes, content-start alignment and one Tab entry; arrows/Home/End move focus without retrieval, Enter/Space activate                                        | [Sources](after/sources.png)                                                    |
+| 4    | Sources           | Bounded desktop panes, content-start alignment and one Tab entry; arrows/Home/End move focus without retrieval, Enter/Space activate                                        | [Sources](after/sources.png), [1024x677](after/sources-1024.png)                |
 | 5    | Analytics         | Compact headings and consistent content groups; recorded counts/provenance unchanged                                                                                        | [Analytics](after/analytics.png)                                                |
 | 6    | Accessibility     | 18 primary-control accent/appearance combinations reach4.5:1; reduced transparency removes overlay blur, forced colors retains state, local search traps and restores focus | [Forced colors](after/forced-colors.png), [Zoom](after/results-200-percent.png) |
 
@@ -37,7 +37,7 @@ The user-selected Apple direction and existing product override contradictory ma
 - RED evidence: sidebar500 instead of600 weight; primary blue contrast4.016975780478911; source list had scrollHeight==clientHeight; local-search keyboard and focus-return regressions.
 - Native smoke: all checks pass for OS accent, actual NSMenu opening, application menu and accelerators; clipboard/external-open sinks are stubbed. No system clipboard roundtrip is claimed.
 - Current dependency audit:0 vulnerabilities. Compatible updates repair inherited fast-uri, xmldom and qs advisories without changing the audit gate.
-- Unsigned macOS arm64 package and packaged preload/startup smoke pass. app.asar SHA-256: `43a1c96485be3aa069942a570e2469dc9dd7d81092b107df0bdeb0864729c080`.
+- Unsigned macOS arm64 package and packaged preload/startup smoke pass. app.asar SHA-256: `e9c72b153170e5b7fbb6d07abefd639d4a81872603c749e2b2fb11cc02f1f9c8`.
 - Independent review: initial P1 clipboard API and P2 contrast/Source scrolling/keyboard findings all resolved and re-reviewed with no remaining code blocker.
 
 ## Branch preservation and publication procedure
@@ -60,3 +60,5 @@ This is an Electron/React/native-CSS implementation on macOS27, not a SwiftUI/Ap
 Node26.7 triggered a Vitest/jsdom localStorage test-environment incompatibility; the full gate passes with supported Node24.19.0. Default shell Node24.13 is below package engines. No application runtime regression was observed on Electron44.
 
 This run did not replace the installed application, publish a GitHub Release, call live providers/sources, or write the real vault. Latest historical live-source check remains2026-08-19. Rollback uses git revert; original branch histories have a separate verified local bundle.
+
+The additional1024x677 Sources regression reproduced CI main scrolling285px and now passes after closing the601–719px responsive gap. Fullcheck and currentpackage smoke passed again for this one-line CSS repair.

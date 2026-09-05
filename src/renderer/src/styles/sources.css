@@ -620,7 +620,7 @@
   line-height: 1.5;
 }
 
-@media (min-width: 921px) and (min-height: 720px) {
+@media (min-width: 921px) and (min-height: 601px) {
   .source-catalog-view {
     grid-template-rows: repeat(5, max-content) minmax(0, 1fr);
     height: calc(100dvh - 52px);
