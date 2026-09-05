@@ -16,8 +16,23 @@ test('Discover-first search across every deployed source', async () => {
   if (baselineDirectory) await mkdir(baselineDirectory, { recursive: true })
   const screenshotPath = (name: string) =>
     baselineDirectory ? join(baselineDirectory, name) : join('test-results', name)
-  const capture = (page: Page, name: string) =>
-    page.screenshot({ path: screenshotPath(name), animations: 'disabled' })
+  const capture = async (page: Page, name: string) => {
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+        )
+    )
+    // Chromium's screenshot clipping scales incorrectly under Electron page zoom.
+    // Capture the actual compositor surface for zoomed evidence instead.
+    const zoomedSurface = await application.evaluate(async ({ BrowserWindow }) => {
+      const contents = BrowserWindow.getAllWindows()[0]!.webContents
+      if (contents.getZoomFactor() <= 1) return null
+      return (await contents.capturePage()).toPNG().toString('base64')
+    })
+    if (zoomedSurface) await writeFile(screenshotPath(name), Buffer.from(zoomedSurface, 'base64'))
+    else await page.screenshot({ path: screenshotPath(name), animations: 'disabled' })
+  }
   const application = await electron.launch(
     baselineExecutable
       ? {
@@ -396,6 +411,12 @@ test('Discover-first search across every deployed source', async () => {
       }))
       expect(discoverZoomOverflow.document).toBeLessThanOrEqual(1)
       expect(discoverZoomOverflow.main).toBeLessThanOrEqual(1)
+      expect(
+        (await page.locator('#discover-visible-results').boundingBox())?.height
+      ).toBeGreaterThanOrEqual(220)
+      await page.locator('.signal-detail__title').scrollIntoViewIfNeeded()
+      await expect(page.locator('.signal-detail__title')).toBeInViewport()
+      expect(await page.evaluate(() => document.scrollingElement?.scrollTop)).toBe(0)
       await capture(page, '02c-discover-results-200-percent.png')
       await application.evaluate(({ BrowserWindow }) => {
         BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(1)
@@ -518,7 +539,7 @@ test('Discover-first search across every deployed source', async () => {
     await page.getByRole('button', { name: 'Settings' }).click()
     const settingsHeading = page.getByRole('heading', { name: 'Settings' })
     await expect(settingsHeading).toBeVisible()
-    await expect(settingsHeading).toHaveCSS('font-size', '30px')
+    await expect(settingsHeading).toHaveCSS('font-size', '26px')
     await expect(page.locator('.settings-heading > .eyebrow')).toHaveCount(0)
     await expect(page.locator('.settings-panel__heading > .eyebrow')).toHaveCount(0)
     expect(

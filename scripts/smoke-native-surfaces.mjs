@@ -1,8 +1,8 @@
 /**
  * Opt-in smoke check for the macOS-native surfaces that unit tests and the Electron
  * E2E flow cannot reach: the real system accent travelling OS -> main -> IPC -> DOM,
- * a real NSMenu opening via Menu.popup(), and the clipboard/openExternal side effects
- * of its entries.
+ * a real NSMenu opening via Menu.popup(), and clipboard/openExternal handler routing.
+ * Clipboard and external-open sinks are stubbed; no user's clipboard is overwritten.
  *
  * Run with `npm run smoke:native`. It launches a disposable profile with fixtures, so
  * it performs no live source or model call and touches no real user data.
@@ -65,16 +65,20 @@ check('--system-accent computes to a real colour', accentValue.length > 0, `"${a
 check('the token reaches components', focusRule.length > 0, `"${focusRule}"`)
 
 // ---- 2. Instrument main: open the real NSMenu, then dismiss it ------------
-await application.evaluate(({ Menu, shell }) => {
+await application.evaluate(({ Menu, shell, clipboard }) => {
   const scheduleTimeout = globalThis.setTimeout
   const store = globalThis
   store.__vPopups = 0
   store.__vLabels = []
   store.__vOpened = []
+  store.__vClipboardWrites = []
   store.__vMenu = null
 
   shell.openExternal = async function (url) {
     store.__vOpened.push(url)
+  }
+  clipboard.writeText = async function (text) {
+    store.__vClipboardWrites.push(text)
   }
 
   const originalPopup = Menu.prototype.popup
@@ -129,8 +133,8 @@ check(
   JSON.stringify(popupState.labels)
 )
 
-// ---- 4. Real click handlers: clipboard and external open ------------------
-const sideEffects = await application.evaluate(({ clipboard }) => {
+// ---- 4. Real click handlers route to intercepted, non-mutating sinks -------
+const sideEffects = await application.evaluate(() => {
   const menu = globalThis.__vMenu
   const run = function (label) {
     const entry = menu.items.find(function (c) {
@@ -138,26 +142,21 @@ const sideEffects = await application.evaluate(({ clipboard }) => {
     })
     if (entry && entry.click) entry.click()
   }
-  clipboard.writeText('__cleared__')
   run('Copy Link')
-  const link = clipboard.readText()
-  clipboard.writeText('__cleared__')
   run('Copy Title')
-  const title = clipboard.readText()
-  clipboard.writeText('__cleared__')
   run('Copy Citation')
-  const citation = clipboard.readText()
   run('Open in Browser')
+  const [link, title, citation] = globalThis.__vClipboardWrites
   return { link, title, citation, opened: globalThis.__vOpened }
 })
 
 check(
-  'Copy Link put the URL on the clipboard',
+  'Copy Link routes the URL to the clipboard handler',
   sideEffects.link.startsWith('https://'),
   JSON.stringify(sideEffects.link)
 )
 check(
-  'Copy Title put the bare title on the clipboard',
+  'Copy Title routes the bare title to the clipboard handler',
   sideEffects.title.length > 0 && !sideEffects.title.includes('https://'),
   JSON.stringify(sideEffects.title)
 )

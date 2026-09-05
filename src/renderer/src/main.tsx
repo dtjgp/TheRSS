@@ -8,6 +8,7 @@ import './styles/analytics.css'
 import './styles/sources.css'
 import './styles/workspace.css'
 import './styles/local-search.css'
+import './styles/macos.css'
 import './styles/accessibility.css'
 
 const reflectWindowActivity = () => {

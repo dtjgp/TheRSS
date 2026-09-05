@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { TheRSSApi } from '../../shared/api'
 import type { LocalSearchResult } from '../../shared/localSearch'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
@@ -14,7 +14,19 @@ function kindLabel(kind: LocalSearchResult['kind']): string {
   return 'Discover'
 }
 
+function isTabbable(element: HTMLElement): boolean {
+  if (element.tabIndex < 0 || element.matches(':disabled')) return false
+  if (element.closest('[hidden], [inert], [aria-hidden="true"]')) return false
+  if (getComputedStyle(element).visibility !== 'visible') return false
+  for (let ancestor: HTMLElement | null = element; ancestor; ancestor = ancestor.parentElement) {
+    if (getComputedStyle(ancestor).display === 'none') return false
+  }
+  return true
+}
+
 export function LocalSearchPanel({ api, onClose }: LocalSearchPanelProps) {
+  const panelRef = useRef<HTMLElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<readonly LocalSearchResult[]>([])
   const [hasSearched, setHasSearched] = useState(false)
@@ -22,13 +34,37 @@ export function LocalSearchPanel({ api, onClose }: LocalSearchPanelProps) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      event.preventDefault()
-      onClose()
+    const previousFocus = document.activeElement
+    inputRef.current?.focus()
+    return () => {
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus()
     }
-    window.addEventListener('keydown', closeOnEscape)
-    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+        return
+      }
+      const panel = panelRef.current
+      if (event.key !== 'Tab' || !panel) return
+      event.preventDefault()
+      const controls = Array.from(
+        panel.querySelectorAll<HTMLElement>('a[href], button, input, [tabindex]')
+      ).filter(isTabbable)
+      const currentIndex = controls.findIndex((control) => control === document.activeElement)
+      const nextIndex = event.shiftKey
+        ? currentIndex <= 0
+          ? controls.length - 1
+          : currentIndex - 1
+        : (currentIndex + 1) % controls.length
+      const nextControl = controls[nextIndex] ?? panel
+      nextControl.focus()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
   const search = async (event: FormEvent) => {
@@ -50,10 +86,19 @@ export function LocalSearchPanel({ api, onClose }: LocalSearchPanelProps) {
   }
 
   return (
-    <div className="local-search-backdrop" role="presentation" onMouseDown={onClose}>
+    <div
+      className="local-search-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
+    >
       <section
+        ref={panelRef}
         className="local-search-panel"
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby="local-search-heading"
         onMouseDown={(event) => event.stopPropagation()}
@@ -74,7 +119,7 @@ export function LocalSearchPanel({ api, onClose }: LocalSearchPanelProps) {
         </header>
         <form role="search" onSubmit={(event) => void search(event)}>
           <input
-            autoFocus
+            ref={inputRef}
             type="search"
             aria-label="Search local research"
             value={query}

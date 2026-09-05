@@ -1,0 +1,80 @@
+[
+  {
+    "ref": "origin/dependabot/npm_and_yarn/electron-44.0.0",
+    "tip": "6b491db4a4949bc3693b5f0343cf94e562e7d092",
+    "preserved_updates": [
+      {
+        "section": "devDependencies",
+        "package": "electron",
+        "version": "^44.0.0"
+      }
+    ]
+  },
+  {
+    "ref": "origin/dependabot/npm_and_yarn/prod-minor-patch-81e9247385",
+    "tip": "c790016ba877a06bf92387d5f965e745a360c11d",
+    "preserved_updates": [
+      {
+        "section": "dependencies",
+        "package": "fast-xml-parser",
+        "version": "^5.11.1"
+      },
+      {
+        "section": "dependencies",
+        "package": "lucide-react",
+        "version": "^1.39.0"
+      },
+      {
+        "section": "dependencies",
+        "package": "zod",
+        "version": "^4.5.4"
+      }
+    ]
+  },
+  {
+    "ref": "origin/dependabot/npm_and_yarn/dev-minor-patch-5bd4d1299c",
+    "tip": "7596c07ca7700e48e3aac921c48bc014d1bc0aec",
+    "preserved_updates": [
+      {
+        "section": "devDependencies",
+        "package": "@testing-library/react",
+        "version": "^16.3.3"
+      },
+      {
+        "section": "devDependencies",
+        "package": "@testing-library/user-event",
+        "version": "^14.6.7"
+      },
+      {
+        "section": "devDependencies",
+        "package": "@types/node",
+        "version": "^26.4.1"
+      },
+      {
+        "section": "devDependencies",
+        "package": "@types/react-dom",
+        "version": "^19.2.5"
+      },
+      {
+        "section": "devDependencies",
+        "package": "eslint",
+        "version": "^10.9.1"
+      },
+      {
+        "section": "devDependencies",
+        "package": "eslint-plugin-react-refresh",
+        "version": "^0.5.6"
+      },
+      {
+        "section": "devDependencies",
+        "package": "tsx",
+        "version": "^4.23.13"
+      },
+      {
+        "section": "devDependencies",
+        "package": "typescript-eslint",
+        "version": "^8.69.0"
+      }
+    ]
+  }
+]

@@ -8,6 +8,7 @@ const stylesheet = [
   './styles/analytics.css',
   './styles/sources.css',
   './styles/workspace.css',
+  './styles/macos.css',
   './styles/accessibility.css'
 ]
   .map((path) => readFileSync(new URL(path, import.meta.url), 'utf8'))
@@ -176,7 +177,7 @@ describe('Apple semantic color system', () => {
       /\.discover-result-list\s*>\s*\.today-view__heading\s*>\s*div\s*\{[^}]*min-width:\s*0;[^}]*max-width:\s*100%;/su
     )
     expect(stylesheet).toMatch(
-      /@container\s*\(max-width:\s*520px\)\s*\{[\s\S]*?\.discover-result-filters\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*68px\);/su
+      /@container\s*\(max-width:\s*520px\)\s*\{[\s\S]*?\.discover-result-filters\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/su
     )
     expect(stylesheet).toMatch(
       /@container\s*\(max-width:\s*520px\)\s*\{[\s\S]*?\.discover-result-list\s*>\s*\.today-view__heading h2\s*\{[^}]*font-size:\s*18px;[^}]*overflow-wrap:\s*anywhere;/su
@@ -418,7 +419,7 @@ describe('macOS system accent', () => {
       '--system-accent-soft: color-mix(in srgb, var(--system-accent) 16%, transparent);'
     )
     expect(stylesheet).toMatch(
-      /\.primary-button\s*\{[^}]*color:\s*var\(--on-system-accent\);[^}]*background:\s*var\(--system-accent\);/su
+      /\.primary-button\s*\{[^}]*color:\s*var\(--on-control-accent\);[^}]*background:\s*var\(--control-accent\);/su
     )
     expect(stylesheet).toMatch(
       /\.nav-item--active\s*\{[^}]*background:\s*var\(--system-accent-soft\);/su

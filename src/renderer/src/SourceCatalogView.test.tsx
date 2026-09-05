@@ -75,6 +75,144 @@ function renderCatalog(
 }
 
 describe('SourceCatalogView', () => {
+  it('provides one Tab stop in the source list and leaves source requests idle on entry', async () => {
+    const user = userEvent.setup()
+    const api = createSourceApi()
+    renderCatalog(api)
+    const options = within(
+      screen.getByRole('listbox', { name: 'Configured sources' })
+    ).getAllByRole('option')
+    expect(options.filter((option) => option.tabIndex === 0)).toEqual([options[0]])
+
+    screen.getByRole('combobox', { name: 'Research axis' }).focus()
+    await user.tab()
+    expect(options[0]).toHaveFocus()
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Refresh recent content' })).toHaveFocus()
+    expect(api.getSourceContent).not.toHaveBeenCalled()
+    expect(api.refreshSourceContent).not.toHaveBeenCalled()
+  })
+
+  it('moves only focus with arrows, Home and End, including the first and last boundaries', async () => {
+    const user = userEvent.setup()
+    const api = createSourceApi()
+    renderCatalog(api)
+    const options = within(
+      screen.getByRole('listbox', { name: 'Configured sources' })
+    ).getAllByRole('option')
+    options[0]!.focus()
+    await user.keyboard('{ArrowUp}')
+    expect(options[0]).toHaveFocus()
+    await user.keyboard('{ArrowDown}')
+    expect(options[1]).toHaveFocus()
+    expect(options[1]).toHaveAttribute('aria-selected', 'false')
+    expect(options.filter((option) => option.tabIndex === 0)).toEqual([options[1]])
+    await user.keyboard('{Control>}{ArrowDown}{/Control}')
+    expect(options[1]).toHaveFocus()
+    await user.keyboard('{End}')
+    expect(options.at(-1)).toHaveFocus()
+    await user.keyboard('{ArrowDown}')
+    expect(options.at(-1)).toHaveFocus()
+    await user.keyboard('{ArrowUp}')
+    expect(options.at(-2)).toHaveFocus()
+    await user.keyboard('{Home}')
+    expect(options[0]).toHaveFocus()
+    expect(screen.getByRole('region', { name: 'arXiv source detail' })).toBeVisible()
+    expect(api.getSourceContent).not.toHaveBeenCalled()
+    expect(api.refreshSourceContent).not.toHaveBeenCalled()
+  })
+
+  it.each(['{Enter}', ' '])(
+    'activates the focused source with %s and does not reload it when focus moves',
+    async (key) => {
+      const user = userEvent.setup()
+      const api = createSourceApi(sourceSnapshot('github'))
+      render(<SourceCatalogView api={api} sourceHealth={undefined} />)
+      const list = screen.getByRole('listbox', { name: 'Configured sources' })
+      const options = within(list).getAllByRole('option')
+      options[0]!.focus()
+      await user.keyboard('{ArrowDown}')
+      const github = within(list).getByRole('option', { name: 'Browse GitHub recent content' })
+      expect(github).toHaveFocus()
+      expect(api.getSourceContent).not.toHaveBeenCalled()
+      await user.keyboard(key)
+      await waitFor(() => expect(api.getSourceContent).toHaveBeenCalledOnce())
+      expect(api.getSourceContent).toHaveBeenCalledWith('github')
+      expect(github).toHaveAttribute('aria-selected', 'true')
+      expect(screen.getByRole('region', { name: 'GitHub source detail' })).toBeVisible()
+
+      await user.keyboard('{ArrowDown}')
+      expect(options[2]).toHaveFocus()
+      expect(api.getSourceContent).toHaveBeenCalledOnce()
+      expect(api.refreshSourceContent).not.toHaveBeenCalled()
+      await user.tab()
+      expect(screen.getByRole('link', { name: 'Open official source' })).toHaveFocus()
+      await user.tab({ shift: true })
+      expect(github).toHaveFocus()
+    }
+  )
+
+  it('returns the Tab entry to the selected source or first visible source after filtering', async () => {
+    const user = userEvent.setup()
+    const api = createSourceApi(sourceSnapshot('github'))
+    renderCatalog(api)
+    const github = screen.getByRole('option', { name: 'Browse GitHub recent content' })
+    await user.click(github)
+    await user.keyboard('{End}')
+    const search = screen.getByRole('searchbox', { name: 'Search source catalog' })
+    await user.type(search, 'arXiv')
+    const arxiv = screen.getByRole('option', { name: 'Browse arXiv recent content' })
+    expect(arxiv).toHaveAttribute('tabindex', '0')
+    expect(api.getSourceContent).toHaveBeenCalledOnce()
+    await user.clear(search)
+    const options = within(
+      screen.getByRole('listbox', { name: 'Configured sources' })
+    ).getAllByRole('option')
+    expect(options.filter((option) => option.tabIndex === 0)).toEqual([github])
+    expect(api.getSourceContent).toHaveBeenLastCalledWith('github')
+
+    await user.type(search, 'no-such-retained-source')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(screen.getByText('No catalog sources match these filters.')).toBeVisible()
+    await user.clear(search)
+    expect(screen.getByRole('option', { name: 'Browse GitHub recent content' })).toHaveAttribute(
+      'tabindex',
+      '0'
+    )
+  })
+
+  it('keeps explicit refresh usable after local-index failure and reports the retry outcome', async () => {
+    const user = userEvent.setup()
+    const api = createSourceApi(sourceSnapshot('arxiv'))
+    const onDashboardChange = vi.fn()
+    vi.mocked(api.getSourceContent).mockRejectedValue(new Error('Local index unavailable'))
+    vi.mocked(api.refreshSourceContent)
+      .mockRejectedValueOnce(new Error('Source request timed out'))
+      .mockResolvedValueOnce(sourceSnapshot('arxiv', { status: 'partial', lastIndexedAt: null }))
+    renderCatalog(
+      api,
+      { arxiv: 'refreshing', github: 'no_results' },
+      undefined,
+      false,
+      vi.fn(),
+      onDashboardChange
+    )
+    await user.click(screen.getByRole('option', { name: 'Browse arXiv recent content' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Local index unavailable')
+    expect(api.refreshSourceContent).not.toHaveBeenCalled()
+
+    const refresh = screen.getByRole('button', { name: 'Refresh recent content' })
+    await user.click(refresh)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Source request timed out')
+    await user.click(refresh)
+    expect(await screen.findByText('Fetched · partial')).toBeVisible()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText(/Latest indexed item: not yet indexed/u)).toBeVisible()
+    expect(api.getSourceContent).toHaveBeenCalledOnce()
+    expect(api.refreshSourceContent).toHaveBeenCalledTimes(2)
+    expect(onDashboardChange).toHaveBeenCalledOnce()
+  })
+
   it('keeps the configured source list and selected source detail visible together', async () => {
     const user = userEvent.setup()
     renderCatalog(createSourceApi(sourceSnapshot('arxiv')))

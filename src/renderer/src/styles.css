@@ -55,6 +55,8 @@
      Per-view identity accents stay under the .app-shell[data-view] rules. */
   --system-accent: var(--system-blue);
   --on-system-accent: var(--on-accent);
+  --control-accent: #0066d6;
+  --on-control-accent: #ffffff;
   --system-accent-soft: color-mix(in srgb, var(--system-accent) 16%, transparent);
 
   /* Compact aliases retained for the existing component vocabulary. */
@@ -77,39 +79,49 @@
    Absent attribute keeps the default blue. */
 :root[data-system-accent='blue'] {
   --system-accent: var(--system-blue);
+  --control-accent: #0066d6;
 }
 
 :root[data-system-accent='purple'] {
   --system-accent: var(--system-purple);
+  --control-accent: #8840b0;
 }
 
 :root[data-system-accent='red'] {
   --system-accent: var(--system-red);
+  --control-accent: #c52a22;
 }
 
 :root[data-system-accent='orange'] {
   --system-accent: var(--system-orange);
   --on-system-accent: var(--on-orange);
+  --control-accent: var(--system-orange);
+  --on-control-accent: #000000;
 }
 
 :root[data-system-accent='green'] {
   --system-accent: var(--system-green);
+  --control-accent: #197336;
 }
 
 :root[data-system-accent='teal'] {
   --system-accent: var(--system-teal);
+  --control-accent: #007781;
 }
 
 :root[data-system-accent='cyan'] {
   --system-accent: var(--system-cyan);
+  --control-accent: #007299;
 }
 
 :root[data-system-accent='indigo'] {
   --system-accent: var(--system-indigo);
+  --control-accent: var(--system-indigo);
 }
 
 :root[data-system-accent='gray'] {
   --system-accent: var(--system-gray);
+  --control-accent: #626267;
 }
 
 /* Native control tinting: checkboxes, radios, range, and progress inherit this. */
@@ -530,8 +542,8 @@ main {
   justify-content: center;
   min-height: 30px;
   padding: 6px 12px;
-  color: var(--on-system-accent);
-  background: var(--system-accent);
+  color: var(--on-control-accent);
+  background: var(--control-accent);
   border: 0;
   border-radius: 7px;
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.14);

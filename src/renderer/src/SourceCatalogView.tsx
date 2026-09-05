@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowUpRight, RefreshCw } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import type {
   DashboardSnapshot,
   SourceContentSnapshot,
@@ -447,18 +447,21 @@ function SourceDetail({
   )
 }
 
+const ignoreDashboardChange = () => undefined
+
 export function SourceCatalogView({
   api,
   sourceHealth,
   sourceHealthDetails,
   attentionOnly = false,
   onAttentionOnlyChange = () => undefined,
-  onDashboardChange = () => undefined
+  onDashboardChange = ignoreDashboardChange
 }: SourceCatalogViewProps) {
   const [query, setQuery] = useState('')
   const [priority, setPriority] = useState<PriorityFilter>('all')
   const [researchAxis, setResearchAxis] = useState<ResearchAxisFilter>('all')
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null)
+  const [focusedSourceId, setFocusedSourceId] = useState<string | null>(null)
   const healthCounts = useMemo(() => summarizeSourceHealth(sourceHealth), [sourceHealth])
 
   const visibleSources = useMemo(() => {
@@ -478,6 +481,37 @@ export function SourceCatalogView({
   }, [attentionOnly, priority, query, researchAxis, sourceHealth])
   const selectedSource =
     visibleSources.find((source) => source.id === selectedSourceId) ?? visibleSources[0] ?? null
+  const tabStopId = visibleSources.some((source) => source.id === focusedSourceId)
+    ? focusedSourceId
+    : selectedSource?.id
+
+  const moveSourceFocus = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return
+    const options = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="option"]')
+    )
+    const currentIndex = options.findIndex((option) => option === event.target)
+    if (currentIndex < 0) return
+    let nextIndex: number
+    switch (event.key) {
+      case 'ArrowDown':
+        nextIndex = Math.min(currentIndex + 1, options.length - 1)
+        break
+      case 'ArrowUp':
+        nextIndex = Math.max(currentIndex - 1, 0)
+        break
+      case 'Home':
+        nextIndex = 0
+        break
+      case 'End':
+        nextIndex = options.length - 1
+        break
+      default:
+        return
+    }
+    event.preventDefault()
+    options[nextIndex]?.focus()
+  }
 
   return (
     <section className="source-catalog-view">
@@ -586,15 +620,25 @@ export function SourceCatalogView({
         </div>
       ) : (
         <div className="source-catalog-workspace">
-          <div className="source-catalog-list" role="listbox" aria-label="Configured sources">
+          <div
+            className="source-catalog-list"
+            role="listbox"
+            aria-label="Configured sources"
+            onKeyDown={moveSourceFocus}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setFocusedSourceId(null)
+            }}
+          >
             {visibleSources.map((source) => (
               <button
                 key={source.id}
                 type="button"
                 role="option"
                 aria-selected={source.id === selectedSource.id}
+                tabIndex={source.id === tabStopId ? 0 : -1}
                 className="source-catalog-row"
                 aria-label={`Browse ${source.name} recent content`}
+                onFocus={() => setFocusedSourceId(source.id)}
                 onClick={() => setSelectedSourceId(source.id)}
               >
                 <div className="source-catalog-row__meta">

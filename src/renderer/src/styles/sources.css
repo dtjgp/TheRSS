@@ -126,7 +126,8 @@
 .source-catalog-workspace {
   display: grid;
   grid-template-columns: minmax(260px, 34%) minmax(0, 1fr);
-  min-height: 560px;
+  height: min(620px, 70dvh);
+  min-height: 0;
   overflow: hidden;
   background: var(--secondary-system-grouped-background);
   border: 1px solid var(--separator);
@@ -135,7 +136,9 @@
 
 .source-catalog-list {
   min-width: 0;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
   background: var(--secondary-system-background);
   border-right: 1px solid var(--separator);
 }
@@ -209,15 +212,20 @@
 }
 
 .source-detail-view--embedded {
+  align-content: start;
+  min-width: 0;
+  min-height: 0;
   max-width: none;
   height: 100%;
   margin: 0;
   padding: 24px 28px 36px;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
   background: var(--secondary-system-grouped-background);
 }
 
 .source-detail-view--embedded .source-detail-heading {
+  align-content: start;
   gap: 10px;
   padding: 0;
   background: transparent;
@@ -612,6 +620,18 @@
   line-height: 1.5;
 }
 
+@media (min-width: 921px) and (min-height: 720px) {
+  .source-catalog-view {
+    grid-template-rows: repeat(5, max-content) minmax(0, 1fr);
+    height: calc(100dvh - 52px);
+    min-height: 0;
+  }
+
+  .source-catalog-workspace {
+    height: auto;
+  }
+}
+
 @media (max-width: 920px) {
   .source-catalog-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -634,23 +654,25 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .source-catalog-workspace {
-    grid-template-columns: minmax(220px, 40%) minmax(0, 1fr);
-  }
-
   .source-detail-view--embedded {
     padding: 20px;
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 920px), (max-height: 600px) {
   .source-catalog-workspace {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(220px, 34vh) minmax(0, 1fr);
+    grid-template-rows: minmax(180px, 34dvh) auto;
+    height: auto;
   }
 
   .source-catalog-list {
     border-right: 0;
     border-bottom: 1px solid var(--separator);
+  }
+
+  .source-detail-view--embedded {
+    height: auto;
+    overflow-y: visible;
   }
 }

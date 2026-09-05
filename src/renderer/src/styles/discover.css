@@ -518,7 +518,28 @@
   }
 
   .discover-result-filters {
-    grid-template-columns: minmax(0, 68px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .discover-result-list {
+    height: auto;
+    overflow: visible;
+  }
+
+  .discover-result-workspace.signal-workspace.resizable-split-pane {
+    grid-template-rows: 220px auto;
+  }
+
+  .discover-result-workspace .signal-detail {
+    overflow-y: visible;
+  }
+
+  .discover-result-workspace .signal-detail__actions {
+    flex-wrap: wrap;
+    overflow: visible;
   }
 }
 

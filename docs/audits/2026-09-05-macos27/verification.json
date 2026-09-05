@@ -1,0 +1,17 @@
+{
+  "verified_at": "2026-09-05T18:46:10.711759+00:00",
+  "platform": "macOS 27.0 (26A5425a)",
+  "node": "24.19.0",
+  "electron": "44.0.0",
+  "unit_integration": {
+    "files": 61,
+    "passed": 433
+  },
+  "desktop_e2e_passed": 4,
+  "audit_vulnerabilities": 0,
+  "native_smoke": "passed; clipboard/openExternal sinks stubbed",
+  "package_smoke": "passed",
+  "package_asar_sha256": "43a1c96485be3aa069942a570e2469dc9dd7d81092b107df0bdeb0864729c080",
+  "independent_review": "approved",
+  "publication": "pending protected-main PR"
+}
