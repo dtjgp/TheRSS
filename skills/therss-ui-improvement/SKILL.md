@@ -1,6 +1,6 @@
 ---
 name: therss-ui-improvement
-description: Review or improve TheRSS renderer UI using the installed design-taste-frontend skill as advisory input. Use for TheRSS UI audits, redesigns, interaction polish, visual hierarchy, responsive behavior, or accessibility-visible changes. Preserve the local-first research product, evidence states, Electron/React/native-CSS stack, and contract-driven TDD workflow. Not for marketing or landing pages.
+description: Audit or improve TheRSS renderer UI, interaction, layout, or accessibility using design-taste-frontend as advisory input under project contracts. Not for marketing or landing pages.
 ---
 
 # TheRSS UI Improvement
@@ -18,7 +18,9 @@ Use this order:
 
 Never let an upstream aesthetic rule weaken evidence fidelity, semantic state, keyboard behavior, accessibility, security, storage/IPC boundaries, or a frozen acceptance test.
 
-Read [project authority](references/project-authority.md) for every use. Read the [taste profile](references/taste-profile.md) before any visual recommendation or edit. Read [decision gates](references/decision-gates.md) when a proposal touches dependencies, typography, icons, motion, density, information architecture, imagery, punctuation, or color semantics.
+Read [project authority](references/project-authority.md), then the [taste profile](references/taste-profile.md) for visual work. Consult [decision gates](references/decision-gates.md) when a proposal would change an accepted durable policy; routine work within the accepted choices does not reopen them.
+
+Current user instructions outrank skill guidance, and prior authorization persists. If an actual missing decision blocks a slice, finish independent authorized work and make the remaining proposal reviewable. Identify/link the exact SKILL.md and quote the instruction causing a pause; distinguish a real requirement from an interpretation.
 
 ## Default Design Read
 
@@ -31,10 +33,10 @@ Use the approved profile `DESIGN_VARIANCE 3 / MOTION_INTENSITY 2 / VISUAL_DENSIT
 1. Inspect the current Git status and preserve unrelated or concurrent work.
 2. Read the nearest renderer source and tests plus the governing product/workflow files required by `AGENTS.md`.
 3. State the user problem and the current design read. Do not start with an aesthetic preference.
-4. Audit brand tokens, information architecture, content/state blocks, accessibility wins, failure states, and the active viewport matrix.
-5. Classify every upstream rule as `adopt`, `adapt`, `reject`, or `decision-needed` using the references.
-6. For a non-trivial change, create or revise the task change contract, freeze acceptance, and obtain required user decisions before code.
-7. Implement the smallest approved slice with RED/GREEN TDD in the existing Electron/React/native-CSS stack.
+4. Inspect the affected tokens, layout, content/evidence states, keyboard path, and relevant viewport/appearance cases. Scale the audit to the user problem.
+5. Classify the upstream rules material to this slice as `adopt`, `adapt`, `reject`, or `decision-needed`; reuse the recorded decisions.
+6. For a non-trivial change, create or revise the task change contract and freeze acceptance. Obtain only decisions that are genuinely missing for the proposed scope; already accepted choices remain usable.
+7. Implement the smallest authorized slice in the existing Electron/React/native-CSS stack. Behavior changes follow contract-driven RED/GREEN TDD; mechanical corrections use the project quick path.
 8. Verify focused tests, architecture/full checks, relevant Electron E2E, fresh rendered states, forced colors, reduced motion, narrow/wide viewports, and diff scope in proportion to the change.
 
 ## Non-Negotiable Project Overrides
@@ -50,7 +52,7 @@ Use the approved profile `DESIGN_VARIANCE 3 / MOTION_INTENSITY 2 / VISUAL_DENSIT
 
 ## Output Contract
 
-Before implementation, report:
+For a non-trivial proposal, report the relevant items before implementation:
 
 - observed product problem;
 - design read and provisional dials;
@@ -58,4 +60,4 @@ Before implementation, report:
 - adopted, adapted, rejected, and decision-needed rules;
 - proposed slice, verifier, rollback, and untouched boundaries.
 
-After implementation, report changed files, RED/GREEN and full gates, rendered/accessibility evidence, residual risks, and checks not run.
+After implementation, report changed files, applicable RED/GREEN and required gates, rendered/accessibility evidence, residual risks, and checks not run. Keep simple changes concise. Once the required checks pass, continue to closeout unless a new change, failure, or unresolved concern warrants more verification.

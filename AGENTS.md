@@ -69,7 +69,8 @@ architectural change is worse.
 - Classify non-trivial work and follow `docs/DEVELOPMENT_WORKFLOW.md`; do not start implementation
   until the Feature Intake, Capability Contract, uncertainty reducer, acceptance contract, verifier,
   and stop condition are explicit.
-- Follow TDD: add a failing test, implement the smallest coherent behavior, refactor with tests green.
+- Follow TDD for behavior changes: add a failing test, implement the smallest coherent behavior,
+  refactor with tests green. Use the documented quick path for typos and mechanically obvious fixes.
 - Acceptance tests may change only when the reviewed contract changes; never weaken a test merely
   to accommodate an implementation.
 - Keep changes self-contained and reviewable. Tests and documentation ship with the behavior they cover.
@@ -79,6 +80,8 @@ architectural change is worse.
   architecture check fails closed unless a reviewed ADR defines a narrower temporary exception.
 - Do not use live arXiv, GitHub, or model calls in automated tests; use deterministic fixtures and explicit opt-in smoke tests.
 - Validate with `npm run check` before commit and the full release gate before publishing.
+  After required gates and affected checks pass, repeat or broaden verification only for new
+  changes, failures, or unresolved concerns; do not add tests that merely restate instruction edits.
 
 ## External UI skill integration
 
@@ -91,7 +94,13 @@ architectural change is worse.
   rendered behavior override upstream aesthetic defaults and hard bans.
 - Do not import an upstream design system, styling framework, animation library, font, icon family,
   generated image, synthetic metric, or marketing pattern without an explicit reviewed scope.
-- Present unresolved taste-versus-product conflicts to the user before implementing them.
+- Reuse existing user decisions and accepted scope. Reopen a taste decision only
+  when the proposal changes that scope or an unresolved product policy. Complete
+  independent authorized work and prepare the decision-dependent change for
+  review before asking; current user instructions outrank advisory skills.
+- If a skill actually causes a pause or scope divergence, name/link the exact
+  `SKILL.md`, quote the instruction, and explain the missing decision. Do not
+  infer a new approval gate from a stylistic preference.
 
 ## Change review
 
