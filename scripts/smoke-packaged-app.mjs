@@ -35,7 +35,7 @@ try {
     env: { ...env, THERSS_E2E_FIXTURES: '1' }
   })
   const page = await application.firstWindow()
-  await page.getByRole('heading', { name: 'Search across your full source desk' }).waitFor({
+  await page.getByRole('heading', { name: 'Discover research' }).waitFor({
     state: 'visible',
     timeout: 15_000
   })

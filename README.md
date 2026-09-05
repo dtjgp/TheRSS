@@ -6,6 +6,14 @@ TheRSS 是一个本地优先的研究发现桌面应用：你可以用自然语�
 
 ![TheRSS Discover：本地优先的语义研究检索桌面](docs/images/therss-discover.png)
 
+## Apple-native 界面
+
+当前界面采用克制的 macOS 原生工作区语言：安静的侧栏标识、跟随系统设置的交互强调色、紧凑的 SF Pro 层级，以及只在功能层使用的半透明材质。Discover 保留高密度结果扫描；Sources 使用可调整的列表—详情布局，让来源目录、健康状态、溯源信息和近期内容保持在同一上下文中。
+
+应用图标使用用户选定的单色研究文档版本。原始图稿、1024px RGBA 打包母版和 Electron Builder 输入分别保留，打包后的 ICNS 已通过 macOS 系统解码器的 16、32 和 256px 检查。
+
+<img src="assets/brand/therss-icon-v6-mono-selected.png" alt="TheRSS 单色研究文档应用图标" width="144" />
+
 ## 当前可用能力
 
 - 在 **Discover** 中输入自然语言研究问题，选择自定义模型、Codex 或 Claude Code 生成受限、可检查的扩展计划。
@@ -26,6 +34,8 @@ TheRSS 是一个本地优先的研究发现桌面应用：你可以用自然语�
 - 界面统一使用 macOS Apple 系统字体：正文与控件使用 SF Pro Text，展示标题使用 SF Pro Display；应用不再打包第三方字体文件。
 - 顶部上下文状态区根据当前页面显示一组紧凑、带文本标签的本地状态：Discover 展示 22 个来源的记录健康，Saved 展示保存数与当前来源过滤，Analytics 明确标注 local-only/no-telemetry，Sources 展示需要关注的来源数，Settings 保留未保存修改提醒；它不新增后台轮询或第二套状态存储。
 - 侧栏可以折叠，并支持鼠标拖动或键盘在 184–360 px 范围内调整宽度；Settings 固定在底部应用工具区、紧邻来源状态，不会打断主要研究导航。
+- Sources 使用紧凑的列表—详情工作区：筛选、选择、来源元数据、部署验证、记录健康、近期内容和失败边界可以并排检查，窄窗口下仍保持可用。
+- 界面提供 reduced-transparency、inactive-window、forced-colors、reduced-motion 和 200% 缩放回退；视觉调整不改变 SQLite、IPC、来源适配器或证据状态契约。
 - 在 macOS 上构建并以可回滚方式安装 `~/Applications/TheRSS Dev.app`，升级前自动备份 SQLite 数据库。
 
 ## 立即运行
@@ -54,16 +64,16 @@ API key 不会返回给渲染进程，也不会以明文写入 SQLite；应用�
 
 应用不会在启动时隐式发起 22 个来源请求。每次外部检索都由 Discover 中的显式操作触发；失败不会删除上一轮会话或 Saved 数据。
 
-## 当前验证状态（2026-08-26）
+## 当前验证状态（2026-09-05）
 
-- 完整质量门禁通过：60 个测试文件、402 个测试。覆盖率统计范围为 `src/core` 与 `src/shared`：statements 90.29%、branches 80.15%、functions 93.64%、lines 93.20%。Electron 主进程、preload、渲染层与 MCP 入口不计入该百分比，由类型检查、渲染层单元测试和 Electron E2E 分别覆盖。
-- 最近一次真实联网来源复检为 2026-08-19，最终通过 22/22 来源：arXiv 定向检索返回 3 条、近期批次 200 条，GitHub 返回 25 条，其余配置来源最终通过 20/20。
-- 科学网使用官方 HTTPS RSS；C114 使用固定 HTTPS 桌面首页、移动端故障回退、受限 `gb18030` 解码和专用纯文本归一化器。
-- Electron 端到端流程 2/2 通过，覆盖 820 px 最小宽度、顶部上下文状态、四指标 Analytics 摘要、历史 artifact 重开、Command-F 本地搜索、Settings 底部工具区及侧栏几何位置、侧栏缩放/折叠、Settings/Provider、Personal Prompt、个性化 Discover、Saved 可调分栏、Sources health、forced colors、200% zoom、窗口恢复、llm-wiki 确认边界和 Apple 系统字体。
-- llm-wiki 真实预览已使用精确 arXiv 版本完成 16 页 PDF 校验并返回 L2 ready 状态；该验证在确认前主动释放 stage，没有写入真实 vault。
-- 未签名 macOS arm64 构建已覆盖安装到 `~/Applications/TheRSS Dev.app`，安装包与已安装 `app.asar` 哈希一致；SQLite 备份/当前库完整性、packaged smoke 和已安装二进制完整 E2E 均通过。公开分发仍需要有效 Developer ID、签名和公证。
+- macOS 27.0（26A5425a）实机验证：边缘侧栏、半粗体选择、清晰工具栏、紧凑系统排版、明暗与高对比度外观；Sources 支持方向键导航和独立滚动，⌘F 弹窗支持焦点循环与恢复。
+- `npm run check`：61 个测试文件、433 个测试通过。`src/core` 和 `src/shared` 覆盖率为 statements 90.29%、branches 80.15%、functions 93.64%、lines 93.20%；这些百分比不包含主进程/preload/renderer。新增变更组件另做专项覆盖率验证，四项均超过80%。
+- Electron 桌面测试4/4通过，覆盖18组主按钮强调色/明暗对比度（至少4.5:1）、820px窗口、200%缩放、辅助功能材质回退、Sources最后一行选择、原有Discover/Saved/Settings/分析与确认边界。原生菜单和系统accent检查通过；剪贴板与外部打开仅验证替身调用，不修改用户剪贴板。
+- 合入现有Apple UI/图标和三个依赖更新分支，Electron升级至44.0.0；当前`npm audit`为0漏洞。macOS arm64包与隔离的packaged smoke通过；未替换已安装的个人测试版，也未发布新的GitHub Release。
+- 当前渲染层按苹果官方macOS 27指导实现，系统窗口/菜单由Electron调用原生组件；CSS材质不等同于AppKit原生Liquid Glass折射。视觉数值是TheRSS的适配选择，不声明苹果官方像素值。
+- 最近一次真实来源复检仍为2026-08-19的22/22；本轮只使用确定性夹具，不升级来源健康或论文全文证据。本轮没有写入真实llm-wiki vault。
 
-详细的本轮来源证据见 [docs/verification/ACTIVE_SOURCE_SMOKE_2026-08-19.md](docs/verification/ACTIVE_SOURCE_SMOKE_2026-08-19.md)。
+本轮设计依据、适用技能、截图、分支保留及验证边界见[macOS 27审查记录](docs/audits/2026-09-05-macos27/audit.md)。历史来源验证见[ACTIVE_SOURCE_SMOKE_2026-08-19.md](docs/verification/ACTIVE_SOURCE_SMOKE_2026-08-19.md)。
 
 ## 模型配置示例
 

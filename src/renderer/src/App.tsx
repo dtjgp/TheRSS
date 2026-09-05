@@ -482,13 +482,7 @@ export function App({ api }: AppProps) {
       style={{ '--sidebar-width': `${sidebarWidth}px` } as CSSProperties}
     >
       <aside className="sidebar">
-        <div className="brand-lockup">
-          <span className="brand-lockup__index">TR</span>
-          <div className="brand-lockup__copy">
-            <strong>TheRSS</strong>
-            <span>research signal desk</span>
-          </div>
-        </div>
+        <p className="sidebar__title">TheRSS</p>
         <nav aria-label="Primary navigation">
           {primaryNavigationItems.map((item) => {
             const Icon = item.icon

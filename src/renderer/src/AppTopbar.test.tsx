@@ -39,6 +39,7 @@ describe('AppTopbar', () => {
     expect(within(status).getByText('22 sources')).toBeVisible()
     expect(within(status).getByText('Sources ready')).toBeVisible()
     expect(status).toHaveAttribute('data-tone', 'ready')
+    expect(status).toHaveAttribute('data-emphasis', 'false')
     expect(status).not.toHaveAttribute('aria-live')
 
     rerender(<AppTopbar {...defaultProps} activeView="saved" />)
@@ -59,12 +60,28 @@ describe('AppTopbar', () => {
     expect(within(status).getByText('2 need attention')).toBeVisible()
     expect(within(status).getByText('22 configured')).toBeVisible()
     expect(status).toHaveAttribute('data-tone', 'attention')
+    expect(status).toHaveAttribute('data-emphasis', 'true')
 
     rerender(<AppTopbar {...defaultProps} activeView="settings" settingsDirty />)
     expect(within(status).getByText('Unsaved changes')).toBeVisible()
     expect(within(status).getByText('Review before leaving')).toBeVisible()
     expect(within(status).getByRole('status')).toHaveTextContent('Unsaved changes')
     expect(status).toHaveAttribute('data-tone', 'attention')
+    expect(status).toHaveAttribute('data-emphasis', 'true')
+  })
+
+  it('keeps generic utility views free of a decorative dateline', () => {
+    const { rerender } = render(<AppTopbar {...defaultProps} activeView="settings" />)
+
+    expect(screen.getByText('Settings')).toBeVisible()
+    expect(screen.queryByText('2026-08-25')).not.toBeInTheDocument()
+
+    rerender(<AppTopbar {...defaultProps} activeView="analytics" />)
+    expect(screen.getByText('Data Analytics')).toBeVisible()
+    expect(screen.queryByText('2026-08-25')).not.toBeInTheDocument()
+
+    rerender(<AppTopbar {...defaultProps} activeView="discover" />)
+    expect(screen.getByText('2026-08-25')).toBeVisible()
   })
 
   it('keeps missing local state explicit and toggles the sidebar accessibly', async () => {

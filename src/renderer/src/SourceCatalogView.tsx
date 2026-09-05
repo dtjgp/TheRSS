@@ -1,5 +1,5 @@
-import { ArrowLeft, ArrowRight, ArrowUpRight, RefreshCw } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ArrowLeft, ArrowUpRight, RefreshCw } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import type {
   DashboardSnapshot,
   SourceContentSnapshot,
@@ -161,14 +161,18 @@ function SourceDetail({
   sourceHealth,
   sourceHealthDetails,
   onDashboardChange,
-  onBack
+  onBack,
+  embedded = false,
+  loadContent = true
 }: {
   readonly source: SourceCatalogEntry
   readonly api: SourceCatalogApi
   readonly sourceHealth: DashboardSnapshot['sourceHealth'] | undefined
   readonly sourceHealthDetails: DashboardSnapshot['sourceHealthDetails'] | undefined
   readonly onDashboardChange: (dashboard: DashboardSnapshot) => void
-  readonly onBack: () => void
+  readonly onBack?: () => void
+  readonly embedded?: boolean
+  readonly loadContent?: boolean
 }) {
   const sourceId = discoverySourceFromCatalogId(source.id)
   const isActive = source.acquisition === 'active' && sourceId !== null
@@ -177,13 +181,13 @@ function SourceDetail({
   const currentHealth = sourceId ? sourceHealth?.[sourceId] : undefined
   const currentHealthDetail = sourceId ? sourceHealthDetails?.[sourceId] : undefined
   const [snapshot, setSnapshot] = useState<SourceContentSnapshot | null>(null)
-  const [isLoading, setIsLoading] = useState(isActive)
+  const [isLoading, setIsLoading] = useState(isActive && loadContent)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    document.querySelector('main')?.scrollTo({ top: 0 })
-    if (!isActive || sourceId === null) {
+    if (!embedded) document.querySelector('main')?.scrollTo({ top: 0 })
+    if (!loadContent || !isActive || sourceId === null) {
       return
     }
 
@@ -221,7 +225,7 @@ function SourceDetail({
     return () => {
       isCurrent = false
     }
-  }, [api, canRefresh, isActive, onDashboardChange, sourceId])
+  }, [api, canRefresh, embedded, isActive, loadContent, onDashboardChange, sourceId])
 
   const refresh = useCallback(async () => {
     if (!canRefresh || sourceId === null) return
@@ -239,11 +243,17 @@ function SourceDetail({
   }, [api, canRefresh, onDashboardChange, sourceId])
 
   return (
-    <section className="source-detail-view">
-      <button type="button" className="source-detail-back" onClick={onBack}>
-        <ArrowLeft aria-hidden="true" size={16} />
-        Back to source directory
-      </button>
+    <section
+      className={`source-detail-view ${embedded ? 'source-detail-view--embedded' : ''}`}
+      role={embedded ? 'region' : undefined}
+      aria-label={embedded ? `${source.name} source detail` : undefined}
+    >
+      {!embedded && onBack && (
+        <button type="button" className="source-detail-back" onClick={onBack}>
+          <ArrowLeft aria-hidden="true" size={16} />
+          Back to source directory
+        </button>
+      )}
 
       <header className="source-detail-heading">
         <div className="source-catalog-card__meta">
@@ -254,8 +264,8 @@ function SourceDetail({
             {sourceHealthLabel(currentHealth)}
           </span>
         </div>
-        <p className="eyebrow">
-          {isArxiv ? 'SOURCE DESK · TODAY' : 'SOURCE DESK · ROLLING 30 DAYS'}
+        <p className="source-detail-scope">
+          {isArxiv ? "Today's latest batch" : 'Rolling 30 days'}
         </p>
         <h1>{source.name}</h1>
         <p>Retained research source with bounded in-app retrieval and explicit local evidence.</p>
@@ -346,6 +356,13 @@ function SourceDetail({
         </div>
       )}
 
+      {embedded && !loadContent && (
+        <div className="source-detail-empty">
+          <strong>Select this source to open its local index.</strong>
+          <p>No source request runs until you choose a row.</p>
+        </div>
+      )}
+
       {isActive && snapshot && (
         <div className="source-content-section">
           <div className="source-content-summary">
@@ -430,18 +447,21 @@ function SourceDetail({
   )
 }
 
+const ignoreDashboardChange = () => undefined
+
 export function SourceCatalogView({
   api,
   sourceHealth,
   sourceHealthDetails,
   attentionOnly = false,
   onAttentionOnlyChange = () => undefined,
-  onDashboardChange = () => undefined
+  onDashboardChange = ignoreDashboardChange
 }: SourceCatalogViewProps) {
   const [query, setQuery] = useState('')
   const [priority, setPriority] = useState<PriorityFilter>('all')
   const [researchAxis, setResearchAxis] = useState<ResearchAxisFilter>('all')
-  const [selectedSource, setSelectedSource] = useState<SourceCatalogEntry | null>(null)
+  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null)
+  const [focusedSourceId, setFocusedSourceId] = useState<string | null>(null)
   const healthCounts = useMemo(() => summarizeSourceHealth(sourceHealth), [sourceHealth])
 
   const visibleSources = useMemo(() => {
@@ -459,30 +479,45 @@ export function SourceCatalogView({
           })())
     )
   }, [attentionOnly, priority, query, researchAxis, sourceHealth])
+  const selectedSource =
+    visibleSources.find((source) => source.id === selectedSourceId) ?? visibleSources[0] ?? null
+  const tabStopId = visibleSources.some((source) => source.id === focusedSourceId)
+    ? focusedSourceId
+    : selectedSource?.id
 
-  if (selectedSource) {
-    return (
-      <SourceDetail
-        source={selectedSource}
-        api={api}
-        sourceHealth={sourceHealth}
-        sourceHealthDetails={sourceHealthDetails}
-        onDashboardChange={onDashboardChange}
-        onBack={() => setSelectedSource(null)}
-      />
+  const moveSourceFocus = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return
+    const options = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="option"]')
     )
+    const currentIndex = options.findIndex((option) => option === event.target)
+    if (currentIndex < 0) return
+    let nextIndex: number
+    switch (event.key) {
+      case 'ArrowDown':
+        nextIndex = Math.min(currentIndex + 1, options.length - 1)
+        break
+      case 'ArrowUp':
+        nextIndex = Math.max(currentIndex - 1, 0)
+        break
+      case 'Home':
+        nextIndex = 0
+        break
+      case 'End':
+        nextIndex = options.length - 1
+        break
+      default:
+        return
+    }
+    event.preventDefault()
+    options[nextIndex]?.focus()
   }
 
   return (
     <section className="source-catalog-view">
       <header className="source-catalog-heading">
-        <p className="eyebrow">RESEARCH SOURCE DIRECTORY</p>
-        <h1>{SOURCE_CATALOG_STATS.total} configured research sources</h1>
-        <p>
-          These retained sources passed a dated deployment verification on August 19, 2026. Select
-          one to inspect its separately recorded health and locally indexed content without leaving
-          TheRSS.
-        </p>
+        <h1>Sources</h1>
+        <p>Inspect the 22 retained sources, recorded health, and recent local content.</p>
       </header>
 
       <div className="source-catalog-summary" role="group" aria-label="Source catalog summary">
@@ -578,22 +613,35 @@ export function SourceCatalogView({
         </span>
       </div>
 
-      {visibleSources.length === 0 ? (
+      {visibleSources.length === 0 || !selectedSource ? (
         <div className="source-catalog-empty">
           <strong>No catalog sources match these filters.</strong>
           <p>Clear the search or widen one of the catalog filters.</p>
         </div>
       ) : (
-        <div className="source-catalog-grid" aria-label="Research source catalog">
-          {visibleSources.map((source) => (
-            <article className="source-catalog-card" key={source.id}>
+        <div className="source-catalog-workspace">
+          <div
+            className="source-catalog-list"
+            role="listbox"
+            aria-label="Configured sources"
+            onKeyDown={moveSourceFocus}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setFocusedSourceId(null)
+            }}
+          >
+            {visibleSources.map((source) => (
               <button
+                key={source.id}
                 type="button"
-                className="source-catalog-card__button"
+                role="option"
+                aria-selected={source.id === selectedSource.id}
+                tabIndex={source.id === tabStopId ? 0 : -1}
+                className="source-catalog-row"
                 aria-label={`Browse ${source.name} recent content`}
-                onClick={() => setSelectedSource(source)}
+                onFocus={() => setFocusedSourceId(source.id)}
+                onClick={() => setSelectedSourceId(source.id)}
               >
-                <div className="source-catalog-card__meta">
+                <div className="source-catalog-row__meta">
                   <span className={`source-priority source-priority--${source.priority}`}>
                     Priority {source.priority}
                   </span>
@@ -611,19 +659,23 @@ export function SourceCatalogView({
                     )}
                   </span>
                 </div>
-                <h2>{source.name}</h2>
-                <div className="source-axis-list" aria-label={`${source.name} research axes`}>
-                  {source.researchAxes.map((axis) => (
-                    <span key={axis}>{RESEARCH_AXIS_LABELS[axis]}</span>
-                  ))}
-                </div>
-                <span className="source-catalog-card__drill">
-                  View recent content
-                  <ArrowRight aria-hidden="true" size={14} />
+                <strong>{source.name}</strong>
+                <span className="source-catalog-row__role">
+                  {source.researchAxes.map((axis) => RESEARCH_AXIS_LABELS[axis]).join(' · ')}
                 </span>
               </button>
-            </article>
-          ))}
+            ))}
+          </div>
+          <SourceDetail
+            key={`${selectedSource.id}:${selectedSourceId === selectedSource.id ? 'loaded' : 'preview'}`}
+            embedded
+            loadContent={selectedSourceId === selectedSource.id}
+            source={selectedSource}
+            api={api}
+            sourceHealth={sourceHealth}
+            sourceHealthDetails={sourceHealthDetails}
+            onDashboardChange={onDashboardChange}
+          />
         </div>
       )}
     </section>

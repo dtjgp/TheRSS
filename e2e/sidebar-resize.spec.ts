@@ -16,9 +16,7 @@ test('the sidebar divider resizes, collapses, and restores its saved width', asy
   try {
     const page = await application.firstWindow()
     await page.waitForLoadState('domcontentloaded')
-    await expect(
-      page.getByRole('heading', { name: 'Search across your full source desk' })
-    ).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Discover research' })).toBeVisible()
 
     const sidebar = page.locator('.sidebar')
     const sidebarResizer = page.getByRole('separator', { name: 'Resize sidebar' })
@@ -52,13 +50,16 @@ test('the sidebar divider resizes, collapses, and restores its saved width', asy
     expect(resizerBox).not.toBeNull()
     if (!resizerBox) return
 
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.focus())
+    await page.bringToFront()
     await page.mouse.move(resizerBox.x + resizerBox.width / 2, resizerBox.y + resizerBox.height / 2)
-    await page.mouse.down()
+    await page.mouse.down({ button: 'left' })
     await page.mouse.move(
       resizerBox.x + resizerBox.width / 2 + 64,
-      resizerBox.y + resizerBox.height / 2
+      resizerBox.y + resizerBox.height / 2,
+      { steps: 4 }
     )
-    await page.mouse.up()
+    await page.mouse.up({ button: 'left' })
 
     await expect(sidebarResizer).toHaveAttribute('aria-valuenow', '288')
     await expect(sidebar).toHaveCSS('width', '288px')

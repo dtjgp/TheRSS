@@ -137,6 +137,8 @@ function topbarContext({
 
 export function AppTopbar(props: AppTopbarProps) {
   const context = topbarContext(props)
+  const isEmphasized = context.tone === 'attention' || context.tone === 'working'
+  const showsDateline = props.activeView === 'discover' || props.activeView === 'saved'
   return (
     <header className="topbar">
       <div className="topbar__leading">
@@ -162,7 +164,9 @@ export function AppTopbar(props: AppTopbarProps) {
         </button>
         <div className="topbar__identity">
           <span className="profile-name">{viewLabels[props.activeView]}</span>
-          <span className="dateline">{props.date ?? 'Loading local index…'}</span>
+          {showsDateline && (
+            <span className="dateline">{props.date ?? 'Loading local index…'}</span>
+          )}
         </div>
       </div>
       <div
@@ -170,6 +174,7 @@ export function AppTopbar(props: AppTopbarProps) {
         role="group"
         aria-label="View context"
         data-tone={context.tone}
+        data-emphasis={String(isEmphasized)}
       >
         {props.activeView === 'settings' && props.settingsDirty ? (
           <span role="status">{context.primary}</span>

@@ -149,10 +149,10 @@
   max-width: 860px;
   margin: 22px 0 16px;
   font-family: var(--font-apple-display);
-  font-size: clamp(30px, 4vw, 48px);
-  font-weight: 520;
-  letter-spacing: -0.035em;
-  line-height: 1.02;
+  font-size: clamp(28px, 3.2vw, 40px);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
 }
 
 .signal-detail__title a {

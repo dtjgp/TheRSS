@@ -319,11 +319,9 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
     <section className="discover-view">
       <div className="today-view__heading">
         <div>
-          <p className="eyebrow">SEMANTIC EXPANSION SEARCH</p>
-          <h1>Search across your full source desk</h1>
+          <h1>Discover research</h1>
           <p className="discover-copy">
-            Codex, Claude Code, or your configured model expands the intent. TheRSS executes the
-            resulting bounded plan across every active, locally deployed source you select.
+            Expand one question into a bounded, inspectable search across selected local sources.
           </p>
         </div>
       </div>

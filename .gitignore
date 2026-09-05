@@ -17,3 +17,7 @@ secrets/
 
 # Local agent session transcripts
 .claude/logs/
+
+# Recoverable branch consolidation and disposable visual captures
+output/branch-backups/
+output/playwright/macos27/

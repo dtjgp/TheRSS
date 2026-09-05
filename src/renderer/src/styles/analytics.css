@@ -13,10 +13,10 @@
 .analytics-heading h1 {
   margin: 0;
   font-family: var(--font-apple-display);
-  font-size: clamp(36px, 4vw, 50px);
-  font-weight: 500;
-  letter-spacing: -0.045em;
-  line-height: 0.98;
+  font-size: clamp(28px, 3vw, 32px);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
 }
 
 .analytics-heading > p:last-child {

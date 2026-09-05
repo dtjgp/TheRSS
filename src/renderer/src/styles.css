@@ -55,6 +55,9 @@
      Per-view identity accents stay under the .app-shell[data-view] rules. */
   --system-accent: var(--system-blue);
   --on-system-accent: var(--on-accent);
+  --control-accent: #0066d6;
+  --on-control-accent: #ffffff;
+  --system-accent-soft: color-mix(in srgb, var(--system-accent) 16%, transparent);
 
   /* Compact aliases retained for the existing component vocabulary. */
   --ink: var(--label);
@@ -76,39 +79,49 @@
    Absent attribute keeps the default blue. */
 :root[data-system-accent='blue'] {
   --system-accent: var(--system-blue);
+  --control-accent: #0066d6;
 }
 
 :root[data-system-accent='purple'] {
   --system-accent: var(--system-purple);
+  --control-accent: #8840b0;
 }
 
 :root[data-system-accent='red'] {
   --system-accent: var(--system-red);
+  --control-accent: #c52a22;
 }
 
 :root[data-system-accent='orange'] {
   --system-accent: var(--system-orange);
   --on-system-accent: var(--on-orange);
+  --control-accent: var(--system-orange);
+  --on-control-accent: #000000;
 }
 
 :root[data-system-accent='green'] {
   --system-accent: var(--system-green);
+  --control-accent: #197336;
 }
 
 :root[data-system-accent='teal'] {
   --system-accent: var(--system-teal);
+  --control-accent: #007781;
 }
 
 :root[data-system-accent='cyan'] {
   --system-accent: var(--system-cyan);
+  --control-accent: #007299;
 }
 
 :root[data-system-accent='indigo'] {
   --system-accent: var(--system-indigo);
+  --control-accent: var(--system-indigo);
 }
 
 :root[data-system-accent='gray'] {
   --system-accent: var(--system-gray);
+  --control-accent: #626267;
 }
 
 /* Native control tinting: checkboxes, radios, range, and progress inherit this. */
@@ -227,12 +240,7 @@ textarea:focus-visible {
   grid-template-columns: 84px minmax(0, 1fr);
 }
 
-.app-shell--sidebar-collapsed .brand-lockup {
-  justify-content: center;
-  padding-inline: 0;
-}
-
-.app-shell--sidebar-collapsed .brand-lockup__copy,
+.app-shell--sidebar-collapsed .sidebar__title,
 .app-shell--sidebar-collapsed .nav-item__label,
 .app-shell--sidebar-collapsed .sidebar__footer > span:last-child {
   display: none;
@@ -297,47 +305,14 @@ textarea:focus-visible {
   outline: none;
 }
 
-.brand-lockup {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  min-height: 38px;
-  padding: 0 8px 18px;
-  border-bottom: 1px solid var(--line);
-}
-
-.brand-lockup__index {
-  display: grid;
-  flex: 0 0 32px;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  color: var(--on-accent);
-  background: linear-gradient(145deg, var(--system-indigo), var(--system-blue));
-  border-radius: 9px;
-  font-family: var(--font-apple-display);
-  font-size: 13px;
+.sidebar__title {
+  margin: 0;
+  padding: 0 9px 12px;
+  color: var(--secondary-label);
+  font-family: var(--font-apple-text);
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-.brand-lockup strong,
-.brand-lockup div > span {
-  display: block;
-}
-
-.brand-lockup strong {
-  font-size: 15px;
-  font-weight: 650;
-  line-height: 1;
-}
-
-.brand-lockup div > span {
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: 9px;
-  letter-spacing: 0.04em;
+  line-height: 1.2;
 }
 
 nav {
@@ -382,12 +357,12 @@ nav {
 }
 
 .nav-item--active {
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--view-accent) 18%, transparent);
+  background: var(--system-accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--system-accent) 18%, transparent);
 }
 
 .nav-item--active .nav-item__icon {
-  color: var(--view-accent-text);
+  color: var(--system-accent);
 }
 
 .nav-item:disabled {
@@ -489,33 +464,28 @@ main {
   gap: 9px;
   min-width: 0;
   padding: 5px 9px;
-  border: 1px solid var(--separator);
+  border: 1px solid transparent;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--secondary-system-grouped-background) 72%, transparent);
+  background: transparent;
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 500;
   white-space: nowrap;
 }
 
-.topbar-context::before {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: var(--system-green-text);
-  content: '';
+.topbar-context[data-emphasis='true'] {
+  border-color: var(--separator);
+  background: color-mix(in srgb, var(--secondary-system-grouped-background) 72%, transparent);
+  font-weight: 650;
 }
 
-.topbar-context[data-tone='attention']::before {
-  background: var(--system-red-text);
+.topbar-context[data-tone='attention'][data-emphasis='true'] {
+  color: var(--system-red-text);
+  background: color-mix(in srgb, var(--system-red) 9%, transparent);
 }
 
-.topbar-context[data-tone='working']::before {
-  background: var(--system-blue-text);
-}
-
-.topbar-context[data-tone='idle']::before {
-  background: var(--secondary-label);
+.topbar-context[data-tone='working'][data-emphasis='true'] {
+  color: var(--system-blue-text);
+  background: color-mix(in srgb, var(--system-blue) 9%, transparent);
 }
 
 .topbar-context__secondary {
@@ -572,8 +542,8 @@ main {
   justify-content: center;
   min-height: 30px;
   padding: 6px 12px;
-  color: var(--on-accent);
-  background: var(--view-accent-strong);
+  color: var(--on-control-accent);
+  background: var(--control-accent);
   border: 0;
   border-radius: 7px;
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.14);

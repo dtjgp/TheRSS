@@ -21,9 +21,7 @@ describe('App', () => {
     const api = createApi()
     render(<App api={api} />)
 
-    expect(
-      await screen.findByRole('heading', { name: 'Search across your full source desk' })
-    ).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Discover research' })).toBeVisible()
     const navigation = screen.getByRole('navigation', { name: 'Primary navigation' })
     expect(
       within(navigation)

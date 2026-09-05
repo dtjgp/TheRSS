@@ -10,6 +10,7 @@
     --system-indigo-text: #3733a0;
     --system-purple-text: #6a218b;
     --saved-accent-text: #604700;
+    --control-edge: var(--opaque-separator);
   }
 
   button,
@@ -38,7 +39,48 @@
   }
 }
 
+:root[data-window-active='false'] .nav-item--active,
+:root[data-window-active='false'] .topbar-context,
+:root[data-window-active='false'] .primary-button {
+  filter: saturate(0.55);
+}
+
+:root[data-window-active='false'] .profile-name,
+:root[data-window-active='false'] .sidebar__title {
+  color: var(--secondary-label);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root,
+  body,
+  .app-shell {
+    background: var(--system-background);
+  }
+
+  .sidebar,
+  .topbar,
+  .signal-detail__actions,
+  .discover-run-card,
+  .discover-search-details > summary,
+  .local-search-panel {
+    background: var(--system-background);
+    backdrop-filter: none;
+  }
+
+  .local-search-backdrop,
+  .promotion-dialog-backdrop,
+  .triage-toast {
+    backdrop-filter: none;
+  }
+}
+
 @media (forced-colors: active) {
+  :root,
+  :root[data-system-accent] {
+    --control-accent: Highlight;
+    --on-control-accent: HighlightText;
+  }
+
   :root {
     --label: CanvasText;
     --secondary-label: CanvasText;
@@ -54,6 +96,12 @@
     --view-accent-strong: Highlight;
     --system-accent: Highlight;
     --on-system-accent: HighlightText;
+    --window-surface: Canvas;
+    --content-surface: Canvas;
+    --control-surface: ButtonFace;
+    --control-edge: ButtonText;
+    --control-highlight: transparent;
+    --sidebar-material: Canvas;
   }
 
   * {
@@ -100,12 +148,6 @@
   }
 
   .status-dot {
-    forced-color-adjust: none;
-    background: CanvasText;
-    border: 1px solid Canvas;
-  }
-
-  .topbar-context::before {
     forced-color-adjust: none;
     background: CanvasText;
     border: 1px solid Canvas;

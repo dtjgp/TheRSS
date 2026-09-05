@@ -1,0 +1,203 @@
+/* macOS 27: edge-aligned navigation, a hard toolbar edge and quiet content.
+   Geometry is TheRSS's adaptation; native window corners remain OS-owned. */
+:root {
+  --window-surface: #f6f6f6;
+  --content-surface: #ffffff;
+  --sidebar-material: rgba(238, 238, 240, 0.78);
+  --control-surface: #ffffff;
+  --control-edge: rgba(0, 0, 0, 0.16);
+  --control-highlight: rgba(255, 255, 255, 0.8);
+  --group-radius: 12px;
+  --control-radius: 7px;
+  --paper: var(--window-surface);
+  --control-strong: var(--content-surface);
+  --sidebar: var(--sidebar-material);
+  background: transparent;
+  font-size: 13px;
+}
+
+body,
+.app-shell {
+  background: transparent;
+}
+
+.sidebar {
+  padding-top: 52px;
+  border-right-color: var(--control-edge);
+}
+
+.sidebar__title {
+  padding-bottom: 0;
+  font-size: 11px;
+}
+
+.nav-item--active {
+  font-weight: 600;
+}
+
+.topbar {
+  min-height: 52px;
+  background: var(--window-surface);
+  backdrop-filter: none;
+  border-bottom-color: var(--control-edge);
+}
+
+.toolbar-button {
+  border: 1px solid var(--control-edge);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--control-surface) 80%, transparent);
+  box-shadow:
+    inset 0 1px var(--control-highlight),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.toolbar-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.toolbar-button:disabled {
+  cursor: default;
+  opacity: 0.52;
+}
+
+.dateline {
+  font-size: 11px;
+}
+
+.discover-view,
+.source-catalog-view,
+.analytics-view,
+.settings-view {
+  padding: 24px 28px 40px;
+}
+
+.analytics-view {
+  gap: 20px;
+}
+
+.today-view__heading h1,
+.settings-heading h1,
+.analytics-heading h1,
+.source-catalog-heading h1 {
+  font-size: 26px;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.today-view__heading h2,
+.settings-panel__heading h2,
+.analytics-section__heading h2,
+.source-detail-heading h2 {
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.discover-copy,
+.analytics-heading > p:last-child {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.eyebrow,
+.field > span,
+.source-catalog-controls label > span,
+.analytics-summary-card > span {
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.discover-form,
+.discover-result-list,
+.settings-panel form,
+.analytics-summary,
+.analytics-section,
+.source-catalog-controls,
+.source-catalog-list,
+.source-catalog-summary__metric,
+.local-search-panel {
+  background: var(--content-surface);
+  border-color: var(--control-edge);
+  border-radius: var(--group-radius);
+  box-shadow: none;
+}
+
+.discover-form textarea,
+.field input,
+.field textarea,
+.field select,
+.local-search-panel input,
+.discover-source-trigger {
+  background: var(--control-surface);
+  border-color: var(--control-edge);
+  border-radius: var(--control-radius);
+}
+
+.secondary-button {
+  background: var(--control-surface);
+  border-color: var(--control-edge);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.signal-list-pane {
+  background: var(--content-surface);
+}
+
+.signal-list-pane__heading,
+.signal-row__meta,
+.signal-row__state,
+.signal-detail__header {
+  font-size: 11px;
+}
+
+.signal-detail {
+  padding: 24px;
+}
+
+.signal-detail__title {
+  margin-top: 18px;
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.signal-row--selected .signal-row__select {
+  background: var(--system-accent-soft);
+}
+
+.signal-row--selected .signal-row__select::before {
+  background: var(--system-accent);
+}
+
+.local-search-panel,
+.promotion-dialog {
+  border-radius: var(--group-radius);
+  box-shadow: var(--shadow);
+}
+
+@media (max-width: 920px) {
+  .discover-view,
+  .source-catalog-view,
+  .analytics-view,
+  .settings-view {
+    padding: 20px 18px 32px;
+  }
+
+  .signal-detail {
+    padding: 20px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --window-surface: #242426;
+    --content-surface: #1e1e20;
+    --sidebar-material: rgba(38, 38, 40, 0.8);
+    --control-surface: #303032;
+    --control-edge: rgba(255, 255, 255, 0.18);
+    --control-highlight: rgba(255, 255, 255, 0.08);
+  }
+}
