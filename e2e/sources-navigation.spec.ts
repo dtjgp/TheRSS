@@ -12,6 +12,12 @@ test('Sources keeps long-list navigation and selected detail in independent pane
   })
   try {
     const page = await application.firstWindow()
+    await application.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.setSize(1360, 880)
+    })
+    await expect
+      .poll(() => page.evaluate(() => ({ width: innerWidth, height: innerHeight })))
+      .toEqual({ width: 1360, height: 880 })
     await page.getByRole('button', { name: '04 Sources', exact: true }).click()
     const list = page.getByRole('listbox', { name: 'Configured sources' })
     await expect(list.getByRole('option')).toHaveCount(22)

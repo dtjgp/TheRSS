@@ -36,10 +36,21 @@ test('macOS 27 keeps edge navigation, readable toolbar and accessible materials'
 
   try {
     const page = await application.firstWindow()
+    const devtools = await page.context().newCDPSession(page)
+    const emulateAppearance = (colorScheme: 'light' | 'dark') =>
+      devtools.send('Emulation.setEmulatedMedia', {
+        features: [
+          { name: 'prefers-color-scheme', value: colorScheme },
+          { name: 'prefers-reduced-transparency', value: 'no-preference' },
+          { name: 'prefers-reduced-motion', value: 'no-preference' },
+          { name: 'prefers-contrast', value: 'no-preference' },
+          { name: 'forced-colors', value: 'none' }
+        ]
+      })
     await expect(
       page.getByRole('heading', { name: 'Discover research', exact: true })
     ).toBeVisible()
-    await page.emulateMedia({ colorScheme: 'light' })
+    await emulateAppearance('light')
     const sidebar = page.locator('.sidebar')
     const toolbar = page.locator('.topbar')
     const selectedNavigation = page.locator('.nav-item--active')
@@ -62,7 +73,7 @@ test('macOS 27 keeps edge navigation, readable toolbar and accessible materials'
     await page.getByLabel('Search with').selectOption({ label: 'Codex CLI' })
     const originalAccent = await page.evaluate(() => document.documentElement.dataset.systemAccent)
     for (const colorScheme of ['light', 'dark'] as const) {
-      await page.emulateMedia({ colorScheme })
+      await emulateAppearance(colorScheme)
       for (const accent of [
         'blue',
         'purple',
@@ -87,7 +98,7 @@ test('macOS 27 keeps edge navigation, readable toolbar and accessible materials'
       if (name) document.documentElement.dataset.systemAccent = name
       else delete document.documentElement.dataset.systemAccent
     }, originalAccent)
-    await page.emulateMedia({ colorScheme: 'light' })
+    await emulateAppearance('light')
     await page.getByRole('button', { name: 'Expand and search' }).click()
     const results = page.getByRole('region', { name: 'Discover results' })
     await expect(results).toBeVisible()
@@ -95,7 +106,7 @@ test('macOS 27 keeps edge navigation, readable toolbar and accessible materials'
     await expect(page.locator('.signal-detail')).toHaveCSS('backdrop-filter', 'none')
     await expect(page.locator('.signal-detail')).toHaveCSS('background-color', 'rgb(255, 255, 255)')
     await page.screenshot({ path: info.outputPath('results-light.png'), animations: 'disabled' })
-    await page.emulateMedia({ colorScheme: 'dark' })
+    await emulateAppearance('dark')
     await expect(toolbar).toHaveCSS('background-color', 'rgb(36, 36, 38)')
     await expect(page.locator('.signal-detail')).toHaveCSS('background-color', 'rgb(30, 30, 32)')
     expect(
@@ -117,7 +128,6 @@ test('macOS 27 keeps edge navigation, readable toolbar and accessible materials'
     await application.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()[0]?.setSize(820, 700)
     })
-    const devtools = await page.context().newCDPSession(page)
     await devtools.send('Emulation.setEmulatedMedia', {
       features: [
         { name: 'prefers-color-scheme', value: 'light' },
