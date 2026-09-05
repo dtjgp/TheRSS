@@ -1,6 +1,15 @@
 # TheRSS Taste Decision Gates
 
-Use this reference when an external taste recommendation would change a durable product policy. Present the issue, options, recommendation, and default-safe behavior before code.
+Use this reference when a proposal would change a durable product policy. A1-A9
+were accepted on 2026-08-28; see the decision log in
+`docs/audits/2026-08-28-taste-skill-integration/CHANGE_CONTRACT.md` (repository-root
+relative path). The A choices below are the current accepted defaults, not
+unanswered approval questions. Apply them within the current authorized task.
+
+Reopen only the affected choice when the current request proposes a different
+policy or new surface. Present the concrete change, options, recommendation, and
+default behavior; continue work that does not depend on the missing decision.
+Current user decisions can amend this register without another confirmation.
 
 ## D1: Durable Visual Profile
 
@@ -8,7 +17,7 @@ Use this reference when an external taste recommendation would change a durable 
 - Option B: `4 / 3 / 6` - slightly more expressive spacing and motion.
 - Option C: broader redesign profile chosen per surface.
 - Recommendation: A for the desktop product; revisit separately for any future public website.
-- Default-safe behavior: keep the current design and use A only for read-only audit language.
+- Default-safe behavior: apply the accepted `3 / 2 / 7` profile within authorized desktop work; reopen only when changing its values or applying a separate surface profile.
 
 ## D2: UI Dependencies
 
@@ -69,11 +78,14 @@ Use this reference when an external taste recommendation would change a durable 
 - Recommendation: A until a concrete empty-state problem is demonstrated.
 - Default-safe behavior: no image generation or remote placeholder URL.
 
-## D10: First Improvement Slice
+## D10: Current Task Slice
 
-- Option A: complete and taste-audit the active Discover three-stage run pipeline.
-- Option B: audit Settings form hierarchy and status feedback.
-- Option C: audit Sources scanning density and attention states.
-- Option D: broad renderer redesign.
-- Recommendation: A because the contract, prototype, RED/GREEN tests, and concurrent implementation already exist.
-- Default-safe behavior: finish/review the active slice before starting another renderer change.
+The 2026-08-28 F1-F4 Discover slice was authorized through the decision log above
+and routed to
+`docs/audits/2026-08-28-external-ui-reference-refresh/CHANGE_CONTRACT.md`.
+That is historical scope, not a permanent instruction to restart that work.
+
+Use the current user request and its accepted change contract to choose the
+next slice. Preserve completed work and deliberately deferred items. Finish the
+current authorized slice and its required verification before proposing an
+unrelated renderer change; do not treat an old option list as a live backlog.
