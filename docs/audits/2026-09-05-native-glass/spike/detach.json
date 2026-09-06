@@ -1,0 +1,41 @@
+{
+  "command": "detach",
+  "native": {
+    "sidebarOwnsContent": false,
+    "sidebarClicks": 0,
+    "originalFrame": {
+      "y": 0,
+      "x": 0,
+      "width": 0,
+      "height": 0
+    },
+    "frame": {
+      "y": 720,
+      "x": 80,
+      "width": 900,
+      "height": 660
+    },
+    "glassAvailable": true,
+    "screenHeight": 1440,
+    "splitFrame": {
+      "y": 0,
+      "x": 0,
+      "width": 0,
+      "height": 0
+    },
+    "contentClass": "BridgedContentView",
+    "windowClass": "ElectronNSWindow",
+    "toolbar": {},
+    "toolbarOwnsContent": false,
+    "toolbarClicks": 0,
+    "firstResponder": "ElectronNSWindow",
+    "sidebar": {}
+  },
+  "renderer": {
+    "width": 900,
+    "height": 660,
+    "focused": true
+  },
+  "rendererErrors": [],
+  "views": []
+}

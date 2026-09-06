@@ -1,0 +1,92 @@
+{
+  "verifiedAt": "2026-09-06",
+  "baseCommit": "531fc79dd41cb4186cb26635515554f731f8584f",
+  "platform": "macOS 27.0 / arm64",
+  "electron": "44.1.1",
+  "unitTests": 470,
+  "unitTestFiles": 66,
+  "desktopTests": 6,
+  "globalCoverage": {
+    "lines": {
+      "total": 2306,
+      "covered": 2154,
+      "skipped": 0,
+      "pct": 93.4
+    },
+    "statements": {
+      "total": 2558,
+      "covered": 2316,
+      "skipped": 0,
+      "pct": 90.53
+    },
+    "functions": {
+      "total": 590,
+      "covered": 553,
+      "skipped": 0,
+      "pct": 93.72
+    },
+    "branches": {
+      "total": 1981,
+      "covered": 1598,
+      "skipped": 0,
+      "pct": 80.66
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "ownedCoverage": {
+    "lines": {
+      "total": 366,
+      "covered": 359,
+      "skipped": 0,
+      "pct": 98.08
+    },
+    "statements": {
+      "total": 417,
+      "covered": 397,
+      "skipped": 0,
+      "pct": 95.2
+    },
+    "functions": {
+      "total": 61,
+      "covered": 58,
+      "skipped": 0,
+      "pct": 95.08
+    },
+    "branches": {
+      "total": 305,
+      "covered": 272,
+      "skipped": 0,
+      "pct": 89.18
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "npmAuditVulnerabilities": 0,
+  "nativeModuleSha256": "5075fbc38c248fa927f40e8d972c0d9a1e0588f013a76d330078cc019653852e",
+  "packagedAsarSha256": "b53102ebf567cdf64e1b6714f6286a817dbc219f291d61ef176082e476e1eec7",
+  "installedAsarSha256": "b53102ebf567cdf64e1b6714f6286a817dbc219f291d61ef176082e476e1eec7",
+  "installation": {
+    "status": "completed",
+    "completedAt": "2026-09-06T00-38-07-518Z",
+    "target": "~/Applications/TheRSS Dev.app",
+    "previousApp": "TheRSS Dev.backup-2026-09-06T00-38-07-518Z.app",
+    "databaseBackup": "therss-2026-09-06T00-38-07-518Z.sqlite",
+    "databasePreserved": true
+  },
+  "evidenceBoundary": {
+    "sourceCalls": "fixture only",
+    "vaultWrites": false,
+    "physicalTrackpadMomentum": "not verified",
+    "scrollIntegration": "public CGEvent/NSEvent to native button then main and renderer; no OS event posting",
+    "screenshots": "native window capture, deterministic fixture"
+  }
+}

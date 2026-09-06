@@ -1,3 +1,4 @@
+import { attachNativeGlass } from './nativeGlassRuntime'
 import { join } from 'node:path'
 import { env } from 'node:process'
 import { randomUUID } from 'node:crypto'
@@ -458,6 +459,8 @@ async function createWindow(useE2eFixtures: boolean): Promise<BrowserWindow> {
       sandbox: true
     }
   })
+
+  attachNativeGlass(window, join(__dirname, '../native-glass/therss-glass.node'))
 
   window.once('ready-to-show', () => {
     if (restoredState.maximized) window.maximize()

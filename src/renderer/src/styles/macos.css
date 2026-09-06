@@ -231,3 +231,51 @@ main {
     color: var(--on-orange);
   }
 }
+
+/* At high page zoom, keep Saved controls and both reading panes reachable. */
+@media (max-width: 760px) {
+  .today-view {
+    height: auto;
+    min-height: calc(100vh - 52px);
+    overflow: visible;
+  }
+
+  .today-view__heading,
+  .inbox-toolbar {
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .today-view__heading > div,
+  .inbox-toolbar__sources,
+  .analysis-runner-control {
+    max-width: 100%;
+  }
+
+  .source-filters {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+
+  .today-stage {
+    flex: none;
+    overflow: visible;
+  }
+
+  .today-stage > .signal-workspace.resizable-split-pane {
+    grid-template-rows: 220px minmax(340px, auto);
+    overflow: visible;
+  }
+
+  .today-view .signal-detail {
+    min-height: 340px;
+    overflow: visible;
+  }
+
+  .today-view .signal-detail__actions {
+    top: 52px;
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}

@@ -1,3 +1,4 @@
+import type { NativeGlassApi } from './nativeGlass'
 import type { InterestProfile } from '../core/interests/interestProfile'
 import type { DiscoverPersonalizationSettings } from './personalization'
 import type {
@@ -88,6 +89,7 @@ export interface DashboardSnapshot {
 }
 
 export interface TheRSSApi {
+  readonly nativeGlass?: NativeGlassApi
   onAppCommand(listener: (command: AppCommand) => void): () => void
   showContextMenu(target: ContextMenuTarget): Promise<ContextMenuOutcome>
   getSystemAccent(): Promise<SystemAccentName | null>

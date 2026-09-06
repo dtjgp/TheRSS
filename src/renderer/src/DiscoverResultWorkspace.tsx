@@ -228,6 +228,7 @@ export function DiscoverResultWorkspace({
       after={
         <article
           className="signal-detail discover-result-detail"
+          data-native-context={`${sessionId}:${selectedItem.id}`}
           aria-label="Selected Discover result"
           onContextMenu={(event) => {
             event.preventDefault()
@@ -259,6 +260,7 @@ export function DiscoverResultWorkspace({
             <button
               type="button"
               className="detail-action detail-action--primary save-button"
+              data-native-action="save-item"
               aria-label={selectedItem.saved ? 'Remove result from Saved' : 'Save result'}
               aria-pressed={selectedItem.saved}
               aria-busy={savingItemId === selectedItem.id}
@@ -273,6 +275,7 @@ export function DiscoverResultWorkspace({
                 type="button"
                 className="detail-action"
                 aria-label="Analyze paper"
+                data-native-action="analyze-item"
                 disabled={analyzingItemId === selectedItem.id}
                 onClick={() => void onAnalyze(selectedItem.id)}
               >

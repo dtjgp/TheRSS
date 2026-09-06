@@ -1,0 +1,21 @@
+/* Masks are applied only after the corresponding native presentation succeeds. */
+[data-native-control='true'] {
+  visibility: hidden !important;
+}
+
+.sidebar[data-native-surface='true'],
+.topbar[data-native-surface='true'],
+.signal-detail__actions[data-native-surface='true'],
+.triage-toast[data-native-surface='true'] {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+:root[data-native-glass='native'][data-native-scope='full'] .discover-run-card,
+:root[data-native-glass='native'][data-native-scope='full'] .discover-search-details > summary,
+:root[data-native-glass='native'] .local-search-backdrop,
+:root[data-native-glass='native'] .promotion-dialog-backdrop {
+  backdrop-filter: none;
+}
