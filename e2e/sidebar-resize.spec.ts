@@ -10,7 +10,7 @@ test('the sidebar divider resizes, collapses, and restores its saved width', asy
   if (captureDirectory) await mkdir(captureDirectory, { recursive: true })
   const application = await electron.launch({
     args: [`--user-data-dir=${userDataDirectory}`, '.'],
-    env: { ...env, THERSS_E2E_FIXTURES: '1', THERSS_NATIVE_GLASS: 'off' }
+    env: { ...env, THERSS_E2E_FIXTURES: '1', THERSS_UI: 'web', THERSS_NATIVE_GLASS: 'off' }
   })
 
   try {

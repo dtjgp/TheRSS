@@ -98,6 +98,20 @@ function setup(item: DiscoveryItem | null = paper) {
 }
 
 describe('LlmWikiPromotionService', () => {
+  it("releases only the closed window's prepared preview without stopping other windows", async () => {
+    const { service, adapter } = setup()
+    await service.preview(paper.id, 'window-1')
+    await service.disposeOwner('window-2')
+    expect(adapter.dispose).not.toHaveBeenCalled()
+    await service.disposeOwner('window-1')
+    expect(adapter.dispose).toHaveBeenCalledOnce()
+    await expect(service.confirm(prepared.preview.previewId!, 'window-1')).rejects.toThrow(
+      'already used'
+    )
+    await service.preview(paper.id, 'window-2')
+    await service.confirm(prepared.preview.previewId!, 'window-2')
+    expect(adapter.confirm).toHaveBeenCalledOnce()
+  })
   it('rejects non-arXiv and non-paper records before preparing a vault write', async () => {
     const { service, adapter } = setup({ ...paper, source: 'folo:302', externalId: 'paper-1' })
 

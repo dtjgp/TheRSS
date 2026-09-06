@@ -19,3 +19,11 @@
 :root[data-native-glass='native'] .promotion-dialog-backdrop {
   backdrop-filter: none;
 }
+
+:root[data-native-glass='native'][data-native-scope='full']
+  .discover-result-list
+  > .today-view__heading,
+:root[data-native-glass='native'][data-native-scope='full'] .discover-result-pagination {
+  background: var(--content-surface);
+  backdrop-filter: none;
+}

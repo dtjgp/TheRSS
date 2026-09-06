@@ -3,7 +3,8 @@ import type { AppCommand } from '../shared/ipc'
 
 export function createApplicationMenuTemplate(
   send: (command: AppCommand) => void,
-  isMac: boolean
+  isMac: boolean,
+  nativeAction?: (command: string) => void
 ): MenuItemConstructorOptions[] {
   const appMenu: MenuItemConstructorOptions = {
     label: 'TheRSS',
@@ -129,5 +130,33 @@ export function createApplicationMenuTemplate(
     ]
   }
 
-  return [appMenu, fileMenu, editMenu, viewMenu, signalMenu, windowMenu, helpMenu]
+  const menus = [appMenu, fileMenu, editMenu, viewMenu, signalMenu, windowMenu, helpMenu]
+  if (nativeAction) {
+    const actions: Readonly<
+      Record<string, { label: string; command: string; accelerator: string }>
+    > = {
+      undo: { label: 'Undo', command: 'undo', accelerator: 'CommandOrControl+Z' },
+      redo: { label: 'Redo', command: 'redo', accelerator: 'CommandOrControl+Shift+Z' },
+      cut: { label: 'Cut', command: 'cut', accelerator: 'CommandOrControl+X' },
+      copy: { label: 'Copy', command: 'copy', accelerator: 'CommandOrControl+C' },
+      paste: { label: 'Paste', command: 'paste', accelerator: 'CommandOrControl+V' },
+      selectAll: { label: 'Select All', command: 'selectAll', accelerator: 'CommandOrControl+A' },
+      resetZoom: { label: 'Actual Size', command: 'zoom-reset', accelerator: 'CommandOrControl+0' },
+      zoomIn: { label: 'Zoom In', command: 'zoom-in', accelerator: 'CommandOrControl+Plus' },
+      zoomOut: { label: 'Zoom Out', command: 'zoom-out', accelerator: 'CommandOrControl+-' }
+    }
+    for (const menu of menus)
+      if (Array.isArray(menu.submenu))
+        menu.submenu = menu.submenu.map((item) => {
+          const action = item.role ? actions[item.role] : undefined
+          return action
+            ? {
+                label: action.label,
+                accelerator: action.accelerator,
+                click: () => nativeAction(action.command)
+              }
+            : item
+        })
+  }
+  return menus
 }

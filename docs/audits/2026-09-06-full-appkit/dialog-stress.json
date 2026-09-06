@@ -1,0 +1,329 @@
+{
+  "passed": true,
+  "screenshots": false,
+  "dialogs": [
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1788704313509
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704314143
+    },
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1788704314156
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 1,
+        "checkboxChecked": false
+      },
+      "time": 1788704314788
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704317537
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704318173
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704319289
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704321155
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704322338
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704324981
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704326109
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704328764
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704329976
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704332636
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704333759
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704336413
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704337545
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704340210
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704341359
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704344003
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704345135
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704347759
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704348881
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704351521
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704352665
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704355318
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704356467
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704359122
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704360256
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704362924
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704364056
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704366693
+    },
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1788704369284
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704369912
+    },
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1788704369932
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 1,
+        "checkboxChecked": false
+      },
+      "time": 1788704370545
+    }
+  ],
+  "profile": "/var/folders/d9/50r202r14gbc_shcxg960xrh0000gn/T/therss-appkit-acceptance-1OhFjX",
+  "checks": [
+    {
+      "name": "Native root, blank Web page and Unicode boundary",
+      "passed": true,
+      "elapsedMs": 192
+    },
+    {
+      "name": "All 22 source choices and semantic search",
+      "passed": true,
+      "elapsedMs": 753
+    },
+    {
+      "name": "Native reading, Save, full analysis and search details sheet",
+      "passed": true,
+      "elapsedMs": 1208
+    },
+    {
+      "name": "Saved repository analysis and independent source/runner filters",
+      "passed": true,
+      "elapsedMs": 558
+    },
+    {
+      "name": "Secure key then immediate Save uses the real ordered callback queue",
+      "passed": true,
+      "elapsedMs": 751
+    },
+    {
+      "name": "Secure draft survives tabs and explicit discard clears the hidden native field",
+      "passed": true,
+      "elapsedMs": 1483
+    },
+    {
+      "name": "Persisted Analytics metrics and complete analysis artifact",
+      "passed": true,
+      "elapsedMs": 299
+    },
+    {
+      "name": "Source focus is separate from activation; content stays read-only",
+      "passed": true,
+      "elapsedMs": 352
+    },
+    {
+      "name": "Local search uses a native sheet and safe external-open routing",
+      "passed": true,
+      "elapsedMs": 1123
+    },
+    {
+      "name": "Promotion preview includes verified facts and produces a fixture receipt only after confirmation",
+      "passed": true,
+      "elapsedMs": 5073
+    },
+    {
+      "name": "Repeated native confirmations remain open until an explicit choice",
+      "passed": true,
+      "elapsedMs": 45516
+    },
+    {
+      "name": "Native editing Undo, zoom, dividers and narrow window layout",
+      "passed": true,
+      "elapsedMs": 1715
+    },
+    {
+      "name": "Dirty marked-text close guard and native window recreation preserve data/preferences",
+      "passed": true,
+      "elapsedMs": 2108
+    }
+  ],
+  "errors": [],
+  "webElementCount": 0,
+  "nativeRoot": "TRCanvas"
+}

@@ -2,6 +2,8 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './e2e',
+  // Keep Playwright's per-run cleanup away from native acceptance artifacts.
+  outputDir: 'test-results/compatibility',
   timeout: 45_000,
   fullyParallel: false,
   // Electron windows share macOS focus. Parallel files can cancel a drag by

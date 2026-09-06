@@ -1,8 +1,9 @@
 import { error as logError, log } from 'node:console'
+import { execFileSync } from 'node:child_process'
 import { lstat, mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { release, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { arch, cwd, env, platform } from 'node:process'
+import { arch, cwd, env, execPath, platform } from 'node:process'
 import { _electron as electron } from '@playwright/test'
 
 if (platform !== 'darwin') {
@@ -32,7 +33,7 @@ try {
   application = await electron.launch({
     executablePath,
     args: [`--user-data-dir=${userDataDirectory}`],
-    env: { ...env, THERSS_E2E_FIXTURES: '1' }
+    env: { ...env, THERSS_E2E_FIXTURES: '1', THERSS_UI: 'web' }
   })
   const page = await application.firstWindow()
   await page.getByRole('heading', { name: 'Discover research' }).waitFor({
@@ -67,4 +68,16 @@ try {
   } catch (error) {
     logError(`Could not clean the packaged smoke directory: ${String(error)}`)
   }
+}
+
+if (Number.parseInt(release(), 10) >= 25) {
+  execFileSync(execPath, ['scripts/smoke-native-appkit.mjs'], {
+    stdio: 'inherit',
+    env: {
+      ...env,
+      THERSS_NATIVE_APP_EXECUTABLE: executablePath,
+      THERSS_NATIVE_DEFAULT_ONLY: '1',
+      THERSS_NATIVE_EVIDENCE_DIR: resolve('test-results/appkit-package')
+    }
+  })
 }

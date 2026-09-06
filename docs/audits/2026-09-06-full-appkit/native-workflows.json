@@ -1,0 +1,72 @@
+{
+  "passed": true,
+  "screenshots": true,
+  "profile": "/var/folders/d9/50r202r14gbc_shcxg960xrh0000gn/T/therss-appkit-acceptance-fdxt0F",
+  "checks": [
+    {
+      "name": "Native root, blank Web page and Unicode boundary",
+      "passed": true,
+      "elapsedMs": 187
+    },
+    {
+      "name": "All 22 source choices and semantic search",
+      "passed": true,
+      "elapsedMs": 979
+    },
+    {
+      "name": "Native reading, Save, full analysis and search details sheet",
+      "passed": true,
+      "elapsedMs": 2857
+    },
+    {
+      "name": "Saved repository analysis and independent source/runner filters",
+      "passed": true,
+      "elapsedMs": 1084
+    },
+    {
+      "name": "Secure key then immediate Save uses the real ordered callback queue",
+      "passed": true,
+      "elapsedMs": 1606
+    },
+    {
+      "name": "Secure draft survives tabs and explicit discard clears the hidden native field",
+      "passed": true,
+      "elapsedMs": 1524
+    },
+    {
+      "name": "Persisted Analytics metrics and complete analysis artifact",
+      "passed": true,
+      "elapsedMs": 830
+    },
+    {
+      "name": "Source focus is separate from activation; content stays read-only",
+      "passed": true,
+      "elapsedMs": 1192
+    },
+    {
+      "name": "Local search uses a native sheet and safe external-open routing",
+      "passed": true,
+      "elapsedMs": 1150
+    },
+    {
+      "name": "Promotion preview includes verified facts and produces a fixture receipt only after confirmation",
+      "passed": true,
+      "elapsedMs": 5305
+    },
+    {
+      "name": "Native editing Undo, zoom, dividers and narrow window layout",
+      "passed": true,
+      "elapsedMs": 2608
+    },
+    {
+      "name": "Dirty marked-text close guard and native window recreation preserve data/preferences",
+      "passed": true,
+      "elapsedMs": 2011
+    }
+  ],
+  "errors": [
+    "2026-09-06 16:15:38.955 Electron[89108:10593903] error messaging the mach port for IMKCFRunLoopWakeUpReliable\n"
+  ],
+  "webElementCount": 0,
+  "nativeRoot": "TRCanvas"
+}

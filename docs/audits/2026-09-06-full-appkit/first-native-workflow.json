@@ -1,0 +1,465 @@
+{
+  "ok": true,
+  "profile": "/var/folders/d9/50r202r14gbc_shcxg960xrh0000gn/T/therss-appkit-integration-dXfJ7r",
+  "webElementCount": 0,
+  "final": {
+    "disposed": false,
+    "root": {
+      "id": "native-workspace",
+      "kind": "split",
+      "frame": "{{0, 0}, {1360, 848}}",
+      "class": "TRSplit",
+      "label": "native-workspace",
+      "children": [
+        {
+          "id": "native-sidebar",
+          "kind": "column",
+          "frame": "{{0, 0}, {224, 848}}",
+          "class": "NSGlassEffectView",
+          "label": "native-sidebar",
+          "children": [
+            {
+              "enabled": true,
+              "children": [],
+              "id": "native-brand",
+              "frame": "{{18, 18}, {188, 31}}",
+              "class": "NSTextField",
+              "label": "native-brand",
+              "kind": "label"
+            },
+            {
+              "enabled": true,
+              "children": [],
+              "id": "navigate-discover",
+              "frame": "{{18, 61}, {188, 32}}",
+              "class": "NSButton",
+              "label": "Discover",
+              "kind": "button"
+            },
+            {
+              "enabled": true,
+              "children": [],
+              "id": "navigate-saved",
+              "frame": "{{18, 105}, {188, 32}}",
+              "class": "NSButton",
+              "label": "Saved",
+              "kind": "button"
+            },
+            {
+              "enabled": true,
+              "children": [],
+              "id": "navigate-analytics",
+              "frame": "{{18, 149}, {188, 32}}",
+              "class": "NSButton",
+              "label": "Data Analytics",
+              "kind": "button"
+            },
+            {
+              "enabled": true,
+              "children": [],
+              "id": "navigate-sources",
+              "frame": "{{18, 193}, {188, 32}}",
+              "class": "NSButton",
+              "label": "Sources",
+              "kind": "button"
+            },
+            {
+              "enabled": true,
+              "children": [],
+              "id": "navigate-settings",
+              "frame": "{{18, 237}, {188, 32}}",
+              "class": "NSButton",
+              "label": "Settings",
+              "kind": "button"
+            },
+            {
+              "enabled": true,
+              "children": [],
+              "id": "native-sidebar-space",
+              "frame": "{{18, 281}, {188, 505}}",
+              "class": "NSTextField",
+              "label": "native-sidebar-space",
+              "kind": "label"
+            },
+            {
+              "enabled": true,
+              "children": [],
+              "id": "sidebar-toggle",
+              "frame": "{{18, 798}, {188, 32}}",
+              "class": "NSButton",
+              "label": "Collapse sidebar",
+              "kind": "button"
+            }
+          ]
+        },
+        {
+          "id": "native-main",
+          "kind": "column",
+          "frame": "{{225, 0}, {1135, 848}}",
+          "class": "TRNode",
+          "label": "",
+          "children": [
+            {
+              "id": "native-toolbar",
+              "kind": "row",
+              "frame": "{{22, 22}, {1091, 32}}",
+              "class": "TRNode",
+              "label": "",
+              "children": [
+                {
+                  "enabled": true,
+                  "children": [],
+                  "id": "native-workspace-label",
+                  "frame": "{{0, 0}, {824, 32}}",
+                  "class": "NSTextField",
+                  "label": "native-workspace-label",
+                  "kind": "label"
+                },
+                {
+                  "enabled": true,
+                  "children": [],
+                  "id": "open-local-search",
+                  "frame": "{{832, 0}, {147, 32}}",
+                  "class": "NSButton",
+                  "label": "Find local research",
+                  "kind": "button"
+                },
+                {
+                  "enabled": true,
+                  "children": [],
+                  "id": "undo-triage",
+                  "frame": "{{987, 0}, {104, 32}}",
+                  "class": "NSButton",
+                  "label": "Undo triage",
+                  "kind": "button"
+                }
+              ]
+            },
+            {
+              "enabled": true,
+              "children": [],
+              "id": "native-notice",
+              "frame": "{{22, 72}, {1091, 20}}",
+              "class": "NSTextField",
+              "label": "native-notice",
+              "kind": "label"
+            },
+            {
+              "id": "discover-page",
+              "kind": "column",
+              "frame": "{{22, 110}, {1091, 716}}",
+              "class": "TRNode",
+              "label": "",
+              "children": [
+                {
+                  "enabled": true,
+                  "children": [],
+                  "id": "discover-title",
+                  "frame": "{{0, 0}, {1091, 31}}",
+                  "class": "NSTextField",
+                  "label": "discover-title",
+                  "kind": "label"
+                },
+                {
+                  "id": "discover-query",
+                  "frame": "{{0, 39}, {1091, 76}}",
+                  "scrollOrigin": "{0, 0}",
+                  "class": "NSScrollView",
+                  "children": [],
+                  "label": "Research question",
+                  "kind": "input",
+                  "value": "边缘计算 structured pruning",
+                  "documentClass": "NSTextView"
+                },
+                {
+                  "id": "discover-input-actions",
+                  "kind": "row",
+                  "frame": "{{0, 123}, {1091, 32}}",
+                  "class": "TRNode",
+                  "label": "",
+                  "children": [
+                    {
+                      "enabled": true,
+                      "children": [],
+                      "id": "discover-runner",
+                      "frame": "{{0, 0}, {190, 32}}",
+                      "class": "NSPopUpButton",
+                      "label": "Analysis runner",
+                      "kind": "select"
+                    },
+                    {
+                      "enabled": true,
+                      "children": [],
+                      "id": "discover-source-picker",
+                      "frame": "{{198, 0}, {130, 32}}",
+                      "class": "NSButton",
+                      "label": "Sources (22/22)",
+                      "kind": "button"
+                    },
+                    {
+                      "enabled": true,
+                      "children": [],
+                      "id": "discover-search",
+                      "frame": "{{336, 0}, {75, 32}}",
+                      "class": "NSButton",
+                      "label": "Search",
+                      "kind": "button"
+                    }
+                  ]
+                },
+                {
+                  "enabled": true,
+                  "children": [],
+                  "id": "discover-personalization",
+                  "frame": "{{0, 163}, {1091, 20}}",
+                  "class": "NSTextField",
+                  "label": "discover-personalization",
+                  "kind": "label"
+                },
+                {
+                  "id": "discover-results-toolbar",
+                  "kind": "row",
+                  "frame": "{{0, 191}, {1091, 32}}",
+                  "class": "TRNode",
+                  "label": "",
+                  "children": [
+                    {
+                      "enabled": true,
+                      "children": [],
+                      "id": "discover-kind",
+                      "frame": "{{0, 0}, {210, 32}}",
+                      "class": "NSPopUpButton",
+                      "label": "Result kind",
+                      "kind": "select"
+                    },
+                    {
+                      "enabled": true,
+                      "children": [],
+                      "id": "discover-result-status",
+                      "frame": "{{218, 0}, {747, 32}}",
+                      "class": "NSTextField",
+                      "label": "discover-result-status",
+                      "kind": "label"
+                    },
+                    {
+                      "enabled": true,
+                      "children": [],
+                      "id": "discover-details",
+                      "frame": "{{973, 0}, {118, 32}}",
+                      "class": "NSButton",
+                      "label": "Search details",
+                      "kind": "button"
+                    }
+                  ]
+                },
+                {
+                  "id": "discover-workspace",
+                  "kind": "split",
+                  "frame": "{{0, 231}, {1091, 485}}",
+                  "class": "TRSplit",
+                  "label": "Resize list and reading panes",
+                  "children": [
+                    {
+                      "id": "discover-list-pane",
+                      "kind": "column",
+                      "frame": "{{0, 0}, {320, 485}}",
+                      "class": "TRNode",
+                      "label": "",
+                      "children": [
+                        {
+                          "id": "discover-results",
+                          "frame": "{{0, 0}, {320, 455}}",
+                          "scrollOrigin": "{0, 0}",
+                          "rows": [
+                            {
+                              "id": "arxiv:2608.99999",
+                              "title": "Semantic expansion search for edge intelligence",
+                              "subtitle": "arXiv · paper · 46 · Saved"
+                            },
+                            {
+                              "id": "folo:302:article:discover-fixture",
+                              "title": "BAAI structured pruning research fixture",
+                              "subtitle": "北京智源人工智能研究院 · article · 46"
+                            },
+                            {
+                              "id": "github:therss/semantic-fixture",
+                              "title": "TheRSS/semantic-fixture",
+                              "subtitle": "GitHub · repository · 41"
+                            }
+                          ],
+                          "class": "NSScrollView",
+                          "label": "Discover results",
+                          "kind": "table",
+                          "selected": "arxiv:2608.99999",
+                          "children": [],
+                          "documentClass": "TRTable"
+                        },
+                        {
+                          "enabled": true,
+                          "children": [],
+                          "id": "discover-pagination",
+                          "frame": "{{0, 465}, {320, 20}}",
+                          "class": "NSTextField",
+                          "label": "discover-pagination",
+                          "kind": "label"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "discover-reading-scroll",
+                      "frame": "{{321, 0}, {770, 485}}",
+                      "scrollOrigin": "{0, 0}",
+                      "class": "NSScrollView",
+                      "children": [
+                        {
+                          "id": "discover-reading-content",
+                          "kind": "column",
+                          "frame": "{{0, 0}, {753, 1063}}",
+                          "class": "TRNode",
+                          "label": "",
+                          "children": [
+                            {
+                              "enabled": true,
+                              "children": [],
+                              "id": "discover-reading-title",
+                              "frame": "{{18, 18}, {717, 31}}",
+                              "class": "NSTextField",
+                              "label": "discover-reading-title",
+                              "kind": "label"
+                            },
+                            {
+                              "enabled": true,
+                              "children": [],
+                              "id": "discover-reading-meta",
+                              "frame": "{{18, 59}, {717, 20}}",
+                              "class": "NSTextField",
+                              "label": "discover-reading-meta",
+                              "kind": "label"
+                            },
+                            {
+                              "id": "discover-reading-actions",
+                              "kind": "row",
+                              "frame": "{{18, 89}, {717, 32}}",
+                              "class": "TRNode",
+                              "label": "",
+                              "children": [
+                                {
+                                  "enabled": true,
+                                  "children": [],
+                                  "id": "discover-open",
+                                  "frame": "{{0, 0}, {113, 32}}",
+                                  "class": "NSButton",
+                                  "label": "Open original",
+                                  "kind": "button"
+                                },
+                                {
+                                  "enabled": true,
+                                  "children": [],
+                                  "id": "discover-save",
+                                  "frame": "{{121, 0}, {77, 32}}",
+                                  "class": "NSButton",
+                                  "label": "Unsave",
+                                  "kind": "button"
+                                }
+                              ]
+                            },
+                            {
+                              "id": "discover-summary",
+                              "selectable": true,
+                              "frame": "{{18, 131}, {717, 58}}",
+                              "class": "NSTextView",
+                              "text": "A Discover-only fixture matching semantic communication and structured pruning.\n",
+                              "label": "discover-summary",
+                              "kind": "text",
+                              "children": []
+                            },
+                            {
+                              "enabled": true,
+                              "children": [],
+                              "id": "discover-evidence",
+                              "frame": "{{18, 199}, {717, 20}}",
+                              "class": "NSTextField",
+                              "label": "discover-evidence",
+                              "kind": "label"
+                            },
+                            {
+                              "id": "discover-reasons",
+                              "selectable": true,
+                              "frame": "{{18, 229}, {717, 174}}",
+                              "class": "NSTextView",
+                              "text": "Why this matches\n\n• Summary matches “structured pruning”\n• Summary matches “semantic communication”\n• arXiv category cs.LG\n• Published 23 days ago\n",
+                              "label": "discover-reasons",
+                              "kind": "text",
+                              "children": []
+                            },
+                            {
+                              "id": "discover-provenance",
+                              "selectable": true,
+                              "frame": "{{18, 413}, {717, 218}}",
+                              "class": "NSTextView",
+                              "text": "Source details\nAuthors: TheRSS Fixture\nCategories: cs.LG\nTopics: None\nLanguage: Not supplied\nStars: Not supplied\nPublished: 2026-08-14T00:00:00.000Z\nUpdated: 2026-08-14T00:00:00.000Z\n",
+                              "label": "discover-provenance",
+                              "kind": "text",
+                              "children": []
+                            },
+                            {
+                              "id": "discover-analysis-actions",
+                              "kind": "row",
+                              "frame": "{{18, 641}, {717, 32}}",
+                              "class": "TRNode",
+                              "label": "",
+                              "children": [
+                                {
+                                  "enabled": true,
+                                  "children": [],
+                                  "id": "discover-analyze",
+                                  "frame": "{{0, 0}, {80, 32}}",
+                                  "class": "NSButton",
+                                  "label": "Analyze",
+                                  "kind": "button"
+                                },
+                                {
+                                  "enabled": true,
+                                  "children": [],
+                                  "id": "discover-promote",
+                                  "frame": "{{88, 0}, {196, 32}}",
+                                  "class": "NSButton",
+                                  "label": "Preview llm-wiki promotion",
+                                  "kind": "button"
+                                }
+                              ]
+                            },
+                            {
+                              "id": "discover-analysis",
+                              "selectable": true,
+                              "frame": "{{18, 683}, {717, 362}}",
+                              "class": "NSTextView",
+                              "text": "Research fit\nE2E local agent analysis passed.\n\nEvidence boundary\nDiscovery metadata only.\n\nAnalysis provenance\nProvider: Codex CLI\nModel: codex-cli\nPrompt: llm-wiki-paper-l1-v1\nSource hash: 090aae1736036003651fe20e4e4a5e70e8f7d8b6e7a607d29765f86c753c22e8\nCreated: 2026-09-06T12:16:21.401Z\n\nDiscovery metadata analysis; verify the full paper before citing results.\n",
+                              "label": "discover-analysis",
+                              "kind": "text",
+                              "children": []
+                            }
+                          ]
+                        }
+                      ],
+                      "label": "discover-reading-scroll",
+                      "kind": "scroll",
+                      "documentClass": "TRCanvas"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "firstResponder": "RenderWidgetHostViewCocoa",
+    "zoom": 1,
+    "webHidden": true,
+    "nativeRoot": "TRCanvas",
+    "windowNumber": 13024,
+    "modal": null
+  },
+  "errors": []
+}

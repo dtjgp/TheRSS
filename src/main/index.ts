@@ -1,59 +1,39 @@
+import {
+  attachAppKit,
+  shouldUseAppKit,
+  flushNativeInterface,
+  dispatchNativeMenu,
+  drainNativePreferences
+} from './nativeAppKitRuntime'
+import {
+  WindowApplicationRuntime,
+  dirtySettingsWindows,
+  confirmDiscardSettings,
+  isSafeExternalUrl
+} from './windowApplicationRuntime'
 import { attachNativeGlass } from './nativeGlassRuntime'
 import { join } from 'node:path'
 import { env } from 'node:process'
 import { randomUUID } from 'node:crypto'
 import Database from 'better-sqlite3'
-import {
-  app,
-  BrowserWindow,
-  dialog,
-  ipcMain,
-  clipboard,
-  Menu,
-  safeStorage,
-  screen,
-  shell,
-  systemPreferences
-} from 'electron'
-import { z } from 'zod'
+import { app, BrowserWindow, Menu, safeStorage, screen, shell, systemPreferences } from 'electron'
 import { resolveSystemAccentName } from '../core/appearance/systemAccent'
-import { buildContextMenuTemplate, buildCopyPayload } from '../core/menus/contextMenu'
 import { LocalAgentService } from '../core/agents/localAgentService'
 import { AnalysisService } from '../core/analysis/analysisService'
 import { DiscoverPlannerService } from '../core/discover/discoverPlanner'
 import { DiscoverService } from '../core/discover/discoverService'
 import { DiscoveryService } from '../core/discovery/discoveryService'
-import { interestProfileSchema } from '../core/interests/interestProfile'
 import { runPromptWithModel, testModelProviderConnection } from '../core/models/modelGateway'
 import { ProviderService, type SecretCipher } from '../core/models/providerService'
 import { ResearchRepository } from '../core/storage/researchRepository'
 import { LlmWikiPromotionService } from '../core/integrations/llmWikiPromotionService'
 import { LlmWikiVaultAdapter } from '../core/integrations/llmWikiVaultAdapter'
-import {
-  discoverRunIdSchema,
-  discoverSearchRequestSchema,
-  discoverSourceSchema,
-  type DiscoverRunProgress,
-  type DiscoverSource
-} from '../shared/discover'
-import type { DiscoverySource } from '../shared/discovery'
 import type { SystemAccentName } from '../shared/appearance'
-import {
-  contextMenuTargetSchema,
-  isRendererContextMenuAction,
-  type ContextMenuOutcome
-} from '../shared/contextMenu'
-import { IPC_CHANNELS } from '../shared/ipc'
 import {
   LLM_WIKI_PROMOTION_PREVIEW_VERSION,
   LLM_WIKI_PROMOTION_PROMPT_VERSION,
-  LLM_WIKI_PROMOTION_RECEIPT_VERSION,
-  llmWikiPromotionConfirmRequestSchema,
-  llmWikiPromotionPreviewRequestSchema
+  LLM_WIKI_PROMOTION_RECEIPT_VERSION
 } from '../shared/llmWikiPromotion'
-import { discoverPersonalizationPromptSchema } from '../shared/personalization'
-import { isDiscoverySource } from '../shared/sourceIdentity'
-import { localSearchQuerySchema } from '../shared/localSearch'
 import { createApplicationMenuTemplate } from './applicationMenu'
 import {
   createE2eDiscoverFetchers,
@@ -66,53 +46,6 @@ import {
 import { githubTokenFromEnvironment, huggingFaceTokenFromEnvironment } from './sourceCredentials'
 import { createLlmWikiPromotionRuntime } from './llmWikiPromotionRuntime'
 import { readWindowState, writeWindowState, type WindowBounds } from './windowState'
-
-const triageInputSchema = z.object({
-  id: z.string().trim().min(1).max(300),
-  state: z.enum(['new', 'viewed', 'saved', 'dismissed'])
-})
-
-const itemIdSchema = z.string().trim().min(1).max(300)
-const discoverySourceSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(100)
-  .refine(isDiscoverySource, 'Unknown or inactive source')
-  .transform((source) => source as DiscoverySource)
-const analysisInputSchema = z.object({
-  id: itemIdSchema,
-  runner: z.enum(['model-provider', 'codex', 'claude']).default('model-provider')
-})
-const discoverResultInputSchema = z
-  .object({ sessionId: itemIdSchema, itemId: itemIdSchema })
-  .strict()
-const discoverAnalysisInputSchema = discoverResultInputSchema.extend({
-  runner: z.enum(['model-provider', 'codex', 'claude']).default('model-provider')
-})
-const discoverRetryInputSchema = z
-  .object({
-    sessionId: itemIdSchema,
-    sources: z.array(discoverSourceSchema).min(1).max(22),
-    runId: discoverRunIdSchema
-  })
-  .strict()
-const settingsDirtySchema = z.boolean()
-const dirtySettingsWindows = new WeakSet<Electron.WebContents>()
-
-async function confirmDiscardSettings(window: BrowserWindow): Promise<boolean> {
-  const choice = await dialog.showMessageBox(window, {
-    type: 'warning',
-    title: 'Discard unsaved settings?',
-    message: 'Your Settings changes have not been saved.',
-    detail: 'Discard the edits and leave Settings?',
-    buttons: ['Keep Editing', 'Discard Changes'],
-    cancelId: 0,
-    defaultId: 0,
-    noLink: true
-  })
-  return choice.response === 1
-}
 
 class ElectronSecretCipher implements SecretCipher {
   isAvailable(): boolean {
@@ -141,299 +74,12 @@ function readSystemAccent(): SystemAccentName | null {
   }
 }
 
-function registerIpcHandlers(
-  repository: ResearchRepository,
-  discoveryService: DiscoveryService,
-  discoverService: DiscoverService,
-  providerService: ProviderService,
-  analysisService: AnalysisService,
-  localAgentService: LocalAgentService,
-  promotionService: LlmWikiPromotionService,
-  useE2eFixtures: boolean
-): void {
-  const activeDiscoverRuns = new Map<
-    number,
-    { readonly runId: string; readonly controller: AbortController }
-  >()
-  const discoverProgress = (
-    event: Electron.IpcMainInvokeEvent,
-    runId: string,
-    progress: Omit<DiscoverRunProgress, 'runId'>
-  ) => {
-    if (!event.sender.isDestroyed()) {
-      event.sender.send(IPC_CHANNELS.discoverProgress, { ...progress, runId })
-    }
-  }
-  ipcMain.handle(
-    IPC_CHANNELS.showContextMenu,
-    async (event, candidate: unknown): Promise<ContextMenuOutcome> => {
-      const target = contextMenuTargetSchema.parse(candidate)
-      const window = BrowserWindow.fromWebContents(event.sender)
-      if (!window) return { action: 'none' }
-
-      // Every label and behaviour is derived here from the typed descriptor. The
-      // renderer supplies data only, so no feed- or model-derived string can become
-      // an executable menu command.
-      return await new Promise<ContextMenuOutcome>((resolve) => {
-        let outcome: ContextMenuOutcome = { action: 'none' }
-
-        const template = buildContextMenuTemplate(target).map((entry) => {
-          if (entry.type === 'separator') return { type: 'separator' as const }
-          return {
-            label: entry.label,
-            click: () => {
-              if (entry.action === 'open-external') {
-                if (isSafeExternalUrl(target.url)) void shell.openExternal(target.url)
-                return
-              }
-              const payload = buildCopyPayload(target, entry.action)
-              if (payload !== null) {
-                clipboard.writeText(payload)
-                return
-              }
-              if (!isRendererContextMenuAction(entry.action)) return
-              outcome = target.sessionId
-                ? { action: entry.action, itemId: target.itemId, sessionId: target.sessionId }
-                : { action: entry.action, itemId: target.itemId }
-            }
-          }
-        })
-
-        Menu.buildFromTemplate(template).popup({
-          window,
-          callback: () => resolve(outcome)
-        })
-      })
-    }
-  )
-  ipcMain.handle(IPC_CHANNELS.getSystemAccent, () => readSystemAccent())
-  ipcMain.handle(IPC_CHANNELS.getDashboard, () => repository.getDashboardSnapshot())
-  ipcMain.handle(IPC_CHANNELS.getSourceContent, (_event, source: unknown) =>
-    repository.getSourceContentSnapshot(discoverySourceSchema.parse(source))
-  )
-  ipcMain.handle(IPC_CHANNELS.refreshSourceContent, (_event, source: unknown) => {
-    const githubToken = githubTokenFromEnvironment(env)
-    const huggingFaceToken = huggingFaceTokenFromEnvironment(env)
-    return discoveryService.refreshSourceContent(discoverySourceSchema.parse(source), {
-      ...(githubToken ? { githubToken } : {}),
-      ...(huggingFaceToken ? { huggingFaceToken } : {})
-    })
-  })
-  ipcMain.handle(IPC_CHANNELS.getInterestProfile, () => repository.getInterestProfile())
-  ipcMain.handle(IPC_CHANNELS.saveInterestProfile, (_event, candidate: unknown) => {
-    repository.saveInterestProfile(interestProfileSchema.parse(candidate))
-    return repository.getDashboardSnapshot()
-  })
-  ipcMain.handle(IPC_CHANNELS.refresh, () => {
-    const githubToken = githubTokenFromEnvironment(env)
-    const huggingFaceToken = huggingFaceTokenFromEnvironment(env)
-    return discoveryService.refresh({
-      ...(githubToken ? { githubToken } : {}),
-      ...(huggingFaceToken ? { huggingFaceToken } : {})
-    })
-  })
-  ipcMain.handle(IPC_CHANNELS.searchLocal, (_event, query: unknown) =>
-    repository.searchLocal(localSearchQuerySchema.parse(query))
-  )
-  ipcMain.handle(
-    IPC_CHANNELS.searchDiscover,
-    async (event, candidate: unknown, runIdCandidate: unknown) => {
-      const runId = discoverRunIdSchema.parse(runIdCandidate)
-      if (activeDiscoverRuns.has(event.sender.id)) {
-        throw new Error('A Discover run is already active for this window')
-      }
-      const controller = new AbortController()
-      activeDiscoverRuns.set(event.sender.id, { runId, controller })
-      const cancelOnDestroy = () => controller.abort()
-      event.sender.once('destroyed', cancelOnDestroy)
-      const githubToken = githubTokenFromEnvironment(env)
-      const huggingFaceToken = huggingFaceTokenFromEnvironment(env)
-      try {
-        return await discoverService.search(discoverSearchRequestSchema.parse(candidate), {
-          ...(githubToken ? { githubToken } : {}),
-          ...(huggingFaceToken ? { huggingFaceToken } : {}),
-          signal: controller.signal,
-          onProgress: (progress) => discoverProgress(event, runId, progress)
-        })
-      } finally {
-        if (activeDiscoverRuns.get(event.sender.id)?.runId === runId) {
-          activeDiscoverRuns.delete(event.sender.id)
-        }
-        event.sender.removeListener('destroyed', cancelOnDestroy)
-      }
-    }
-  )
-  ipcMain.handle(
-    IPC_CHANNELS.retryDiscover,
-    async (
-      event,
-      sessionIdCandidate: unknown,
-      sourcesCandidate: unknown,
-      runIdCandidate: unknown
-    ) => {
-      const input = discoverRetryInputSchema.parse({
-        sessionId: sessionIdCandidate,
-        sources: sourcesCandidate,
-        runId: runIdCandidate
-      })
-      const previous = repository.getLatestDiscoverSnapshot()
-      if (!previous || previous.id !== input.sessionId) {
-        throw new Error('Only the latest persisted Discover session can be retried')
-      }
-      if (activeDiscoverRuns.has(event.sender.id)) {
-        throw new Error('A Discover run is already active for this window')
-      }
-      const controller = new AbortController()
-      activeDiscoverRuns.set(event.sender.id, { runId: input.runId, controller })
-      const cancelOnDestroy = () => controller.abort()
-      event.sender.once('destroyed', cancelOnDestroy)
-      const githubToken = githubTokenFromEnvironment(env)
-      const huggingFaceToken = huggingFaceTokenFromEnvironment(env)
-      try {
-        return await discoverService.retry(previous, input.sources as readonly DiscoverSource[], {
-          ...(githubToken ? { githubToken } : {}),
-          ...(huggingFaceToken ? { huggingFaceToken } : {}),
-          signal: controller.signal,
-          onProgress: (progress) => discoverProgress(event, input.runId, progress)
-        })
-      } finally {
-        if (activeDiscoverRuns.get(event.sender.id)?.runId === input.runId) {
-          activeDiscoverRuns.delete(event.sender.id)
-        }
-        event.sender.removeListener('destroyed', cancelOnDestroy)
-      }
-    }
-  )
-  ipcMain.handle(IPC_CHANNELS.cancelDiscover, (event, runIdCandidate: unknown) => {
-    const runId = discoverRunIdSchema.parse(runIdCandidate)
-    const activeRun = activeDiscoverRuns.get(event.sender.id)
-    const canceled = activeRun?.runId === runId
-    if (canceled) activeRun.controller.abort()
-    return { runId, canceled }
-  })
-  ipcMain.handle(IPC_CHANNELS.getLatestDiscover, () => repository.getLatestDiscoverSnapshot())
-  ipcMain.handle(IPC_CHANNELS.getAnalytics, () => repository.getAnalyticsSnapshot())
-  ipcMain.handle(IPC_CHANNELS.saveDiscoverResult, (_event, sessionId: unknown, itemId: unknown) => {
-    const validated = discoverResultInputSchema.parse({ sessionId, itemId })
-    repository.saveDiscoverResult(validated.sessionId, validated.itemId)
-    return repository.getDashboardSnapshot()
-  })
-  ipcMain.handle(IPC_CHANNELS.setTriageState, (_event, id: unknown, state: unknown) => {
-    const validated = triageInputSchema.parse({ id, state })
-    repository.setTriageState(validated.id, validated.state)
-    return repository.getDashboardSnapshot()
-  })
-  ipcMain.handle(IPC_CHANNELS.getModelProvider, () => providerService.getSummary())
-  ipcMain.handle(IPC_CHANNELS.saveModelProvider, (_event, candidate: unknown) =>
-    providerService.save(candidate)
-  )
-  ipcMain.handle(IPC_CHANNELS.testModelProvider, (_event, candidate: unknown) => {
-    const profile = providerService.getConnectionTestProfile(candidate)
-    return useE2eFixtures
-      ? {
-          status: 'connected' as const,
-          message: `Fixture connection accepted ${profile.model} without a network request.`,
-          testedAt: new Date().toISOString()
-        }
-      : testModelProviderConnection(profile)
-  })
-  ipcMain.handle(IPC_CHANNELS.clearModelProviderCredential, () => providerService.clearCredential())
-  ipcMain.on(IPC_CHANNELS.setSettingsDirty, (event, candidate: unknown) => {
-    const parsed = settingsDirtySchema.safeParse(candidate)
-    if (!parsed.success) return
-    if (parsed.data) dirtySettingsWindows.add(event.sender)
-    else dirtySettingsWindows.delete(event.sender)
-  })
-  ipcMain.handle(IPC_CHANNELS.confirmDiscardSettings, async (event) => {
-    if (!dirtySettingsWindows.has(event.sender)) return true
-    if (useE2eFixtures) {
-      dirtySettingsWindows.delete(event.sender)
-      return true
-    }
-    const window = BrowserWindow.fromWebContents(event.sender)
-    if (!window || window.isDestroyed()) return false
-    const shouldDiscard = await confirmDiscardSettings(window)
-    if (shouldDiscard) dirtySettingsWindows.delete(event.sender)
-    return shouldDiscard
-  })
-  ipcMain.handle(IPC_CHANNELS.getDiscoverPersonalizationSettings, () =>
-    repository.getDiscoverPersonalizationSettings()
-  )
-  ipcMain.handle(IPC_CHANNELS.saveDiscoverPersonalizationPrompt, (_event, candidate: unknown) =>
-    repository.saveDiscoverPersonalizationPrompt(
-      discoverPersonalizationPromptSchema.parse(candidate)
-    )
-  )
-  ipcMain.handle(IPC_CHANNELS.getLocalAgentStatuses, () => localAgentService.getStatuses())
-  ipcMain.handle(IPC_CHANNELS.analyzeItem, (_event, id: unknown, runner: unknown) => {
-    const validated = analysisInputSchema.parse({ id, runner })
-    return analysisService.analyzeItem(validated.id, { runner: validated.runner })
-  })
-  ipcMain.handle(
-    IPC_CHANNELS.analyzeDiscoverResult,
-    (_event, sessionId: unknown, itemId: unknown, runner: unknown) => {
-      const validated = discoverAnalysisInputSchema.parse({ sessionId, itemId, runner })
-      repository.materializeDiscoverResultForAnalysis(validated.sessionId, validated.itemId)
-      return analysisService.analyzeItem(validated.itemId, { runner: validated.runner })
-    }
-  )
-  ipcMain.handle(IPC_CHANNELS.getLatestAnalysis, (_event, id: unknown) =>
-    repository.getLatestAnalysis(itemIdSchema.parse(id))
-  )
-  ipcMain.handle(IPC_CHANNELS.getAnalysisArtifact, (_event, analysisId: unknown) =>
-    analysisService.getAnalysisArtifact(itemIdSchema.parse(analysisId))
-  )
-  ipcMain.handle(IPC_CHANNELS.previewLlmWikiPromotion, (event, candidate: unknown) => {
-    const validated = llmWikiPromotionPreviewRequestSchema.parse(candidate)
-    if (validated.sessionId) {
-      repository.materializeDiscoverResultForLlmWikiPromotion(validated.sessionId, validated.itemId)
-    }
-    return promotionService.preview(validated.itemId, String(event.sender.id))
-  })
-  ipcMain.handle(IPC_CHANNELS.confirmLlmWikiPromotion, async (event, candidate: unknown) => {
-    const validated = llmWikiPromotionConfirmRequestSchema.parse(candidate)
-    const ownerId = String(event.sender.id)
-    if (!useE2eFixtures) {
-      const window = BrowserWindow.fromWebContents(event.sender)
-      if (!window || window.isDestroyed()) {
-        throw new Error('The promotion window is no longer available')
-      }
-      const choice = await dialog.showMessageBox(window, {
-        type: 'warning',
-        title: 'Confirm llm-wiki write',
-        message: 'Write the previewed paper artifacts to your local llm-wiki vault?',
-        detail:
-          'TheRSS will create the verified PDF, paper record, analysis note, backlinks, indexes, log entry, and audit record shown in the preview.',
-        buttons: ['Cancel', 'Write to llm-wiki'],
-        cancelId: 0,
-        defaultId: 1,
-        noLink: true
-      })
-      if (choice.response !== 1) {
-        return promotionService.cancel(validated.previewId, ownerId)
-      }
-    }
-    return promotionService.confirm(validated.previewId, ownerId)
-  })
-  ipcMain.handle(IPC_CHANNELS.cancelLlmWikiPromotion, (event, candidate: unknown) => {
-    const validated = llmWikiPromotionConfirmRequestSchema.parse(candidate)
-    return promotionService.cancel(validated.previewId, String(event.sender.id))
-  })
-  ipcMain.handle(IPC_CHANNELS.getLatestLlmWikiPromotion, (_event, itemId: unknown) =>
-    promotionService.getLatest(itemIdSchema.parse(itemId))
-  )
-}
-
-function isSafeExternalUrl(value: string): boolean {
-  try {
-    return new URL(value).protocol === 'https:'
-  } catch {
-    return false
-  }
-}
-
-async function createWindow(useE2eFixtures: boolean): Promise<BrowserWindow> {
+async function createWindow(
+  useE2eFixtures: boolean,
+  applicationRuntime: WindowApplicationRuntime
+): Promise<BrowserWindow> {
   const isMac = process.platform === 'darwin'
+  const nativeUi = shouldUseAppKit()
   const fallbackBounds: WindowBounds = { x: 80, y: 60, width: 1360, height: 880 }
   const statePath = join(app.getPath('userData'), 'window-state.json')
   const workAreas = screen.getAllDisplays().map((display) => display.workArea)
@@ -460,12 +106,14 @@ async function createWindow(useE2eFixtures: boolean): Promise<BrowserWindow> {
     }
   })
 
-  attachNativeGlass(window, join(__dirname, '../native-glass/therss-glass.node'))
+  const application = applicationRuntime.bind(window)
+  if (!nativeUi) attachNativeGlass(window, join(__dirname, '../native-glass/therss-glass.node'))
 
-  window.once('ready-to-show', () => {
-    if (restoredState.maximized) window.maximize()
-    window.show()
-  })
+  if (!nativeUi)
+    window.once('ready-to-show', () => {
+      if (restoredState.maximized) window.maximize()
+      window.show()
+    })
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (isSafeExternalUrl(url)) {
       void shell.openExternal(url)
@@ -473,7 +121,12 @@ async function createWindow(useE2eFixtures: boolean): Promise<BrowserWindow> {
     return { action: 'deny' }
   })
 
-  if (process.env.ELECTRON_RENDERER_URL) {
+  if (nativeUi) {
+    await window.loadFile(join(__dirname, '../renderer/native-host.html'))
+    await attachAppKit(window, application)
+    if (restoredState.maximized) window.maximize()
+    window.show()
+  } else if (process.env.ELECTRON_RENDERER_URL) {
     void window.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
     void window.loadFile(join(__dirname, '../renderer/index.html'))
@@ -499,11 +152,15 @@ async function createWindow(useE2eFixtures: boolean): Promise<BrowserWindow> {
   let allowClose = false
   let closePromptPending = false
   window.on('close', (event) => {
+    flushNativeInterface(window)
     if (allowClose || !dirtySettingsWindows.has(window.webContents)) return
     event.preventDefault()
     if (closePromptPending) return
     closePromptPending = true
-    const decision = useE2eFixtures ? Promise.resolve(true) : confirmDiscardSettings(window)
+    const decision =
+      useE2eFixtures && env.THERSS_E2E_NATIVE_DIALOGS !== '1'
+        ? Promise.resolve(true)
+        : confirmDiscardSettings(window)
     void decision
       .then((shouldDiscard) => {
         if (!shouldDiscard || window.isDestroyed()) return
@@ -683,25 +340,57 @@ app.whenReady().then(async () => {
       }
     : new LlmWikiVaultAdapter(createLlmWikiPromotionRuntime())
   const promotionService = new LlmWikiPromotionService(repository, promotionAdapter)
-  registerIpcHandlers(
-    repository,
-    discoveryService,
-    discoverService,
-    providerService,
-    analysisService,
-    localAgentService,
-    promotionService,
-    useE2eFixtures
+  const applicationRuntime = new WindowApplicationRuntime(
+    {
+      repository,
+      discovery: discoveryService,
+      discover: discoverService,
+      provider: providerService,
+      analysis: analysisService,
+      agents: localAgentService,
+      promotion: promotionService,
+      credentials: () => {
+        const githubToken = githubTokenFromEnvironment(env)
+        const huggingFaceToken = huggingFaceTokenFromEnvironment(env)
+        return {
+          ...(githubToken ? { githubToken } : {}),
+          ...(huggingFaceToken ? { huggingFaceToken } : {})
+        }
+      },
+      testProvider: async (profile) =>
+        useE2eFixtures
+          ? {
+              status: 'connected',
+              message: `Fixture connection accepted ${profile.model} without a network request.`,
+              testedAt: new Date().toISOString()
+            }
+          : testModelProviderConnection(profile)
+    },
+    readSystemAccent,
+    useE2eFixtures && env.THERSS_E2E_NATIVE_DIALOGS !== '1'
   )
-  await createWindow(useE2eFixtures)
+  applicationRuntime.registerCompatibilityIpc()
+  await createWindow(useE2eFixtures, applicationRuntime)
   Menu.setApplicationMenu(
     Menu.buildFromTemplate(
-      createApplicationMenuTemplate((command) => {
-        const targetWindow =
-          BrowserWindow.getFocusedWindow() ??
-          BrowserWindow.getAllWindows().find((window) => !window.isDestroyed())
-        targetWindow?.webContents.send(IPC_CHANNELS.appCommand, command)
-      }, process.platform === 'darwin')
+      createApplicationMenuTemplate(
+        (command) => {
+          const targetWindow =
+            BrowserWindow.getFocusedWindow() ??
+            BrowserWindow.getAllWindows().find((window) => !window.isDestroyed())
+          if (targetWindow) {
+            flushNativeInterface(targetWindow)
+            applicationRuntime.get(targetWindow)?.command(command)
+          }
+        },
+        process.platform === 'darwin',
+        shouldUseAppKit()
+          ? (command) => {
+              const window = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
+              if (window) dispatchNativeMenu(window, command)
+            }
+          : undefined
+      )
     )
   )
 
@@ -709,7 +398,7 @@ app.whenReady().then(async () => {
     systemPreferences.on('accent-color-changed', () => {
       const accent = readSystemAccent()
       for (const window of BrowserWindow.getAllWindows()) {
-        window.webContents.send(IPC_CHANNELS.systemAccentChanged, accent)
+        applicationRuntime.get(window)?.accentChanged(accent)
       }
     })
   }
@@ -722,11 +411,13 @@ app.whenReady().then(async () => {
     if (shutdownStarted) return
     shutdownStarted = true
     void (async () => {
+      BrowserWindow.getAllWindows().forEach(flushNativeInterface)
       const dirtyWindow = BrowserWindow.getAllWindows().find((window) =>
         dirtySettingsWindows.has(window.webContents)
       )
       const shouldQuit = dirtyWindow
-        ? useE2eFixtures || (await confirmDiscardSettings(dirtyWindow))
+        ? (useE2eFixtures && env.THERSS_E2E_NATIVE_DIALOGS !== '1') ||
+          (await confirmDiscardSettings(dirtyWindow))
         : true
       if (!shouldQuit) {
         shutdownStarted = false
@@ -735,6 +426,8 @@ app.whenReady().then(async () => {
       for (const window of BrowserWindow.getAllWindows()) {
         dirtySettingsWindows.delete(window.webContents)
       }
+      await drainNativePreferences()
+      await applicationRuntime.shutdown()
       await promotionService.disposeAll()
       repository.close()
       shutdownCompleted = true
@@ -744,7 +437,7 @@ app.whenReady().then(async () => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      void createWindow(useE2eFixtures)
+      void createWindow(useE2eFixtures, applicationRuntime)
     }
   })
 })

@@ -43,10 +43,20 @@ jobs:
       - name: Electron end-to-end flow
         run: npx playwright test
 
+      # CI verifies real native controls in disposable profiles. Local release QA
+      # separately requires WindowServer screenshots and visual inspection.
+      - name: Complete AppKit behavior
+        env:
+          THERSS_NATIVE_DEFAULT_ONLY: '1'
+          THERSS_NATIVE_SCREENSHOTS: '0'
+        run: node scripts/smoke-native-appkit.mjs && node scripts/smoke-appkit-controls.mjs
+
       - name: Package unsigned macOS build
         run: npx electron-builder --mac dir
 
       - name: Packaged app smoke
+        env:
+          THERSS_NATIVE_SCREENSHOTS: '0'
         run: npm run smoke:package
 
       - name: Upload Playwright report

@@ -8,7 +8,7 @@ TheRSS 是一个本地优先的研究发现桌面应用：你可以用自然语�
 
 ## Apple-native 界面
 
-当前界面在支持的 macOS 上使用真实 AppKit Liquid Glass：侧栏、工具栏切换、详情操作条和 Undo 提示由原生材质与控件承载。阅读、表单和数据列表保留现有 React 内容界面。Discover 保留高密度结果扫描；Sources 使用可调整的列表—详情布局，让来源目录、健康状态、溯源信息和近期内容保持在同一上下文中。
+macOS 26 及以上默认使用完整 AppKit 界面：Discover、Saved、Settings、Sources、Data Analytics、搜索与写入确认弹窗均由原生控件承载。NSTableView、NSTextView、NSSplitView 和 NSScrollView 负责列表、富文本、布局与滚动；NSSecureTextField 处理新输入的密钥。工作界面没有可见 HTML/CSS，也不依赖 DOM 测量。Electron 保留应用进程和既有业务服务。
 
 应用图标使用用户选定的单色研究文档版本。原始图稿、1024px RGBA 打包母版和 Electron Builder 输入分别保留，打包后的 ICNS 已通过 macOS 系统解码器的 16、32 和 256px 检查。
 
@@ -33,9 +33,9 @@ TheRSS 是一个本地优先的研究发现桌面应用：你可以用自然语�
 - 菜单栏提供 macOS 标准命令：Help 菜单、View 缩放（⌘0/⌘+/⌘-）、Dismiss Selected（⌘⌫）；Save Selected 改用 ⇧⌘D，把 ⌘S 让回给系统通用的“保存”语义。
 - 界面统一使用 macOS Apple 系统字体：正文与控件使用 SF Pro Text，展示标题使用 SF Pro Display；应用不再打包第三方字体文件。
 - 顶部上下文状态区根据当前页面显示一组紧凑、带文本标签的本地状态：Discover 展示 22 个来源的记录健康，Saved 展示保存数与当前来源过滤，Analytics 明确标注 local-only/no-telemetry，Sources 展示需要关注的来源数，Settings 保留未保存修改提醒；它不新增后台轮询或第二套状态存储。
-- 侧栏可以折叠，并支持鼠标拖动或键盘在 184–360 px 范围内调整宽度；Settings 固定在底部应用工具区、紧邻来源状态，不会打断主要研究导航。
+- 侧栏可以折叠，并支持鼠标拖动或键盘在 184–360 pt 范围内调整宽度；窄窗口自动约束显示宽度，放大后恢复偏好。五个工作区、来源状态和布局控制始终可达。
 - Sources 使用紧凑的列表—详情工作区：筛选、选择、来源元数据、部署验证、记录健康、近期内容和失败边界可以并排检查，窄窗口下仍保持可用。
-- 界面提供 reduced-transparency、inactive-window、forced-colors、reduced-motion 和 200% 缩放回退；视觉调整不改变 SQLite、IPC、来源适配器或证据状态契约。
+- 原生界面支持明暗外观、高对比度与降低透明度分支、80%–150% 字体缩放；最小窗口在内容不足时使用 AppKit 滚动。SQLite、来源适配器和证据状态契约保持一致。
 - 在 macOS 上构建并以可回滚方式安装 `~/Applications/TheRSS Dev.app`，升级前自动备份 SQLite 数据库。
 
 ## 立即运行
@@ -66,14 +66,15 @@ API key 不会返回给渲染进程，也不会以明文写入 SQLite；应用�
 
 ## 当前验证状态（2026-09-06）
 
-- 先完成侧栏/顶部栏试点，再扩展到完整适用材质层。macOS 27.0、Electron 44.1.1 下已验证真正的 NSGlassEffectView 内容所有权、原生点击、键盘/焦点、明暗、减少透明度、200% 缩放和窗口生命周期；不声明整个应用已重写为 AppKit。
-- `npm run check`：66 个文件、470 个测试通过；core/shared 覆盖率为 statements 90.53%、branches 80.66%、functions 93.72%、lines 93.40%。新增主进程与渲染桥接四项专项覆盖率均超过 80%；原生 C++ 通过构建、事件集成、真实窗口检查验证，不使用这些 TypeScript 百分比冒充 C++ 覆盖率。
-- 桌面测试 6/6 通过：4 个网页回退用例及 2 个原生用例。桌面交互串行运行，避免不同 Electron 窗口抢占 macOS 焦点。原生模式的玻璃与实色回退分别验证。
-- `npm audit` 为 0 漏洞；arm64 打包与原生激活 smoke 通过。已可恢复替换本机 `TheRSS Dev.app`，保留旧应用及 SQLite 备份。构建仍为 unsigned，未发布新的 GitHub Release。
-- `THERSS_NATIVE_GLASS=off` 可关闭原生层；不具备 API 或初始化失败时保留网页界面。物理触控板惯性尚未验证：自动化工具对原生按钮送出的零位移滚轮事件不作为通过或失败证据，另有公开 NSEvent 对象驱动的完整滚动链测试。
-- 最近真实来源复检仍为 2026-08-19 的 22/22；本轮只使用确定性 fixtures，没有升级来源健康或论文全文证据，也没有写入真实 llm-wiki vault。
+- 完整 AppKit 工作流覆盖 14 类界面能力；真实原生控件验收通过 12 组，额外控件验收通过 5 组。默认入口的 Web body 元素数为 0。
+- 覆盖搜索、22 个来源、保存/撤销、论文及仓库分析、双设置草稿与密钥顺序、原生搜索/写入弹窗、中文组合输入、焦点恢复、关闭重开、布局持久化，以及 820×600 下的 150% 字体。
+- 富文本使用原生段落和表格；异常表格或超出样式预算时保留完整纯文本，避免不可信内容放大原生对象分配。深色侧栏截图已单独复审。
+- `npm run check` 同时执行主测试套件与 AppKit 专项覆盖率门槛；Objective-C++ 由原生构建和真实控件测试验证，不使用 TypeScript 覆盖率代替。
+- `THERSS_UI=web` 显式切回保留的兼容界面。旧 DOM、材质层和 `THERSS_NATIVE_GLASS` 测试仅验证该兼容路径。CI 运行原生行为检查；本地交付另外要求真实窗口截图和视觉检查。
+- 本轮使用临时数据目录与确定性 fixtures；没有实时来源/模型调用，没有写入真实 llm-wiki。最近真实来源复检仍保持其原日期边界。
+- 构建仍为 unsigned；没有新增 GitHub Release、付费 Apple 身份或生产自动更新承诺。
 
-实现、截图、验收及安装指纹见 [原生 Liquid Glass 审查记录](docs/audits/2026-09-05-native-glass/audit.md) 与 [验证记录](docs/audits/2026-09-05-native-glass/verification.json)。历史 [macOS 27 UI 审查](docs/audits/2026-09-05-macos27/audit.md) 和 [来源验证](docs/verification/ACTIVE_SOURCE_SMOKE_2026-08-19.md) 保留原日期边界。
+范围、架构、测试与截图见 [完整 AppKit 迁移审查](docs/audits/2026-09-06-full-appkit/audit.md) 和 [ADR 0011](docs/decisions/0011-complete-appkit-interface.md)。此前的 [原生材质迁移](docs/audits/2026-09-05-native-glass/audit.md) 和 [滚动修复](docs/audits/2026-09-06-native-scroll/audit.md) 是兼容路径的历史记录。
 
 ## 模型配置示例
 

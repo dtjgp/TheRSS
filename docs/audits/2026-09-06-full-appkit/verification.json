@@ -1,0 +1,105 @@
+{
+  "verifiedAt": "2026-09-06T14:28:10.058986+00:00",
+  "scope": "complete AppKit working interface on macOS26+",
+  "nativeDefault": true,
+  "nativeWorkflows": {
+    "passed": true,
+    "groups": 12,
+    "screenshots": true,
+    "webElementCount": 0,
+    "rootClass": "TRCanvas"
+  },
+  "nativeControls": {
+    "passed": true,
+    "groups": 5,
+    "screenshots": true
+  },
+  "nativeDialogStress": {
+    "passed": true,
+    "repetitions": 12,
+    "holdMs": 2000,
+    "choices": "Cancel only",
+    "screenshots": false
+  },
+  "fullCheck": {
+    "exitCode": 0,
+    "testFiles": 81,
+    "tests": 552,
+    "includesAppKitTests": true,
+    "coreSharedCoverage": {
+      "lines": 93.59,
+      "statements": 90.76,
+      "functions": 94.09,
+      "branches": 80.7
+    }
+  },
+  "appKitCoverageGate": {
+    "exitCode": 0,
+    "files": 15,
+    "tests": 59,
+    "coverage": {
+      "lines": 94.26,
+      "statements": 91.19,
+      "functions": 90.46,
+      "branches": 82.5
+    }
+  },
+  "compatibilityE2e": {
+    "route": "THERSS_UI=web",
+    "total": 6,
+    "expected": 6,
+    "unexpected": 0,
+    "flaky": 0,
+    "skipped": 0,
+    "ok": true
+  },
+  "dependencyAudit": {
+    "exitCode": 0,
+    "vulnerabilities": 0,
+    "registry": "https://registry.npmjs.org",
+    "lockSha256": "3fe096e80eb9bd840ff4be7b6aadf1773a841c4b4fa92bab119028c9c883fc2f"
+  },
+  "independentReview": {
+    "uiParity": "passed",
+    "nativeSecurity": "passed",
+    "openFindings": 0
+  },
+  "package": {
+    "architecture": "arm64",
+    "signing": "unsigned",
+    "compatibilitySmoke": true,
+    "defaultNativeWorkflowGroups": 12,
+    "screenshots": true,
+    "asarSha256": "c984613b2bbae0cb4a8c69198385132e14e01b08ee9a8ef6a4a60ddaa6fbc6d5"
+  },
+  "installed": {
+    "path": "/Users/dtjgp/Applications/TheRSS Dev.app",
+    "receipt": "/Users/dtjgp/Library/Application Support/therss/install-receipts/install-2026-09-06T14-22-59-814Z.json",
+    "defaultNativeWorkflowGroups": 12,
+    "compatibilitySmoke": true,
+    "databaseIntegrity": "ok",
+    "databaseCountsUnchanged": true,
+    "asarSha256": "c984613b2bbae0cb4a8c69198385132e14e01b08ee9a8ef6a4a60ddaa6fbc6d5",
+    "nativeModuleSha256": "b7b8be0585f7368ac2eb75bbc13795858495f3e41e05ee2dd9fd276d6aee9058"
+  },
+  "backupCleanup": {
+    "timestamp": "2026-09-06T14-22-59-814Z",
+    "sourceAbsent": true,
+    "trashPresent": true,
+    "trashDirectory": "/Users/dtjgp/.Trash/TheRSS-full-appkit-backups-2026-09-06T14-22-59-814Z",
+    "hashes": {
+      "TheRSS Dev.backup-2026-09-06T14-22-59-814Z.app": "e0cbce64fda647b25f88b5bcd8e8aa31b5cc5cb8f9f7f795c90a76c5d023579f",
+      "therss-2026-09-06T14-22-59-814Z.sqlite": "954713e39db70d95dc3f27a3af893dcb6fd871af0c13da7974e32cbf61ad1e62"
+    }
+  },
+  "publication": {
+    "method": "protected-main PR; no admin bypass",
+    "finalStateOwner": "merged PR status and local final-state receipt"
+  },
+  "evidenceLimits": [
+    "No live source/model/agent calls or real llm-wiki writes",
+    "Native event/input and screenshot QA does not certify physical trackpad momentum or full accessibility compliance",
+    "Objective-C++ verified through build and real native execution, not TypeScript coverage",
+    "CI native behavior omits screenshots; local package and installed gates include them"
+  ]
+}

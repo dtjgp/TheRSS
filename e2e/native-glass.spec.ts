@@ -113,7 +113,7 @@ test('native glass pilot preserves navigation, modal, focus, appearance and wind
   const directory = await mkdtemp(join(tmpdir(), 'therss-native-e2e-'))
   const application = await electron.launch({
     args: [`--user-data-dir=${directory}`, '.'],
-    env: { ...env, THERSS_E2E_FIXTURES: '1', THERSS_NATIVE_GLASS: 'pilot' }
+    env: { ...env, THERSS_E2E_FIXTURES: '1', THERSS_UI: 'web', THERSS_NATIVE_GLASS: 'pilot' }
   })
   try {
     const page = await application.firstWindow()
@@ -367,7 +367,7 @@ test('full native actions preserve Discover, Saved, promotion, Undo and keyboard
   const directory = await mkdtemp(join(tmpdir(), 'therss-native-full-'))
   const application = await electron.launch({
     args: [`--user-data-dir=${directory}`, '.'],
-    env: { ...env, THERSS_E2E_FIXTURES: '1', THERSS_NATIVE_GLASS: 'full' }
+    env: { ...env, THERSS_E2E_FIXTURES: '1', THERSS_UI: 'web', THERSS_NATIVE_GLASS: 'full' }
   })
   try {
     const page = await application.firstWindow()

@@ -1,0 +1,159 @@
+{
+  "passed": true,
+  "screenshots": true,
+  "dialogs": [
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1788704605791
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704606446
+    },
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1788704606463
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 1,
+        "checkboxChecked": false
+      },
+      "time": 1788704607121
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704610236
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704610973
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788704612102
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 1,
+        "checkboxChecked": false
+      },
+      "time": 1788704613936
+    },
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1788704618560
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788704619176
+    },
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1788704619196
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 1,
+        "checkboxChecked": false
+      },
+      "time": 1788704619633
+    }
+  ],
+  "profile": "/var/folders/d9/50r202r14gbc_shcxg960xrh0000gn/T/therss-appkit-acceptance-z39Saq",
+  "checks": [
+    {
+      "name": "Native root, blank Web page and Unicode boundary",
+      "passed": true,
+      "elapsedMs": 179
+    },
+    {
+      "name": "All 22 source choices and semantic search",
+      "passed": true,
+      "elapsedMs": 1062
+    },
+    {
+      "name": "Native reading, Save, full analysis and search details sheet",
+      "passed": true,
+      "elapsedMs": 2727
+    },
+    {
+      "name": "Saved repository analysis and independent source/runner filters",
+      "passed": true,
+      "elapsedMs": 1751
+    },
+    {
+      "name": "Secure key then immediate Save uses the real ordered callback queue",
+      "passed": true,
+      "elapsedMs": 1565
+    },
+    {
+      "name": "Secure draft survives tabs and explicit discard clears the hidden native field",
+      "passed": true,
+      "elapsedMs": 1541
+    },
+    {
+      "name": "Persisted Analytics metrics and complete analysis artifact",
+      "passed": true,
+      "elapsedMs": 1021
+    },
+    {
+      "name": "Source focus is separate from activation; content stays read-only",
+      "passed": true,
+      "elapsedMs": 575
+    },
+    {
+      "name": "Local search uses a native sheet and safe external-open routing",
+      "passed": true,
+      "elapsedMs": 613
+    },
+    {
+      "name": "Promotion preview includes verified facts and produces a fixture receipt only after confirmation",
+      "passed": true,
+      "elapsedMs": 4962
+    },
+    {
+      "name": "Native editing Undo, zoom, dividers and narrow window layout",
+      "passed": true,
+      "elapsedMs": 3972
+    },
+    {
+      "name": "Dirty marked-text close guard and native window recreation preserve data/preferences",
+      "passed": true,
+      "elapsedMs": 2401
+    }
+  ],
+  "errors": [
+    "2026-09-06 16:23:20.028 TheRSS[95068:10615917] error messaging the mach port for IMKCFRunLoopWakeUpReliable\n"
+  ],
+  "webElementCount": 0,
+  "nativeRoot": "TRCanvas",
+  "testedExecutable": "/Users/dtjgp/Applications/TheRSS Dev.app/Contents/MacOS/TheRSS"
+}

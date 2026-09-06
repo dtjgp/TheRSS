@@ -25,7 +25,7 @@ function check(label, passed, detail) {
 const userDataDirectory = await mkdtemp(join(tmpdir(), 'therss-verify-'))
 const application = await electron.launch({
   args: [`--user-data-dir=${userDataDirectory}`, '.'],
-  env: { ...env, HOME: userDataDirectory, THERSS_E2E_FIXTURES: '1' }
+  env: { ...env, THERSS_E2E_FIXTURES: '1', THERSS_UI: 'web' }
 })
 const page = await application.firstWindow()
 await page.waitForSelector('.app-shell')

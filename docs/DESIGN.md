@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for initial implementation on 2026-08-15. Revisit if an executable spike contradicts a major assumption.
+Accepted for initial implementation on 2026-08-15. The macOS working presentation was replaced by the complete AppKit route on 2026-09-06; see [ADR 0011](decisions/0011-complete-appkit-interface.md).
 
 ## Context
 
@@ -37,15 +37,15 @@ See `PRODUCT.md`. In particular: no general news reader, cloud account system, a
 
 ## Chosen stack
 
-| Layer           | Choice                                | Rationale                                                                                |
-| --------------- | ------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Desktop         | Electron                              | Mature local Node integration, packaging, MCP process support, and rapid renderer reload |
-| UI              | React + TypeScript + Vite             | Typed, testable, fast iteration                                                          |
-| Storage         | SQLite                                | Local durability, transactions, explainable queries, no server                           |
-| Validation      | Zod                                   | Runtime validation at external and IPC boundaries                                        |
-| Tests           | Vitest + Testing Library + Playwright | Unit, integration, renderer, and critical desktop flow coverage                          |
-| Agent interface | MCP over stdio                        | One tool contract consumable by Codex and Claude Code                                    |
-| Packaging       | Electron Builder/compatible packaging | Local `.app` builds now; signed updater path later                                       |
+| Layer           | Choice                                 | Rationale                                                                                |
+| --------------- | -------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Desktop         | Electron                               | Mature local Node integration, packaging, MCP process support, and rapid renderer reload |
+| UI              | AppKit + typed main-process presenters | Native controls/layout on macOS26+; explicit React/Vite compatibility route              |
+| Storage         | SQLite                                 | Local durability, transactions, explainable queries, no server                           |
+| Validation      | Zod                                    | Runtime validation at external and IPC boundaries                                        |
+| Tests           | Vitest + Testing Library + Playwright  | Unit, integration, renderer, and critical desktop flow coverage                          |
+| Agent interface | MCP over stdio                         | One tool contract consumable by Codex and Claude Code                                    |
+| Packaging       | Electron Builder/compatible packaging  | Local `.app` builds now; signed updater path later                                       |
 
 ## Alternatives considered
 
@@ -64,11 +64,13 @@ Simpler distribution but weaker local process, secret storage, MCP, filesystem, 
 ## System decomposition
 
 ```text
-Renderer (untrusted UI)
-       |
-       | typed preload API
-       v
-Electron main/application services
+AppKit controls → bounded native events → typed main presenters
+                                              |
+Compatibility renderer → typed preload IPC ----+
+                                              |
+                            Validated window application API
+                                              |
+                            Electron main/application services
        |
        +-- Discover planner / orchestrator
        +-- Ranking service
