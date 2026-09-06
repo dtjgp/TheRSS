@@ -5,6 +5,7 @@ import { useNativeGlass } from './useNativeGlass'
 import type { NativeGlassApi, NativeGlassEvent } from '../../shared/nativeGlass'
 import { App } from './App'
 import { createApi, resetAppTestEnvironment } from './App.testSupport'
+import { NativeGlassSession } from '../../main/nativeGlassSession'
 
 function Surface({
   api,
@@ -84,6 +85,199 @@ function harness() {
 }
 
 describe('native material handoff', () => {
+  it.each(['modal', 'item', 'root', 'zoom'] as const)(
+    'does not revive scroll after an observed %s round trip while acknowledgment is pending',
+    async (change) => {
+      const h = harness()
+      render(<Surface api={h.api} click={() => undefined} />)
+      await waitFor(() => expect(document.documentElement.dataset.nativeGlass).toBe('native'))
+      const sidebar = document.querySelector<HTMLElement>('.sidebar')!
+      sidebar.style.overflowX = 'auto'
+      let acknowledge: () => void = () => undefined
+      vi.mocked(h.api.present).mockImplementationOnce(
+        (state) =>
+          new Promise((resolve) => {
+            acknowledge = () => resolve({ applied: true, revision: state.revision })
+          })
+      )
+      sidebar.querySelector('button')!.setAttribute('aria-pressed', 'true')
+      await waitFor(() => expect(h.api.present).toHaveBeenCalledTimes(2))
+      const modal = document.createElement('div')
+      modal.setAttribute('role', 'dialog')
+      modal.setAttribute('aria-modal', 'true')
+      const article = document.querySelector('.signal-detail')!
+      const replacement = article.cloneNode(true) as Element
+      const dpr = window.devicePixelRatio
+      act(() => {
+        if (change === 'modal') document.body.append(modal)
+        if (change === 'item') article.setAttribute('data-native-context', 'two')
+        if (change === 'root') article.replaceWith(replacement)
+        if (change === 'zoom') vi.stubGlobal('devicePixelRatio', dpr * 2)
+        h.event({ kind: 'scroll', id: 'discover', revision: 1, deltaX: 1, deltaY: 0 })
+        if (change === 'modal') modal.remove()
+        if (change === 'item') article.setAttribute('data-native-context', 'one')
+        if (change === 'root') replacement.replaceWith(article)
+        if (change === 'zoom') vi.stubGlobal('devicePixelRatio', dpr)
+      })
+      await act(async () => acknowledge())
+      act(() => h.event({ kind: 'scroll', id: 'discover', revision: 1, deltaX: 7, deltaY: 0 }))
+      expect(sidebar.scrollLeft).toBe(0)
+      await waitFor(() => expect(h.api.present).toHaveBeenCalledTimes(3))
+      expect(vi.mocked(h.api.present).mock.calls[2]![0].scrollRevision).toBe(3)
+    }
+  )
+  it('recovers a main-process zoom interruption through the real session/hook contract', async () => {
+    const h = harness()
+    let zoom = 1
+    let receive: (value: string) => void = () => undefined
+    const session = new NativeGlassSession(
+      {
+        getNativeWindowHandle: () => Buffer.alloc(8),
+        getBounds: () => ({ width: window.innerWidth, height: window.innerHeight }),
+        isDestroyed: () => false,
+        isFocused: () => true,
+        webContents: { getZoomFactor: () => zoom, focus: () => undefined }
+      },
+      {
+        attach: (_handle, listener) => {
+          receive = listener
+        },
+        present: () => undefined,
+        suspend: () => false,
+        focus: () => true,
+        release: () => undefined,
+        inspect: () => '{}'
+      },
+      'pilot',
+      h.event
+    )
+    vi.mocked(h.api.present).mockImplementation(async (state) => session.present(state))
+    vi.mocked(h.api.release).mockImplementation(async () => session.release())
+    render(<Surface api={h.api} click={() => undefined} />)
+    await waitFor(() => expect(document.documentElement.dataset.nativeGlass).toBe('native'))
+    const sidebar = document.querySelector<HTMLElement>('.sidebar')!
+    sidebar.style.overflowX = 'auto'
+    act(() => {
+      zoom = 2
+      receive(JSON.stringify({ kind: 'scroll', id: 'discover', revision: 1, deltaX: 9, deltaY: 0 }))
+      zoom = 1
+    })
+    await waitFor(() => expect(h.api.present).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(h.api.present).mock.calls[1]![0].scrollRevision).toBe(2)
+    expect(sidebar.scrollLeft).toBe(0)
+    act(() =>
+      receive(JSON.stringify({ kind: 'scroll', id: 'discover', revision: 2, deltaX: 1, deltaY: 0 }))
+    )
+    expect(sidebar.scrollLeft).toBe(1)
+  })
+  it('renews an interrupted scroll context even when the final viewport has not changed', async () => {
+    const h = harness()
+    render(<Surface api={h.api} click={() => undefined} />)
+    await waitFor(() => expect(document.documentElement.dataset.nativeGlass).toBe('native'))
+    act(() => h.event({ kind: 'scroll-reset', revision: 1 }))
+    await waitFor(() => expect(h.api.present).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(h.api.present).mock.calls[1]![0].scrollRevision).toBe(2)
+  })
+  it.each(['item', 'root', 'parent', 'viewport', 'zoom', 'modal'] as const)(
+    'invalidates scroll on %s changes and cannot revive it with an old acknowledgment',
+    async (change) => {
+      const h = harness()
+      const view = render(<Surface api={h.api} click={() => undefined} />)
+      await waitFor(() => expect(document.documentElement.dataset.nativeGlass).toBe('native'))
+      const sidebar = document.querySelector<HTMLElement>('.sidebar')!
+      const button = sidebar.querySelector('button')!
+      sidebar.style.overflowX = 'auto'
+      let acknowledge: () => void = () => undefined
+      vi.mocked(h.api.present).mockImplementationOnce(
+        (state) =>
+          new Promise((resolve) => {
+            acknowledge = () => resolve({ applied: true, revision: state.revision })
+          })
+      )
+      button.setAttribute('aria-pressed', 'true')
+      await waitFor(() => expect(h.api.present).toHaveBeenCalledTimes(2))
+      if (change === 'item')
+        view.rerender(<Surface api={h.api} click={() => undefined} identity="two" />)
+      if (change === 'modal') view.rerender(<Surface api={h.api} click={() => undefined} modal />)
+      if (change === 'root') {
+        const root = document.querySelector('.signal-detail')!
+        root.replaceWith(root.cloneNode(true))
+      }
+      if (change === 'parent') {
+        const wrapper = document.createElement('div')
+        sidebar.append(wrapper)
+        wrapper.append(button)
+      }
+      if (change === 'viewport') vi.stubGlobal('innerWidth', window.innerWidth + 10)
+      if (change === 'zoom') vi.stubGlobal('devicePixelRatio', window.devicePixelRatio * 2)
+      act(() => h.event({ kind: 'scroll', id: 'discover', revision: 1, deltaX: 1, deltaY: 0 }))
+      expect(sidebar.scrollLeft).toBe(0)
+      await act(async () => {
+        acknowledge()
+        await Promise.resolve()
+        h.event({ kind: 'scroll', id: 'discover', revision: 2, deltaX: 1, deltaY: 0 })
+      })
+      expect(sidebar.scrollLeft).toBe(0)
+      fireEvent.resize(window)
+      await waitFor(() => expect(h.api.present).toHaveBeenCalledTimes(3))
+      expect(vi.mocked(h.api.present).mock.calls[2]![0].scrollRevision).toBe(3)
+      act(() => h.event({ kind: 'scroll', id: 'discover', revision: 2, deltaX: 1, deltaY: 0 }))
+      expect(sidebar.scrollLeft).toBe(0)
+      act(() => h.event({ kind: 'scroll', id: 'discover', revision: 3, deltaX: 1, deltaY: 0 }))
+      expect(sidebar.scrollLeft).toBe(change === 'modal' ? 0 : 1)
+    }
+  )
+  it('conserves scroll during and after same-context layout acknowledgment without accepting clicks', async () => {
+    const h = harness(),
+      click = vi.fn()
+    render(<Surface api={h.api} click={click} />)
+    await waitFor(() => expect(document.documentElement.dataset.nativeGlass).toBe('native'))
+    const sidebar = document.querySelector<HTMLElement>('.sidebar')!
+    const button = sidebar.querySelector('button')!
+    sidebar.style.overflowX = 'auto'
+    let acknowledge: () => void = () => undefined
+    vi.mocked(h.api.present).mockImplementationOnce(
+      (state) =>
+        new Promise((resolve) => {
+          acknowledge = () => resolve({ applied: true, revision: state.revision })
+        })
+    )
+    button.setAttribute('aria-pressed', 'true')
+    await waitFor(() => expect(h.api.present).toHaveBeenCalledTimes(2))
+    act(() => {
+      h.event({ kind: 'scroll', id: 'discover', revision: 1, deltaX: 1, deltaY: 0 })
+      h.event({ kind: 'scroll', id: 'discover', revision: 2, deltaX: 2, deltaY: 0 })
+      h.event({ kind: 'scroll', id: 'discover', revision: 3, deltaX: 100, deltaY: 0 })
+      h.event({ kind: 'activate', id: 'discover', revision: 1 })
+    })
+    expect(sidebar.scrollLeft).toBe(3)
+    expect(click).not.toHaveBeenCalled()
+    await act(async () => acknowledge())
+    act(() => h.event({ kind: 'scroll', id: 'discover', revision: 1, deltaX: 4, deltaY: 0 }))
+    expect(sidebar.scrollLeft).toBe(7)
+  })
+  it('never replays scroll from a rejected layout after recovery or after unmount', async () => {
+    const h = harness()
+    const view = render(<Surface api={h.api} click={() => undefined} />)
+    await waitFor(() => expect(document.documentElement.dataset.nativeGlass).toBe('native'))
+    const sidebar = document.querySelector<HTMLElement>('.sidebar')!
+    sidebar.style.overflowX = 'auto'
+    vi.mocked(h.api.present).mockResolvedValueOnce({ applied: false, revision: 2 })
+    sidebar.querySelector('button')!.setAttribute('aria-pressed', 'true')
+    await waitFor(() => expect(h.api.release).toHaveBeenCalledOnce())
+    act(() => h.event({ kind: 'scroll', id: 'discover', revision: 1, deltaX: 9, deltaY: 0 }))
+    expect(sidebar.scrollLeft).toBe(0)
+    await waitFor(() => expect(h.api.present).toHaveBeenCalledTimes(3))
+    expect(vi.mocked(h.api.present).mock.calls[2]![0].scrollRevision).toBe(3)
+    act(() => {
+      h.event({ kind: 'scroll', id: 'discover', revision: 1, deltaX: 9, deltaY: 0 })
+      h.event({ kind: 'scroll', id: 'discover', revision: 3, deltaX: 1, deltaY: 0 })
+    })
+    expect(sidebar.scrollLeft).toBe(1)
+    view.unmount()
+    act(() => h.event({ kind: 'scroll', id: 'discover', revision: 3, deltaX: 9, deltaY: 0 }))
+    expect(sidebar.scrollLeft).toBe(1)
+  })
   it('allows geometry to settle while the viewport changes during resize and zoom', async () => {
     const h = harness()
     let attempts = 0

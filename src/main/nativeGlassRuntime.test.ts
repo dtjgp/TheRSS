@@ -56,6 +56,7 @@ const state = {
   contrast: 'normal',
   reduceTransparency: false,
   revision: 1,
+  scrollRevision: 1,
   viewport: { width: 1000, height: 700 },
   modal: false,
   surfaces: []

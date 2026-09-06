@@ -576,10 +576,12 @@ static napi_value testAction(napi_env env, napi_callback_info info) {
     NSEvent *event = [NSEvent keyEventWithType:NSEventTypeKeyDown location:NSZeroPoint modifierFlags:meta ? NSEventModifierFlagCommand : 0 timestamp:0 windowNumber:window.windowNumber context:nil characters:meta ? @"z" : key charactersIgnoringModifiers:meta ? @"z" : key isARepeat:[action isEqualToString:@"repeat-space"] keyCode:code.unsignedShortValue];
     [button keyDown:event];
   }
-  else if ([action isEqualToString:@"wheel-right"] || [action isEqualToString:@"wheel-down"]) {
+  else if ([action isEqualToString:@"wheel-right"] || [action isEqualToString:@"wheel-down"] || [action isEqualToString:@"wheel-right-one"]) {
     // Real public NSEvent conversion, delivered only to this fixture object.
     // This is an integration test; it never posts a synthetic event to the OS.
-    CGEventRef cg = CGEventCreateScrollWheelEvent(nullptr, kCGScrollEventUnitPixel, 2, [action isEqualToString:@"wheel-down"] ? -100 : 0, [action isEqualToString:@"wheel-right"] ? -100 : 0);
+    BOOL horizontal = ![action isEqualToString:@"wheel-down"];
+    int32_t delta = [action isEqualToString:@"wheel-right-one"] ? -1 : -100;
+    CGEventRef cg = CGEventCreateScrollWheelEvent(nullptr, kCGScrollEventUnitPixel, 2, horizontal ? 0 : delta, horizontal ? delta : 0);
     NSEvent *event = [NSEvent eventWithCGEvent:cg];
     CFRelease(cg);
     [button scrollWheel:event];

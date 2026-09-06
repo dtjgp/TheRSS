@@ -7,6 +7,7 @@ const state = {
   contrast: 'normal',
   reduceTransparency: false,
   revision: 1,
+  scrollRevision: 1,
   viewport: { width: 1360, height: 880 },
   modal: false,
   surfaces: [
@@ -29,6 +30,20 @@ const state = {
 }
 
 describe('native glass boundary', () => {
+  it('validates the main-process scroll reset notification revision', () => {
+    expect(parseNativeGlassEvent({ kind: 'scroll-reset', revision: 2 })).toEqual({
+      kind: 'scroll-reset',
+      revision: 2
+    })
+    expect(parseNativeGlassEvent({ kind: 'scroll-reset', revision: 0 })).toBeNull()
+  })
+  it('requires a bounded scroll context that starts no later than its layout', () => {
+    for (const scrollRevision of [0, -1, 1.5, 2147483648, 2, undefined])
+      expect(nativeGlassStateSchema.safeParse({ ...state, scrollRevision }).success).toBe(false)
+    expect(
+      nativeGlassStateSchema.safeParse({ ...state, revision: 4, scrollRevision: 2 }).success
+    ).toBe(true)
+  })
   it('accepts bounded fixed controls and rejects handles or arbitrary native commands', () => {
     expect(nativeGlassStateSchema.parse(state)).toEqual(state)
     expect(nativeGlassStateSchema.safeParse({ ...state, handle: 'pointer' }).success).toBe(false)
