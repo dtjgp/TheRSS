@@ -220,9 +220,9 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   for (TRNode *node in existing.allValues) [node removeFromSuperview];
   self.nodes = children;
   if ([kind isEqual:@"scroll"] && old && (![old[@"clearRevision"] ?: @0 isEqual:spec[@"clearRevision"] ?: @0] || ![[old[@"children"] firstObject][@"id"] isEqual:[spec[@"children"] firstObject][@"id"]])) {
-    [((NSScrollView *)self.control).contentView scrollToPoint:NSZeroPoint];
+    self.resetScrollAfterLayout = YES;
   }
-  if ([spec[@"adaptiveScroll"] boolValue] && old && ![[old[@"children"] lastObject][@"id"] isEqual:[spec[@"children"] lastObject][@"id"]]) [((NSScrollView *)self.control).contentView scrollToPoint:NSZeroPoint];
+  if ([spec[@"adaptiveScroll"] boolValue] && old && ![[old[@"children"] lastObject][@"id"] isEqual:[spec[@"children"] lastObject][@"id"]]) self.resetScrollAfterLayout = YES;
   self.applying = NO; self.needsLayout = YES;
 }
 - (CGFloat)preferredWidth {
@@ -331,6 +331,13 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     [input setFrameSize:NSMakeSize(scroll.contentSize.width,MAX(input.frame.size.height,scroll.contentSize.height))];
   }
   for (TRNode *child in self.nodes) { child.needsLayout = YES; [child layoutSubtreeIfNeeded]; }
+  if (self.resetScrollAfterLayout && [self.control isKindOfClass:NSScrollView.class]) {
+    // Legacy scrollers can adjust the clip origin when the replacement document
+    // changes size. Reset only after AppKit has laid out both document and bars.
+    NSScrollView *scroll = (NSScrollView *)self.control; [scroll layoutSubtreeIfNeeded];
+    [scroll.contentView scrollToPoint:NSZeroPoint]; [scroll reflectScrolledClipView:scroll.contentView];
+    self.resetScrollAfterLayout = NO;
+  }
   if (splitLayout) self.applying = wasApplying;
 }
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)table { return [self.spec[@"rows"] count]; }

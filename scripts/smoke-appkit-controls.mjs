@@ -178,7 +178,11 @@ try {
   assert.equal(find(state.root, 'fixture-glass').material, 'opaque')
   await act('fixture-root', 'appearance', 'contrast-light')
   state = await inspect()
-  assert.match(find(state.root, 'fixture-title').appearance, /NameAqua/)
+  assert(
+    ['NSAppearanceNameAqua', 'NSAppearanceNameAccessibilityAqua'].includes(
+      find(state.root, 'fixture-title').appearance
+    )
+  )
   assert.equal(find(state.root, 'fixture-glass').material, 'opaque')
   await act('fixture-root', 'appearance', 'light')
   await act('fixture-root', 'transparency', false)

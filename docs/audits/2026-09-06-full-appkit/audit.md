@@ -34,6 +34,10 @@ Current executable results and fingerprints are recorded in verification.json. T
 
 Protected-main publication follows the repository PR workflow and exact-path staging. The install receipt verifies SQLite preservation and package fingerprints. After verified replacement, only this task's generated previous-app/database pair is moved to Trash under the user's existing cleanup authorization; unrelated backups and data remain untouched.
 
+## CI regression closure
+
+The first remote desktop run (34039601779) passed compatibility E2E but found a 4-point reading-origin residue after switching records with legacy scrollbars in a 1024×677 window. The same case failed locally before the fix. Record/route changes now mark a reset and apply it only after AppKit finishes document and scroller layout; the verifier still requires exactly zero. The compact legacy-scroller run, repackaged build and actual replacement installation each passed all 12 native groups. An independent native review confirmed the correction. The appearance fixture accepts both the documented accessibility-Aqua name and the normalized Aqua name returned by AppKit, while still requiring light appearance and the opaque contrast branch. Verification fingerprints and the new backup-pair cleanup were refreshed after this replacement.
+
 ## Evidence limits and rollback
 
 No live source/model/agent query or real llm-wiki write was performed by these fixtures. They do not upgrade paper/source evidence or establish physical trackpad momentum, a VoiceOver user study, complete accessibility compliance, or real-provider performance. Source-owned Objective-C++ is verified by compilation and actual native execution; TypeScript coverage is not presented as C++ coverage.

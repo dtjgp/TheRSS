@@ -1,5 +1,5 @@
 {
-  "verifiedAt": "2026-09-06T14:28:10.058986+00:00",
+  "verifiedAt": "2026-09-06T14:46:07.998032+00:00",
   "scope": "complete AppKit working interface on macOS26+",
   "nativeDefault": true,
   "nativeWorkflows": {
@@ -70,26 +70,26 @@
     "compatibilitySmoke": true,
     "defaultNativeWorkflowGroups": 12,
     "screenshots": true,
-    "asarSha256": "c984613b2bbae0cb4a8c69198385132e14e01b08ee9a8ef6a4a60ddaa6fbc6d5"
+    "asarSha256": "4ffc623644cda76091e09731ce33bbb3e09f46c299eaacd5d2bf0b61e4f6d2e6"
   },
   "installed": {
     "path": "/Users/dtjgp/Applications/TheRSS Dev.app",
-    "receipt": "/Users/dtjgp/Library/Application Support/therss/install-receipts/install-2026-09-06T14-22-59-814Z.json",
+    "receipt": "/Users/dtjgp/Library/Application Support/therss/install-receipts/install-2026-09-06T14-43-51-512Z.json",
     "defaultNativeWorkflowGroups": 12,
     "compatibilitySmoke": true,
     "databaseIntegrity": "ok",
     "databaseCountsUnchanged": true,
-    "asarSha256": "c984613b2bbae0cb4a8c69198385132e14e01b08ee9a8ef6a4a60ddaa6fbc6d5",
-    "nativeModuleSha256": "b7b8be0585f7368ac2eb75bbc13795858495f3e41e05ee2dd9fd276d6aee9058"
+    "asarSha256": "4ffc623644cda76091e09731ce33bbb3e09f46c299eaacd5d2bf0b61e4f6d2e6",
+    "nativeModuleSha256": "33e57e24e3566b8a015c5dda7a274eb8a92fe5f06c694a9890dafe82ee7c3883"
   },
   "backupCleanup": {
-    "timestamp": "2026-09-06T14-22-59-814Z",
+    "timestamp": "2026-09-06T14-43-51-512Z",
     "sourceAbsent": true,
     "trashPresent": true,
-    "trashDirectory": "/Users/dtjgp/.Trash/TheRSS-full-appkit-backups-2026-09-06T14-22-59-814Z",
+    "trashDirectory": "/Users/dtjgp/.Trash/TheRSS-full-appkit-backups-2026-09-06T14-43-51-512Z",
     "hashes": {
-      "TheRSS Dev.backup-2026-09-06T14-22-59-814Z.app": "e0cbce64fda647b25f88b5bcd8e8aa31b5cc5cb8f9f7f795c90a76c5d023579f",
-      "therss-2026-09-06T14-22-59-814Z.sqlite": "954713e39db70d95dc3f27a3af893dcb6fd871af0c13da7974e32cbf61ad1e62"
+      "TheRSS Dev.backup-2026-09-06T14-43-51-512Z.app": "c984613b2bbae0cb4a8c69198385132e14e01b08ee9a8ef6a4a60ddaa6fbc6d5",
+      "therss-2026-09-06T14-43-51-512Z.sqlite": "954713e39db70d95dc3f27a3af893dcb6fd871af0c13da7974e32cbf61ad1e62"
     }
   },
   "publication": {
@@ -101,5 +101,24 @@
     "Native event/input and screenshot QA does not certify physical trackpad momentum or full accessibility compliance",
     "Objective-C++ verified through build and real native execution, not TypeScript coverage",
     "CI native behavior omits screenshots; local package and installed gates include them"
-  ]
+  ],
+  "priorBackupCleanup": {
+    "timestamp": "2026-09-06T14-22-59-814Z",
+    "sourceAbsent": true,
+    "trashPresent": true,
+    "trashDirectory": "/Users/dtjgp/.Trash/TheRSS-full-appkit-backups-2026-09-06T14-22-59-814Z",
+    "hashes": {
+      "TheRSS Dev.backup-2026-09-06T14-22-59-814Z.app": "e0cbce64fda647b25f88b5bcd8e8aa31b5cc5cb8f9f7f795c90a76c5d023579f",
+      "therss-2026-09-06T14-22-59-814Z.sqlite": "954713e39db70d95dc3f27a3af893dcb6fd871af0c13da7974e32cbf61ad1e62"
+    }
+  },
+  "ciRegression": {
+    "originalRun": 34039601779,
+    "condition": "1024x677 native window with legacy scrollbars",
+    "red": "Reading origin {0,4} instead of {0,0} after switching records",
+    "fix": "Reset after document and native scroller layout",
+    "localGroupsPassed": 12,
+    "packagedAndInstalledCompactNativeGroupsPassed": 12,
+    "review": "passed"
+  }
 }

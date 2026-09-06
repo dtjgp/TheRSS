@@ -148,6 +148,10 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
   } else if ([action isEqual:@"scroll"] && [node.control isKindOfClass:NSScrollView.class]) {
     NSScrollView *scroll = (NSScrollView *)node.control; CGFloat y = MIN(MAX(0,[input[@"value"] doubleValue]), MAX(0,scroll.documentView.bounds.size.height-scroll.contentSize.height));
     [scroll.contentView scrollToPoint:NSMakePoint(0,y)]; [scroll reflectScrolledClipView:scroll.contentView];
+  } else if ([action isEqual:@"scroller"] && [node.control isKindOfClass:NSScrollView.class]) {
+    if (![input[@"value"] isEqual:@"legacy"] && ![input[@"value"] isEqual:@"overlay"]) return fail(env,"Unsupported fixture scroller style");
+    ((NSScrollView *)node.control).scrollerStyle = [input[@"value"] isEqual:@"legacy"] ? NSScrollerStyleLegacy : NSScrollerStyleOverlay;
+    node.needsLayout = YES; [host.root layoutSubtreeIfNeeded];
   } else if ([action isEqual:@"divider"] && [node.control isKindOfClass:NSSplitView.class]) {
     CGFloat value = [input[@"value"] doubleValue];
     if (value < [node.spec[@"minWidth"] doubleValue] || value > [node.spec[@"maxWidth"] doubleValue]) return fail(env,"Invalid fixture divider position");

@@ -58,6 +58,7 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 @property(nonatomic) CGFloat lastWidth;
 @property(nonatomic) CGFloat preferredSplit;
 @property(nonatomic) CGFloat stackedFraction;
+@property(nonatomic) BOOL resetScrollAfterLayout;
 - (instancetype)initWithHost:(TRHost *)host spec:(NSDictionary *)spec;
 - (void)update:(NSDictionary *)spec;
 - (CGFloat)heightForWidth:(CGFloat)width;

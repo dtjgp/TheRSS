@@ -171,6 +171,8 @@ try {
       app.getAppPath() + '/out/native-appkit/therss-ui.node'
     )
     globalThis.__nativeWindow = BrowserWindow.getAllWindows()[0]
+    if (process.env.THERSS_NATIVE_COMPACT_FIXTURE === '1')
+      globalThis.__nativeWindow.setBounds({ width: 1024, height: 677 })
     globalThis.__nativeOpened = []
     globalThis.__nativeCopied = []
     globalThis.__fixtureCipherHashes = []
@@ -233,6 +235,8 @@ try {
     assert.match(find(result.root, 'discover-result-status').text, /completed/)
   })
   await step('Native reading, Save, full analysis and search details sheet', async () => {
+    if (process.env.THERSS_NATIVE_COMPACT_FIXTURE === '1')
+      await act('discover-reading-scroll', 'scroller', 'legacy')
     await click('discover-save')
     await wait('discover-save', (node) => node?.title === 'Unsave')
     await click('discover-analyze')
