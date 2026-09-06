@@ -7,6 +7,7 @@ const scene = (revision = 1): NativeGlassState => ({
   contrast: 'normal',
   reduceTransparency: false,
   revision,
+  scrollRevision: 1,
   viewport: { width: 1000, height: 700 },
   modal: false,
   surfaces: [
@@ -59,14 +60,83 @@ function harness() {
 }
 
 describe('NativeGlassSession', () => {
+  it('revokes previous scroll contexts and refuses invalid context transitions', () => {
+    const h = harness()
+    expect(h.session.present({ ...scene(2), scrollRevision: 1 }).applied).toBe(false)
+    h.session.present(scene())
+    h.session.present(scene(2))
+    expect(h.session.present({ ...scene(4), scrollRevision: 3 }).applied).toBe(false)
+    h.session.present({ ...scene(4), scrollRevision: 4 })
+    expect(h.session.present({ ...scene(5), scrollRevision: 1 }).applied).toBe(false)
+    h.event({ kind: 'scroll', id: 'discover', deltaX: 1, deltaY: 0, revision: 2 })
+    h.event({ kind: 'scroll', id: 'save-item', deltaX: 1, deltaY: 0, revision: 4 })
+    expect(h.events).not.toHaveBeenCalled()
+    h.event({ kind: 'scroll', id: 'discover', deltaX: 1, deltaY: 0, revision: 4 })
+    expect(h.events).toHaveBeenCalledOnce()
+  })
+  it('invalidates scroll immediately when live zoom changes, even before a new layout', () => {
+    const h = harness()
+    h.session.present(scene())
+    h.port.webContents.getZoomFactor = () => 2
+    h.event({ kind: 'scroll', id: 'discover', deltaX: 1, deltaY: 0, revision: 1 })
+    expect(h.events).toHaveBeenCalledWith({ kind: 'scroll-reset', revision: 1 })
+    h.port.webContents.getZoomFactor = () => 1
+    h.event({ kind: 'scroll', id: 'discover', deltaX: 1, deltaY: 0, revision: 1 })
+    expect(h.events.mock.calls.filter(([event]) => event.kind === 'scroll')).toHaveLength(0)
+    expect(h.session.present(scene(2)).applied).toBe(false)
+    expect(h.session.present({ ...scene(3), scrollRevision: 3 }).applied).toBe(true)
+    h.event({ kind: 'scroll', id: 'discover', deltaX: 1, deltaY: 0, revision: 1 })
+    expect(h.events.mock.calls.filter(([event]) => event.kind === 'scroll')).toHaveLength(0)
+    h.event({ kind: 'scroll', id: 'discover', deltaX: 1, deltaY: 0, revision: 3 })
+    expect(h.events.mock.calls.filter(([event]) => event.kind === 'scroll')).toHaveLength(1)
+    expect(h.events.mock.calls.filter(([event]) => event.kind === 'scroll-reset')).toHaveLength(1)
+  })
+  it('requires a fresh scroll context after modal, viewport, zoom and suspension barriers', () => {
+    const h = harness()
+    h.session.present(scene())
+    expect(h.session.present({ ...scene(2), modal: true }).applied).toBe(false)
+    h.session.present({ ...scene(2), scrollRevision: 2, modal: true })
+    expect(h.session.present({ ...scene(3), scrollRevision: 2 }).applied).toBe(false)
+    h.session.present({ ...scene(3), scrollRevision: 3 })
+    h.port.getBounds = () => ({ width: 1100, height: 700 })
+    const resized = { ...scene(4), viewport: { width: 1100, height: 700 } }
+    expect(h.session.present({ ...resized, scrollRevision: 3 }).applied).toBe(false)
+    expect(h.session.present({ ...resized, scrollRevision: 4 }).applied).toBe(true)
+    h.port.webContents.getZoomFactor = () => 2
+    h.port.getBounds = () => ({ width: 2200, height: 1400 })
+    expect(h.session.present({ ...resized, revision: 5, scrollRevision: 4 }).applied).toBe(false)
+    expect(h.session.present({ ...resized, revision: 5, scrollRevision: 5 }).applied).toBe(true)
+    h.port.getBounds = () => ({ width: 2201, height: 1410 })
+    expect(h.session.present({ ...resized, revision: 6, scrollRevision: 5 }).applied).toBe(false)
+    h.port.getBounds = () => ({ width: 2200, height: 1400 })
+    expect(h.session.present({ ...resized, revision: 7, scrollRevision: 5 }).applied).toBe(false)
+    expect(h.session.present({ ...resized, revision: 7, scrollRevision: 7 }).applied).toBe(true)
+  })
+  it('preserves scroll from an earlier layout of the same context but rejects old clicks', () => {
+    const h = harness()
+    h.session.present(scene())
+    h.session.present(scene(2))
+    h.event({ kind: 'scroll', id: 'discover', deltaX: 1, deltaY: 0, revision: 1 })
+    expect(h.events).toHaveBeenCalledWith({
+      kind: 'scroll',
+      id: 'discover',
+      deltaX: 1,
+      deltaY: 0,
+      revision: 1
+    })
+    h.event({ kind: 'activate', id: 'discover', revision: 1 })
+    h.event({ kind: 'scroll', id: 'discover', deltaX: 1, deltaY: 0, revision: 3 })
+    expect(h.events).toHaveBeenCalledOnce()
+  })
   it('suspends stale geometry without detaching or accepting old native input', () => {
     const h = harness()
     h.session.present(scene())
-    expect(h.session.present({ ...scene(2), viewport: { width: 300, height: 700 } }).applied).toBe(
-      false
-    )
+    expect(
+      h.session.present({ ...scene(2), scrollRevision: 2, viewport: { width: 300, height: 700 } })
+        .applied
+    ).toBe(false)
     expect(h.binding.suspend).toHaveBeenCalledOnce()
-    h.session.present({ ...scene(3), viewport: { width: 301, height: 700 } })
+    h.session.present({ ...scene(3), scrollRevision: 3, viewport: { width: 301, height: 700 } })
     expect(h.binding.suspend).toHaveBeenCalledOnce()
     expect(h.port.webContents.focus).toHaveBeenCalledOnce()
     expect(h.binding.release).not.toHaveBeenCalled()
@@ -74,7 +144,7 @@ describe('NativeGlassSession', () => {
     h.event({ kind: 'activate', id: 'discover', revision: 1 })
     expect(h.events).not.toHaveBeenCalled()
     expect(h.session.focus('first', 1)).toBe(false)
-    expect(h.session.present(scene(4)).applied).toBe(true)
+    expect(h.session.present({ ...scene(4), scrollRevision: 4 }).applied).toBe(true)
     expect(h.binding.attach).toHaveBeenCalledOnce()
     h.event({ kind: 'activate', id: 'discover', revision: 4 })
     expect(h.events).toHaveBeenCalledOnce()
@@ -111,7 +181,7 @@ describe('NativeGlassSession', () => {
     h.event({ kind: 'activate', id: 'discover', revision: 2 })
     h.event({ kind: 'exec', command: 'bad' })
     expect(h.events).toHaveBeenCalledTimes(1)
-    h.session.present({ ...scene(2), modal: true })
+    h.session.present({ ...scene(2), scrollRevision: 2, modal: true })
     h.event({ kind: 'activate', id: 'discover', revision: 2 })
     expect(h.events).toHaveBeenCalledTimes(1)
     expect(h.session.focus('first', 2)).toBe(false)
@@ -167,7 +237,7 @@ describe('NativeGlassSession', () => {
     h.event({ ...key, id: 'save-item' })
     h.event({ ...key, key: 'v' })
     expect(h.events).toHaveBeenCalledTimes(1)
-    h.session.present({ ...scene(2), modal: true })
+    h.session.present({ ...scene(2), scrollRevision: 2, modal: true })
     h.event({ ...key, revision: 2 })
     expect(h.events).toHaveBeenCalledTimes(1)
   })

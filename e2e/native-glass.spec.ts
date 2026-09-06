@@ -299,6 +299,7 @@ test('native glass pilot preserves navigation, modal, focus, appearance and wind
       (revision) =>
         window.therss.nativeGlass!.present({
           revision,
+          scrollRevision: revision,
           appearance: 'light',
           contrast: 'normal',
           reduceTransparency: false,
@@ -445,6 +446,32 @@ test('full native actions preserve Discover, Saved, promotion, Undo and keyboard
     const actions = page.locator('.signal-detail__actions')
     await expect.poll(() => actions.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true)
     await expect.poll(async () => (await inspect(application)).controls).toContain('dismiss-item')
+    // Small deltas must survive presentation revisions before hitting an edge.
+    // Waiting for acknowledgment between packets would conceal this regression.
+    await expect
+      .poll(() => actions.evaluate((el) => el.scrollWidth - el.clientWidth))
+      .toBeGreaterThanOrEqual(39)
+    for (let repetition = 0; repetition < 3; repetition += 1) {
+      await actions.evaluate((el) => {
+        el.scrollLeft = 0
+      })
+      expect(await native(application, 'hit', 'analyze-item')).toBe(true)
+      const delivered = await application.evaluate(async ({ app, BrowserWindow }) => {
+        const require = process
+          .getBuiltinModule('module')
+          .createRequire(app.getAppPath() + '/package.json')
+        const binding = require(app.getAppPath() + '/out/native-glass/therss-glass.node')
+        const handle = BrowserWindow.getAllWindows()[0]!.getNativeWindowHandle()
+        let count = 0
+        for (let packet = 0; packet < 39; packet += 1) {
+          if (binding.testAction(handle, 'analyze-item', 'wheel-right-one')) count += 1
+          await new Promise((resolve) => setTimeout(resolve, 8))
+        }
+        return count
+      })
+      expect(delivered).toBe(39)
+      await expect.poll(() => actions.evaluate((el) => el.scrollLeft)).toBe(39)
+    }
     await native(application, 'wheel-right', 'analyze-item')
     await expect.poll(() => actions.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0)
     await native(application, 'wheel-down', 'analyze-item')

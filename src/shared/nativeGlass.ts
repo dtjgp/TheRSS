@@ -48,6 +48,8 @@ export interface NativeGlassState {
   readonly contrast: 'normal' | 'more'
   readonly reduceTransparency: boolean
   readonly revision: number
+  /** First layout revision in the current semantic scroll context. */
+  readonly scrollRevision: number
   readonly viewport: { readonly width: number; readonly height: number }
   readonly modal: boolean
   readonly surfaces: readonly NativeSurface[]
@@ -95,6 +97,7 @@ export type NativeGlassEvent =
       readonly revision: number
     }
   | { readonly kind: 'focus-content'; readonly edge: 'first' | 'last'; readonly revision: number }
+  | { readonly kind: 'scroll-reset'; readonly revision: number }
   | { readonly kind: 'window-active'; readonly active: boolean }
   | { readonly kind: 'fallback'; readonly reason: 'native-failure' }
 export interface NativeGlassApi {
@@ -131,6 +134,7 @@ export function parseNativeGlassEvent(value: unknown): NativeGlassEvent | null {
   if (event.kind === 'fallback' && event.reason === 'native-failure')
     return { kind: event.kind, reason: event.reason }
   if (!isRevision(event.revision)) return null
+  if (event.kind === 'scroll-reset') return { kind: event.kind, revision: event.revision }
   if (
     event.kind === 'activate' &&
     typeof event.id === 'string' &&

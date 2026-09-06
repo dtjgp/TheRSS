@@ -76,6 +76,16 @@ export interface NativeProjection {
   readonly groups: ReadonlySet<HTMLElement>
   readonly identity: string
 }
+/** Include clipped controls so scrolling a sibling out of view does not reset the context. */
+export function nativeScrollContextNodes(scope: NativeGlassScope): readonly HTMLElement[] {
+  const nodes: HTMLElement[] = []
+  for (const [, surface, selector] of controlDefinitions) {
+    if (scope === 'pilot' && surface !== 'sidebar' && surface !== 'header') continue
+    for (let node = document.querySelector<HTMLElement>(selector); node; node = node.parentElement)
+      nodes.push(node)
+  }
+  return nodes
+}
 export function collectNativeProjection(
   scope: NativeGlassScope,
   revision: number
@@ -167,6 +177,7 @@ export function collectNativeProjection(
       reduceTransparency:
         window.matchMedia?.('(prefers-reduced-transparency: reduce)').matches ?? false,
       revision,
+      scrollRevision: revision,
       viewport: { width: viewport.width, height: viewport.height },
       modal,
       surfaces

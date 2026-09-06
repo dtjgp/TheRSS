@@ -49,12 +49,15 @@ export const nativeGlassStateSchema = z
     contrast: z.enum(['normal', 'more']),
     reduceTransparency: z.boolean(),
     revision: z.number().int().min(1).max(2147483647),
+    scrollRevision: z.number().int().min(1).max(2147483647),
     viewport: z.object({ width: dimension.min(1), height: dimension.min(1) }).strict(),
     modal: z.boolean(),
     surfaces: z.array(surface).max(4)
   })
   .strict()
   .superRefine((state, context) => {
+    if (state.scrollRevision > state.revision)
+      context.addIssue({ code: 'custom', message: 'Scroll context starts after this layout' })
     const ids = new Set<string>()
     for (const group of state.surfaces) {
       if (ids.has(group.id))

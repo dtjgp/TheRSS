@@ -25,6 +25,9 @@ Core reliability is complete as recorded in [`GOALS.md`](GOALS.md). The latest v
 engineering update is the 2026-09-06 AppKit material migration, including guarded
 web fallback and recoverable local installation; its scope and evidence are in
 [`docs/audits/2026-09-05-native-glass/audit.md`](docs/audits/2026-09-05-native-glass/audit.md).
+The follow-up [native scroll repair](docs/audits/2026-09-06-native-scroll/audit.md) preserves
+small scroll increments across layout updates, with 491 tests, desktop 6/6 and packaged
+scroll checks 13/13 passing; physical trackpad input remains a separate evidence boundary.
 Deferred product work remains in [`docs/ROADMAP.md`](docs/ROADMAP.md); completed phase execution
 records live in [`docs/history/PHASE_EXECUTION_HISTORY.md`](docs/history/PHASE_EXECUTION_HISTORY.md).
 

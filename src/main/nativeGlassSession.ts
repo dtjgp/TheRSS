@@ -30,6 +30,8 @@ export class NativeGlassSession {
   private suspended = false
   private failed = false
   private generation = 0
+  private scale = 1
+  private scrollInterrupted = false
   constructor(
     private readonly window: NativeWindowPort,
     private readonly binding: NativeGlassBinding,
@@ -61,6 +63,21 @@ export class NativeGlassSession {
       return { ...rejected, staleRevision: this.state?.revision ?? 0 }
     const scale = this.window.webContents.getZoomFactor()
     const bounds = this.window.getBounds()
+    const previous = this.state
+    const scrollBarrier =
+      !previous ||
+      this.suspended ||
+      this.scrollInterrupted ||
+      previous.modal !== state.modal ||
+      this.scale !== scale ||
+      previous.viewport.width !== state.viewport.width ||
+      previous.viewport.height !== state.viewport.height
+    if (
+      state.scrollRevision < (previous?.scrollRevision ?? 1) ||
+      ((scrollBarrier || state.scrollRevision !== previous?.scrollRevision) &&
+        state.scrollRevision !== state.revision)
+    )
+      return rejected
     if (
       Math.abs(state.viewport.width * scale - bounds.width) > 2 ||
       Math.abs(state.viewport.height * scale - bounds.height) > 2
@@ -106,6 +123,8 @@ export class NativeGlassSession {
       this.suspended = false
       if (focusContent || (state.modal && !this.state?.modal)) this.window.webContents.focus()
       this.state = state
+      this.scale = scale
+      this.scrollInterrupted = false
       return {
         applied: true,
         revision: state.revision,
@@ -120,12 +139,28 @@ export class NativeGlassSession {
     const event = parseNativeGlassEvent(input)
     if (
       !event ||
+      event.kind === 'scroll-reset' ||
       this.window.isDestroyed() ||
       !this.state ||
       this.suspended ||
       this.state.modal ||
-      !('revision' in event) ||
-      event.revision !== this.state.revision
+      !('revision' in event)
+    )
+      return
+    if (
+      event.kind === 'scroll' &&
+      (this.scrollInterrupted || this.window.webContents.getZoomFactor() !== this.scale)
+    ) {
+      if (!this.scrollInterrupted) {
+        this.scrollInterrupted = true
+        this.emit({ kind: 'scroll-reset', revision: this.state.revision })
+      }
+      return
+    }
+    if (
+      event.kind === 'scroll'
+        ? event.revision < this.state.scrollRevision || event.revision > this.state.revision
+        : event.revision !== this.state.revision
     )
       return
     if (event.kind === 'activate' || event.kind === 'key' || event.kind === 'scroll') {
@@ -171,6 +206,7 @@ export class NativeGlassSession {
     this.active = false
     this.suspended = false
     this.state = null
+    this.scrollInterrupted = false
   }
   private fail(): void {
     this.release()

@@ -3,6 +3,7 @@ import type { NativeGlassApi, NativeGlassEvent } from '../../shared/nativeGlass'
 import {
   collectNativeProjection,
   focusableWebElements,
+  nativeScrollContextNodes,
   scrollWebAncestors,
   type NativeProjection
 } from './nativeGlassProjection'
@@ -22,9 +23,32 @@ export function useNativeGlass(api: NativeGlassApi | undefined): void {
     let signature = ''
     let rejectedViewport = ''
     let applied: NativeProjection | null = null
+    let scrollProjection: NativeProjection | null = null
+    let scrollSignature = '',
+      scrollRevision = 0
+    let scrollRoot: Element | null = null
+    let scrollNodes: readonly HTMLElement[] = []
+    const sameScrollNodes = (nodes: readonly HTMLElement[]) =>
+      nodes.length === scrollNodes.length &&
+      nodes.every((node, index) => node === scrollNodes[index])
+    const currentScrollRoot = () =>
+      document.querySelector('.signal-detail') ?? document.querySelector('.app-shell')
+    const scrollContext = (projection: NativeProjection) =>
+      JSON.stringify([
+        projection.identity,
+        projection.state.viewport,
+        window.devicePixelRatio,
+        projection.state.modal
+      ])
     const hidden = new Map<HTMLElement, string | null>()
     const groups = new Set<HTMLElement>()
     const root = document.documentElement
+    const invalidateScroll = () => {
+      scrollProjection = null
+      scrollSignature = ''
+      scrollRoot = null
+      scrollNodes = []
+    }
 
     const restore = () => {
       for (const [element, aria] of hidden) {
@@ -36,6 +60,7 @@ export function useNativeGlass(api: NativeGlassApi | undefined): void {
       for (const element of groups) delete element.dataset.nativeSurface
       groups.clear()
       applied = null
+      invalidateScroll()
     }
     const mask = (projection: NativeProjection) => {
       for (const [element, aria] of hidden)
@@ -73,7 +98,18 @@ export function useNativeGlass(api: NativeGlassApi | undefined): void {
         return
       }
       pending = false
-      const projection = collectNativeProjection(scope, revision + 1)
+      const collected = collectNativeProjection(scope, revision + 1)
+      const context = scrollContext(collected)
+      const nextRoot = currentScrollRoot()
+      const nextNodes = nativeScrollContextNodes(scope)
+      if (context !== scrollSignature || nextRoot !== scrollRoot || !sameScrollNodes(nextNodes)) {
+        scrollRevision = revision + 1
+        scrollProjection = null
+        scrollSignature = context
+        scrollRoot = nextRoot
+        scrollNodes = nextNodes
+      }
+      const projection = { ...collected, state: { ...collected.state, scrollRevision } }
       const nextSignature = JSON.stringify([
         projection.state.appearance,
         projection.state.contrast,
@@ -82,7 +118,8 @@ export function useNativeGlass(api: NativeGlassApi | undefined): void {
         window.devicePixelRatio,
         projection.state.modal,
         projection.state.surfaces,
-        projection.identity
+        projection.identity,
+        scrollRevision
       ])
       if (nextSignature === signature) return
       signature = nextSignature
@@ -97,6 +134,15 @@ export function useNativeGlass(api: NativeGlassApi | undefined): void {
           rejectedViewport = ''
           mask(projection)
           applied = projection
+          // An old acknowledgment cannot revalidate a replaced target or a
+          // context that changed while this presentation was in transit.
+          scrollProjection =
+            scrollSignature === context &&
+            scrollContext(collectNativeProjection(scope, revision)) === context &&
+            currentScrollRoot() === nextRoot &&
+            sameScrollNodes(nativeScrollContextNodes(scope))
+              ? projection
+              : null
           root.dataset.nativeGlass = 'native'
           delete root.dataset.nativeFailure
           delete root.dataset.nativeGeometry
@@ -165,18 +211,48 @@ export function useNativeGlass(api: NativeGlassApi | undefined): void {
         fallback()
         return
       }
+      if (event.kind === 'scroll-reset') {
+        if (available && event.revision >= scrollRevision && event.revision <= revision) {
+          invalidateScroll()
+          schedule()
+        }
+        return
+      }
+      if (event.kind === 'scroll') {
+        if (!available) return
+        const current = collectNativeProjection(scope, revision)
+        if (
+          current.state.modal ||
+          scrollContext(current) !== scrollSignature ||
+          currentScrollRoot() !== scrollRoot ||
+          !sameScrollNodes(nativeScrollContextNodes(scope))
+        ) {
+          invalidateScroll()
+          schedule()
+          return
+        }
+        if (
+          !scrollProjection ||
+          event.revision < scrollProjection.state.scrollRevision ||
+          event.revision > revision
+        )
+          return
+        const button = scrollProjection.controls.get(event.id)
+        if (button?.isConnected && current.controls.get(event.id) === button)
+          scrollWebAncestors(button, event.deltaX, event.deltaY)
+        return
+      }
       if (
         !applied ||
         event.revision !== applied.state.revision ||
         document.querySelector('[role="dialog"][aria-modal="true"]')
       )
         return
-      if (event.kind === 'activate' || event.kind === 'key' || event.kind === 'scroll') {
+      if (event.kind === 'activate' || event.kind === 'key') {
         if (collectNativeProjection(scope, revision).identity !== applied.identity) return
         const button = applied.controls.get(event.id)
-        if (button?.isConnected && (!button.disabled || event.kind === 'scroll')) {
-          if (event.kind === 'scroll') scrollWebAncestors(button, event.deltaX, event.deltaY)
-          else if (event.kind === 'activate') button.click()
+        if (button?.isConnected && !button.disabled) {
+          if (event.kind === 'activate') button.click()
           else
             button.dispatchEvent(
               new KeyboardEvent('keydown', {
@@ -217,7 +293,21 @@ export function useNativeGlass(api: NativeGlassApi | undefined): void {
         .catch(fallback)
     }
     const unsubscribe = api.onEvent(event)
-    const observer = new MutationObserver(schedule)
+    const observeContext = () => {
+      if (
+        scrollSignature &&
+        (scrollContext(collectNativeProjection(scope, revision)) !== scrollSignature ||
+          currentScrollRoot() !== scrollRoot ||
+          !sameScrollNodes(nativeScrollContextNodes(scope)))
+      )
+        invalidateScroll()
+      schedule()
+    }
+    const resize = () => {
+      invalidateScroll()
+      schedule()
+    }
+    const observer = new MutationObserver(observeContext)
     observer.observe(document.body, {
       subtree: true,
       childList: true,
@@ -232,7 +322,7 @@ export function useNativeGlass(api: NativeGlassApi | undefined): void {
       .map((query) => window.matchMedia?.(query))
       .filter((query) => query !== undefined)
     mediaQueries.forEach((query) => query.addEventListener('change', schedule))
-    window.addEventListener('resize', schedule)
+    window.addEventListener('resize', resize)
     document.addEventListener('scroll', schedule, true)
     document.addEventListener('keydown', keyDown, true)
     void api
@@ -254,7 +344,7 @@ export function useNativeGlass(api: NativeGlassApi | undefined): void {
       observer.disconnect()
       mediaQueries.forEach((query) => query.removeEventListener('change', schedule))
       unsubscribe()
-      window.removeEventListener('resize', schedule)
+      window.removeEventListener('resize', resize)
       document.removeEventListener('scroll', schedule, true)
       document.removeEventListener('keydown', keyDown, true)
       restore()

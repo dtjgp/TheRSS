@@ -1,0 +1,97 @@
+{
+  "baseCommit": "a90d018e9268c69f57d2455876aa541941aad7f2",
+  "unitTestFiles": 66,
+  "unitTests": 491,
+  "ownedCoverage": {
+    "lines": {
+      "total": 461,
+      "covered": 451,
+      "skipped": 0,
+      "pct": 97.83
+    },
+    "statements": {
+      "total": 516,
+      "covered": 494,
+      "skipped": 0,
+      "pct": 95.73
+    },
+    "functions": {
+      "total": 70,
+      "covered": 66,
+      "skipped": 0,
+      "pct": 94.28
+    },
+    "branches": {
+      "total": 398,
+      "covered": 363,
+      "skipped": 0,
+      "pct": 91.2
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "globalCoverage": {
+    "lines": {
+      "total": 2309,
+      "covered": 2157,
+      "skipped": 0,
+      "pct": 93.41
+    },
+    "statements": {
+      "total": 2562,
+      "covered": 2320,
+      "skipped": 0,
+      "pct": 90.55
+    },
+    "functions": {
+      "total": 590,
+      "covered": 553,
+      "skipped": 0,
+      "pct": 93.72
+    },
+    "branches": {
+      "total": 1985,
+      "covered": 1602,
+      "skipped": 0,
+      "pct": 80.7
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "beforeStrictCssPixels": [37, 37, 37, 38, 39],
+  "afterStrictCssPixels": [39, 39, 39, 39, 39],
+  "nativeNonzeroPerSequence": 28,
+  "afterRendererReceived": [28, 28, 28, 28, 28],
+  "syntheticInput": "public CGEvent/NSEvent; direct native fixture object, no OS posting",
+  "physicalTrackpad": "not verified",
+  "desktop": {
+    "passed": 6,
+    "total": 6
+  },
+  "package": {
+    "matrixPassed": 13,
+    "matrixTotal": 13,
+    "smoke": "passed",
+    "asarSha256": "e0cbce64fda647b25f88b5bcd8e8aa31b5cc5cb8f9f7f795c90a76c5d023579f",
+    "nativeModuleSha256": "8003e91a11049a1c6f63aac4f01db4fd78dec136d9e224cff2043be0ec1d8177"
+  },
+  "npmAuditVulnerabilities": 0,
+  "independentReview": "passed",
+  "installation": {
+    "status": "completed",
+    "completedAt": "2026-09-06T09-21-47-973Z",
+    "target": "~/Applications/TheRSS Dev.app",
+    "smoke": "passed",
+    "matchesPackage": true,
+    "databasePreserved": true,
+    "backupDisposition": "moved to Trash at user request; active files unchanged"
+  }
+}
