@@ -70,6 +70,15 @@ async function native(
 }
 const inspect = async (app: ElectronApplication) => (await native(app, 'inspect')) as Diagnostic
 
+async function constrainFixtureDisplay(application: ElectronApplication): Promise<void> {
+  const height = Number(env.THERSS_E2E_MAX_WINDOW_HEIGHT)
+  if (!Number.isFinite(height)) return
+  if (height < 600) throw new Error('Fixture window height must preserve the app minimum')
+  await application.evaluate(({ BrowserWindow }, limit) => {
+    BrowserWindow.getAllWindows()[0]!.setMaximumSize(16384, limit)
+  }, height)
+}
+
 test('native glass pilot preserves navigation, modal, focus, appearance and window lifecycle', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'therss-native-e2e-'))
   const application = await electron.launch({
@@ -78,6 +87,7 @@ test('native glass pilot preserves navigation, modal, focus, appearance and wind
   })
   try {
     const page = await application.firstWindow()
+    await constrainFixtureDisplay(application)
     const initialMedia = await page.context().newCDPSession(page)
     await initialMedia.send('Emulation.setEmulatedMedia', {
       features: [
@@ -184,17 +194,22 @@ test('native glass pilot preserves navigation, modal, focus, appearance and wind
       [820, 600],
       [900, 700]
     ] as const) {
-      await application.evaluate(
-        ({ BrowserWindow }, bounds) =>
-          BrowserWindow.getAllWindows()[0]?.setSize(bounds.width, bounds.height),
+      const actual = await application.evaluate(
+        ({ BrowserWindow }, bounds) => {
+          const window = BrowserWindow.getAllWindows()[0]!
+          window.setSize(bounds.width, bounds.height)
+          // macOS constrains height to the runner's actual display work area.
+          const { width, height } = window.getBounds()
+          return { width, height }
+        },
         { width, height }
       )
       await expect
         .poll(() => page.evaluate(() => ({ width: innerWidth, height: innerHeight })))
-        .toEqual({ width, height })
+        .toEqual(actual)
       await expect
         .poll(async () => (await inspect(application)).originalFrame)
-        .toMatchObject({ width, height })
+        .toMatchObject(actual)
     }
     await application.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(2)
@@ -261,6 +276,7 @@ test('full native actions preserve Discover, Saved, promotion, Undo and keyboard
   })
   try {
     const page = await application.firstWindow()
+    await constrainFixtureDisplay(application)
     const media = await page.context().newCDPSession(page)
     await media.send('Emulation.setEmulatedMedia', {
       features: [
@@ -283,6 +299,11 @@ test('full native actions preserve Discover, Saved, promotion, Undo and keyboard
     await page.getByRole('combobox', { name: 'Search with' }).selectOption('codex')
     await page.getByRole('button', { name: 'Expand and search' }).click()
     await expect(page.getByLabel('Selected Discover result')).toBeVisible()
+    // Only visible controls are projected. A short CI display requires the same
+    // scroll a user would perform before interacting with this floating strip.
+    await page
+      .locator('.signal-detail__actions')
+      .evaluate((el) => el.scrollIntoView({ block: 'center' }))
     await expect
       .poll(async () => (await inspect(application)).controls)
       .toEqual(expect.arrayContaining(['save-item', 'analyze-item', 'promote-item']))

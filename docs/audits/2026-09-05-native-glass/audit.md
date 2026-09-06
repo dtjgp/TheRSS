@@ -28,6 +28,7 @@ Chromium 原生根视图保留完整窗口坐标。试验中的 inset NSSplitVie
 - 有意义的 RED/GREEN 覆盖协议、旧事件、初始化失败、渲染确认、Settings 未保存编辑、实际 Discover DOM 投影、非 BMP 文本、滚动与焦点交接。
 - 独立复查发现的 Save/Analyze 遗漏、原生快捷键、重复激活、初始化回退和 Toggle 命中问题已分别修复。原生点击调用原有业务处理器；推广测试仅使用 fixture 预览/确认，不写入真实 vault。
 - 窗口缩放截图暴露了逐个放大字体造成的按钮外框裁切；改为整体缩放普通前景内容，同时让玻璃外框保持物理尺寸。Saved 在高缩放下的窄布局同时增加换行、阅读区最小高度及顶部栏下方的动作条停靠位置。
+- CI 的显示区高度为 677px，macOS 会限制请求窗口高度；几何验收因此比较 Chromium/原生 host 与实际 BrowserWindow 尺寸，浮动控件在滚入可见区域后再测试。桌面用例串行执行以保留真实焦点和拖拽取消语义。
 - 原生模块从源码构建并在 ASAR 外解包；打包 smoke 必须检查 AppKit host 实际激活，单纯出现应用首页不能通过。
 - 主进程/渲染桥接专项覆盖率另见 [owned-coverage.json](owned-coverage.json)，不能把 core/shared 的整体覆盖率冒充原生 C++ 或所有组件覆盖率。
 
