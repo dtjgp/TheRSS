@@ -8,7 +8,7 @@ test('Sources keeps long-list navigation and selected detail in independent pane
   const directory = await mkdtemp(join(tmpdir(), 'therss-source-navigation-'))
   const application = await electron.launch({
     args: [`--user-data-dir=${directory}`, '.'],
-    env: { ...env, THERSS_E2E_FIXTURES: '1', THERSS_NATIVE_GLASS: 'off' }
+    env: { ...env, THERSS_E2E_FIXTURES: '1', THERSS_UI: 'web', THERSS_NATIVE_GLASS: 'off' }
   })
   try {
     const page = await application.firstWindow()

@@ -19,7 +19,7 @@ export default tseslint.config(
   {
     // Playwright `page.evaluate` callbacks are authored here but execute in the
     // renderer, so DOM globals are legitimate in this file only.
-    files: ['scripts/smoke-native-surfaces.mjs'],
+    files: ['scripts/smoke-native-surfaces.mjs', 'scripts/smoke-native-appkit.mjs'],
     languageOptions: {
       globals: {
         document: 'readonly',

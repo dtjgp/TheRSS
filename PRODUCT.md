@@ -137,3 +137,7 @@ Paper promotion remains a separate branch:
 The v0.2.0 personal beta is implemented, installed, and published at
 <https://github.com/dtjgp/TheRSS>. Its local, remote-update, and CI evidence is tracked in
 `docs/REQUIREMENTS_TRACEABILITY.md`, `GOALS.md`, and `task_plan.md`.
+
+## macOS presentation
+
+On macOS26+, the working interface uses native AppKit controls for all five workspaces, reading, settings, search and promotion dialogs. Electron hosts existing application services. The explicit `THERSS_UI=web` compatibility route retains its own regression suite; it is not native-completion evidence. Both routes share the same validated window application contract, SQLite state, runners and promotion ownership rules.

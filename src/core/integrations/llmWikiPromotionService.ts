@@ -341,6 +341,14 @@ export class LlmWikiPromotionService {
     if (this.#shuttingDown) throw new Error('The llm-wiki promotion service is shutting down')
   }
 
+  /** Called after a window's accepted work drains; other owners remain active. */
+  async disposeOwner(ownerId: string): Promise<void> {
+    const owned = [...this.#activePreviews.entries()].filter(
+      ([, active]) => active.ownerId === ownerId
+    )
+    await Promise.allSettled(owned.map(([id, active]) => this.#disposeActive(id, active)))
+  }
+
   async #disposeActive(id: string, active: ActivePreview): Promise<void> {
     if (this.#activePreviews.get(id) === active) this.#activePreviews.delete(id)
     clearTimeout(active.expirationTimer)

@@ -21,13 +21,11 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 beta (v0.2.0): Discover-centered retrieval over the 22 live-verified sources, confirmation-gated
 llm-wiki promotion, and the Apple-native design pass. Builds remain unsigned.
 
-Core reliability is complete as recorded in [`GOALS.md`](GOALS.md). The latest verified
-engineering update is the 2026-09-06 AppKit material migration, including guarded
-web fallback and recoverable local installation; its scope and evidence are in
-[`docs/audits/2026-09-05-native-glass/audit.md`](docs/audits/2026-09-05-native-glass/audit.md).
-The follow-up [native scroll repair](docs/audits/2026-09-06-native-scroll/audit.md) preserves
-small scroll increments across layout updates, with 491 tests, desktop 6/6 and packaged
-scroll checks 13/13 passing; physical trackpad input remains a separate evidence boundary.
+Core reliability is complete as recorded in [`GOALS.md`](GOALS.md). The current engineering
+update is the complete AppKit working interface on macOS26+, with all five workspaces,
+native reading/forms/tables/sheets, shared validated services and an explicit Web rollback.
+The [migration audit](docs/audits/2026-09-06-full-appkit/audit.md) owns its acceptance matrix,
+current verifiers and evidence boundaries; ADR 0011 supersedes ADR 0010's mixed UI scope.
 Deferred product work remains in [`docs/ROADMAP.md`](docs/ROADMAP.md); completed phase execution
 records live in [`docs/history/PHASE_EXECUTION_HISTORY.md`](docs/history/PHASE_EXECUTION_HISTORY.md).
 

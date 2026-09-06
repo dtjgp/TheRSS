@@ -30,12 +30,14 @@
     "smoke:sources": "tsx scripts/smoke-sources.ts",
     "smoke:configured-sources": "tsx scripts/smoke-configured-sources.ts",
     "mcp:serve": "node out/mcp/stdio.js",
-    "check": "npm run check:architecture && npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build",
+    "check": "npm run check:architecture && npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run test:appkit && npm run build",
     "package:mac": "npm run build && electron-builder --mac dir",
     "install:local": "npm run package:mac && node scripts/install-local-beta.mjs",
     "update:local": "node scripts/update-local-beta.mjs",
     "postinstall": "node scripts/ensure-electron.mjs && electron-builder install-app-deps",
-    "build:native": "node scripts/build-native-glass.mjs"
+    "build:native": "node scripts/build-native-glass.mjs && node scripts/build-native-appkit.mjs",
+    "test:appkit": "vitest run --config vitest.appkit.config.ts --coverage",
+    "smoke:appkit": "npm run build --silent && node scripts/smoke-native-appkit.mjs && node scripts/smoke-appkit-controls.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
@@ -92,7 +94,8 @@
       ]
     },
     "asarUnpack": [
-      "out/native-glass/*.node"
+      "out/native-glass/*.node",
+      "out/native-appkit/*.node"
     ]
   },
   "allowScripts": {

@@ -31,7 +31,7 @@ test('macOS 27 keeps edge navigation, readable toolbar and accessible materials'
   const fixtureDirectory = await mkdtemp(join(tmpdir(), 'therss-appearance-'))
   const application = await electron.launch({
     args: [`--user-data-dir=${fixtureDirectory}`, '.'],
-    env: { ...env, THERSS_E2E_FIXTURES: '1', THERSS_NATIVE_GLASS: 'off' }
+    env: { ...env, THERSS_E2E_FIXTURES: '1', THERSS_UI: 'web', THERSS_NATIVE_GLASS: 'off' }
   })
 
   try {

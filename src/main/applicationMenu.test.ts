@@ -11,6 +11,22 @@ function submenuFor(
 }
 
 describe('createApplicationMenuTemplate', () => {
+  it('routes editing and zoom commands into the native responder instead of Chromium', () => {
+    const nativeAction = vi.fn()
+    const template = createApplicationMenuTemplate(vi.fn(), true, nativeAction)
+    const edit = submenuFor(template, 'Edit')
+    const zoom = submenuFor(template, 'View')
+    expect(zoom.some((item) => item.role === 'zoomIn')).toBe(false)
+    const invoke = (item: MenuItemConstructorOptions | undefined) =>
+      item?.click?.(
+        {} as Electron.MenuItem,
+        {} as Electron.BaseWindow,
+        {} as Electron.KeyboardEvent
+      )
+    invoke(edit.find((item) => item.label === 'Copy'))
+    invoke(zoom.find((item) => item.label === 'Zoom In'))
+    expect(nativeAction.mock.calls).toEqual([['copy'], ['zoom-in']])
+  })
   it('exposes the native Close Window role for the macOS Command+W shortcut', () => {
     const template = createApplicationMenuTemplate(vi.fn(), true)
 

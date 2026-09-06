@@ -80,3 +80,9 @@ pass, but findings and resolutions must be recorded.
 - Add regression coverage.
 - Record user/data impact and rollback requirements.
 - Use a short blameless incident note for data loss, security exposure, broken updates, or repeated source failures.
+
+## Complete AppKit verification
+
+The default macOS26+ interface is governed by ADR 0011. `npm run test:appkit` enforces four-dimensional coverage for its TypeScript controllers and window boundary. `npm run smoke:appkit` runs real AppKit controls in disposable profiles and requires native screenshots by default. Existing Playwright DOM suites explicitly select `THERSS_UI=web` and cannot certify the native route.
+
+CI sets `THERSS_NATIVE_SCREENSHOTS=0` for native behavior checks only; its result records `screenshots: false`. Local release acceptance separately requires current WindowServer captures and visual review. `npm run smoke:package` verifies both compatibility preload and the packaged default AppKit workflows. Never use fixture analysis/promotion receipts as evidence of a live source/model/vault operation.

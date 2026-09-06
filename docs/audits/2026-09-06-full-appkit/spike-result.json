@@ -1,0 +1,27 @@
+{
+  "state": {
+    "secret": "NSSecureTextField",
+    "reading": "NSTextView",
+    "query": "NSTextField",
+    "queryValue": "\u8fb9\u7f18\u8ba1\u7b97 \ud83d\udd2c native UI",
+    "nativeRoot": "TRNativeCanvas",
+    "textLength": 3343,
+    "secretValue": "redacted",
+    "windowNumber": 12912,
+    "split": "NSSplitView",
+    "table": "NSTableView",
+    "sidebarWidth": 240,
+    "webHidden": true,
+    "selectedRow": 1
+  },
+  "events": [
+    {
+      "query": "\u8fb9\u7f18\u8ba1\u7b97 \ud83d\udd2c native UI",
+      "action": "search",
+      "hasSecret": true
+    }
+  ],
+  "webElementCount": 0,
+  "scope": "native-only host foundation; not complete product workflow acceptance",
+  "fixtureOnly": true
+}

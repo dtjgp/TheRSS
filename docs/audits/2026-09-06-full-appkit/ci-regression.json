@@ -1,0 +1,158 @@
+{
+  "passed": true,
+  "screenshots": false,
+  "dialogs": [
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1788705626914
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788705626978
+    },
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1788705626990
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 1,
+        "checkboxChecked": false
+      },
+      "time": 1788705627033
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788705628644
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788705628723
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1788705629350
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 1,
+        "checkboxChecked": false
+      },
+      "time": 1788705630649
+    },
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1788705632845
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1788705633424
+    },
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1788705633443
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 1,
+        "checkboxChecked": false
+      },
+      "time": 1788705634029
+    }
+  ],
+  "profile": "/var/folders/d9/50r202r14gbc_shcxg960xrh0000gn/T/therss-appkit-acceptance-BoGx8t",
+  "checks": [
+    {
+      "name": "Native root, blank Web page and Unicode boundary",
+      "passed": true,
+      "elapsedMs": 204
+    },
+    {
+      "name": "All 22 source choices and semantic search",
+      "passed": true,
+      "elapsedMs": 746
+    },
+    {
+      "name": "Native reading, Save, full analysis and search details sheet",
+      "passed": true,
+      "elapsedMs": 1108
+    },
+    {
+      "name": "Saved repository analysis and independent source/runner filters",
+      "passed": true,
+      "elapsedMs": 468
+    },
+    {
+      "name": "Secure key then immediate Save uses the real ordered callback queue",
+      "passed": true,
+      "elapsedMs": 760
+    },
+    {
+      "name": "Secure draft survives tabs and explicit discard clears the hidden native field",
+      "passed": true,
+      "elapsedMs": 317
+    },
+    {
+      "name": "Persisted Analytics metrics and complete analysis artifact",
+      "passed": true,
+      "elapsedMs": 299
+    },
+    {
+      "name": "Source focus is separate from activation; content stays read-only",
+      "passed": true,
+      "elapsedMs": 360
+    },
+    {
+      "name": "Local search uses a native sheet and safe external-open routing",
+      "passed": true,
+      "elapsedMs": 246
+    },
+    {
+      "name": "Promotion preview includes verified facts and produces a fixture receipt only after confirmation",
+      "passed": true,
+      "elapsedMs": 2831
+    },
+    {
+      "name": "Native editing Undo, zoom, dividers and narrow window layout",
+      "passed": true,
+      "elapsedMs": 1770
+    },
+    {
+      "name": "Dirty marked-text close guard and native window recreation preserve data/preferences",
+      "passed": true,
+      "elapsedMs": 1923
+    }
+  ],
+  "errors": [
+    "2026-09-06 16:40:25.681 Electron[14879:10669191] error messaging the mach port for IMKCFRunLoopWakeUpReliable\n"
+  ],
+  "webElementCount": 0,
+  "nativeRoot": "TRCanvas"
+}

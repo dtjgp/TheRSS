@@ -1,0 +1,303 @@
+{
+  "passed": true,
+  "screenshots": true,
+  "checks": [
+    "Native table cells, complete Unicode content, code and inline styles",
+    "Ragged Markdown table preserves text without cell-allocation amplification",
+    "Whole-document cell budget falls back to complete literal text",
+    "Real marked-text composition survives asynchronous presentation and commits intact",
+    "Native high-contrast appearances and reduced-transparency fallback"
+  ],
+  "state": {
+    "modal": null,
+    "firstResponder": "NSTextView",
+    "disposed": false,
+    "ownedWindowServerEntries": [
+      {
+        "kCGWindowLayer": 0,
+        "kCGWindowAlpha": 1,
+        "kCGWindowMemoryUsage": 2432,
+        "kCGWindowSharingState": 1,
+        "kCGWindowOwnerPID": 92870,
+        "kCGWindowNumber": 14085,
+        "kCGWindowOwnerName": "Electron",
+        "kCGWindowStoreType": 1,
+        "kCGWindowBounds": {
+          "X": 0,
+          "Height": 500,
+          "Y": 940,
+          "Width": 500
+        },
+        "kCGWindowName": ""
+      },
+      {
+        "kCGWindowLayer": 0,
+        "kCGWindowAlpha": 1,
+        "kCGWindowMemoryUsage": 2432,
+        "kCGWindowSharingState": 1,
+        "kCGWindowOwnerPID": 92870,
+        "kCGWindowNumber": 14084,
+        "kCGWindowOwnerName": "Electron",
+        "kCGWindowStoreType": 1,
+        "kCGWindowBounds": {
+          "X": 0,
+          "Height": 30,
+          "Y": 0,
+          "Width": 2560
+        },
+        "kCGWindowName": ""
+      },
+      {
+        "kCGWindowLayer": 0,
+        "kCGWindowAlpha": 1,
+        "kCGWindowMemoryUsage": 2432,
+        "kCGWindowSharingState": 1,
+        "kCGWindowOwnerPID": 92870,
+        "kCGWindowNumber": 14083,
+        "kCGWindowOwnerName": "Electron",
+        "kCGWindowStoreType": 1,
+        "kCGWindowBounds": {
+          "X": 0,
+          "Height": 30,
+          "Y": 0,
+          "Width": 2560
+        },
+        "kCGWindowName": ""
+      },
+      {
+        "kCGWindowLayer": 0,
+        "kCGWindowAlpha": 1,
+        "kCGWindowMemoryUsage": 2432,
+        "kCGWindowSharingState": 1,
+        "kCGWindowOwnerPID": 92870,
+        "kCGWindowNumber": 14082,
+        "kCGWindowOwnerName": "Electron",
+        "kCGWindowStoreType": 1,
+        "kCGWindowBounds": {
+          "X": 0,
+          "Height": 30,
+          "Y": 0,
+          "Width": 2560
+        },
+        "kCGWindowName": ""
+      },
+      {
+        "kCGWindowLayer": 0,
+        "kCGWindowAlpha": 1,
+        "kCGWindowMemoryUsage": 2432,
+        "kCGWindowSharingState": 1,
+        "kCGWindowOwnerPID": 92870,
+        "kCGWindowNumber": 14081,
+        "kCGWindowOwnerName": "Electron",
+        "kCGWindowStoreType": 1,
+        "kCGWindowBounds": {
+          "X": 0,
+          "Height": 30,
+          "Y": 0,
+          "Width": 2560
+        },
+        "kCGWindowName": ""
+      },
+      {
+        "kCGWindowName": "therss",
+        "kCGWindowLayer": 0,
+        "kCGWindowMemoryUsage": 2432,
+        "kCGWindowIsOnscreen": true,
+        "kCGWindowSharingState": 1,
+        "kCGWindowOwnerPID": 92870,
+        "kCGWindowOwnerName": "Electron",
+        "kCGWindowNumber": 14080,
+        "kCGWindowStoreType": 1,
+        "kCGWindowBounds": {
+          "X": 780,
+          "Height": 760,
+          "Y": 340,
+          "Width": 1000
+        },
+        "kCGWindowAlpha": 1
+      },
+      {
+        "kCGWindowName": "TheRSS",
+        "kCGWindowLayer": 0,
+        "kCGWindowMemoryUsage": 2432,
+        "kCGWindowIsOnscreen": true,
+        "kCGWindowSharingState": 1,
+        "kCGWindowOwnerPID": 92870,
+        "kCGWindowOwnerName": "Electron",
+        "kCGWindowNumber": 14079,
+        "kCGWindowStoreType": 1,
+        "kCGWindowBounds": {
+          "X": 80,
+          "Height": 880,
+          "Y": 60,
+          "Width": 1360
+        },
+        "kCGWindowAlpha": 1
+      }
+    ],
+    "nativeRoot": "TRCanvas",
+    "alerts": [],
+    "windowAppearance": "NSAppearanceNameAqua",
+    "miniaturized": false,
+    "secureDrafts": {},
+    "windowNumber": 14080,
+    "windowEffectiveAppearance": "NSAppearanceNameAqua",
+    "visible": true,
+    "root": {
+      "children": [
+        {
+          "controlAppearance": "NSAppearanceNameAqua",
+          "id": "fixture-glass",
+          "frame": "{{20, 20}, {960, 55}}",
+          "appearance": "NSAppearanceNameAqua",
+          "class": "NSGlassEffectView",
+          "material": "glass",
+          "label": "",
+          "kind": "column",
+          "children": [
+            {
+              "controlAppearance": "NSAppearanceNameAqua",
+              "enabled": true,
+              "id": "fixture-title",
+              "frame": "{{12, 12}, {936, 31}}",
+              "appearance": "NSAppearanceNameAqua",
+              "class": "TRLabel",
+              "text": "Async refresh during composition",
+              "label": "",
+              "kind": "label",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "fixture-input",
+          "label": "Composition",
+          "frame": "{{20, 87}, {960, 120}}",
+          "controlAppearance": "NSAppearanceNameAqua",
+          "scrollOrigin": "{0, 0}",
+          "value": "边缘计算 🔬",
+          "enabled": true,
+          "appearance": "NSAppearanceNameAqua",
+          "selection": "{7, 0}",
+          "children": [],
+          "kind": "input",
+          "class": "NSScrollView",
+          "marked": false,
+          "documentClass": "NSTextView"
+        },
+        {
+          "id": "fixture-text",
+          "label": "Research content",
+          "tableCells": [
+            {
+              "row": 0,
+              "column": 0
+            },
+            {
+              "row": 0,
+              "column": 1
+            },
+            {
+              "row": 0,
+              "column": 2
+            },
+            {
+              "row": 1,
+              "column": 0
+            },
+            {
+              "row": 1,
+              "column": 1
+            },
+            {
+              "row": 1,
+              "column": 2
+            },
+            {
+              "row": 2,
+              "column": 0
+            },
+            {
+              "row": 2,
+              "column": 1
+            },
+            {
+              "row": 2,
+              "column": 2
+            }
+          ],
+          "frame": "{{20, 219}, {960, 331}}",
+          "controlAppearance": "NSAppearanceNameAqua",
+          "styledRuns": [
+            {
+              "italic": false,
+              "text": "Complete analysis",
+              "bold": true
+            },
+            {
+              "italic": false,
+              "text": "\n",
+              "bold": true
+            },
+            {
+              "italic": false,
+              "text": "bold",
+              "bold": true
+            },
+            {
+              "italic": true,
+              "text": "emphasis",
+              "bold": false
+            },
+            {
+              "italic": false,
+              "text": "Method",
+              "bold": true
+            },
+            {
+              "italic": false,
+              "text": "\n",
+              "bold": true
+            },
+            {
+              "italic": false,
+              "text": "Score",
+              "bold": true
+            },
+            {
+              "italic": false,
+              "text": "\n",
+              "bold": true
+            },
+            {
+              "italic": false,
+              "text": "Evidence",
+              "bold": true
+            },
+            {
+              "italic": false,
+              "text": "\n",
+              "bold": true
+            }
+          ],
+          "selectable": true,
+          "text": "Complete analysis\n\nA bold result and emphasis.\n\nMethod\nScore\nEvidence\nBaseline\n89.2\nMeasured\n边缘 AI\n90.4\n单元格保留完整文本\n\n\n• Limits remain explicit.\n\nvalue = 1 | 2\n",
+          "appearance": "NSAppearanceNameAqua",
+          "children": [],
+          "kind": "text",
+          "class": "NSTextView"
+        }
+      ],
+      "id": "fixture-root",
+      "frame": "{{0, 0}, {1000, 728}}",
+      "class": "TRNode",
+      "appearance": "NSAppearanceNameAqua",
+      "label": "",
+      "kind": "column"
+    },
+    "webHidden": true,
+    "onActiveSpace": true,
+    "firstResponderId": "fixture-input",
+    "zoom": 1
+  }
+}
