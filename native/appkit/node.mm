@@ -1,12 +1,79 @@
 #import "ui.h"
+#include <cmath>
+
+static CGFloat TRLuminance(NSColor *color) {
+  NSColor *rgb = [color colorUsingColorSpace:NSColorSpace.sRGBColorSpace];
+  auto linear = [](CGFloat channel) { return channel <= 0.04045 ? channel/12.92 : std::pow((channel+0.055)/1.055,2.4); };
+  return 0.2126*linear(rgb.redComponent)+0.7152*linear(rgb.greenComponent)+0.0722*linear(rgb.blueComponent);
+}
+static NSColor *TRPrimaryBackground(NSColor *accent) {
+  // AppKit's colored bezel draws its title white even when contentTintColor is
+  // black. Preserve the system hue but darken bright accents enough for that
+  // actual native foreground, with a margin for bezel compositing.
+  NSColor *color = accent;
+  for (CGFloat amount = 0.18; amount <= 0.9; amount += 0.06) {
+    color = [accent blendedColorWithFraction:amount ofColor:NSColor.blackColor];
+    if (TRLuminance(color) <= 0.14) break;
+  }
+  return color;
+}
+static CGFloat TRContrast(NSColor *first, NSColor *second) {
+  CGFloat a = TRLuminance(first), b = TRLuminance(second);
+  return (MAX(a,b)+0.05)/(MIN(a,b)+0.05);
+}
+static NSColor *TRChartColor(NSColor *accent) {
+  NSColor *background = NSColor.textBackgroundColor;
+  if (TRContrast(accent,background) >= 3.2) return accent;
+  NSColor *target = TRLuminance(background) < 0.179 ? NSColor.whiteColor : NSColor.blackColor;
+  for (CGFloat amount = 0.06; amount < 1; amount += 0.06) {
+    NSColor *candidate = [accent blendedColorWithFraction:amount ofColor:target];
+    if (TRContrast(candidate,background) >= 3.2) return candidate;
+  }
+  return target;
+}
 
 @interface TRLabel : NSTextField @end
 @implementation TRLabel
 - (BOOL)allowsVibrancy { return NO; }
 @end
-@interface TRButton : NSButton @end
+@interface TRButtonCell : NSButtonCell
+@property(nonatomic) CGFloat leadingInset;
+@end
+@implementation TRButtonCell
+- (void)drawInteriorWithFrame:(NSRect)frame inView:(NSView *)view {
+  [super drawInteriorWithFrame:NSInsetRect(frame,self.leadingInset,0) inView:view];
+}
+@end
+@interface TRButton : NSButton
+@property(nonatomic, copy) NSString *emphasis;
+@property(nonatomic, strong) NSColor *accent;
+@property(nonatomic) BOOL highContrast;
+@end
 @implementation TRButton
++ (Class)cellClass { return TRButtonCell.class; }
 - (BOOL)allowsVibrancy { return NO; }
+- (void)drawRect:(NSRect)rect {
+  if ([self.emphasis isEqual:@"navigation"] && self.state == NSControlStateValueOn) {
+    [[self.accent colorWithAlphaComponent:0.14] setFill];
+    NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:NSInsetRect(self.bounds,1,1) xRadius:8 yRadius:8]; [path fill];
+    if (self.highContrast) { [NSColor.labelColor setStroke]; path.lineWidth = 1.5; [path stroke]; }
+  }
+  [super drawRect:rect];
+}
+@end
+
+@interface TRResearchCell : NSTableCellView
+@property(nonatomic, strong) NSTextField *detailField;
+@property(nonatomic) CGFloat zoom;
+@end
+@implementation TRResearchCell
+- (void)layout {
+  [super layout];
+  CGFloat inset = 12*self.zoom, width = MAX(20,self.bounds.size.width-2*inset);
+  self.textField.frame = NSMakeRect(inset,27*self.zoom,width,35*self.zoom);
+  self.textField.preferredMaxLayoutWidth = width;
+  self.detailField.frame = NSMakeRect(inset,7*self.zoom,width,16*self.zoom);
+}
 @end
 
 @interface TRTable : NSTableView
@@ -56,6 +123,19 @@ static NSString *TRString(id value) { return [value isKindOfClass:NSString.class
 static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { return spec[key] ? [spec[key] doubleValue] : fallback; }
 
 @implementation TRNode
+- (void)drawRect:(NSRect)rect {
+  [super drawRect:rect];
+  NSString *surface = self.spec[@"surface"];
+  if (!surface) return;
+  NSColor *fill = [surface isEqual:@"inset"] ? NSColor.controlBackgroundColor : NSColor.textBackgroundColor;
+  [fill setFill];
+  NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:NSInsetRect(self.bounds,0.5,0.5) xRadius:10 yRadius:10];
+  [path fill];
+  if (![surface isEqual:@"reading"]) {
+    [(self.host.increaseContrast ? NSColor.labelColor : NSColor.separatorColor) setStroke];
+    path.lineWidth = self.host.increaseContrast ? 1.5 : 0.5; [path stroke];
+  }
+}
 - (void)updateMaterial {
   if (![self.spec[@"glass"] boolValue]) return;
   BOOL opaque = [self.host reduceTransparency];
@@ -74,12 +154,47 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   // ordinary enabled text to ~1.6:1 contrast after dark-appearance transitions.
   [self addSubview:self.control]; [self addSubview:self.container]; self.needsLayout = YES;
 }
+- (void)updateControlAppearance {
+  if (!self.control || !self.spec) return;
+  NSDictionary *spec = self.spec;
+  [self.host.canvas.effectiveAppearance performAsCurrentDrawingAppearance:^{
+    if ([spec[@"kind"] isEqual:@"chart"]) {
+      TRChart *chart = (TRChart *)self.control;
+      chart.accent = TRChartColor(self.host.fixture && self.host.fixtureAccent ? self.host.fixtureAccent : NSColor.controlAccentColor);
+      chart.highContrast = self.host.increaseContrast;
+      chart.needsDisplay = YES;
+    }
+    if ([spec[@"kind"] isEqual:@"button"]) {
+      TRButton *button = (TRButton *)self.control;
+      button.emphasis = spec[@"emphasis"];
+      BOOL navigation = [button.emphasis isEqual:@"navigation"], quiet = [button.emphasis isEqual:@"quiet"], primary = [button.emphasis isEqual:@"primary"];
+      button.bordered = !navigation && !quiet;
+      button.alignment = navigation ? NSTextAlignmentLeft : NSTextAlignmentCenter;
+      button.accent = self.host.fixture && self.host.fixtureAccent ? self.host.fixtureAccent : NSColor.controlAccentColor;
+      button.highContrast = self.host.increaseContrast;
+      button.bezelColor = primary ? TRPrimaryBackground(button.accent) : nil;
+      button.contentTintColor = primary && button.enabled ? NSColor.whiteColor : navigation ? NSColor.labelColor : nil;
+      ((TRButtonCell *)button.cell).leadingInset = navigation ? 8*self.host.zoom : 0;
+      if (navigation) { ((NSButtonCell *)button.cell).highlightsBy = NSNoCellMask; ((NSButtonCell *)button.cell).showsStateBy = NSNoCellMask; }
+      button.image = spec[@"symbol"] ? [NSImage imageWithSystemSymbolName:spec[@"symbol"] accessibilityDescription:nil] : nil;
+      button.symbolConfiguration = [NSImageSymbolConfiguration configurationWithPointSize:14*self.host.zoom weight:NSFontWeightMedium];
+      button.imagePosition = button.image ? NSImageLeading : NSNoImage;
+      button.font = [NSFont systemFontOfSize:self.font.pointSize weight:navigation && [spec[@"checked"] boolValue] ? NSFontWeightSemibold : NSFontWeightRegular];
+      button.needsDisplay = YES;
+    }
+  }];
+}
 - (void)viewDidChangeEffectiveAppearance {
   [super viewDidChangeEffectiveAppearance];
   // Glass supplies a vibrant inherited appearance even to non-vibrant controls.
   // Give text/buttons the window's ordinary appearance so semantic label colors
   // remain legible in dark mode and after an appearance transition.
   if (self.control) self.control.appearance = self.host.canvas.effectiveAppearance;
+  if ([self.spec[@"kind"] isEqual:@"table"]) {
+    NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
+    table.backgroundColor = NSColor.textBackgroundColor;
+  }
+  [self updateControlAppearance];
   self.needsDisplay = YES;
 }
 - (instancetype)initWithHost:(TRHost *)host spec:(NSDictionary *)spec {
@@ -107,6 +222,8 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     self.container = [TRCanvas new]; scroll.documentView = self.container; self.control = scroll;
   } else if ([kind isEqual:@"label"]) {
     NSTextField *label = [TRLabel wrappingLabelWithString:@""]; label.selectable = YES; self.control = label;
+  } else if ([kind isEqual:@"chart"]) {
+    TRChart *chart = [TRChart new]; chart.accessibilityElement = YES; chart.accessibilityRole = NSAccessibilityImageRole; self.control = chart;
   } else if ([kind isEqual:@"text"]) {
     NSTextView *text = [[NSTextView alloc] initWithFrame:NSMakeRect(0,0,500,100)];
     text.editable = NO; text.selectable = YES; text.drawsBackground = NO; text.delegate = self;
@@ -114,7 +231,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     text.textContainer.widthTracksTextView = YES; text.verticallyResizable = YES; text.horizontallyResizable = NO;
     text.automaticLinkDetectionEnabled = NO; self.control = text;
   } else if ([kind isEqual:@"input"] && [self.spec[@"multiline"] boolValue]) {
-    NSScrollView *scroll = [NSScrollView new]; scroll.hasVerticalScroller = YES; scroll.borderType = NSBezelBorder;
+    NSScrollView *scroll = [NSScrollView new]; scroll.hasVerticalScroller = YES; scroll.autohidesScrollers = YES; scroll.borderType = NSBezelBorder;
     NSTextView *input = [[NSTextView alloc] initWithFrame:NSMakeRect(0,0,500,100)]; input.delegate = self; input.richText = NO;
     input.allowsUndo = YES; input.textContainerInset = NSMakeSize(8, 8); input.textContainer.widthTracksTextView = YES;
     input.autoresizingMask = NSViewWidthSizable; input.verticallyResizable = YES; input.horizontallyResizable = NO;
@@ -133,8 +250,8 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   } else if ([kind isEqual:@"table"]) {
     NSScrollView *scroll = [NSScrollView new]; scroll.hasVerticalScroller = YES; scroll.autohidesScrollers = YES; scroll.drawsBackground = NO;
     TRTable *table = [TRTable new]; table.node = self; table.delegate = self; table.dataSource = self;
-    table.headerView = nil; table.rowHeight = 65 * self.host.zoom; table.intercellSpacing = NSMakeSize(0, 4);
-    table.style = NSTableViewStyleSourceList;
+    table.headerView = nil; table.rowHeight = 70 * self.host.zoom; table.intercellSpacing = NSMakeSize(0, 2);
+    table.style = NSTableViewStyleInset; table.backgroundColor = NSColor.textBackgroundColor;
     NSTableColumn *column = [[NSTableColumn alloc] initWithIdentifier:@"item"]; [table addTableColumn:column];
     table.columnAutoresizingStyle = NSTableViewLastColumnOnlyAutoresizingStyle;
     table.allowsEmptySelection = YES; scroll.documentView = table; self.control = scroll;
@@ -155,7 +272,16 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   }
   if ([kind isEqual:@"label"]) {
     NSTextField *label = (NSTextField *)self.control; label.stringValue = TRString(spec[@"text"] ?: spec[@"title"]);
+    label.maximumNumberOfLines = [spec[@"maxLines"] integerValue];
+    label.lineBreakMode = spec[@"maxLines"] ? NSLineBreakByTruncatingTail : NSLineBreakByWordWrapping;
+    label.toolTip = spec[@"maxLines"] ? label.stringValue : nil;
     label.textColor = [spec[@"weight"] isEqual:@"secondary"] && ![self.host increaseContrast] ? NSColor.secondaryLabelColor : NSColor.labelColor;
+  } else if ([kind isEqual:@"chart"]) {
+    TRChart *chart = (TRChart *)self.control;
+    chart.points = spec[@"points"] ?: @[]; chart.zoom = self.host.zoom; chart.highContrast = self.host.increaseContrast;
+    NSMutableArray *values = [NSMutableArray array];
+    for (NSDictionary *point in chart.points) [values addObject:[NSString stringWithFormat:@"%@: %@ %@",point[@"date"],point[@"value"],TRString(spec[@"text"])]];
+    chart.accessibilityValue = [values componentsJoinedByString:@"; "]; chart.toolTip = chart.accessibilityValue; chart.needsDisplay = YES;
   } else if ([kind isEqual:@"text"]) {
     NSTextView *text = (NSTextView *)self.control;
     if (![old[@"text"] isEqual:spec[@"text"]] || text.font.pointSize != self.font.pointSize) {
@@ -181,9 +307,10 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       else if (force || !editing) { NSString *value = TRString(spec[@"value"]); if (![input.stringValue isEqual:value]) input.stringValue = value; }
     }
   } else if ([kind isEqual:@"button"] || [kind isEqual:@"check"]) {
-    NSButton *button = (NSButton *)self.control; button.title = TRString(spec[@"title"]);
+    TRButton *button = (TRButton *)self.control; button.title = TRString(spec[@"title"]);
     if ([kind isEqual:@"button"] && spec[@"checked"]) [button setButtonType:NSButtonTypePushOnPushOff];
     button.state = [spec[@"checked"] boolValue] ? NSControlStateValueOn : NSControlStateValueOff;
+    button.needsDisplay = YES;
   } else if ([kind isEqual:@"select"]) {
     NSPopUpButton *select = (NSPopUpButton *)self.control;
     if (![old[@"options"] isEqual:spec[@"options"]]) {
@@ -194,8 +321,9 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     for (NSMenuItem *item in select.itemArray) if ([item.representedObject isEqual:spec[@"selected"]]) [select selectItem:item];
   } else if ([kind isEqual:@"table"]) {
     NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
-    BOOL fontChanged = table.rowHeight != 65 * self.host.zoom;
-    table.rowHeight = 65 * self.host.zoom;
+    BOOL fontChanged = table.rowHeight != 70 * self.host.zoom;
+    table.rowHeight = 70 * self.host.zoom;
+    table.backgroundColor = NSColor.textBackgroundColor;
     NSPoint origin = ((NSScrollView *)self.control).contentView.bounds.origin;
     if (fontChanged || ![old[@"rows"] isEqual:spec[@"rows"]]) [table reloadData];
     NSInteger selected = -1, row = 0;
@@ -223,6 +351,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     self.resetScrollAfterLayout = YES;
   }
   if ([spec[@"adaptiveScroll"] boolValue] && old && ![[old[@"children"] lastObject][@"id"] isEqual:[spec[@"children"] lastObject][@"id"]]) self.resetScrollAfterLayout = YES;
+  [self updateControlAppearance];
   self.applying = NO; self.needsLayout = YES;
 }
 - (CGFloat)preferredWidth {
@@ -233,7 +362,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
 - (BOOL)wrapsRowAtWidth:(CGFloat)width {
   CGFloat padding = TRNumber(self.spec,@"padding",0) * self.host.zoom, gap = TRNumber(self.spec,@"gap",10) * self.host.zoom;
   CGFloat fixed = MAX(0,(NSInteger)self.nodes.count-1)*gap;
-  for (TRNode *child in self.nodes) fixed += child.spec[@"flex"] ? MIN(180*self.host.zoom,child.preferredWidth) : child.preferredWidth;
+  for (TRNode *child in self.nodes) fixed += [child.spec[@"flex"] doubleValue] > 0 ? MIN(180*self.host.zoom,child.preferredWidth) : child.preferredWidth;
   return fixed > width - 2*padding;
 }
 - (CGFloat)wrappedRowAtWidth:(CGFloat)width apply:(BOOL)apply {
@@ -262,14 +391,15 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   }
   if ([kind isEqual:@"label"]) {
     NSRect rect = [((NSTextField *)self.control).attributedStringValue boundingRectWithSize:NSMakeSize(MAX(20,width),100000) options:NSStringDrawingUsesLineFragmentOrigin|NSStringDrawingUsesFontLeading];
-    return ceil(rect.size.height) + 4;
+    CGFloat maximum = self.spec[@"maxLines"] ? ceil(self.font.ascender-self.font.descender+self.font.leading)*[self.spec[@"maxLines"] integerValue] : 100000;
+    return MIN(ceil(rect.size.height),maximum) + 4;
   }
   if ([kind isEqual:@"text"]) {
     NSTextView *text = (NSTextView *)self.control;
     text.textContainer.containerSize = NSMakeSize(MAX(20,width),CGFLOAT_MAX);
     [text.layoutManager ensureLayoutForTextContainer:text.textContainer];
     NSRect rect = [text.layoutManager usedRectForTextContainer:text.textContainer];
-    return ceil(rect.size.height) + 20;
+    return ceil(rect.size.height) + 2*text.textContainerInset.height;
   }
   if ([kind isEqual:@"split"]) return TRNumber(self.spec,@"minHeight",self.spec[@"collapseAt"] && width < [self.spec[@"collapseAt"] doubleValue] ? 340 : 200) * zoom;
   if ([kind isEqual:@"scroll"] || [kind isEqual:@"table"]) return TRNumber(self.spec,@"minHeight",200) * zoom;
@@ -292,7 +422,10 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   if ([kind isEqual:@"scroll"]) {
     NSScrollView *scroll = (NSScrollView *)self.control;
     CGFloat contentWidth = scroll.contentSize.width, y = 0;
-    for (TRNode *child in self.nodes) { CGFloat h = [child heightForWidth:contentWidth]; child.frame = NSMakeRect(0,y,contentWidth,h); y += h; }
+    for (TRNode *child in self.nodes) {
+      CGFloat childWidth = MIN(contentWidth,TRNumber(child.spec,@"maxWidth",contentWidth/self.host.zoom)*self.host.zoom);
+      CGFloat h = [child heightForWidth:childWidth]; child.frame = NSMakeRect(0,y,childWidth,h); y += h;
+    }
     self.container.frame = NSMakeRect(0,0,contentWidth,MAX(y,scroll.contentSize.height));
   } else if ([kind isEqual:@"split"] && self.nodes.count == 2) {
     NSSplitView *split = (NSSplitView *)self.control;
@@ -314,11 +447,16 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       return;
     }
     CGFloat total = MAX(0,(NSInteger)self.nodes.count-1) * gap, flex = 0;
-    for (TRNode *child in self.nodes) { if (child.spec[@"flex"]) flex += [child.spec[@"flex"] doubleValue]; else total += row ? child.preferredWidth : [child heightForWidth:MAX(20,width-2*padding)]; }
+    for (TRNode *child in self.nodes) { if ([child.spec[@"flex"] doubleValue] > 0) flex += [child.spec[@"flex"] doubleValue]; else total += row ? child.preferredWidth : [child heightForWidth:MAX(20,width-2*padding)]; }
     CGFloat available = MAX(0, (row ? width : height) - 2*padding - total), position = padding;
     for (TRNode *child in self.nodes) {
-      CGFloat extent = child.spec[@"flex"] && flex ? available * [child.spec[@"flex"] doubleValue] / flex : (row ? child.preferredWidth : [child heightForWidth:MAX(20,width-2*padding)]);
-      child.frame = row ? NSMakeRect(position,padding,extent,MAX(0,height-2*padding)) : NSMakeRect(padding,position,MAX(0,width-2*padding),extent);
+      CGFloat extent = [child.spec[@"flex"] doubleValue] > 0 && flex ? available * [child.spec[@"flex"] doubleValue] / flex : (row ? child.preferredWidth : [child heightForWidth:MAX(20,width-2*padding)]);
+      CGFloat childWidth = MAX(0,width-2*padding);
+      if (!row && ![child.spec[@"kind"] isEqual:@"split"]) {
+        if (child.spec[@"width"]) childWidth = MIN(childWidth,[child.spec[@"width"] doubleValue]*self.host.zoom);
+        if (child.spec[@"maxWidth"]) childWidth = MIN(childWidth,[child.spec[@"maxWidth"] doubleValue]*self.host.zoom);
+      }
+      child.frame = row ? NSMakeRect(position,padding,extent,MAX(0,height-2*padding)) : NSMakeRect(padding,position,childWidth,extent);
       position += extent + gap;
     }
   } else if ([kind isEqual:@"table"]) {
@@ -344,15 +482,16 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
 - (NSView *)tableView:(NSTableView *)table viewForTableColumn:(NSTableColumn *)column row:(NSInteger)row {
   NSArray *rows = self.spec[@"rows"]; if (row < 0 || row >= (NSInteger)rows.count) return nil;
   NSDictionary *item = rows[row];
-  NSTableCellView *cell = [NSTableCellView new];
+  TRResearchCell *cell = [TRResearchCell new]; cell.zoom = self.host.zoom;
   NSTextField *label = [NSTextField wrappingLabelWithString:item[@"title"]];
-  label.font = self.font; label.maximumNumberOfLines = 2; label.lineBreakMode = NSLineBreakByWordWrapping;
+  label.font = [NSFont systemFontOfSize:self.font.pointSize weight:NSFontWeightMedium]; label.maximumNumberOfLines = 2; label.lineBreakMode = NSLineBreakByWordWrapping;
   label.cell.wraps = YES; label.cell.usesSingleLineMode = NO;
-  label.frame = NSMakeRect(10,23*self.host.zoom,MAX(30,column.width-20),36*self.host.zoom); label.autoresizingMask = NSViewWidthSizable;
+  label.preferredMaxLayoutWidth = MAX(30,column.width-24*self.host.zoom);
   [cell addSubview:label]; cell.textField = label;
   NSTextField *detail = [NSTextField labelWithString:TRString(item[@"subtitle"])]; detail.font = [NSFont systemFontOfSize:11*self.host.zoom]; detail.textColor = NSColor.secondaryLabelColor;
-  detail.frame = NSMakeRect(10,4,MAX(30,column.width-20),18*self.host.zoom); detail.lineBreakMode = NSLineBreakByTruncatingTail; detail.autoresizingMask = NSViewWidthSizable;
-  [cell addSubview:detail]; cell.accessibilityLabel = [NSString stringWithFormat:@"%@. %@",item[@"title"],TRString(item[@"subtitle"])];
+  detail.lineBreakMode = NSLineBreakByTruncatingTail;
+  [cell addSubview:detail]; cell.detailField = detail; cell.toolTip = item[@"title"];
+  cell.accessibilityLabel = [NSString stringWithFormat:@"%@. %@",item[@"title"],TRString(item[@"subtitle"])];
   return cell;
 }
 - (NSString *)selectedRowId {
@@ -426,6 +565,18 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   NSMutableDictionary *result = [@{@"id":self.identifier ?: @"", @"kind":self.spec[@"kind"], @"class":self.control ? NSStringFromClass(self.control.class) : NSStringFromClass(self.class), @"frame":NSStringFromRect(self.frame), @"label":self.control.accessibilityLabel ?: @""} mutableCopy];
   result[@"appearance"] = self.effectiveAppearance.name;
   if (self.control) result[@"controlAppearance"] = self.control.effectiveAppearance.name;
+  if (self.spec[@"surface"]) result[@"surface"] = self.spec[@"surface"];
+  if ([self.control isKindOfClass:TRButton.class]) {
+    result[@"emphasis"] = ((TRButton *)self.control).emphasis ?: @"standard";
+    result[@"hasSymbol"] = @(((NSButton *)self.control).image != nil);
+    result[@"bordered"] = @(((NSButton *)self.control).bordered);
+    result[@"alignment"] = @(((NSButton *)self.control).alignment);
+    TRButton *button = (TRButton *)self.control;
+    if ([button.emphasis isEqual:@"primary"] && button.enabled) {
+      CGFloat background = TRLuminance(button.bezelColor), foreground = TRLuminance(button.contentTintColor);
+      result[@"primaryColorContrast"] = @((MAX(background,foreground)+0.05)/(MIN(background,foreground)+0.05));
+    }
+  }
   if ([self.spec[@"glass"] boolValue]) result[@"material"] = [self.control isKindOfClass:NSGlassEffectView.class] ? @"glass" : @"opaque";
   if ([self.spec[@"kind"] isEqual:@"secure"]) { result[@"value"] = @"[redacted]"; result[@"hasValue"] = @(((NSSecureTextField *)self.control).stringValue.length > 0); }
   else if ([self.spec[@"kind"] isEqual:@"input"]) result[@"value"] = [self.control isKindOfClass:NSScrollView.class] ? ((NSTextView *)((NSScrollView *)self.control).documentView).string : ((NSTextField *)self.control).stringValue;
@@ -445,6 +596,14 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     result[@"tableCells"] = cells; result[@"styledRuns"] = runs;
   }
   if ([self.spec[@"kind"] isEqual:@"label"]) result[@"text"] = ((NSTextField *)self.control).stringValue;
+  if ([self.spec[@"kind"] isEqual:@"chart"]) {
+    result[@"points"] = ((TRChart *)self.control).points;
+    result[@"bars"] = [(TRChart *)self.control geometry];
+    result[@"accessibleValues"] = self.control.accessibilityValue;
+    [self.control.effectiveAppearance performAsCurrentDrawingAppearance:^{
+      result[@"graphicContrast"] = @(TRContrast(((TRChart *)self.control).accent,NSColor.textBackgroundColor));
+    }];
+  }
   if ([self.control isKindOfClass:NSButton.class]) { result[@"title"] = ((NSButton *)self.control).title; result[@"checked"] = @(((NSButton *)self.control).state == NSControlStateValueOn); }
   if ([self.control isKindOfClass:NSPopUpButton.class]) result[@"selected"] = ((NSPopUpButton *)self.control).selectedItem.representedObject ?: @"";
   if ([self.control isKindOfClass:NSSplitView.class]) result[@"vertical"] = @(((NSSplitView *)self.control).vertical);
@@ -455,6 +614,16 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   if ([self.spec[@"kind"] isEqual:@"table"]) {
     result[@"selected"] = [self selectedRowId] ?: @""; result[@"rows"] = self.spec[@"rows"] ?: @[];
     NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
+    result[@"rowHeight"] = @(table.rowHeight); result[@"tableStyle"] = @(table.style);
+    if (table.numberOfRows) {
+      TRResearchCell *cell = (TRResearchCell *)[table viewAtColumn:0 row:0 makeIfNecessary:YES];
+      result[@"titleLines"] = @(cell.textField.maximumNumberOfLines);
+      result[@"titleFrame"] = NSStringFromRect(cell.textField.frame);
+      NSFont *font = cell.textField.font;
+      result[@"titleLineHeight"] = @(ceil(font.ascender-font.descender+font.leading));
+      NSRect required = [cell.textField.attributedStringValue boundingRectWithSize:NSMakeSize(MAX(20,cell.textField.frame.size.width),100000) options:NSStringDrawingUsesLineFragmentOrigin|NSStringDrawingUsesFontLeading];
+      result[@"titleRequiredHeight"] = @(required.size.height);
+    }
     if (table.numberOfRows) result[@"rowFontSize"] = @(((NSTableCellView *)[table viewAtColumn:0 row:0 makeIfNecessary:YES]).textField.font.pointSize);
   }
   if ([self.control isKindOfClass:NSControl.class]) result[@"enabled"] = @(((NSControl *)self.control).enabled);

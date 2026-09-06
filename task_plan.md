@@ -26,6 +26,15 @@ update is the complete AppKit working interface on macOS26+, with all five works
 native reading/forms/tables/sheets, shared validated services and an explicit Web rollback.
 The [migration audit](docs/audits/2026-09-06-full-appkit/audit.md) owns its acceptance matrix,
 current verifiers and evidence boundaries; ADR 0011 supersedes ADR 0010's mixed UI scope.
+The subsequent [native UI craft audit](docs/audits/2026-09-06-ui-craft/audit.md) records the
+2026-09-06 navigation, action, list, reading and form refinements, current native screenshots
+and scoped verification.
+The user subsequently authorized all three follow-up improvements plus local installation and
+GitHub synchronization. The [completion contract](docs/audits/2026-09-06-ui-workflow-completion/CHANGE_CONTRACT.md)
+tracks compact search, shared source groups, native history trends and their delivery evidence.
+These features and the preceding polish are implemented and locally installed with verified
+app/database backups. The [delivery summary](docs/audits/2026-09-06-ui-workflow-completion/DELIVERY.md)
+records full gates and the protected-main publication workflow.
 Deferred product work remains in [`docs/ROADMAP.md`](docs/ROADMAP.md); completed phase execution
 records live in [`docs/history/PHASE_EXECUTION_HISTORY.md`](docs/history/PHASE_EXECUTION_HISTORY.md).
 

@@ -21,3 +21,6 @@ secrets/
 # Recoverable branch consolidation and disposable visual captures
 output/branch-backups/
 output/playwright/macos27/
+
+# Installed-app audit captures contain local user research state.
+/docs/audits/2026-09-06-ui-craft/screenshots/0[1-4]-before-*.png

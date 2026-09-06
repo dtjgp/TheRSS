@@ -1,5 +1,19 @@
 import { z } from 'zod'
 
+const nativeSymbols = [
+  'sparkle.magnifyingglass',
+  'star',
+  'chart.bar',
+  'square.stack',
+  'gearshape',
+  'magnifyingglass',
+  'arrow.uturn.backward',
+  'sidebar.left',
+  'arrow.up.right',
+  'exclamationmark.circle',
+  'sparkles'
+] as const
+
 export interface NativeRow {
   readonly id: string
   readonly title: string
@@ -23,9 +37,15 @@ export type NativeKind =
   | 'select'
   | 'check'
   | 'table'
+  | 'chart'
 export interface NativeNode {
   readonly id: string
   readonly kind: NativeKind
+  readonly maxLines?: number | undefined
+  readonly points?: readonly { readonly date: string; readonly value: number }[] | undefined
+  readonly emphasis?: 'primary' | 'navigation' | 'quiet' | undefined
+  readonly symbol?: (typeof nativeSymbols)[number] | undefined
+  readonly surface?: 'panel' | 'inset' | 'reading' | undefined
   readonly title?: string | undefined
   readonly text?: string | undefined
   readonly value?: string | undefined
@@ -76,8 +96,24 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
         'button',
         'select',
         'check',
-        'table'
+        'table',
+        'chart'
       ]),
+      emphasis: z.enum(['primary', 'navigation', 'quiet']).optional(),
+      symbol: z.enum(nativeSymbols).optional(),
+      surface: z.enum(['panel', 'inset', 'reading']).optional(),
+      maxLines: z.number().int().min(1).max(6).optional(),
+      points: z
+        .array(
+          z
+            .object({
+              date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
+              value: z.number().int().min(0).max(1_000_000_000_000)
+            })
+            .strict()
+        )
+        .max(90)
+        .optional(),
       title: short.optional(),
       text: z.string().max(4_000_000).optional(),
       value: z.string().max(20_000).optional(),

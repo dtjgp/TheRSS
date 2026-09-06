@@ -39,6 +39,7 @@ export function nativeHarness(overrides: Partial<TheRSSApi> = {}) {
       agents: [{ runner: 'codex', label: 'Codex CLI', available: true }]
     },
     redraw: vi.fn(),
+    focus: vi.fn(),
     notify: vi.fn(),
     openExternal: vi.fn(),
     showDocument: vi.fn(),

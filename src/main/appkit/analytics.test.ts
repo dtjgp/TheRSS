@@ -47,6 +47,46 @@ const state = {
 }
 
 describe('AppKit analytics', () => {
+  it('charts only the selected persisted series and exposes exact daily values on request', async () => {
+    const h = nativeHarness({ getAnalytics: vi.fn(async () => snapshot) })
+    const screen = new AnalyticsScreen(h.context)
+    await screen.load()
+    expect(h.find(h.render(screen), 'analytics-trend')?.points).toEqual([
+      { date: '2026-09-06', value: 10 }
+    ])
+    await h.act(screen, 'analytics-trend-kind', 'today')
+    expect(h.find(h.render(screen), 'analytics-trend')?.points?.[0]?.value).toBe(2)
+    await h.act(screen, 'analytics-trend-kind', 'analysis')
+    expect(h.find(h.render(screen), 'analytics-trend')?.points?.[0]?.value).toBe(3)
+    expect(h.find(h.render(screen), 'analytics-daily')).toBeUndefined()
+    await h.act(screen, 'analytics-toggle-values')
+    expect(h.find(h.render(screen), 'analytics-daily')?.rows?.[0]?.subtitle).toContain(
+      'Discover 10'
+    )
+    await h.act(screen, 'analytics-toggle-values')
+    expect(h.find(h.render(screen), 'analytics-daily')).toBeUndefined()
+  })
+
+  it('shows no recorded activity without inventing a trend', async () => {
+    const empty = {
+      ...snapshot,
+      daily: [
+        {
+          date: '2026-09-06',
+          searchResults: 0,
+          todayResults: 0,
+          discoverResults: 0,
+          deepAnalyses: 0
+        }
+      ],
+      analyzedItems: []
+    }
+    const h = nativeHarness({ getAnalytics: vi.fn(async () => empty) })
+    const screen = new AnalyticsScreen(h.context)
+    await screen.load()
+    expect(h.find(h.render(screen), 'analytics-trend')).toBeUndefined()
+    expect(h.find(h.render(screen), 'analytics-trend-empty')?.text).toContain('No Discover records')
+  })
   it('displays stored metrics and opens a complete persisted artifact with freshness', async () => {
     const get = vi.fn(async () => state)
     const h = nativeHarness({ getAnalytics: vi.fn(async () => snapshot), getAnalysisArtifact: get })

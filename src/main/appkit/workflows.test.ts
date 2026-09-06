@@ -108,6 +108,7 @@ describe('native workflow branches', () => {
     const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
     await screen.load()
     await screen.load()
+    await h.act(screen, 'discover-edit-search')
     await h.act(screen, 'discover-source-picker')
     await h.act(screen, 'discover-clear-sources')
     expect(h.find(h.render(screen), 'discover-search')?.enabled).toBe(false)

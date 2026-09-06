@@ -171,6 +171,12 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     host.canvas.appearance = [NSAppearance appearanceNamed:name]; [host updateMaterials];
   } else if ([action isEqual:@"transparency"] && [input[@"value"] isKindOfClass:NSNumber.class]) {
     host.fixtureTransparency = input[@"value"]; [host updateMaterials];
+  } else if ([action isEqual:@"accent"]) {
+    // This entry point is already restricted to disposable fixture hosts.
+    // Never change the user's macOS accent preference.
+    NSDictionary *colors = @{@"blue":NSColor.systemBlueColor,@"yellow":NSColor.systemYellowColor,@"orange":NSColor.systemOrangeColor,@"purple":NSColor.systemPurpleColor,@"gray":NSColor.systemGrayColor};
+    if (![input[@"value"] isEqual:@"system"] && !colors[input[@"value"]]) return fail(env,"Unsupported fixture accent");
+    host.fixtureAccent = colors[input[@"value"]]; [host updateMaterials];
   } else if ([action isEqual:@"focus"]) {
     NSView *control = node.control ?: node; if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
     [control.window makeFirstResponder:control];
