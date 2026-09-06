@@ -13,6 +13,7 @@ Run a real AppKit pilot for navigation/toolbars, then expand the appropriate mat
 - [x] Implement pilot and expand accepted surfaces only on GREEN.
 - [x] Full automated/native/render/package gates and independent review.
 - [x] Replace the local beta after all gates; verify app/module hashes, retained app and database backup.
+- [x] Repair CI geometry recovery, verify real AppKit suspend/resume at 677px, repeat affected gates and replace the beta with the final package.
 
 Authorized publication procedure: review the exact diff, push the feature branch, use the protected-main PR checks, merge the verified head, then retain only main. Git state is verified in the final delivery record rather than embedded as a future commit hash.
 

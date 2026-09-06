@@ -12,6 +12,7 @@ export interface NativeGlassBinding {
   attach(handle: Buffer, listener: (event: string) => void): void
   present(handle: Buffer, scene: string): boolean | void
   focus(handle: Buffer, edge: 'first' | 'last'): boolean
+  suspend(handle: Buffer): boolean
   release(handle: Buffer): void
   inspect(handle: Buffer): string
 }
@@ -26,6 +27,7 @@ export interface NativeWindowPort {
 export class NativeGlassSession {
   private state: NativeGlassState | null = null
   private active = false
+  private suspended = false
   private failed = false
   private generation = 0
   constructor(
@@ -54,15 +56,33 @@ export class NativeGlassSession {
     )
       throw new Error('Surface is outside the native pilot')
     const rejected = { applied: false, revision: state.revision }
-    if (this.failed || this.window.isDestroyed() || state.revision <= (this.state?.revision ?? 0))
-      return rejected
+    if (this.failed || this.window.isDestroyed()) return rejected
+    if (state.revision <= (this.state?.revision ?? 0))
+      return { ...rejected, staleRevision: this.state?.revision ?? 0 }
     const scale = this.window.webContents.getZoomFactor()
     const bounds = this.window.getBounds()
     if (
       Math.abs(state.viewport.width * scale - bounds.width) > 2 ||
       Math.abs(state.viewport.height * scale - bounds.height) > 2
-    )
-      return rejected
+    ) {
+      if (this.active && !this.suspended) {
+        try {
+          this.suspended = true
+          if (this.binding.suspend(this.window.getNativeWindowHandle()))
+            this.window.webContents.focus()
+        } catch {
+          this.fail()
+        }
+      }
+      return {
+        ...rejected,
+        geometryMismatch: {
+          viewport: state.viewport,
+          window: { width: bounds.width, height: bounds.height },
+          scale
+        }
+      }
+    }
     try {
       if (!this.active) {
         const generation = this.generation
@@ -83,6 +103,7 @@ export class NativeGlassSession {
           this.window.getNativeWindowHandle(),
           JSON.stringify({ ...state, scale })
         ) === true
+      this.suspended = false
       if (focusContent || (state.modal && !this.state?.modal)) this.window.webContents.focus()
       this.state = state
       return {
@@ -101,6 +122,7 @@ export class NativeGlassSession {
       !event ||
       this.window.isDestroyed() ||
       !this.state ||
+      this.suspended ||
       this.state.modal ||
       !('revision' in event) ||
       event.revision !== this.state.revision
@@ -124,6 +146,7 @@ export class NativeGlassSession {
     if (
       !this.active ||
       !this.state ||
+      this.suspended ||
       this.state.modal ||
       revision !== this.state.revision ||
       this.window.isDestroyed()
@@ -146,6 +169,7 @@ export class NativeGlassSession {
       }
     }
     this.active = false
+    this.suspended = false
     this.state = null
   }
   private fail(): void {

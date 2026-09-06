@@ -56,7 +56,7 @@ if (platform !== 'darwin') {
     .digest('hex')
   writeFileSync(
     join(output, 'manifest.json'),
-    JSON.stringify({ interfaceVersion: 1, architecture: arch, sha256: digest }) + '\n'
+    JSON.stringify({ interfaceVersion: 2, architecture: arch, sha256: digest }) + '\n'
   )
   log('Native glass: built public AppKit/Node-API adapter for ' + arch + '.')
 }

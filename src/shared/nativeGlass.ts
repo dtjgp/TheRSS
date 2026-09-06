@@ -69,6 +69,12 @@ export interface NativeGlassAck {
   readonly applied: boolean
   readonly revision: number
   readonly focusContent?: boolean
+  readonly staleRevision?: number
+  readonly geometryMismatch?: {
+    readonly viewport: { readonly width: number; readonly height: number }
+    readonly window: { readonly width: number; readonly height: number }
+    readonly scale: number
+  }
 }
 export type NativeGlassEvent =
   | { readonly kind: 'activate'; readonly id: NativeControlId; readonly revision: number }

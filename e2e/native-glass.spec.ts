@@ -6,6 +6,7 @@ import { _electron as electron, expect, test, type ElectronApplication } from '@
 
 interface Diagnostic {
   active: boolean
+  suspended?: boolean
   revision: number
   modal: boolean
   focusedControl: string
@@ -43,6 +44,7 @@ async function native(
         const stable =
           before.active &&
           diagnostic.active &&
+          !diagnostic.suspended &&
           before.revision === diagnostic.revision &&
           diagnostic.revision ===
             Number(await page.evaluate(() => document.documentElement.dataset.nativeRevision))
@@ -50,6 +52,7 @@ async function native(
         const renderer = await page.evaluate(async () => ({
           mode: document.documentElement.dataset.nativeGlass,
           failure: document.documentElement.dataset.nativeFailure,
+          geometry: document.documentElement.dataset.nativeGeometry,
           revision: document.documentElement.dataset.nativeRevision,
           viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio },
           status: await window.therss.nativeGlass!.getStatus()
@@ -270,11 +273,75 @@ test('native glass pilot preserves navigation, modal, focus, appearance and wind
     await application.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(1)
     )
+    await expect.poll(() => page.evaluate(() => innerWidth)).toBe(900)
+    await expect.poll(async () => (await inspect(application)).contentScale).toBe(1)
     await page.reload()
     await expect
-      .poll(() => page.evaluate(() => document.documentElement.dataset.nativeGlass))
+      .poll(() =>
+        page.evaluate(async () => {
+          const root = document.documentElement
+          return root.dataset.nativeGlass === 'native'
+            ? 'native'
+            : JSON.stringify({
+                mode: root.dataset.nativeGlass,
+                failure: root.dataset.nativeFailure,
+                geometry: root.dataset.nativeGeometry,
+                staleRevision: root.dataset.nativeStaleRevision,
+                status: await window.therss.nativeGlass!.getStatus(),
+                viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio }
+              })
+        })
+      )
       .toBe('native')
     await expect.poll(async () => (await inspect(application)).revision).toBeGreaterThan(0)
+    const beforeSuspend = await inspect(application)
+    const refused = await page.evaluate(
+      (revision) =>
+        window.therss.nativeGlass!.present({
+          revision,
+          appearance: 'light',
+          contrast: 'normal',
+          reduceTransparency: false,
+          modal: false,
+          viewport: { width: 1, height: 1 },
+          surfaces: []
+        }),
+      beforeSuspend.revision + 1
+    )
+    expect(refused.applied).toBe(false)
+    expect(refused.geometryMismatch?.viewport).toEqual({ width: 1, height: 1 })
+    expect(await inspect(application)).toMatchObject({ active: true, suspended: true })
+    expect(
+      await page.evaluate(
+        (revision) => window.therss.nativeGlass!.focus('first', revision),
+        beforeSuspend.revision
+      )
+    ).toBe(false)
+    const nativeBlocked = await application.evaluate(({ app, BrowserWindow }) => {
+      const require = process
+        .getBuiltinModule('module')
+        .createRequire(app.getAppPath() + '/package.json')
+      const binding = require(app.getAppPath() + '/out/native-glass/therss-glass.node')
+      return binding.testAction(
+        BrowserWindow.getAllWindows()[0]!.getNativeWindowHandle(),
+        'saved',
+        'press'
+      )
+    })
+    expect(nativeBlocked).toBe(false)
+    await application.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0]!
+      window.setSize(901, window.getBounds().height)
+    })
+    await expect.poll(async () => (await inspect(application)).suspended).toBe(false)
+    expect((await inspect(application)).revision).toBeGreaterThan(beforeSuspend.revision)
+    expect(await native(application, 'hit', 'saved')).toBe(true)
+    await native(application, 'press', 'saved')
+    await expect(page.getByRole('heading', { name: 'Saved research signals' })).toBeVisible()
+    await native(application, 'press', 'discover')
+    await expect(
+      page.getByRole('heading', { name: 'Discover research', exact: true })
+    ).toBeVisible()
     await page.evaluate(() => window.therss.nativeGlass!.release())
     expect((await inspect(application)).active).toBe(false)
     const closed = page.waitForEvent('close')

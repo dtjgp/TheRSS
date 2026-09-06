@@ -29,12 +29,13 @@ Chromium 原生根视图保留完整窗口坐标。试验中的 inset NSSplitVie
 - 独立复查发现的 Save/Analyze 遗漏、原生快捷键、重复激活、初始化回退和 Toggle 命中问题已分别修复。原生点击调用原有业务处理器；推广测试仅使用 fixture 预览/确认，不写入真实 vault。
 - 窗口缩放截图暴露了逐个放大字体造成的按钮外框裁切；改为整体缩放普通前景内容，同时让玻璃外框保持物理尺寸。Saved 在高缩放下的窄布局同时增加换行、阅读区最小高度及顶部栏下方的动作条停靠位置。
 - CI 的显示区高度为 677px，macOS 会限制请求窗口高度；几何验收因此比较 Chromium/原生 host 与实际 BrowserWindow 尺寸，浮动控件在滚入可见区域后再测试。桌面用例串行执行以保留真实焦点和拖拽取消语义。
+- CI 随后暴露缩放/滚动期间的原生宿主恢复问题。几何拒绝改为隐藏并暂停现有宿主，阻断旧原生输入并交回网页焦点，尺寸有效后完整更新再显示，避免反复重挂 Chromium 和切换 vibrancy。页面重载后的旧版本拒绝仍释放并重建。新增 RED/GREEN 与原生暂停/关闭回归，677px 窗口下的两条原生用例通过。
 - 原生模块从源码构建并在 ASAR 外解包；打包 smoke 必须检查 AppKit host 实际激活，单纯出现应用首页不能通过。
 - 主进程/渲染桥接专项覆盖率另见 [owned-coverage.json](owned-coverage.json)，不能把 core/shared 的整体覆盖率冒充原生 C++ 或所有组件覆盖率。
 
-最终门禁已通过：`npm run check` 为 66 个文件 / 470 个测试；桌面 6/6；依赖审计 0 漏洞；最新 arm64 包及已安装副本的原生激活 smoke 通过。专项覆盖率为 statements 95.20%、branches 89.18%、functions 95.08%、lines 98.08%，每个新增桥接文件四项均超过 80%。
+最终本机门禁已通过：`npm run check` 为 66 个文件 / 471 个测试；桌面 6/6；依赖审计 0 漏洞；最新 arm64 包及已安装副本的原生激活 smoke 通过。专项覆盖率为 statements 94.30%、branches 87.88%、functions 93.54%、lines 97.40%，每个新增桥接文件四项均超过 80%。独立审查后补充的 677px 原生用例 2/2 通过，包含真实 AppKit 暂停后的恢复、命中和导航。
 
-[verification.json](verification.json) 记录包与原生模块指纹。已安装副本的 app.asar 与原生模块均和测试包相等；2026-09-06T00-38-07-518Z 安装回执为 completed，旧应用及 SQLite 备份存在。Git 提交与分支状态由 Git 历史和本次交付报告提供。
+[verification.json](verification.json) 记录包与原生模块指纹。已安装副本的 app.asar 与原生模块均和测试包相等；2026-09-06T02-25-52-717Z 安装回执为 completed，旧应用及 SQLite 备份存在。远端 CI、Git 提交与分支状态由 Git 历史和本次交付报告提供。
 
 | 渲染证据                        | 截图                                                   |
 | ------------------------------- | ------------------------------------------------------ |
@@ -43,7 +44,7 @@ Chromium 原生根视图保留完整窗口坐标。试验中的 inset NSSplitVie
 | 高对比度与减少透明度            | [saved-accessible.png](screens/saved-accessible.png)   |
 | 200% 真实玻璃，滚动到详情操作条 | [saved-200-percent.png](screens/saved-200-percent.png) |
 
-这些截图由系统窗口捕获取得，包含 AppKit 前景，使用同一源码构建的隔离 fixture；打包与安装身份另由文件指纹和 smoke 确认。
+这些最终截图由已安装应用的系统窗口捕获取得，包含 AppKit 前景，使用隔离 fixture；打包与安装身份另由文件指纹和 smoke 确认。
 
 ## 证据限制
 

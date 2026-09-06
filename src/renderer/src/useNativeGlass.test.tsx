@@ -91,13 +91,22 @@ describe('native material handoff', () => {
       attempts += 1
       if (attempts <= 3) {
         vi.stubGlobal('innerWidth', window.innerWidth + 10)
-        return { applied: false, revision: state.revision }
+        return {
+          applied: false,
+          revision: state.revision,
+          geometryMismatch: {
+            viewport: state.viewport,
+            window: { width: state.viewport.width + 10, height: state.viewport.height },
+            scale: 1
+          }
+        }
       }
       return { applied: true, revision: state.revision }
     })
     render(<Surface api={h.api} click={() => undefined} />)
     await waitFor(() => expect(document.documentElement.dataset.nativeGlass).toBe('native'))
     expect(h.api.present).toHaveBeenCalledTimes(4)
+    expect(h.api.release).not.toHaveBeenCalled()
   })
   it('masks a web control only after native acknowledgment and reuses its action', async () => {
     const h = harness(),
@@ -191,11 +200,17 @@ describe('native material handoff', () => {
     const h = harness()
     vi.mocked(h.api.present).mockImplementation(async (state) => ({
       applied: false,
-      revision: state.revision
+      revision: state.revision,
+      geometryMismatch: {
+        viewport: state.viewport,
+        window: { width: state.viewport.width + 10, height: state.viewport.height },
+        scale: 1
+      }
     }))
     const view = render(<Surface api={h.api} click={() => undefined} />)
     await waitFor(() => expect(document.documentElement.dataset.nativeGlass).toBe('fallback'))
     expect(h.api.present).toHaveBeenCalledTimes(3)
+    expect(h.api.release).toHaveBeenCalledOnce()
     expect(screen.getByRole('button', { name: '01 Discover' })).not.toHaveAttribute(
       'data-native-control'
     )

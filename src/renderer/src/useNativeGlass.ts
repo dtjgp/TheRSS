@@ -99,6 +99,8 @@ export function useNativeGlass(api: NativeGlassApi | undefined): void {
           applied = projection
           root.dataset.nativeGlass = 'native'
           delete root.dataset.nativeFailure
+          delete root.dataset.nativeGeometry
+          delete root.dataset.nativeStaleRevision
           root.dataset.nativeScope = scope
           root.dataset.nativeRevision = String(revision)
           if (ack.focusContent && !projection.state.modal) {
@@ -109,7 +111,17 @@ export function useNativeGlass(api: NativeGlassApi | undefined): void {
           }
         } else {
           restore()
-          await api.release()
+          root.dataset.nativeGlass = 'recovering'
+          // Only geometry lag keeps the host. A renderer restart can reset its
+          // revision while an older presentation is still in transit.
+          if (!ack.geometryMismatch) await api.release()
+          if (ack.geometryMismatch)
+            root.dataset.nativeGeometry = JSON.stringify(ack.geometryMismatch)
+          if (ack.staleRevision !== undefined)
+            root.dataset.nativeStaleRevision = JSON.stringify({
+              requested: revision,
+              accepted: ack.staleRevision
+            })
           signature = ''
           const viewport = JSON.stringify([projection.state.viewport, window.devicePixelRatio])
           rejected = viewport === rejectedViewport ? rejected + 1 : 1
@@ -250,6 +262,8 @@ export function useNativeGlass(api: NativeGlassApi | undefined): void {
       delete root.dataset.nativeScope
       delete root.dataset.nativeRevision
       delete root.dataset.nativeFailure
+      delete root.dataset.nativeGeometry
+      delete root.dataset.nativeStaleRevision
       void api.release().catch(() => undefined)
     }
   }, [api])

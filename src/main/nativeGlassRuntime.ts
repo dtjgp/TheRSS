@@ -63,7 +63,7 @@ export function attachNativeGlass(window: BrowserWindow, nativePath: string): vo
       const require = createRequire(join(app.getAppPath(), 'package.json'))
       const native = require(nativePath) as NativeGlassBinding
       if (
-        ['attach', 'present', 'focus', 'release', 'inspect'].some(
+        ['attach', 'present', 'focus', 'suspend', 'release', 'inspect'].some(
           (method) => typeof native[method as keyof NativeGlassBinding] !== 'function'
         )
       )
@@ -76,6 +76,7 @@ export function attachNativeGlass(window: BrowserWindow, nativePath: string): vo
         },
         present: (handle, scene) => native.present(handle, scene),
         focus: (handle, edge) => native.focus(handle, edge),
+        suspend: (handle) => native.suspend(handle),
         release: (handle) => {
           native.release(handle)
           if (!window.isDestroyed()) window.setVibrancy('sidebar')

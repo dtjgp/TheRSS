@@ -110,6 +110,7 @@ static char controllerKey;
 @property(nonatomic) NSInteger revision;
 @property(nonatomic) CGFloat scale;
 @property(nonatomic) BOOL modal;
+@property(nonatomic) BOOL suspended;
 @property(nonatomic) BOOL reduceTransparency;
 @property(nonatomic) BOOL layingOut;
 @property(nonatomic) BOOL disposed;
@@ -129,21 +130,24 @@ static char controllerKey;
 
 @implementation TRNativeButton
 - (NSAccessibilityRole)accessibilityRole { return NSAccessibilityButtonRole; }
-- (BOOL)isAccessibilityEnabled { return self.enabled; }
+- (BOOL)interactionAllowed { return self.owner && self.enabled && !self.hidden && !self.owner.modal && !self.owner.suspended && !self.owner.disposed; }
+- (BOOL)isAccessibilityEnabled { return [self interactionAllowed]; }
 - (id)accessibilityValue { return @(self.state == NSControlStateValueOn); }
-- (BOOL)acceptsFirstResponder { return self.enabled && !self.hidden; }
-- (BOOL)canBecomeKeyView { return self.enabled && !self.hidden; }
+- (BOOL)acceptsFirstResponder { return [self interactionAllowed]; }
+- (BOOL)canBecomeKeyView { return [self interactionAllowed]; }
 - (void)mouseDown:(NSEvent *)event {
+  if (![self interactionAllowed]) return;
   [self.window makeFirstResponder:self];
   [super mouseDown:event];
 }
 - (BOOL)accessibilityPerformPress {
-  if (!self.enabled) return NO;
+  if (![self interactionAllowed]) return NO;
   [self.window makeFirstResponder:self];
   [self performClick:nil];
   return YES;
 }
 - (void)keyDown:(NSEvent *)event {
+  if (self.owner.suspended || self.owner.modal || self.owner.disposed) return;
   if (event.keyCode == 48) { [self.owner advanceFrom:self reverse:(event.modifierFlags & NSEventModifierFlagShift) != 0]; return; }
   if (event.keyCode == 49 || event.keyCode == 36) { if (!event.isARepeat) [self performClick:nil]; return; }
   if ([self.owner forwardKey:event from:self]) return;
@@ -325,8 +329,8 @@ static NSView *contentOf(NSView *view) {
   BOOL modal = [scene[@"modal"] boolValue];
   if (modal && !self.modal && [self.window.firstResponder isKindOfClass:TRNativeButton.class]) self.focusedBeforeModal = ((TRNativeButton *)self.window.firstResponder).controlId;
   self.modal = modal;
-  self.container.hidden = modal;
-  if (modal) return;
+  self.container.hidden = modal || self.suspended;
+  if (modal) { self.suspended = NO; return; }
   NSMutableArray *order = [NSMutableArray array];
   NSMutableSet *seenGroups = [NSMutableSet set];
   NSMutableSet *seenLabels = [NSMutableSet set];
@@ -356,6 +360,8 @@ static NSView *contentOf(NSView *view) {
   for (NSString *identifier in self.labels.allKeys) if (![seenLabels containsObject:identifier]) { [self.labels[identifier] removeFromSuperview]; [self.labels removeObjectForKey:identifier]; }
   for (NSString *identifier in self.groups.allKeys) if (![seenGroups containsObject:identifier]) { [self.groups[identifier] removeFromSuperview]; [self.groups removeObjectForKey:identifier]; }
   self.order = order;
+  self.suspended = NO;
+  self.container.hidden = NO;
   if (focused && self.buttons[focused].enabled) [self.window makeFirstResponder:self.buttons[focused]];
   else if (focused) self.focusContent = YES;
   if (self.focusedBeforeModal) {
@@ -374,13 +380,13 @@ static NSView *contentOf(NSView *view) {
   return values;
 }
 - (BOOL)focusEdge:(BOOL)last {
-  if (self.modal || self.disposed) return NO;
+  if (self.modal || self.suspended || self.disposed) return NO;
   NSArray *buttons = [self focusable];
   TRNativeButton *target = last ? buttons.lastObject : buttons.firstObject;
   return target ? [self.window makeFirstResponder:target] : NO;
 }
 - (void)advanceFrom:(TRNativeButton *)sender reverse:(BOOL)reverse {
-  if (self.modal || self.disposed) return;
+  if (self.modal || self.suspended || self.disposed) return;
   NSArray *buttons = [self focusable];
   NSUInteger index = [buttons indexOfObject:sender];
   if (index == NSNotFound) {
@@ -392,7 +398,7 @@ static NSView *contentOf(NSView *view) {
   } else [self.window makeFirstResponder:buttons[reverse ? index - 1 : index + 1]];
 }
 - (BOOL)forwardKey:(NSEvent *)event from:(TRNativeButton *)sender {
-  if (self.modal || self.disposed || !sender.enabled) return NO;
+  if (self.modal || self.suspended || self.disposed || !sender.enabled) return NO;
   NSEventModifierFlags flags = event.modifierFlags;
   if (flags & (NSEventModifierFlagControl | NSEventModifierFlagOption)) return NO;
   BOOL meta = (flags & NSEventModifierFlagCommand) != 0;
@@ -406,7 +412,7 @@ static NSView *contentOf(NSView *view) {
   return YES;
 }
 - (void)forwardScroll:(NSEvent *)event from:(TRNativeButton *)sender {
-  if (self.modal || self.disposed) return;
+  if (self.modal || self.suspended || self.disposed) return;
   CGFloat unit = event.hasPreciseScrollingDeltas ? 1 : 40;
   CGFloat x = -event.scrollingDeltaX * unit / self.scale;
   CGFloat y = -event.scrollingDeltaY * unit / self.scale;
@@ -418,7 +424,7 @@ static NSView *contentOf(NSView *view) {
 
 - (void)activate:(TRNativeButton *)sender {
   sender.state = sender.publishedSelection ? NSControlStateValueOn : NSControlStateValueOff;
-  if (self.modal || self.disposed || !sender.enabled) return;
+  if (self.modal || self.suspended || self.disposed || !sender.enabled) return;
   [self emit:@{ @"kind": @"activate", @"id": sender.controlId, @"revision": @(self.revision) }];
 }
 - (NSDictionary *)diagnostics {
@@ -429,7 +435,7 @@ static NSView *contentOf(NSView *view) {
     NSView *group = self.groups[identifier];
     [groups addObject:@{ @"id": identifier, @"class": NSStringFromClass(group.class), @"ownsContent": @(![group isKindOfClass:NSGlassEffectView.class] || ((NSGlassEffectView *)group).contentView != nil), @"frame": rectValue(group.frame) }];
   }
-  return @{ @"active": @(!self.disposed), @"revision": @(self.revision), @"modal": @(self.modal), @"windowActive": @(self.window.isKeyWindow), @"hostClass": NSStringFromClass(self.host.class), @"originalFrame": rectValue(self.originalRoot.frame), @"hostFrame": rectValue(self.host.frame), @"groups": groups, @"controls": self.order ?: @[], @"focusedControl": [self.window.firstResponder isKindOfClass:TRNativeButton.class] ? ((TRNativeButton *)self.window.firstResponder).controlId : @"web", @"reduceTransparency": @(self.reduceTransparency), @"appearance": self.host.effectiveAppearance.name, @"forwardedScrollCount": @(self.forwardedScrollCount), @"contentScale": @(logicalPoint.width) };
+  return @{ @"active": @(!self.disposed), @"revision": @(self.revision), @"modal": @(self.modal), @"suspended": @(self.suspended), @"windowActive": @(self.window.isKeyWindow), @"hostClass": NSStringFromClass(self.host.class), @"originalFrame": rectValue(self.originalRoot.frame), @"hostFrame": rectValue(self.host.frame), @"groups": groups, @"controls": self.order ?: @[], @"focusedControl": [self.window.firstResponder isKindOfClass:TRNativeButton.class] ? ((TRNativeButton *)self.window.firstResponder).controlId : @"web", @"reduceTransparency": @(self.reduceTransparency), @"appearance": self.host.effectiveAppearance.name, @"forwardedScrollCount": @(self.forwardedScrollCount), @"contentScale": @(logicalPoint.width) };
 }
 - (void)invalidate {
   if (self.disposed) return;
@@ -522,6 +528,15 @@ static napi_value focus(napi_env env, napi_callback_info info) {
   TRGlassController *controller = objc_getAssociatedObject(window, &controllerKey);
   napi_get_boolean(env, [controller focusEdge:[edge isEqualToString:@"last"]], &result); return result;
 }
+static napi_value suspendHost(napi_env env, napi_callback_info info) {
+  napi_value value, result; if (!arguments(env, info, 1, &value)) return fail(env, "Invalid suspend arguments");
+  NSWindow *window = windowFor(env, value); if (!window) return nullptr;
+  TRGlassController *controller = objc_getAssociatedObject(window, &controllerKey);
+  BOOL focusContent = [window.firstResponder isKindOfClass:TRNativeButton.class] && ((TRNativeButton *)window.firstResponder).owner == controller;
+  @try { controller.suspended = YES; controller.container.hidden = YES; }
+  @catch (NSException *exception) { return fail(env, "Native suspension failed"); }
+  napi_get_boolean(env, focusContent, &result); return result;
+}
 static napi_value release(napi_env env, napi_callback_info info) {
   napi_value value, result; if (!arguments(env, info, 1, &value)) return fail(env, "Invalid release arguments");
   NSWindow *window = windowFor(env, value); if (!window) return nullptr;
@@ -546,7 +561,7 @@ static napi_value testAction(napi_env env, napi_callback_info info) {
   NSString *action = readString(env, values[2], 16); if (!action) return nullptr;
   TRGlassController *controller = objc_getAssociatedObject(window, &controllerKey);
   TRNativeButton *button = controller.buttons[identifier];
-  if (!button || controller.modal) { napi_get_boolean(env, false, &result); return result; }
+  if (!button || controller.modal || controller.suspended) { napi_get_boolean(env, false, &result); return result; }
   if ([action isEqualToString:@"hit"]) {
     NSPoint center = NSMakePoint(NSMidX(button.bounds), NSMidY(button.bounds));
     NSPoint point = [button convertPoint:center toView:controller.host.superview];
@@ -579,10 +594,11 @@ static napi_value initialize(napi_env env, napi_value exports) {
     {"attach", nullptr, attach, nullptr, nullptr, nullptr, napi_default, nullptr},
     {"present", nullptr, present, nullptr, nullptr, nullptr, napi_default, nullptr},
     {"focus", nullptr, focus, nullptr, nullptr, nullptr, napi_default, nullptr},
+    {"suspend", nullptr, suspendHost, nullptr, nullptr, nullptr, napi_default, nullptr},
     {"release", nullptr, release, nullptr, nullptr, nullptr, napi_default, nullptr},
     {"inspect", nullptr, inspect, nullptr, nullptr, nullptr, napi_default, nullptr},
     {"testAction", nullptr, testAction, nullptr, nullptr, nullptr, napi_default, nullptr}
   };
-  napi_define_properties(env, exports, 6, methods); return exports;
+  napi_define_properties(env, exports, 7, methods); return exports;
 }
 NAPI_MODULE(NODE_GYP_MODULE_NAME, initialize)

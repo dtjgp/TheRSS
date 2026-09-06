@@ -22,6 +22,7 @@ const binding = {
   attach: vi.fn(),
   present: vi.fn(),
   focus: vi.fn(() => true),
+  suspend: vi.fn(() => true),
   release: vi.fn(),
   inspect: vi.fn(() => '{}')
 }
