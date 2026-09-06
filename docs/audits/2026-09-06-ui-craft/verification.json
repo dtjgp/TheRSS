@@ -1,0 +1,138 @@
+{
+  "native": {
+    "passed": true,
+    "groups": 12,
+    "screenshots": true,
+    "checks": [
+      {
+        "name": "Native root, blank Web page and Unicode boundary",
+        "passed": true,
+        "elapsedMs": 252
+      },
+      {
+        "name": "All 22 source choices and semantic search",
+        "passed": true,
+        "elapsedMs": 2065
+      },
+      {
+        "name": "Native reading, Save, full analysis and search details sheet",
+        "passed": true,
+        "elapsedMs": 1636
+      },
+      {
+        "name": "Saved repository analysis and independent source/runner filters",
+        "passed": true,
+        "elapsedMs": 765
+      },
+      {
+        "name": "Secure key then immediate Save uses the real ordered callback queue",
+        "passed": true,
+        "elapsedMs": 1007
+      },
+      {
+        "name": "Secure draft survives tabs and explicit discard clears the hidden native field",
+        "passed": true,
+        "elapsedMs": 1465
+      },
+      {
+        "name": "Persisted Analytics metrics and complete analysis artifact",
+        "passed": true,
+        "elapsedMs": 503
+      },
+      {
+        "name": "Source focus is separate from activation; content stays read-only",
+        "passed": true,
+        "elapsedMs": 620
+      },
+      {
+        "name": "Local search uses a native sheet and safe external-open routing",
+        "passed": true,
+        "elapsedMs": 1303
+      },
+      {
+        "name": "Promotion preview includes verified facts and produces a fixture receipt only after confirmation",
+        "passed": true,
+        "elapsedMs": 5387
+      },
+      {
+        "name": "Native editing Undo, zoom, dividers and narrow window layout",
+        "passed": true,
+        "elapsedMs": 3380
+      },
+      {
+        "name": "Dirty marked-text close guard and native window recreation preserve data/preferences",
+        "passed": true,
+        "elapsedMs": 2118
+      }
+    ]
+  },
+  "controls": {
+    "passed": true,
+    "groups": 5
+  },
+  "compatibility_e2e": {
+    "passed": true,
+    "tests": 1,
+    "scope": "e2e/desktop.spec.ts"
+  },
+  "screenshots": [
+    {
+      "file": "screenshots/05-after-discover.png",
+      "sha256": "88a7caa1f83102bc3745631d100ccc709d30414be15703f34b47bf8b605fb844",
+      "fixture": true
+    },
+    {
+      "file": "screenshots/06-after-saved.png",
+      "sha256": "70bfcdba880109ca4ff42468cf4291cfd1bfeba96b1e174851ed0e806519b1d9",
+      "fixture": true
+    },
+    {
+      "file": "screenshots/07-after-settings.png",
+      "sha256": "a654b5711a5df42d1164dcf344d6b8cf167c89972a6fe74359414952e09727e0",
+      "fixture": true
+    },
+    {
+      "file": "screenshots/08-after-sources.png",
+      "sha256": "5e149af38cb5813d98ab77df9ed748513f53ce14aa591c8ec630588b8685f59d",
+      "fixture": true
+    },
+    {
+      "file": "screenshots/09-after-analytics.png",
+      "sha256": "7197fd59e5fb4b86d65f273acf3fe2c75ef0e8ae7a4799593683778429dfe64c",
+      "fixture": true
+    },
+    {
+      "file": "screenshots/10-after-dark.png",
+      "sha256": "c41d14632c1175398b4b59362e3b27118725e711143ab40ea956f25a73799e4b",
+      "fixture": true
+    },
+    {
+      "file": "screenshots/11-after-narrow-zoomed.png",
+      "sha256": "ef3e514cfe2f2141144c54502cc10029b50366c0479ab275248256f43fdc178a",
+      "fixture": true
+    },
+    {
+      "file": "screenshots/12-after-contrast.png",
+      "sha256": "8dc8f58965c7cc4713ec74460bd6b3b5d7cf3f21a10c8ee3cc2e9e8f1590bd53",
+      "fixture": true
+    },
+    {
+      "file": "screenshots/13-after-yellow-accent.png",
+      "sha256": "f50902f491351d711a05646d8c728d58f4c3b5901f32f638a9ca3c7ab0065f45",
+      "fixture": true
+    }
+  ],
+  "limitations": [
+    "After screenshots use deterministic fixtures; before screenshots show installed local data. They are not a same-data benchmark.",
+    "No package installation, publication, live model/source calls or real vault writes.",
+    "Color-role checks and rendered samples do not establish full accessibility compliance."
+  ],
+  "full_check": {
+    "exit_code": 0,
+    "main_tests": 554,
+    "native_tests": 61,
+    "main_coverage": [90.76, 80.7, 94.09, 93.59],
+    "native_coverage": [91.2, 82.61, 90.46, 94.26],
+    "order": ["statements", "branches", "functions", "lines"]
+  }
+}

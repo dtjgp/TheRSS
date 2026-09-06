@@ -4,6 +4,39 @@ import { defaultNativePreferences } from './preferences'
 import { nativeHarness } from './testSupport'
 
 describe('AppKit application shell', () => {
+  it('keeps navigation labeled and selected while separating it from ordinary actions', async () => {
+    const h = nativeHarness({ getLocalAgentStatuses: vi.fn(async () => []) })
+    let scene = ''
+    const presenter = new NativePresenter(h.api, {
+      preferences: { ...defaultNativePreferences },
+      present: (next) => {
+        scene = next
+      },
+      persist: vi.fn(async () => undefined),
+      openExternal: vi.fn()
+    })
+    await presenter.start()
+    const discover = h.find(JSON.parse(scene).root, 'navigate-discover')!
+    expect(discover).toMatchObject({
+      title: 'Discover',
+      checked: true,
+      emphasis: 'navigation',
+      symbol: 'sparkle.magnifyingglass'
+    })
+    await presenter.navigate('saved')
+    const root = JSON.parse(scene).root
+    expect(h.find(root, 'navigate-saved')).toMatchObject({
+      title: 'Saved',
+      checked: true,
+      emphasis: 'navigation'
+    })
+    expect(h.find(root, 'navigate-discover')?.checked).toBe(false)
+    expect(h.find(root, 'open-local-search')).toMatchObject({
+      title: 'Find local research',
+      emphasis: 'quiet'
+    })
+    presenter.dispose()
+  })
   it('redraws the attention filter when the Sources route is already open', async () => {
     const h = nativeHarness({ getLocalAgentStatuses: vi.fn(async () => []) })
     h.context.data.dashboard = { ...h.dashboard, sourceHealth: { arxiv: 'failed', github: 'idle' } }

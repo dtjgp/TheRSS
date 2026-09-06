@@ -22,6 +22,7 @@ export interface NativeContext {
   readonly presentation: NativePresentation
   readonly data: NativeData
   redraw(): void
+  focus(id: string): void
   notify(message: string): void
   openExternal(url: string): void
   showDocument(title: string, content: string): void

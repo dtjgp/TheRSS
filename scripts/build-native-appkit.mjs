@@ -54,6 +54,7 @@ if (platform !== 'darwin') {
       join(project, 'native/appkit/bridge.mm'),
       join(project, 'native/appkit/host.mm'),
       join(project, 'native/appkit/node.mm'),
+      join(project, 'native/appkit/chart.mm'),
       join(project, 'native/appkit/researchText.mm'),
       '-o',
       join(output, 'therss-ui.node')

@@ -18,6 +18,8 @@ import type { NativeNode } from './presentation'
 export class AnalyticsScreen implements NativeScreen {
   private readonly controls: Controls
   private snapshot: AnalyticsSnapshot | null = null
+  private trendKind: 'discover' | 'today' | 'analysis' = 'discover'
+  private showValues = false
   private selected = ''
   private artifact: AnalysisArtifactState | null = null
   private busy = false
@@ -67,9 +69,7 @@ export class AnalyticsScreen implements NativeScreen {
         row('analytics-header', [
           label(
             'analytics-period',
-            s
-              ? `${s.windowDays} days · Tracking since ${s.trackingStartedAt ?? 'No recorded activity'}`
-              : 'Loading local activity…',
+            s ? `Last ${s.windowDays} local days · Recorded activity` : 'Loading local activity…',
             { flex: 1, weight: 'secondary' }
           ),
           b.button(
@@ -92,21 +92,26 @@ export class AnalyticsScreen implements NativeScreen {
                 metric('analytics-completed', 'Deep analyses', s.totals.deepAnalyses),
                 metric('analytics-papers', 'Analyzed papers', s.totals.analyzedPapers)
               ]),
-              {
-                ...b.table(
-                  'analytics-daily',
-                  'Daily activity',
-                  s.daily.map((day) => ({
-                    id: day.date,
-                    title: day.date,
-                    subtitle: `Search ${day.searchResults} · Source ${day.todayResults} · Discover ${day.discoverResults} · Analysis ${day.deepAnalyses}`
-                  })),
-                  '',
-                  () => undefined
-                ),
-                flex: 0,
-                height: 155
-              },
+              this.trend(s),
+              ...(this.showValues
+                ? [
+                    {
+                      ...b.table(
+                        'analytics-daily',
+                        'Daily activity',
+                        s.daily.map((day) => ({
+                          id: day.date,
+                          title: day.date,
+                          subtitle: `Search ${day.searchResults} · Source ${day.todayResults} · Discover ${day.discoverResults} · Analysis ${day.deepAnalyses}`
+                        })),
+                        '',
+                        () => undefined
+                      ),
+                      flex: 0,
+                      height: 155
+                    }
+                  ]
+                : []),
               label(
                 'analytics-analysis-heading',
                 `Latest ${Math.min(50, s.analyzedItems.length)} analyses · ${s.totals.analyzedPapers} unique analyzed papers`,
@@ -154,6 +159,72 @@ export class AnalyticsScreen implements NativeScreen {
       { flex: 1 }
     )
   }
+  private trend(snapshot: AnalyticsSnapshot): NativeNode {
+    const b = this.controls
+    const series = {
+      discover: { field: 'discoverResults', title: 'Discover records', unit: 'records returned' },
+      today: { field: 'todayResults', title: 'Legacy Today records', unit: 'records returned' },
+      analysis: { field: 'deepAnalyses', title: 'Deep analyses', unit: 'stored analyses' }
+    } as const
+    const selected = series[this.trendKind]
+    const points = snapshot.daily.map((day) => ({ date: day.date, value: day[selected.field] }))
+    return column(
+      'analytics-trend-panel',
+      [
+        row('analytics-trend-toolbar', [
+          label('analytics-trend-title', 'Activity over time', { weight: 'bold', flex: 1 }),
+          b.select(
+            'analytics-trend-kind',
+            'Activity series',
+            this.trendKind,
+            Object.entries(series).map(([id, entry]) => ({ id, title: entry.title })),
+            (value) => {
+              this.trendKind = value as typeof this.trendKind
+              this.context.redraw()
+            },
+            { width: 210 }
+          ),
+          {
+            ...b.button(
+              'analytics-toggle-values',
+              this.showValues ? 'Hide daily values' : 'Show daily values',
+              () => {
+                this.showValues = !this.showValues
+                this.context.redraw()
+              }
+            ),
+            emphasis: 'quiet'
+          }
+        ]),
+        ...(points.some((point) => point.value > 0)
+          ? [
+              {
+                id: 'analytics-trend',
+                kind: 'chart' as const,
+                title: `${selected.title} by local date`,
+                text: selected.unit,
+                points,
+                height: 156
+              }
+            ]
+          : [
+              label('analytics-trend-empty', `No ${selected.title} recorded in this period.`, {
+                height: 52,
+                weight: 'secondary'
+              })
+            ]),
+        label(
+          'analytics-trend-definition',
+          this.trendKind === 'analysis'
+            ? 'Counts stored analysis artifacts, including repeated analyses of the same item.'
+            : 'Counts returned records, including repeat searches. Zero means no records stored for that date.',
+          { size: 11, weight: 'secondary', maxLines: 2 }
+        )
+      ],
+      { surface: 'panel', padding: 12, gap: 6 }
+    )
+  }
+
   private async select(id: string): Promise<void> {
     if (!this.snapshot?.analyzedItems.some((item) => item.analysisId === id)) return
     const version = ++this.version

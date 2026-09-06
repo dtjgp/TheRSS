@@ -1,0 +1,13 @@
+{
+  "installation_time": "2026-09-06T18-57-27-998Z",
+  "status": "completed",
+  "database_preserved": true,
+  "hashes": {
+    "app.asar": "d9772e690efe36f75d91f624909345ca4ddcce8b04e42ffe7e8b0cbd7a810454",
+    "app.asar.unpacked/out/native-appkit/therss-ui.node": "b185f2f0bf0fd3385c79ed8daaa1b5426ffb191f5bf4c7abda0fa3154838975d",
+    "app.asar.unpacked/out/native-glass/therss-glass.node": "8003e91a11049a1c6f63aac4f01db4fd78dec136d9e224cff2043be0ec1d8177"
+  },
+  "database_integrity": "ok",
+  "backup_counts_equal": true,
+  "old_app_backup_retained": true
+}

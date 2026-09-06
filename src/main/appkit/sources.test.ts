@@ -16,6 +16,22 @@ const cached = (source: 'arxiv' | 'github'): SourceContentSnapshot => ({
 })
 
 describe('AppKit Sources', () => {
+  it('filters the directory using the same presentation groups without fetching', async () => {
+    const h = nativeHarness()
+    const screen = new SourcesScreen(h.context)
+    await h.act(screen, 'sources-group', 'code')
+    expect(
+      h
+        .find(h.render(screen), 'sources-list')
+        ?.rows?.map((row) => row.id)
+        .sort()
+    ).toEqual(['folo:10', 'folo:64'])
+    await h.act(screen, 'sources-group', 'papers')
+    expect(h.find(h.render(screen), 'sources-list')?.rows).toHaveLength(4)
+    await h.act(screen, 'sources-group', 'all')
+    expect(h.find(h.render(screen), 'sources-list')?.rows).toHaveLength(22)
+    screen.dispose()
+  })
   it('preserves readable content when refreshing the same source fails', async () => {
     const content = {
       ...cached('arxiv'),

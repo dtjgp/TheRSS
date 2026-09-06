@@ -4,6 +4,42 @@ import { Controls } from './common'
 import { nativeHarness } from './testSupport'
 
 describe('native presentation boundary', () => {
+  it('bounds chart dates and nonnegative counts before native drawing', () => {
+    const view = new NativePresentation()
+    const chart: NativeNode = {
+      id: 'trend',
+      kind: 'chart',
+      points: [{ date: '2026-09-06', value: 0 }]
+    }
+    expect(JSON.parse(view.finish(chart)).root.points).toEqual(chart.points)
+    expect(() => view.finish({ ...chart, points: [{ date: '2026-09-06', value: -1 }] })).toThrow()
+    expect(() => view.finish({ ...chart, points: [{ date: 'invalid', value: 2 }] })).toThrow()
+    expect(() =>
+      view.finish({ ...chart, points: Array.from({ length: 91 }, () => chart.points![0]!) })
+    ).toThrow()
+    expect(() => view.finish({ id: 'label', kind: 'label', maxLines: 0 })).toThrow()
+  })
+  it('accepts bounded native visual roles and rejects arbitrary styling or symbol paths', () => {
+    const view = new NativePresentation()
+    const node = {
+      id: 'search',
+      kind: 'button',
+      title: 'Search',
+      emphasis: 'primary',
+      symbol: 'magnifyingglass',
+      surface: 'panel'
+    } as NativeNode
+    expect(JSON.parse(view.finish(node)).root).toMatchObject(node)
+    expect(() =>
+      view.finish({ ...node, emphasis: 'remote-style' } as unknown as NativeNode)
+    ).toThrow()
+    expect(() =>
+      view.finish({ ...node, symbol: 'https://example.com/icon' } as unknown as NativeNode)
+    ).toThrow()
+    expect(() =>
+      view.finish({ ...node, surface: 'arbitrary-css' } as unknown as NativeNode)
+    ).toThrow()
+  })
   it('rejects queued input and selection changes after controls become disabled', async () => {
     const h = nativeHarness(),
       controls = new Controls(h.context),
@@ -115,7 +151,9 @@ describe('native presentation boundary', () => {
     expect(receive).not.toHaveBeenCalled()
     await view.dispatchSecret(JSON.stringify({ action, value: 'fixture-secret' }))
     expect(receive).toHaveBeenCalledWith('fixture-secret')
-    expect(() => view.finish({ id: 'key', kind: 'secure', value: 'oops' } as NativeNode)).toThrow()
+    expect(() =>
+      view.finish({ id: 'key', kind: 'secure', value: 'oops' } as unknown as NativeNode)
+    ).toThrow()
   })
 
   it('accepts only current row IDs and bounded layouts, preserves full research content', async () => {

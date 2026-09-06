@@ -7,6 +7,7 @@ import {
 } from '../../shared/discover'
 import type { AnalysisRunner } from '../../shared/models'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
+import { SOURCE_GROUPS } from '../../shared/sourceGroups'
 import {
   column,
   Controls,
@@ -31,6 +32,7 @@ export class DiscoverScreen implements NativeScreen {
   private query = ''
   private runner: AnalysisRunner = 'model-provider'
   private sources = new Set<DiscoverSource>(DISCOVER_SOURCE_IDS)
+  private editorExpanded = true
   private picker = false
   private snapshot: DiscoverSnapshot | null = null
   private filter: Filter = 'all'
@@ -67,6 +69,8 @@ export class DiscoverScreen implements NativeScreen {
       if (this.disposed || version !== this.version) return
       if (snapshot) {
         this.snapshot = snapshot
+        this.editorExpanded =
+          !snapshot.items.length || ['failed', 'canceled'].includes(snapshot.status)
         this.query = snapshot.intent
         this.runner = snapshot.runner
         const sources = DISCOVER_SOURCE_IDS.filter(
@@ -117,61 +121,7 @@ export class DiscoverScreen implements NativeScreen {
       'discover-page',
       [
         heading('discover-title', 'Discover'),
-        b.input(
-          'discover-query',
-          'Research question',
-          this.query,
-          (query) => {
-            if (!busy) {
-              this.query = query
-              this.version++
-              this.context.redraw()
-            }
-          },
-          2000,
-          { multiline: true, height: 76, enabled: !busy && !this.loading }
-        ),
-        row('discover-input-actions', [
-          b.runner(
-            'discover-runner',
-            this.runner,
-            (runner) => {
-              this.runner = runner
-              this.context.redraw()
-            },
-            busy
-          ),
-          b.button(
-            'discover-source-picker',
-            `Sources (${this.sources.size}/22)`,
-            () => {
-              this.picker = !this.picker
-              this.context.redraw()
-            },
-            !busy
-          ),
-          b.button(
-            'discover-search',
-            busy ? 'Searching…' : 'Search',
-            () => this.search(),
-            this.canSearch()
-          ),
-          ...(busy
-            ? [
-                b.button(
-                  'discover-cancel',
-                  this.canceling ? 'Canceling…' : 'Cancel',
-                  () => this.cancel(),
-                  !this.canceling
-                )
-              ]
-            : [])
-        ]),
-        label(
-          'discover-personalization',
-          `${this.query.length}/2000 characters · ${this.context.data.personalPrompt.trim() ? 'Personal context active' : 'No personal context saved'}`,
-          { weight: 'secondary' }
-        ),
+        this.composer(),
         ...(this.picker ? [this.sourcePicker()] : []),
         ...(this.progress
           ? [
@@ -296,21 +246,211 @@ export class DiscoverScreen implements NativeScreen {
     )
   }
 
+  private composer(): NativeNode {
+    const b = this.controls,
+      busy = !!this.activeRun,
+      snapshot = this.snapshot
+    if (!this.editorExpanded && snapshot) {
+      const previousSources = DISCOVER_SOURCE_IDS.filter(
+        (source) => snapshot.sourceOutcomes[source]?.status !== 'not_searched'
+      )
+      const changed =
+        this.query.trim() !== snapshot.intent ||
+        this.runner !== snapshot.runner ||
+        previousSources.length !== this.sources.size ||
+        previousSources.some((source) => !this.sources.has(source))
+      return column(
+        'discover-compact-search',
+        [
+          row('discover-compact-row', [
+            label('discover-query-summary', this.query, { flex: 1, maxLines: 2, weight: 'bold' }),
+            {
+              ...b.button(
+                'discover-edit-search',
+                'Edit search',
+                () => {
+                  this.editorExpanded = true
+                  this.context.focus('discover-query')
+                },
+                !busy
+              ),
+              emphasis: 'quiet'
+            },
+            {
+              ...b.button(
+                'discover-search',
+                busy ? 'Searching…' : 'Search again',
+                () => this.search(),
+                this.canSearch()
+              ),
+              emphasis: 'primary',
+              symbol: 'magnifyingglass'
+            },
+            ...(busy
+              ? [
+                  b.button(
+                    'discover-cancel',
+                    this.canceling ? 'Canceling…' : 'Cancel',
+                    () => this.cancel(),
+                    !this.canceling
+                  )
+                ]
+              : [])
+          ]),
+          label(
+            'discover-compact-context',
+            `${this.sources.size} sources · ${this.runner === 'codex' ? 'Codex CLI' : this.runner === 'claude' ? 'Claude Code' : (this.context.data.provider?.name ?? 'Model provider')}`,
+            { size: 11, weight: 'secondary' }
+          ),
+          ...(changed
+            ? [
+                label('discover-draft-status', `Draft not searched. Results: ${snapshot.intent}`, {
+                  size: 11,
+                  maxLines: 2
+                })
+              ]
+            : [])
+        ],
+        { surface: 'panel', padding: 10, gap: 4 }
+      )
+    }
+    return column(
+      'discover-composer',
+      [
+        b.input(
+          'discover-query',
+          'Research question',
+          this.query,
+          (query) => {
+            if (!busy) {
+              this.query = query
+              this.version++
+              this.context.redraw()
+            }
+          },
+          2000,
+          { multiline: true, height: 64, enabled: !busy && !this.loading }
+        ),
+        row('discover-input-actions', [
+          b.runner(
+            'discover-runner',
+            this.runner,
+            (runner) => {
+              this.runner = runner
+              this.context.redraw()
+            },
+            busy
+          ),
+          b.button(
+            'discover-source-picker',
+            `Sources (${this.sources.size}/22)`,
+            () => {
+              this.picker = !this.picker
+              this.context.redraw()
+            },
+            !busy
+          ),
+          {
+            ...b.button(
+              'discover-search',
+              busy ? 'Searching…' : 'Search',
+              () => this.search(),
+              this.canSearch()
+            ),
+            emphasis: 'primary',
+            symbol: 'magnifyingglass'
+          },
+          ...(snapshot?.items.length
+            ? [
+                {
+                  ...b.button(
+                    'discover-done-editing',
+                    'Done editing',
+                    () => {
+                      this.editorExpanded = false
+                      this.picker = false
+                      this.context.focus('discover-edit-search')
+                    },
+                    !busy
+                  ),
+                  emphasis: 'quiet' as const
+                }
+              ]
+            : []),
+          ...(busy
+            ? [
+                b.button(
+                  'discover-cancel',
+                  this.canceling ? 'Canceling…' : 'Cancel',
+                  () => this.cancel(),
+                  !this.canceling
+                )
+              ]
+            : [])
+        ]),
+        label(
+          'discover-personalization',
+          `${this.query.length}/2000 characters · ${this.context.data.personalPrompt.trim() ? 'Personal context active' : 'No personal context saved'}`,
+          { weight: 'secondary' }
+        )
+      ],
+      { surface: 'panel', padding: 14, gap: 8 }
+    )
+  }
+
   private sourcePicker(): NativeNode {
     const b = this.controls
-    const checks = DISCOVER_SOURCE_IDS.map((source) =>
-      b.check(
-        `discover-source-${source}`,
-        sourceDisplayName(source),
-        this.sources.has(source),
-        (checked) => {
-          if (checked) this.sources.add(source)
-          else this.sources.delete(source)
-          this.context.redraw()
-        },
-        !this.activeRun
+    const groups = SOURCE_GROUPS.map((group) => {
+      const selected = group.sources.filter((source) => this.sources.has(source)).length
+      const all = selected === group.sources.length
+      const checks = group.sources.map((source) =>
+        b.check(
+          `discover-source-${source}`,
+          sourceDisplayName(source),
+          this.sources.has(source),
+          (checked) => {
+            if (checked) this.sources.add(source)
+            else this.sources.delete(source)
+            this.context.redraw()
+          },
+          !this.activeRun
+        )
       )
-    )
+      return column(
+        `discover-group-${group.id}`,
+        [
+          row(`discover-group-${group.id}-header`, [
+            label(
+              `discover-group-${group.id}-title`,
+              `${group.title} · ${selected}/${group.sources.length}`,
+              { weight: 'bold', flex: 1 }
+            ),
+            {
+              ...b.button(
+                `discover-group-${group.id}-toggle`,
+                all ? 'Clear group' : 'Select group',
+                () => {
+                  group.sources.forEach((source) => {
+                    if (all) this.sources.delete(source)
+                    else this.sources.add(source)
+                  })
+                  this.context.redraw()
+                },
+                !this.activeRun
+              ),
+              emphasis: 'quiet'
+            }
+          ]),
+          ...Array.from({ length: Math.ceil(checks.length / 2) }, (_, index) =>
+            row(
+              `discover-group-${group.id}-row-${index}`,
+              checks.slice(index * 2, index * 2 + 2).map((check) => ({ ...check, flex: 1 }))
+            )
+          )
+        ],
+        { gap: 4, padding: 8 }
+      )
+    })
     return column(
       'discover-source-controls',
       [
@@ -334,19 +474,10 @@ export class DiscoverScreen implements NativeScreen {
             !this.activeRun
           )
         ]),
-        scroll(
-          'discover-source-scroll',
-          column(
-            'discover-source-checks',
-            Array.from({ length: Math.ceil(checks.length / 2) }, (_, index) =>
-              row(
-                `discover-source-row-${index}`,
-                checks.slice(index * 2, index * 2 + 2).map((check) => ({ ...check, flex: 1 }))
-              )
-            )
-          ),
-          { height: 112, flex: 0 }
-        )
+        scroll('discover-source-scroll', column('discover-source-checks', groups, { gap: 8 }), {
+          height: 224,
+          flex: 0
+        })
       ],
       { gap: 4 }
     )
@@ -407,6 +538,12 @@ export class DiscoverScreen implements NativeScreen {
           )
       if (this.disposed || this.activeRun !== runId) return
       this.snapshot = result
+      this.editorExpanded =
+        !result.items.length || !['completed', 'partial'].includes(result.status)
+      if (!this.editorExpanded) {
+        this.picker = false
+        this.context.focus('discover-results')
+      }
       this.loaded = true
       this.filter = 'all'
       this.visible = 24
@@ -415,6 +552,7 @@ export class DiscoverScreen implements NativeScreen {
         this.message = 'Search canceled. Completed source results were preserved.'
       this.context.data.dashboard = await this.context.api.getDashboard()
     } catch (error) {
+      this.editorExpanded = true
       if (!this.disposed && this.activeRun === runId)
         this.message = this.canceling
           ? 'Search canceled.'

@@ -91,7 +91,22 @@ async function alert(title) {
   }
   throw new Error(`Native alert did not appear: ${title}`)
 }
-const answerAlert = (title) => act('', 'alert', title)
+const answerAlert = async (title) => {
+  const before = await application.evaluate(
+    () => globalThis.__fixtureDialogs.filter((entry) => entry.event === 'resolved').length
+  )
+  await act('', 'alert', title)
+  // A native click returns before Electron's sheet promise and close guard settle.
+  // Wait for that real completion before issuing another close/navigation action.
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const resolved = await application.evaluate(
+      () => globalThis.__fixtureDialogs.filter((entry) => entry.event === 'resolved').length
+    )
+    if (resolved > before) return
+    await delay(50)
+  }
+  throw new Error(`Native alert did not finish: ${title}`)
+}
 async function menu(label) {
   await application.evaluate(({ Menu }, wanted) => {
     const visit = (items) => {
@@ -165,48 +180,51 @@ async function step(name, run) {
 }
 
 try {
-  await application.evaluate(({ app, BrowserWindow, shell, clipboard, safeStorage, dialog }) => {
-    const { createRequire } = process.getBuiltinModule('node:module')
-    globalThis.__nativeBridge = createRequire(app.getAppPath() + '/package.json')(
-      app.getAppPath() + '/out/native-appkit/therss-ui.node'
-    )
-    globalThis.__nativeWindow = BrowserWindow.getAllWindows()[0]
-    if (process.env.THERSS_NATIVE_COMPACT_FIXTURE === '1')
-      globalThis.__nativeWindow.setBounds({ width: 1024, height: 677 })
-    globalThis.__nativeOpened = []
-    globalThis.__nativeCopied = []
-    globalThis.__fixtureCipherHashes = []
-    globalThis.__fixtureDialogs = []
-    const showMessageBox = dialog.showMessageBox.bind(dialog)
-    dialog.showMessageBox = async (window, options) => {
-      globalThis.__fixtureDialogs.push({
-        event: 'open',
-        buttons: options.buttons,
-        time: Date.now()
-      })
-      const result = await showMessageBox(window, options)
-      globalThis.__fixtureDialogs.push({
-        event: 'resolved',
-        buttons: options.buttons,
-        result,
-        time: Date.now()
-      })
-      return result
-    }
-    shell.openExternal = async (url) => {
-      globalThis.__nativeOpened.push(url)
-    }
-    clipboard.writeText = (text) => {
-      globalThis.__nativeCopied.push(text)
-    }
-    const encrypt = safeStorage.encryptString.bind(safeStorage)
-    safeStorage.encryptString = (value) => {
-      globalThis.__fixtureCipherHashes.push(
-        process.getBuiltinModule('node:crypto').createHash('sha256').update(value).digest('hex')
+  await application.evaluate(
+    ({ app, BrowserWindow, shell, clipboard, safeStorage, dialog, nativeTheme }) => {
+      nativeTheme.themeSource = 'light'
+      const { createRequire } = process.getBuiltinModule('node:module')
+      globalThis.__nativeBridge = createRequire(app.getAppPath() + '/package.json')(
+        app.getAppPath() + '/out/native-appkit/therss-ui.node'
       )
-      return encrypt(value)
+      globalThis.__nativeWindow = BrowserWindow.getAllWindows()[0]
+      if (process.env.THERSS_NATIVE_COMPACT_FIXTURE === '1')
+        globalThis.__nativeWindow.setBounds({ width: 1024, height: 677 })
+      globalThis.__nativeOpened = []
+      globalThis.__nativeCopied = []
+      globalThis.__fixtureCipherHashes = []
+      globalThis.__fixtureDialogs = []
+      const showMessageBox = dialog.showMessageBox.bind(dialog)
+      dialog.showMessageBox = async (window, options) => {
+        globalThis.__fixtureDialogs.push({
+          event: 'open',
+          buttons: options.buttons,
+          time: Date.now()
+        })
+        const result = await showMessageBox(window, options)
+        globalThis.__fixtureDialogs.push({
+          event: 'resolved',
+          buttons: options.buttons,
+          result,
+          time: Date.now()
+        })
+        return result
+      }
+      shell.openExternal = async (url) => {
+        globalThis.__nativeOpened.push(url)
+      }
+      clipboard.writeText = (text) => {
+        globalThis.__nativeCopied.push(text)
+      }
+      const encrypt = safeStorage.encryptString.bind(safeStorage)
+      safeStorage.encryptString = (value) => {
+        globalThis.__fixtureCipherHashes.push(
+          process.getBuiltinModule('node:crypto').createHash('sha256').update(value).digest('hex')
+        )
+        return encrypt(value)
+      }
     }
-  })
+  )
   await step('Native root, blank Web page and Unicode boundary', async () => {
     const state = await wait('discover-query')
     assert.equal(state.webHidden, true)
@@ -222,8 +240,18 @@ try {
     await click('discover-source-picker')
     const state = await inspect()
     assert.equal(flatten(state.root).filter((node) => node.kind === 'check').length, 22)
+    assert.equal(
+      flatten(state.root).filter((node) => /^discover-group-.+-title$/u.test(node.id)).length,
+      5
+    )
+    await click('discover-group-code-toggle')
+    assert.equal(find((await inspect()).root, 'discover-source-github').checked, false)
+    assert.equal(find((await inspect()).root, 'discover-source-arxiv').checked, true)
+    await click('discover-group-code-toggle')
+    await capture('source-picker-checked')
     await click('discover-clear-sources')
     await wait('discover-search', (node) => node?.enabled === false)
+    await capture('source-picker-unchecked')
     await click('discover-all-sources')
     await click('discover-source-picker')
     await act('discover-runner', 'choose', 'codex')
@@ -233,6 +261,42 @@ try {
     assert.equal(find(result.root, 'discover-results').documentClass, 'TRTable')
     assert.equal(find(result.root, 'discover-results').rows.length, 3)
     assert.match(find(result.root, 'discover-result-status').text, /completed/)
+    const nav = find(result.root, 'navigate-discover')
+    assert.equal(nav.emphasis, 'navigation')
+    assert.equal(nav.hasSymbol, true)
+    assert.equal(nav.bordered, false)
+    assert.equal(nav.checked, true)
+    assert.equal(find(result.root, 'discover-search').emphasis, 'primary')
+    assert.equal(find(result.root, 'discover-search').hasSymbol, true)
+    assert.equal(find(result.root, 'discover-compact-search').surface, 'panel')
+    assert(!find(result.root, 'discover-query'))
+    await click('discover-edit-search')
+    const editing = await wait('discover-query')
+    assert.equal(editing.firstResponderId, 'discover-query')
+    assert.equal(find(editing.root, 'discover-query').value, '边缘计算 structured pruning')
+    await act('discover-query', 'fill', 'An unsubmitted native draft')
+    await click('discover-done-editing')
+    assert.match(find((await inspect()).root, 'discover-draft-status').text, /Draft not searched/)
+    await click('discover-edit-search')
+    await act('discover-query', 'fill', '边缘计算 structured pruning')
+    await click('discover-done-editing')
+    const table = find(result.root, 'discover-results')
+    assert.equal(table.titleLines, 2)
+    assert.equal(table.rowHeight, 70)
+    assert.equal(find(result.root, 'discover-reading-scroll').surface, 'reading')
+    await act('discover-workspace', 'divider', 260)
+    const narrowTitle = find((await inspect()).root, 'discover-results')
+    const titleHeight = Number(narrowTitle.titleFrame.match(/-?\d+(?:\.\d+)?/gu)[3])
+    assert(narrowTitle.titleRequiredHeight > narrowTitle.titleLineHeight)
+    assert(titleHeight >= 2 * narrowTitle.titleLineHeight)
+    await act('discover-workspace', 'divider', 320)
+    for (const accent of ['blue', 'yellow', 'orange', 'purple', 'gray']) {
+      await act('native-workspace', 'accent', accent)
+      const accented = await inspect()
+      assert(find(accented.root, 'discover-search').primaryColorContrast >= 4.5)
+      if (accent === 'yellow') await capture('discover-yellow-accent')
+    }
+    await act('native-workspace', 'accent', 'system')
   })
   await step('Native reading, Save, full analysis and search details sheet', async () => {
     if (process.env.THERSS_NATIVE_COMPACT_FIXTURE === '1')
@@ -309,6 +373,10 @@ try {
     await click('provider-test')
     await wait('settings-status', (node) => /connected/.test(node?.text || ''))
     await capture('settings-provider')
+    const form = await inspect()
+    const frameWidth = (node) => Number(node.frame.match(/-?\d+(?:\.\d+)?/gu)[2])
+    assert(frameWidth(find(form.root, 'settings-tab')) <= 250)
+    assert(frameWidth(find(form.root, 'provider-form')) <= 800)
   })
   await step(
     'Secure draft survives tabs and explicit discard clears the hidden native field',
@@ -336,6 +404,35 @@ try {
   await step('Persisted Analytics metrics and complete analysis artifact', async () => {
     await click('navigate-analytics')
     await wait('analytics-analyses')
+    const trend = find((await inspect()).root, 'analytics-trend')
+    assert.equal(trend.class, 'TRChart')
+    assert.equal(trend.points.length, 7)
+    assert.equal(
+      trend.points.reduce((total, point) => total + point.value, 0),
+      3
+    )
+    assert(trend.accessibleValues.includes('records returned'))
+    for (const bar of trend.bars) {
+      const height = Number(bar.frame.match(/-?\d+(?:\.\d+)?/gu)[3])
+      assert.equal(height > 0, bar.value > 0)
+    }
+    await act('analytics-trend-kind', 'choose', 'today')
+    await wait('analytics-trend-empty')
+    await act('analytics-trend-kind', 'choose', 'analysis')
+    assert.equal(
+      find((await inspect()).root, 'analytics-trend').points.reduce(
+        (sum, point) => sum + point.value,
+        0
+      ),
+      2
+    )
+    await act('analytics-trend-kind', 'choose', 'discover')
+    await click('analytics-toggle-values')
+    const daily = find((await inspect()).root, 'analytics-daily')
+    assert.equal(daily.rows.length, 7)
+    assert(Number(daily.frame.match(/-?\d+(?:\.\d+)?/gu)[3]) >= 155)
+    await capture('analytics-daily-values')
+    await click('analytics-toggle-values')
     const state = await inspect(),
       analyses = find(state.root, 'analytics-analyses').rows
     assert(analyses.length >= 2)
@@ -344,10 +441,31 @@ try {
     assert.match(find(selected.root, 'analytics-freshness').text, /current/)
     assert.match(find(selected.root, 'analytics-analysis-content').text, /Source hash:/)
     await capture('analytics')
+    for (const appearance of ['dark', 'light']) {
+      await application.evaluate(({ nativeTheme }, mode) => {
+        nativeTheme.themeSource = mode
+      }, appearance)
+      await wait(
+        'analytics-trend',
+        (node) =>
+          node?.controlAppearance ===
+          (appearance === 'dark' ? 'NSAppearanceNameDarkAqua' : 'NSAppearanceNameAqua')
+      )
+      for (const accent of ['blue', 'yellow', 'orange', 'purple', 'gray']) {
+        await act('native-workspace', 'accent', accent)
+        assert(find((await inspect()).root, 'analytics-trend').graphicContrast >= 3)
+      }
+      await act('native-workspace', 'accent', 'system')
+      await capture(`analytics-${appearance}`)
+    }
   })
   await step('Source focus is separate from activation; content stays read-only', async () => {
     await click('navigate-sources')
     await wait('sources-list')
+    await act('sources-group', 'choose', 'code')
+    assert.equal(find((await inspect()).root, 'sources-list').rows.length, 2)
+    await capture('sources-code-group')
+    await act('sources-group', 'choose', 'all')
     await act('sources-list', 'key', 'down')
     const preview = await inspect()
     assert(!find(preview.root, 'source-content-items'))
@@ -449,12 +567,14 @@ try {
       }
     })
   await step('Native editing Undo, zoom, dividers and narrow window layout', async () => {
+    await click('discover-edit-search')
     await act('discover-query', 'fill', '')
     await act('discover-query', 'type', 'native undo fixture')
     await wait('discover-query', (node) => node?.value === 'native undo fixture')
     await menu('Undo')
     await wait('discover-query', (node) => node?.value === '')
     await act('discover-query', 'fill', '边缘计算 structured pruning')
+    await click('discover-done-editing')
     await menu('Zoom In')
     await delay(80)
     assert.equal((await inspect()).zoom, 1.1)
@@ -494,6 +614,8 @@ try {
     const zoomed = await inspect()
     assert.equal(zoomed.zoom, 1.5)
     assert.equal(find(zoomed.root, 'discover-results').rowFontSize, 19.5)
+    const zoomedTitle = find(zoomed.root, 'discover-results')
+    assert(frameValues(zoomedTitle.titleFrame)[3] >= 2 * zoomedTitle.titleLineHeight)
     assert(
       frameValues(find(zoomed.root, 'discover-workspace').frame)[3] >= 320,
       'Minimum-height zoomed window must retain usable list and reading panes'
@@ -525,7 +647,15 @@ try {
     await application.evaluate(({ nativeTheme }) => {
       nativeTheme.themeSource = 'dark'
     })
-    await capture('discover-dark')
+    const dark = await capture('discover-dark')
+    assert.match(dark.root.appearance, /DarkAqua/)
+    await act('native-workspace', 'appearance', 'contrast-dark')
+    const contrast = await capture('discover-contrast-dark')
+    assert.equal(find(contrast.root, 'native-sidebar').material, 'opaque')
+    assert.equal(find(contrast.root, 'navigate-discover').checked, true)
+    await act('native-workspace', 'appearance', 'contrast-light')
+    await capture('discover-contrast-light')
+    await act('native-workspace', 'appearance', 'light')
     await application.evaluate(({ nativeTheme }) => {
       nativeTheme.themeSource = 'light'
     })

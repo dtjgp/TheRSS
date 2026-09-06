@@ -153,12 +153,15 @@ export class SettingsScreen implements NativeScreen {
           { weight: 'secondary' }
         ),
         row('personal-actions', [
-          b.button(
-            'personal-save',
-            'Save context',
-            () => this.savePrompt(this.prompt),
-            enabled && !!this.prompt.trim()
-          ),
+          {
+            ...b.button(
+              'personal-save',
+              'Save context',
+              () => this.savePrompt(this.prompt),
+              enabled && !!this.prompt.trim()
+            ),
+            emphasis: 'primary'
+          },
           b.button(
             'personal-clear',
             'Clear saved context',
@@ -167,7 +170,7 @@ export class SettingsScreen implements NativeScreen {
           )
         ])
       ],
-      { padding: 4 }
+      { padding: 20, gap: 12, surface: 'panel', maxWidth: 800 }
     )
   }
 
@@ -266,7 +269,7 @@ export class SettingsScreen implements NativeScreen {
           )
         )
       ],
-      { padding: 4 }
+      { padding: 20, gap: 12, surface: 'panel', maxWidth: 800 }
     )
   }
 

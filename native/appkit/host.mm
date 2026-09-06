@@ -115,7 +115,7 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
   if (self.disposed || self.sheet || !self.root) return;
   NSResponder *responder = self.window.firstResponder;
   if ([responder isKindOfClass:NSView.class] && [(NSView *)responder isDescendantOf:self.root]) return;
-  TRNode *input = [self.root find:@"discover-query"] ?: [self.root find:@"personal-prompt"] ?: [self.root find:@"provider-name"] ?: [self.root find:@"sources-query"] ?: [self.root find:@"saved-items"] ?: [self.root find:@"analytics-analyses"];
+  TRNode *input = [self.root find:@"discover-query"] ?: [self.root find:@"personal-prompt"] ?: [self.root find:@"provider-name"] ?: [self.root find:@"sources-query"] ?: [self.root find:@"discover-results"] ?: [self.root find:@"saved-items"] ?: [self.root find:@"analytics-analyses"];
   NSView *target = input.control ?: self.root.control;
   if ([target isKindOfClass:NSScrollView.class]) target = ((NSScrollView *)target).documentView;
   [self.window makeFirstResponder:target];

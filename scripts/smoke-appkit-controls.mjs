@@ -170,6 +170,44 @@ try {
     '边缘计算 🔬'
   )
   checks.push('Real marked-text composition survives asynchronous presentation and commits intact')
+  await application.evaluate(() => {
+    const fixture = globalThis.__controls
+    fixture.scene.root.children.push(
+      {
+        id: 'fixture-chart',
+        kind: 'chart',
+        title: 'Fixture activity',
+        text: 'test records',
+        height: 120,
+        points: [
+          { date: '2026-09-04', value: 0 },
+          { date: '2026-09-05', value: 10 },
+          { date: '2026-09-06', value: 20 }
+        ]
+      },
+      {
+        id: 'fixture-compact-label',
+        kind: 'label',
+        text: 'A long search question '.repeat(40),
+        maxLines: 2
+      }
+    )
+    fixture.window.setBounds({ width: 1000, height: 940 })
+    fixture.bridge.present(fixture.handle, JSON.stringify(fixture.scene))
+  })
+  state = await inspect()
+  const chart = find(state.root, 'fixture-chart')
+  const frameNumbers = (frame) => frame.match(/-?\d+(?:\.\d+)?/gu).map(Number)
+  const heights = chart.bars.map((bar) => frameNumbers(bar.frame)[3])
+  assert.equal(heights[0], 0)
+  assert(heights[2] > 0)
+  assert(Math.abs(heights[1] * 2 - heights[2]) < 0.001)
+  assert.match(chart.accessibleValues, /2026-09-05: 10 test records/)
+  assert(frameNumbers(find(state.root, 'fixture-compact-label').frame)[3] <= 40)
+  assert.equal(find(state.root, 'fixture-compact-label').text, 'A long search question '.repeat(40))
+  checks.push(
+    'Native chart has a zero baseline and proportional bars; compact labels retain complete accessible text'
+  )
   await act('fixture-root', 'appearance', 'contrast-dark')
   state = await inspect()
   // macOS26 normalizes accessibility appearance names to Aqua/DarkAqua. Check

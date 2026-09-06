@@ -158,20 +158,26 @@ export class ResearchReader implements NativeScreen {
             { weight: 'secondary' }
           ),
           row(`${prefix}-reading-actions`, [
-            b.button(
-              `${prefix}-open`,
-              'Open original',
-              () => this.context.openExternal(item.url),
-              true,
-              `${key}:open`
-            ),
-            b.button(
-              `${prefix}-save`,
-              saved ? 'Unsave' : 'Save',
-              () => this.toggleSave(),
-              !this.triage.busy,
-              `${key}:save:${saved}`
-            ),
+            {
+              ...b.button(
+                `${prefix}-open`,
+                'Open original',
+                () => this.context.openExternal(item.url),
+                true,
+                `${key}:open`
+              ),
+              symbol: 'arrow.up.right'
+            },
+            {
+              ...b.button(
+                `${prefix}-save`,
+                saved ? 'Unsave' : 'Save',
+                () => this.toggleSave(),
+                !this.triage.busy,
+                `${key}:save:${saved}`
+              ),
+              symbol: 'star'
+            },
             ...(prefix === 'saved'
               ? [
                   b.button(
@@ -184,32 +190,46 @@ export class ResearchReader implements NativeScreen {
                 ]
               : [])
           ]),
-          b.rich(
-            `${prefix}-summary`,
-            this.expanded || item.summary.length <= 420
-              ? item.summary
-              : `${item.summary.slice(0, 420)}…`
-          ),
+          {
+            ...b.rich(
+              `${prefix}-summary`,
+              this.expanded || item.summary.length <= 420
+                ? item.summary
+                : `${item.summary.slice(0, 420)}…`
+            ),
+            size: 14
+          },
           ...(item.summary.length > 420
             ? [
-                b.button(
-                  `${prefix}-expand`,
-                  this.expanded ? 'Show less' : 'Read full summary',
-                  () => {
-                    this.expanded = !this.expanded
-                    this.context.redraw()
-                  },
-                  true,
-                  `${key}:expand`
-                )
+                row(`${prefix}-expand-row`, [
+                  {
+                    ...b.button(
+                      `${prefix}-expand`,
+                      this.expanded ? 'Show less' : 'Read full summary',
+                      () => {
+                        this.expanded = !this.expanded
+                        this.context.redraw()
+                      },
+                      true,
+                      `${key}:expand`
+                    ),
+                    emphasis: 'quiet'
+                  }
+                ])
               ]
             : []),
-          label(
-            `${prefix}-evidence`,
-            item.kind === 'paper'
-              ? 'Evidence: arXiv abstract and metadata. Full-paper results are not verified here.'
-              : 'Evidence: source metadata and retrieved summary.',
-            { weight: 'secondary' }
+          column(
+            `${prefix}-evidence-panel`,
+            [
+              label(
+                `${prefix}-evidence`,
+                item.kind === 'paper'
+                  ? 'Evidence: arXiv abstract and metadata. Full-paper results are not verified here.'
+                  : 'Evidence: source metadata and retrieved summary.',
+                { weight: 'secondary', size: 12 }
+              )
+            ],
+            { surface: 'inset', padding: 10 }
           ),
           ...(item.reasons.length
             ? [
@@ -260,8 +280,9 @@ export class ResearchReader implements NativeScreen {
                 })
               ])
         ],
-        { padding: 18 }
-      )
+        { padding: 22, gap: 12 }
+      ),
+      { surface: 'reading' }
     )
   }
 

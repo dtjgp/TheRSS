@@ -141,3 +141,17 @@ The v0.2.0 personal beta is implemented, installed, and published at
 ## macOS presentation
 
 On macOS26+, the working interface uses native AppKit controls for all five workspaces, reading, settings, search and promotion dialogs. Electron hosts existing application services. The explicit `THERSS_UI=web` compatibility route retains its own regression suite; it is not native-completion evidence. Both routes share the same validated window application contract, SQLite state, runners and promotion ownership rules.
+
+The native Discover workspace restores result-bearing sessions and finishes successful/partial
+searches with a compact query summary. Edit search restores the complete draft and keyboard focus;
+Done editing keeps unsubmitted changes and labels them separately from the persisted result intent.
+Failed, canceled and empty searches keep their editing/recovery controls available.
+
+The retained sources have five presentation groups shared by the Discover picker and Sources
+directory filter: papers/literature, code/models, research organizations, technology/communities,
+and business/policy. Group selection never changes adapter capabilities or triggers retrieval.
+
+Native Analytics shows daily activity from the existing local history, with separate selectable
+series for Discover returned records, legacy Today returned records and stored analyses. Exact
+daily values remain available. Record counts include repeat searches; absent activity is explicit
+and never presented as proof of source availability or as unique-paper counts.

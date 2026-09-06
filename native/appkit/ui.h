@@ -11,6 +11,14 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 @property(nonatomic) BOOL paintsBackground;
 @end
 
+@interface TRChart : TRCanvas
+@property(nonatomic, copy) NSArray<NSDictionary *> *points;
+@property(nonatomic) CGFloat zoom;
+@property(nonatomic) BOOL highContrast;
+@property(nonatomic, strong) NSColor *accent;
+- (NSArray<NSDictionary *> *)geometry;
+@end
+
 @interface TRHost : NSObject <NSWindowDelegate> {
 @public
   std::deque<std::shared_ptr<TREvent>> pending;
@@ -28,6 +36,7 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 @property(nonatomic, strong) id accessibilityObserver;
 @property(nonatomic, strong) NSNumber *fixtureTransparency;
 @property(nonatomic, strong) NSNumber *fixtureContrast;
+@property(nonatomic, strong) NSColor *fixtureAccent;
 @property(nonatomic) CGFloat zoom;
 @property(nonatomic) BOOL fixture;
 @property(nonatomic) BOOL disposed;

@@ -7,6 +7,7 @@ import {
   type SourceCatalogEntry
 } from '../../shared/sourceCatalog'
 import { discoverySourceFromCatalogId } from '../../shared/sourceIdentity'
+import { SOURCE_GROUPS, sourceGroup } from '../../shared/sourceGroups'
 import {
   column,
   Controls,
@@ -26,6 +27,7 @@ export class SourcesScreen implements NativeScreen {
   private query = ''
   private priority = 'all'
   private axis = 'all'
+  private group = 'all'
   private focused = SOURCE_CATALOG[0]?.id ?? ''
   private selected = SOURCE_CATALOG[0]?.id ?? ''
   private activated = false
@@ -79,6 +81,23 @@ export class SourcesScreen implements NativeScreen {
           { placeholder: 'Search source name, research role, origin or access notes' }
         ),
         row('sources-filters', [
+          b.select(
+            'sources-group',
+            'Source group',
+            this.group,
+            [
+              { id: 'all', title: 'All source groups' },
+              ...SOURCE_GROUPS.map((group) => ({
+                id: group.id,
+                title: `${group.title} (${group.sources.length})`
+              }))
+            ],
+            (value) => {
+              this.group = value
+              this.context.redraw()
+            },
+            { width: 240 }
+          ),
           b.select(
             'sources-priority',
             'Source priority',
@@ -197,6 +216,11 @@ export class SourcesScreen implements NativeScreen {
     return ['failed', 'partial'].includes(this.health(entry))
   }
   private matches(entry: SourceCatalogEntry): boolean {
+    if (
+      this.group !== 'all' &&
+      sourceGroup(discoverySourceFromCatalogId(entry.id))?.id !== this.group
+    )
+      return false
     const query = this.query.trim().toLocaleLowerCase()
     const searchable = [
       entry.name,

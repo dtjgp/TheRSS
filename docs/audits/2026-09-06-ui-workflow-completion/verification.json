@@ -1,0 +1,17 @@
+{
+  "main_tests": 562,
+  "native_tests": 68,
+  "desktop_e2e": 6,
+  "native_workflow_groups": 12,
+  "native_control_groups": 6,
+  "dependency_vulnerabilities": 0,
+  "screenshots": {
+    "analytics-daily-values.png": "1597478069a561a908a76b2b3d1816ec4b5e6530029620dbea087fa8b1301eb0",
+    "analytics-dark.png": "675759a6f9de1a8c1a4b6b7fda913a5c76780e904c6c78396776c5a8ef639b39",
+    "analytics.png": "a8f489bf3dd31e3b2bf00c1110c2d739834ca8a0d33cf356d9dcd75b28b1eaf5",
+    "discover-light.png": "25a40e818682a89e63fe22eb6d13a5018f49eeeafcd547c7d735b7975e14da5c",
+    "discover-narrow-zoomed.png": "ee6a1b18ab458c3e7a57ac9b07188b4334b809b2bcebdf6a2940181246868283",
+    "source-picker-checked.png": "e2fcaed1ace25d02eb642cac02ef12edbaf0cffd0782c348d71ff0394a64bcea",
+    "sources-code-group.png": "3025a0ac3a32bec46963ea9c4240db19bb543fe5ef788b85922c4cafc686275a"
+  }
+}

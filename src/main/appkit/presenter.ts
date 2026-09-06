@@ -11,6 +11,7 @@ import {
   type Route
 } from './common'
 import { NativePresentation } from './presentation'
+import type { NativeNode } from './presentation'
 import { DiscoverScreen } from './discover'
 import { SavedScreen } from './saved'
 import { SettingsScreen } from './settings'
@@ -26,13 +27,14 @@ export interface NativePresenterPort {
   persist(preferences: NativePreferences): Promise<void>
   openExternal(url: string): void
 }
-const routes: readonly { id: Route; title: string; short: string }[] = [
-  { id: 'discover', title: 'Discover', short: 'Find' },
-  { id: 'saved', title: 'Saved', short: 'Saved' },
-  { id: 'analytics', title: 'Data Analytics', short: 'Stats' },
-  { id: 'sources', title: 'Sources', short: 'Sources' },
-  { id: 'settings', title: 'Settings', short: 'Settings' }
-]
+const routes: readonly { id: Route; title: string; short: string; symbol: NativeNode['symbol'] }[] =
+  [
+    { id: 'discover', title: 'Discover', short: 'Find', symbol: 'sparkle.magnifyingglass' },
+    { id: 'saved', title: 'Saved', short: 'Saved', symbol: 'star' },
+    { id: 'analytics', title: 'Data Analytics', short: 'Stats', symbol: 'chart.bar' },
+    { id: 'sources', title: 'Sources', short: 'Sources', symbol: 'square.stack' },
+    { id: 'settings', title: 'Settings', short: 'Settings', symbol: 'gearshape' }
+  ]
 
 export class NativePresenter {
   readonly presentation = new NativePresentation()
@@ -48,6 +50,7 @@ export class NativePresenter {
   private disposed = false
   private renderQueued = false
   private navigating = false
+  private pendingFocus: string | undefined
   private notice = ''
   private noticeTimer: ReturnType<typeof setTimeout> | null = null
   private preferenceTimer: ReturnType<typeof setTimeout> | null = null
@@ -64,6 +67,10 @@ export class NativePresenter {
       presentation: this.presentation,
       data: { dashboard: null, provider: null, personalPrompt: '', agents: [] },
       redraw: () => this.redraw(),
+      focus: (id) => {
+        this.pendingFocus = id
+        this.redraw()
+      },
       notify: (message) => this.notify(message),
       openExternal: (url) => port.openExternal(url),
       showDocument: (title, content) => this.modals.openDocument(title, content),
@@ -259,6 +266,14 @@ export class NativePresenter {
           'native-sidebar',
           [
             heading('native-brand', collapsed ? 'RSS' : 'TheRSS'),
+            ...(!collapsed
+              ? [
+                  label('native-sidebar-caption', 'YOUR RESEARCH DESK', {
+                    size: 10,
+                    weight: 'secondary'
+                  })
+                ]
+              : []),
             ...routes.map((route) => ({
               ...b.button(
                 `navigate-${route.id}`,
@@ -266,7 +281,10 @@ export class NativePresenter {
                 () => this.navigate(route.id),
                 this.ready
               ),
-              checked: route.id === this.route
+              checked: route.id === this.route,
+              emphasis: 'navigation' as const,
+              symbol: collapsed ? undefined : route.symbol,
+              height: 38
             })),
             label('native-sidebar-space', '', { flex: 1 }),
             ...(sourceAttention
@@ -285,11 +303,15 @@ export class NativePresenter {
                   )
                 ]
               : []),
-            b.button('sidebar-toggle', collapsed ? 'Expand' : 'Collapse sidebar', () =>
-              this.command('toggle-sidebar')
-            )
+            {
+              ...b.button('sidebar-toggle', collapsed ? 'Expand' : 'Collapse sidebar', () =>
+                this.command('toggle-sidebar')
+              ),
+              emphasis: 'quiet',
+              symbol: collapsed ? undefined : 'sidebar.left'
+            }
           ],
-          { padding: collapsed ? 8 : 18, gap: 12, glass: true }
+          { padding: collapsed ? 8 : 18, gap: 8, glass: true }
         ),
         column(
           'native-main',
@@ -297,15 +319,29 @@ export class NativePresenter {
             row('native-toolbar', [
               label('native-workspace-label', 'RESEARCH WORKSPACE', {
                 weight: 'secondary',
+                size: 10,
                 flex: 1
               }),
-              b.button(
-                'open-local-search',
-                'Find local research',
-                () => this.command('open-local-search'),
-                this.ready
-              ),
-              b.button('undo-triage', 'Undo triage', () => this.triage.undo(), this.triage.canUndo)
+              {
+                ...b.button(
+                  'open-local-search',
+                  'Find local research',
+                  () => this.command('open-local-search'),
+                  this.ready
+                ),
+                emphasis: 'quiet',
+                symbol: 'magnifyingglass'
+              },
+              {
+                ...b.button(
+                  'undo-triage',
+                  'Undo triage',
+                  () => this.triage.undo(),
+                  this.triage.canUndo
+                ),
+                emphasis: 'quiet',
+                symbol: 'arrow.uturn.backward'
+              }
             ]),
             ...(this.notice ? [label('native-notice', this.notice)] : []),
             ...(this.ready
@@ -331,7 +367,8 @@ export class NativePresenter {
       ]
     }
     const modal = this.modals.render(),
-      focus = this.modals.focus
+      focus = this.modals.focus ?? (modal ? undefined : this.pendingFocus)
+    this.pendingFocus = undefined
     this.modals.focus = undefined
     this.port.present(this.presentation.finish(root, modal, focus, this.preferences.zoom))
   }
