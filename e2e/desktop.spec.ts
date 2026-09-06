@@ -42,6 +42,7 @@ test('Discover-first search across every deployed source', async () => {
             ...env,
             HOME: userDataDirectory,
             THERSS_E2E_FIXTURES: '1',
+            THERSS_NATIVE_GLASS: 'off',
             THERSS_E2E_DISCOVER_DELAY: '1',
             THERSS_LLM_WIKI_PATH: poisonVault
           }
@@ -52,6 +53,7 @@ test('Discover-first search across every deployed source', async () => {
             ...env,
             HOME: userDataDirectory,
             THERSS_E2E_FIXTURES: '1',
+            THERSS_NATIVE_GLASS: 'off',
             THERSS_E2E_DISCOVER_DELAY: '1',
             THERSS_LLM_WIKI_PATH: poisonVault
           }

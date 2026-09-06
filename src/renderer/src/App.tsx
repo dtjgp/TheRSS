@@ -1,3 +1,4 @@
+import { useNativeGlass } from './useNativeGlass'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   CSSProperties,
@@ -117,6 +118,7 @@ function getSourceHealthSummary(snapshot: DashboardSnapshot | null): {
 }
 
 export function App({ api }: AppProps) {
+  useNativeGlass(api.nativeGlass)
   const [dashboard, setDashboard] = useState<DashboardSnapshot | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<AppView>('discover')

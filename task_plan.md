@@ -21,8 +21,10 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 beta (v0.2.0): Discover-centered retrieval over the 22 live-verified sources, confirmation-gated
 llm-wiki promotion, and the Apple-native design pass. Builds remain unsigned.
 
-The active core-reliability work is tracked in [`GOALS.md`](GOALS.md) and
-[`docs/audits/2026-08-26-core-reliability-updates/task_plan.md`](docs/audits/2026-08-26-core-reliability-updates/task_plan.md).
+Core reliability is complete as recorded in [`GOALS.md`](GOALS.md). The latest verified
+engineering update is the 2026-09-06 AppKit material migration, including guarded
+web fallback and recoverable local installation; its scope and evidence are in
+[`docs/audits/2026-09-05-native-glass/audit.md`](docs/audits/2026-09-05-native-glass/audit.md).
 Deferred product work remains in [`docs/ROADMAP.md`](docs/ROADMAP.md); completed phase execution
 records live in [`docs/history/PHASE_EXECUTION_HISTORY.md`](docs/history/PHASE_EXECUTION_HISTORY.md).
 

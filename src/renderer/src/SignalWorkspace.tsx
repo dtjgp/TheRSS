@@ -261,7 +261,11 @@ export function SignalWorkspace({
         </aside>
       }
       after={
-        <article className="signal-detail" aria-label="Selected signal details">
+        <article
+          className="signal-detail"
+          aria-label="Selected signal details"
+          data-native-context={selectedItem.id}
+        >
           <header className="signal-detail__header">
             <div className="signal-detail__meta">
               <SourceMark source={selectedItem.source} />
@@ -287,6 +291,7 @@ export function SignalWorkspace({
               type="button"
               className="detail-action detail-action--primary save-button"
               aria-label="Save signal"
+              data-native-action="save-item"
               aria-pressed={isSaved}
               title={isSaved ? 'Remove from Saved' : 'Save this signal'}
               onClick={() => void onTriage(selectedItem.id, isSaved ? 'viewed' : 'saved')}
@@ -305,6 +310,7 @@ export function SignalWorkspace({
               type="button"
               className="detail-action"
               aria-label="Analyze signal"
+              data-native-action="analyze-item"
               disabled={analyzingItemId === selectedItem.id}
               onClick={() => void onAnalyze(selectedItem.id)}
             >

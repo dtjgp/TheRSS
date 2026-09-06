@@ -18,6 +18,11 @@ export function isAppCommand(value: unknown): value is AppCommand {
 }
 
 export const IPC_CHANNELS = {
+  nativeGlassStatus: 'native-glass:status',
+  nativeGlassPresent: 'native-glass:present',
+  nativeGlassFocus: 'native-glass:focus',
+  nativeGlassRelease: 'native-glass:release',
+  nativeGlassEvent: 'native-glass:event',
   appCommand: 'app:command',
   showContextMenu: 'menu:show-context',
   getSystemAccent: 'appearance:get-system-accent',

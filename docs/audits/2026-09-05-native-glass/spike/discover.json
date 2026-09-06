@@ -1,0 +1,72 @@
+{
+  "command": "discover",
+  "native": {
+    "sidebarClicks": 0,
+    "originalFrame": {
+      "y": 0,
+      "x": 0,
+      "width": 1024,
+      "height": 700
+    },
+    "frame": {
+      "y": 680,
+      "x": 80,
+      "width": 1024,
+      "height": 700
+    },
+    "glassAvailable": true,
+    "screenHeight": 1440,
+    "splitFrame": {
+      "y": 0,
+      "x": 0,
+      "width": 1024,
+      "height": 700
+    },
+    "contentClass": "NSView",
+    "windowClass": "ElectronNSWindow",
+    "toolbar": {
+      "label": "Native glass pilot",
+      "screenRect": {
+        "y": 1352,
+        "x": 169,
+        "width": 108,
+        "height": 16
+      },
+      "accessibilityElement": false,
+      "class": "NSButton",
+      "windowRect": {
+        "y": 672,
+        "x": 89,
+        "width": 108,
+        "height": 16
+      }
+    },
+    "toolbarOwnsContent": true,
+    "toolbarClicks": 0,
+    "sidebar": {
+      "label": "Native sidebar pilot",
+      "screenRect": {
+        "y": 1330,
+        "x": 92,
+        "width": 200,
+        "height": 32
+      },
+      "accessibilityElement": false,
+      "class": "NSButton",
+      "windowRect": {
+        "y": 650,
+        "x": 12,
+        "width": 200,
+        "height": 32
+      }
+    },
+    "sidebarOwnsContent": true
+  },
+  "renderer": {
+    "width": 1024,
+    "height": 700,
+    "focused": true,
+    "errors": []
+  },
+  "views": []
+}

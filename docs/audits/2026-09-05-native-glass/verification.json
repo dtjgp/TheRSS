@@ -1,0 +1,99 @@
+{
+  "verifiedAt": "2026-09-06",
+  "baseCommit": "531fc79dd41cb4186cb26635515554f731f8584f",
+  "platform": "macOS 27.0 / arm64",
+  "electron": "44.1.1",
+  "unitTests": 471,
+  "unitTestFiles": 66,
+  "desktopTests": 6,
+  "globalCoverage": {
+    "lines": {
+      "total": 2306,
+      "covered": 2154,
+      "skipped": 0,
+      "pct": 93.4
+    },
+    "statements": {
+      "total": 2558,
+      "covered": 2316,
+      "skipped": 0,
+      "pct": 90.53
+    },
+    "functions": {
+      "total": 590,
+      "covered": 553,
+      "skipped": 0,
+      "pct": 93.72
+    },
+    "branches": {
+      "total": 1981,
+      "covered": 1598,
+      "skipped": 0,
+      "pct": 80.66
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "ownedCoverage": {
+    "lines": {
+      "total": 386,
+      "covered": 376,
+      "skipped": 0,
+      "pct": 97.4
+    },
+    "statements": {
+      "total": 439,
+      "covered": 414,
+      "skipped": 0,
+      "pct": 94.3
+    },
+    "functions": {
+      "total": 62,
+      "covered": 58,
+      "skipped": 0,
+      "pct": 93.54
+    },
+    "branches": {
+      "total": 322,
+      "covered": 283,
+      "skipped": 0,
+      "pct": 87.88
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "npmAuditVulnerabilities": 0,
+  "nativeModuleSha256": "4f1ad1479d08beba9215a13dfcd1dc1e34cc0960b0d8e7eac9c3514f96a22b1a",
+  "packagedAsarSha256": "887197f2f64baabd15c2e44c194c76ad2f630dc604ed09cb5c67ac3030526570",
+  "installedAsarSha256": "887197f2f64baabd15c2e44c194c76ad2f630dc604ed09cb5c67ac3030526570",
+  "installation": {
+    "status": "completed",
+    "completedAt": "2026-09-06T02-25-52-717Z",
+    "target": "~/Applications/TheRSS Dev.app",
+    "previousApp": "TheRSS Dev.backup-2026-09-06T02-25-52-717Z.app",
+    "databaseBackup": "therss-2026-09-06T02-25-52-717Z.sqlite",
+    "databasePreserved": true
+  },
+  "evidenceBoundary": {
+    "sourceCalls": "fixture only",
+    "vaultWrites": false,
+    "physicalTrackpadMomentum": "not verified",
+    "scrollIntegration": "public CGEvent/NSEvent to native button then main and renderer; no OS event posting",
+    "screenshots": "installed app native window capture, deterministic fixture"
+  },
+  "recoveryRegression": {
+    "constrainedWindowHeight": 677,
+    "nativeCasesPassed": 2,
+    "nativeSuspendResumeHitAndNavigation": true,
+    "nativeInputBlockedWhileSuspended": true,
+    "rendererReload": true
+  }
+}

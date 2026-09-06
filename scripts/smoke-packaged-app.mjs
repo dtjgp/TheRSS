@@ -42,6 +42,18 @@ try {
   if (!(await page.evaluate(() => Boolean(globalThis.therss)))) {
     throw new Error('Packaged preload API was not exposed')
   }
+  const nativeStatus = await page.evaluate(() => globalThis.therss.nativeGlass?.getStatus())
+  if (!nativeStatus) throw new Error('Packaged native UI API was not exposed')
+  if (nativeStatus.available) {
+    await page.waitForFunction(
+      () => globalThis.document.documentElement.dataset.nativeGlass === 'native'
+    )
+    log('Packaged AppKit material host is active.')
+  } else if (
+    !['unsupported-system', 'unsupported-platform', 'disabled'].includes(nativeStatus.reason)
+  ) {
+    throw new Error(`Packaged native UI failed: ${nativeStatus.reason}`)
+  }
   log(`Packaged app smoke passed: ${executablePath}`)
 } finally {
   await application?.close()

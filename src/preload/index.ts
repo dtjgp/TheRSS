@@ -1,3 +1,4 @@
+import { parseNativeGlassEvent } from '../shared/nativeGlass'
 import { contextBridge, ipcRenderer } from 'electron'
 import type { TheRSSApi } from '../shared/api'
 import { IPC_CHANNELS, isAppCommand } from '../shared/ipc'
@@ -63,6 +64,21 @@ function parseDiscoverProgress(value: unknown): DiscoverRunProgress | null {
 }
 
 const api: TheRSSApi = {
+  nativeGlass: {
+    getStatus: () => ipcRenderer.invoke(IPC_CHANNELS.nativeGlassStatus),
+    present: (state) => ipcRenderer.invoke(IPC_CHANNELS.nativeGlassPresent, state),
+    focus: (edge, revision) =>
+      ipcRenderer.invoke(IPC_CHANNELS.nativeGlassFocus, { edge, revision }),
+    release: () => ipcRenderer.invoke(IPC_CHANNELS.nativeGlassRelease),
+    onEvent: (listener) => {
+      const handle = (_event: Electron.IpcRendererEvent, input: unknown) => {
+        const event = parseNativeGlassEvent(input)
+        if (event) listener(event)
+      }
+      ipcRenderer.on(IPC_CHANNELS.nativeGlassEvent, handle)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.nativeGlassEvent, handle)
+    }
+  },
   onAppCommand: (listener) => {
     const handleCommand = (_event: Electron.IpcRendererEvent, command: unknown) => {
       if (isAppCommand(command)) listener(command)

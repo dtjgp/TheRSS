@@ -10,8 +10,10 @@ import './styles/workspace.css'
 import './styles/local-search.css'
 import './styles/macos.css'
 import './styles/accessibility.css'
+import './styles/native-glass.css'
 
 const reflectWindowActivity = () => {
+  if (document.documentElement.dataset.nativeGlass === 'native') return
   document.documentElement.dataset.windowActive = String(document.hasFocus())
 }
 

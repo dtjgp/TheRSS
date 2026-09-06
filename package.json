@@ -10,8 +10,8 @@
     "node": "^24.15.0 || >=26.0.0"
   },
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build && npm run build:mcp",
+    "dev": "npm run build:native && electron-vite dev",
+    "build": "electron-vite build && npm run build:native && npm run build:mcp",
     "build:mcp": "vite build --config vite.mcp.config.ts",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit",
@@ -34,7 +34,8 @@
     "package:mac": "npm run build && electron-builder --mac dir",
     "install:local": "npm run package:mac && node scripts/install-local-beta.mjs",
     "update:local": "node scripts/update-local-beta.mjs",
-    "postinstall": "node scripts/ensure-electron.mjs && electron-builder install-app-deps"
+    "postinstall": "node scripts/ensure-electron.mjs && electron-builder install-app-deps",
+    "build:native": "node scripts/build-native-glass.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
@@ -64,6 +65,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.6",
     "jsdom": "^30.0.1",
+    "node-api-headers": "1.9.0",
     "prettier": "^3.9.6",
     "tsx": "^4.23.13",
     "typescript": "^5.9.3",
@@ -88,7 +90,10 @@
       "target": [
         "dir"
       ]
-    }
+    },
+    "asarUnpack": [
+      "out/native-glass/*.node"
+    ]
   },
   "allowScripts": {
     "better-sqlite3@13.0.3": true,
