@@ -1,5 +1,5 @@
 {
-  "main_tests": 562,
+  "main_tests": 566,
   "native_tests": 68,
   "desktop_e2e": 6,
   "native_workflow_groups": 12,
@@ -13,5 +13,6 @@
     "discover-narrow-zoomed.png": "ee6a1b18ab458c3e7a57ac9b07188b4334b809b2bcebdf6a2940181246868283",
     "source-picker-checked.png": "e2fcaed1ace25d02eb642cac02ef12edbaf0cffd0782c348d71ff0394a64bcea",
     "sources-code-group.png": "3025a0ac3a32bec46963ea9c4240db19bb543fe5ef788b85922c4cafc686275a"
-  }
+  },
+  "stderr_classification_tests": 4
 }

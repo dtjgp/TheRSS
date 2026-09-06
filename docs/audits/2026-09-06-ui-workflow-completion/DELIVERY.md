@@ -20,7 +20,7 @@ The following captures use isolated deterministic fixtures, not live search resu
 
 | Gate                                                       | Result                                           |
 | ---------------------------------------------------------- | ------------------------------------------------ |
-| Main tests                                                 | 83 files / 562 tests passed                      |
+| Main tests                                                 | 84 files / 566 tests passed                      |
 | Native controller tests                                    | 16 files / 68 tests passed                       |
 | Main coverage: statements / branches / functions / lines   | 90.77 / 80.70 / 94.12 / 93.60%                   |
 | Native coverage: statements / branches / functions / lines | 91.80 / 82.64 / 90.44 / 94.80%                   |
@@ -51,3 +51,8 @@ The application target is `~/Applications/TheRSS Dev.app`. Its receipt is
 No live model/source calls, real vault writes, credentials changes, release tag or GitHub Release
 are part of this delivery. The public repository update uses the protected-main PR workflow and
 its required `quality` and `desktop` checks.
+
+The first remote desktop run passed all 12 packaged workflows but rejected two exact Chromium
+process-priority diagnostics. The harness now records those separately and still fails unknown
+stderr, including mixed error chunks. Four regression tests and an independent review verified
+this classification; the installed binary was unchanged.

@@ -9,6 +9,7 @@ import process from 'node:process'
 import { setTimeout as delay } from 'node:timers/promises'
 import { fileURLToPath, URL } from 'node:url'
 import { _electron as electron } from '@playwright/test'
+import { classifyNativeSmokeStderr } from './native-smoke-diagnostics.mjs'
 
 const project = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const output = resolve(
@@ -718,12 +719,7 @@ try {
     ),
     0
   )
-  const applicationErrors = errors.filter(
-    (line) =>
-      !/^\d{4}-\d{2}-\d{2} .* error messaging the mach port for IMKCFRunLoopWakeUpReliable\s*$/.test(
-        line
-      )
-  )
+  const { applicationErrors, platformDiagnostics } = classifyNativeSmokeStderr(errors)
   assert.deepEqual(applicationErrors, [])
   await writeFile(
     join(output, 'result.json'),
@@ -735,6 +731,7 @@ try {
         profile,
         checks,
         errors,
+        platformDiagnostics,
         webElementCount: 0,
         nativeRoot: final.nativeRoot
       },

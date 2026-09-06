@@ -46,3 +46,23 @@ Implementation, verification, installation and GitHub evidence will be recorded 
 - Unsigned packaging and packaged default-native/compatibility smoke passed. The application was installed with a completed receipt at 2026-09-06T18:57:27.998Z, retaining the previous app and online database backup. Installed smoke passed, including the same 12 native workflow groups.
 - Installation integrity: package/installed app.asar and both native-module SHA-256 values match; backup and live databases pass integrity checks and retain equal record counts. Public evidence is in `install-verification.json`; personal-data captures stay local and are ignored by Git.
 - [Delivery summary and fixture screenshots](DELIVERY.md) records the result. GitHub synchronization proceeds through `codex/native-ui-workflow`, with required `quality` and `desktop` checks and final main equality verified by the coordinating task.
+
+### CI diagnostic classification correction
+
+PR #48's first desktop run passed all 12 packaged native workflow groups, then failed the final
+stderr assertion on two Chromium macOS process-priority diagnostics: `TASK_CATEGORY_POLICY` and
+`TASK_SUPPRESSION_POLICY`, both reporting kernel invalid argument (4) during window recreation.
+The [upstream implementation](https://raw.githubusercontent.com/chromium/chromium/main/base/process/process_mac.cc)
+locates these in process-priority/App Nap handling, separately from application actions. This is
+not proof that arbitrary stderr is harmless.
+
+Accepted verifier correction: classify only these exact source/message/error-code combinations
+as retained platform diagnostics, alongside the already recognized input-method wake-up message.
+Assemble stderr chunks before splitting lines so an unrelated error in the same chunk still fails.
+Tests must reject unknown messages, other kernel codes and mixed application failures. Keep all
+original stderr in the receipt and fail on every unclassified line; no behavioral assertion is removed.
+
+Correction verification: four focused tests passed after RED, the full check passed 84 main test
+files / 566 tests plus 68 native tests, and the installed package passed all 12 native workflow
+groups in CI-style no-screenshot mode. A separate reviewer checked exact anchoring, split chunks,
+mixed fatal lines and unknown variants with no remaining finding. Application binaries are unchanged.
