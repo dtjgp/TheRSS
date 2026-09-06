@@ -40,13 +40,32 @@ async function native(
             )
         )
         const diagnostic = await inspect(application)
-        return (
+        const stable =
           before.active &&
           diagnostic.active &&
           before.revision === diagnostic.revision &&
           diagnostic.revision ===
             Number(await page.evaluate(() => document.documentElement.dataset.nativeRevision))
-        )
+        if (stable) return true
+        const renderer = await page.evaluate(async () => ({
+          mode: document.documentElement.dataset.nativeGlass,
+          failure: document.documentElement.dataset.nativeFailure,
+          revision: document.documentElement.dataset.nativeRevision,
+          viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio },
+          status: await window.therss.nativeGlass!.getStatus()
+        }))
+        const windowSnapshot = await application.evaluate(({ BrowserWindow }) => {
+          const target = BrowserWindow.getAllWindows()[0]!
+          return { bounds: target.getBounds(), zoom: target.webContents.getZoomFactor() }
+        })
+        return JSON.stringify({
+          action,
+          id,
+          before,
+          after: diagnostic,
+          renderer,
+          window: windowSnapshot
+        })
       })
       .toBe(true)
   }
@@ -72,11 +91,19 @@ const inspect = async (app: ElectronApplication) => (await native(app, 'inspect'
 
 async function constrainFixtureDisplay(application: ElectronApplication): Promise<void> {
   const height = Number(env.THERSS_E2E_MAX_WINDOW_HEIGHT)
-  if (!Number.isFinite(height)) return
-  if (height < 600) throw new Error('Fixture window height must preserve the app minimum')
-  await application.evaluate(({ BrowserWindow }, limit) => {
-    BrowserWindow.getAllWindows()[0]!.setMaximumSize(16384, limit)
-  }, height)
+  if (Number.isFinite(height)) {
+    if (height < 600) throw new Error('Fixture window height must preserve the app minimum')
+    await application.evaluate(({ BrowserWindow }, limit) => {
+      BrowserWindow.getAllWindows()[0]!.setMaximumSize(16384, limit)
+    }, height)
+  }
+  const rate = Number(env.THERSS_E2E_CPU_THROTTLE)
+  if (Number.isFinite(rate)) {
+    if (rate < 1) throw new Error('Fixture CPU throttle must be at least one')
+    const page = await application.firstWindow()
+    const session = await page.context().newCDPSession(page)
+    await session.send('Emulation.setCPUThrottlingRate', { rate })
+  }
 }
 
 test('native glass pilot preserves navigation, modal, focus, appearance and window lifecycle', async () => {
