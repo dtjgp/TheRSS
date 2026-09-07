@@ -48,7 +48,7 @@ describe('CONFIGURED_SOURCE_DEFINITIONS', () => {
     for (const source of CONFIGURED_SOURCE_DEFINITIONS) {
       if (source.transport === 'feed' || source.transport === 'html') {
         expect(new URL(source.endpoint).protocol).toBe('https:')
-        expect(source.verifiedOn).toBe('2026-08-19')
+        expect(source.verifiedOn).toBe(source.id === 'folo:182' ? '2026-09-07' : '2026-08-19')
       }
     }
 

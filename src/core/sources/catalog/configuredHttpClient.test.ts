@@ -2,6 +2,22 @@ import { describe, expect, it, vi } from 'vitest'
 import { fetchConfiguredHttpDocument } from './configuredHttpClient'
 
 describe('fetchConfiguredHttpDocument', () => {
+  it('retrieves the existing OpenAI source directly from its official RSS origin', async () => {
+    const fetcher = vi.fn<typeof fetch>(async (input, init) => {
+      expect(String(input)).toBe('https://openai.com/news/rss.xml')
+      expect(new Headers(init?.headers).has('Authorization')).toBe(false)
+      return new Response('<rss><channel><title>OpenAI News</title></channel></rss>', {
+        headers: { 'Content-Type': 'text/xml; charset=utf-8' }
+      })
+    })
+    await expect(fetchConfiguredHttpDocument('folo:182', { fetcher })).resolves.toMatchObject({
+      sourceId: 'folo:182',
+      endpoint: 'https://openai.com/news/rss.xml',
+      transport: 'feed',
+      contentType: 'text/xml'
+    })
+    expect(fetcher).toHaveBeenCalledOnce()
+  })
   it('rejects a cross-origin redirect before requesting the destination', async () => {
     const fetcher = vi.fn<typeof fetch>(async (_url, options) => {
       expect(options?.redirect).toBe('manual')

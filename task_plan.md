@@ -22,7 +22,7 @@ audit and the complete path to market-release quality. Work proceeds on `codex/m
 from `f9bc6a2`; the [current contract](docs/audits/2026-09-06-market-readiness/CHANGE_CONTRACT.md)
 owns the A1-A9 product acceptance and R1-R7 release gates. A1-A9 are implemented and verified;
 the [current report](docs/audits/2026-09-06-market-readiness/REPORT.md) and machine-readable
-verification record own the current gate outcomes. Complete checks pass 602 main tests and
+verification record own the current gate outcomes. Complete checks pass 603 main tests and
 87 AppKit tests, compatibility E2E passes 6/6, and native workflow/control, credential, MCP,
 package and isolated unsigned upgrade/rollback evidence is available. Real account verification,
 installation/third-party authorization, Developer ID signing and notarization, human acceptance,

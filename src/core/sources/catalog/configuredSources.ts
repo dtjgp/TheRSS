@@ -68,8 +68,8 @@ const definitions = [
   {
     id: 'folo:182',
     transport: 'feed',
-    endpoint: 'https://rsshub.rssforever.com/openai/news',
-    verifiedOn: VERIFIED_ON
+    endpoint: 'https://openai.com/news/rss.xml',
+    verifiedOn: '2026-09-07'
   },
   {
     id: 'folo:77',

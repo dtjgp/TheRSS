@@ -12,7 +12,7 @@ installation/rollback, signed distribution/update, documentation and GitHub deli
 an unsigned beta market-ready. All requirements need current evidence; missing external release
 credentials remain explicit blockers rather than being removed from scope.
 
-Current evidence (2026-09-07): A1-A9 are implemented and verified. Main checks pass 602 tests,
+Current evidence (2026-09-07): A1-A9 are implemented and verified. Main checks pass 603 tests,
 the AppKit coverage gate passes 87 tests, and compatibility E2E passes 6/6. Native workflows,
 controls, safeStorage, MCP and isolated unsigned upgrade/rollback have passed. The
 [current report](docs/audits/2026-09-06-market-readiness/REPORT.md) records partial release gates:

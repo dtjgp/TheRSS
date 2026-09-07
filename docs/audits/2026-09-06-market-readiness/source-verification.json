@@ -118,6 +118,48 @@
     "Fetched does not prove complete parsing, current-day publication or source truth.",
     "folo:611 retained 3 records and rejected 7.",
     "Source timestamps are untrusted publisher metadata; they are not execution timestamps.",
-    "No real model account call was performed."
-  ]
+    "No real model account call was performed.",
+    "The full 20-source snapshot above precedes the official OpenAI endpoint repair; only OpenAI was rechecked afterward. Do not combine different timestamps into a fresh all-source health claim."
+  ],
+  "followUps": {
+    "openaiOfficial": {
+      "checkedAt": "2026-09-07T02:07:58.557Z",
+      "sourceId": "folo:182",
+      "endpoint": "https://openai.com/news/rss.xml",
+      "bytes": 712661,
+      "count": 100,
+      "rejectedCount": 0,
+      "elapsedMs": 430,
+      "firstItemId": "folo:182:article:https://openai.com/index/an-alien-mind",
+      "status": "fetched",
+      "scope": "Existing folo:182 source; official endpoint; unchanged 100-item normalization cap",
+      "curlProbeBodySha256": "01c27df583be0adc507260768c8e639b13a45a8c7c514831fa7eea4376846a4a"
+    },
+    "independentMirrorProbe": {
+      "checkedAt": "2026-09-07T02:05:17.514096+00:00",
+      "url": "https://rsshub.rssforever.com/openai/news",
+      "exitCode": 28,
+      "statusAndSeconds": "200 0.893507 14.533694 15.000813",
+      "diagnostic": "curl: (28) Operation timed out after 15000 milliseconds with 40540 out of 525643 bytes received"
+    },
+    "officialCandidateProbes": [
+      {
+        "label": "official-openai",
+        "checkedAt": "2026-09-07T02:05:30.156890+00:00",
+        "url": "https://openai.com/news/rss.xml",
+        "exitCode": 0,
+        "statusTypeSeconds": "200 text/xml; charset=utf-8 0.288960",
+        "diagnostic": ""
+      },
+      {
+        "label": "official-cnbc",
+        "checkedAt": "2026-09-07T02:05:30.063391+00:00",
+        "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+        "exitCode": 0,
+        "statusTypeSeconds": "403 text/html 0.196558",
+        "diagnostic": ""
+      }
+    ],
+    "unresolvedMirrorSourceIds": ["folo:302", "folo:93", "folo:67", "folo:253"]
+  }
 }

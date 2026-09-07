@@ -1,6 +1,6 @@
 {
   "algorithm": "SHA256 of sorted UTF-8 path + NUL + file SHA256 hex + LF records",
-  "sha256": "26301a216b934c2110b188397deeb6255783fa1ba5b311b1a3736ba458561ca6",
+  "sha256": "9c23b0f594b97a324d4fb580bffe55e1d46d523f300d5e1141a7a87e40c4d27a",
   "files": [
     {
       "path": ".prettierrc.json",
@@ -360,7 +360,7 @@
     },
     {
       "path": "src/core/sources/catalog/configuredHttpClient.test.ts",
-      "sha256": "3833f6b8fbe016bfc64a2f52bb2249ffb4e02251abdfd387abc0f9997d73422b"
+      "sha256": "fd7310ea350e62fdc773cd1c15033192af7251de5d72d5d11d18bfd4c89c582d"
     },
     {
       "path": "src/core/sources/catalog/configuredHttpClient.ts",
@@ -380,11 +380,11 @@
     },
     {
       "path": "src/core/sources/catalog/configuredSources.test.ts",
-      "sha256": "5a3c0d6445e53da725192246ba6a986ee2465f33bd8621fb48e11e8b3bc05d45"
+      "sha256": "e546cba3efc82d119779b56dbf4b76f76b083d4cc3683019745a7e37e055749e"
     },
     {
       "path": "src/core/sources/catalog/configuredSources.ts",
-      "sha256": "e3b83b7fe1449487ac5536bd8952de8e49eb2cf1cdb83a57215e71b1dfd4af76"
+      "sha256": "b359e9dc808e6df918553abb7b60c074cdecc31a422555c223f546926b1541aa"
     },
     {
       "path": "src/core/sources/catalog/datedFeedAdapter.test.ts",
@@ -1012,7 +1012,7 @@
     },
     {
       "path": "src/shared/sourceCatalogData.json",
-      "sha256": "3ec7d3dcdbdd8829ced9c0b088f0ae6e0d5ad5970f35009bab34c18ba974cb47"
+      "sha256": "02d86a1dd92beb42dc185ff9454338939ba6d08961983769c645b50825858104"
     },
     {
       "path": "src/shared/sourceGroups.test.ts",

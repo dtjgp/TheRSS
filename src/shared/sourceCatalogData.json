@@ -175,7 +175,7 @@
     "researchAxes": ["MC", "AB"],
     "role": "官方研究",
     "acquisition": "active",
-    "accessNote": "已配置：公开RSSHub路由（2026-08-19当日验证）",
+    "accessNote": "已配置：OpenAI官方News RSS（2026-09-07验证）",
     "reason": "LLM、智能体与模型能力/安全研究",
     "origin": "Folo 1543目录"
   },

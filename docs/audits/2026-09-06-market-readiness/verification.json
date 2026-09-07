@@ -10,11 +10,11 @@
     "node": "26.7.0",
     "electron": "44.1.1"
   },
-  "buildInputsSha256": "26301a216b934c2110b188397deeb6255783fa1ba5b311b1a3736ba458561ca6",
+  "buildInputsSha256": "9c23b0f594b97a324d4fb580bffe55e1d46d523f300d5e1141a7a87e40c4d27a",
   "tests": {
     "main": {
       "files": 91,
-      "passed": 602,
+      "passed": 603,
       "coverage": {
         "statements": 90.53,
         "branches": 80.87,
@@ -260,6 +260,108 @@
       "evidenceLog": "/private/tmp/therss-market-final-package-smoke.log",
       "logSha256": "24b8b23764c46039fa10d0cd0ec8694f833d57046429cbdc98fd4bf60bc9dc3d",
       "completedAt": "2026-09-07T02:00:35.939997+00:00"
+    },
+    {
+      "name": "official-openai-red",
+      "command": "vitest run src/core/sources/catalog/configuredHttpClient.test.ts",
+      "exitCode": 1,
+      "evidenceLog": "/private/tmp/therss-market-official-openai-red.log",
+      "logSha256": "62b55fc676e698c333f63694a787fc0469a163dc221ac68dd54aeb3da1bf03b7",
+      "completedAt": "2026-09-07T02:06:50.849540+00:00"
+    },
+    {
+      "name": "official-openai-green",
+      "command": "vitest run four affected source test files",
+      "exitCode": 0,
+      "evidenceLog": "/private/tmp/therss-market-official-openai-green.log",
+      "logSha256": "0f1b9d2cdef379b2368c377c3fb2dc92c7760773109b29f13625098e67c74616",
+      "completedAt": "2026-09-07T02:07:52.540367+00:00"
+    },
+    {
+      "name": "official-openai-full-check",
+      "command": "npm run check",
+      "exitCode": 0,
+      "evidenceLog": "/private/tmp/therss-market-openai-check.log",
+      "logSha256": "74b9927fda93e3bc2324ec9eaff360399226ff18b92cde5f90d532f4ed27312c",
+      "completedAt": "2026-09-07T02:08:39.280179+00:00"
+    },
+    {
+      "name": "official-openai-live",
+      "command": "fetchConfiguredHttpDocument + normalizeFeedDocument using production defaults",
+      "exitCode": 0,
+      "evidenceLog": "/private/tmp/therss-market-openai-official-live.json",
+      "logSha256": "b3ea85bed8fa5a2053ee3b286e5f6cce38b2768f0c09e737e82aeafc5205821d",
+      "completedAt": "2026-09-07T02:07:58.557701+00:00"
+    },
+    {
+      "name": "official-openai-final-package",
+      "command": "npm run smoke:package",
+      "exitCode": 0,
+      "checks": [
+        {
+          "name": "Native root, blank Web page and Unicode boundary",
+          "passed": true,
+          "elapsedMs": 227
+        },
+        {
+          "name": "All 22 source choices and semantic search",
+          "passed": true,
+          "elapsedMs": 3380
+        },
+        {
+          "name": "Native reading, Save, full analysis and search details sheet",
+          "passed": true,
+          "elapsedMs": 7870
+        },
+        {
+          "name": "Saved repository analysis and independent source/runner filters",
+          "passed": true,
+          "elapsedMs": 1053
+        },
+        {
+          "name": "Secure key then immediate Save uses the real ordered callback queue",
+          "passed": true,
+          "elapsedMs": 1176
+        },
+        {
+          "name": "Secure draft survives tabs and explicit discard clears the hidden native field",
+          "passed": true,
+          "elapsedMs": 1446
+        },
+        {
+          "name": "Persisted Analytics metrics and complete analysis artifact",
+          "passed": true,
+          "elapsedMs": 2039
+        },
+        {
+          "name": "Source focus is separate from activation; content stays read-only",
+          "passed": true,
+          "elapsedMs": 970
+        },
+        {
+          "name": "Local search uses a native sheet and safe external-open routing",
+          "passed": true,
+          "elapsedMs": 5595
+        },
+        {
+          "name": "Promotion preview includes verified facts and produces a fixture receipt only after confirmation",
+          "passed": true,
+          "elapsedMs": 5476
+        },
+        {
+          "name": "Native editing Undo, zoom, dividers and narrow window layout",
+          "passed": true,
+          "elapsedMs": 4789
+        },
+        {
+          "name": "Dirty marked-text close guard and native window recreation preserve data/preferences",
+          "passed": true,
+          "elapsedMs": 2070
+        }
+      ],
+      "evidenceLog": "/private/tmp/therss-market-openai-package-smoke.log",
+      "logSha256": "24b8b23764c46039fa10d0cd0ec8694f833d57046429cbdc98fd4bf60bc9dc3d",
+      "completedAt": "2026-09-07T02:11:44.822480+00:00"
     }
   ],
   "releaseGates": {
@@ -267,7 +369,7 @@
     "R1": "passed",
     "R2": "code-reviewed; private reporting authorization pending",
     "R3": "unsigned fixture verification passed; real install authorization pending",
-    "R4": "partial: 5 configured timeouts and real account validation pending",
+    "R4": "partial: OpenAI official endpoint recovered; four shared mirror failures unresolved; real account validation pending",
     "R5": "blocked: Developer ID and notarization prerequisites unavailable",
     "R6": "documentation complete; human acceptance pending",
     "R7": "reviewed local candidate; GitHub push/PR/CI pending authorization"
@@ -280,10 +382,11 @@
     "Native and Web compatibility runtime evidence is from macOS 27 only.",
     "No human black-box or VoiceOver sign-off was performed.",
     "Earlier fixture gates precede the last isolated child-process fix; the full check includes it.",
-    "Upgrade rehearsal proves unsigned data preservation, not signed automatic updates."
+    "Upgrade rehearsal proves unsigned data preservation, not signed automatic updates.",
+    "The OpenAI endpoint follow-up uses its own dated live check; other source health was not revalidated in that follow-up."
   ],
   "packageEvidence": "package-verification.json",
   "sourceEvidence": "source-verification.json",
   "distributionEvidence": "distribution-verification.json",
-  "completedLocalVerificationAt": "2026-09-07T02:01:39.334242+00:00"
+  "completedLocalVerificationAt": "2026-09-07T02:12:42.092698+00:00"
 }
