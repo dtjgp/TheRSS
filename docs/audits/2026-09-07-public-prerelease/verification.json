@@ -1,0 +1,41 @@
+{
+  "releaseVersion": "0.3.0",
+  "prerelease": true,
+  "signedForDistribution": false,
+  "fullCheckExitCode": 0,
+  "mainTests": 687,
+  "appkitTests": 104,
+  "suitesOverlap": true,
+  "archiveStartup": "passed",
+  "archiveNativeWorkflowGroups": 14,
+  "archiveScreenshots": "passed_on_retry",
+  "initialCaptureFailure": {
+    "stage": "native_confirmation_screenshot",
+    "priorPassedWorkflowGroups": 9,
+    "retained": true,
+    "cause": "not established",
+    "testOrRuntimeCodeChangedForRetry": false
+  },
+  "runtimeFilesCompared": 11,
+  "dataMigration": false,
+  "userAppReinstalled": false,
+  "liveSourcesOrModelsCalled": false,
+  "logs": {
+    "fullCheck": {
+      "filename": "therss-prerelease-check.log",
+      "sha256": "f904d35e7ca0080fd4dc93c3679caf0078cc8d12bd54d6bc14b45667681e58aa"
+    },
+    "package": {
+      "filename": "therss-prerelease-package.log",
+      "sha256": "bc986777987329b3a6b48b50d1e45b1c8a9106eee7b9910ee7373ac2380607bc"
+    },
+    "archiveInitialSmoke": {
+      "filename": "therss-prerelease-archive-smoke.log",
+      "sha256": "bb7c209601c7a76257650132dc9e072f0c54ceb4ba863452198f025e47afc9d0"
+    },
+    "archiveSmokeRetry": {
+      "filename": "therss-prerelease-archive-smoke-retry.log",
+      "sha256": "b3ed46270450e8d3b3872c1b3db28f9e67a55cb1224f20c68d07d13fe807f299"
+    }
+  }
+}

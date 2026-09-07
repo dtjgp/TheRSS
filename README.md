@@ -68,17 +68,21 @@ API key 不会返回给渲染进程，也不会以明文写入 SQLite；应用�
 
 应用不会在启动时隐式发起 22 个来源请求。每次外部检索都由 Discover 中的显式操作触发；失败不会删除上一轮会话或 Saved 数据。
 
-## 当前验证状态（2026-09-06）
+## 0.3.0 预发布下载
 
-- 完整 AppKit 工作流覆盖 14 类界面能力；真实原生控件验收通过 12 组，额外控件验收通过 5 组。默认入口的 Web body 元素数为 0。
+[GitHub v0.3.0 预发布](https://github.com/dtjgp/TheRSS/releases/tag/v0.3.0) 提供 Apple Silicon（arm64）、macOS 26+ 的未签名 ZIP、SHA-256 校验文件及包清单。下载包不包含 Developer ID 签名或公证，可能被 macOS 安全策略拦截；安装、升级备份及限制见 [发布说明](docs/audits/2026-09-07-public-prerelease/RELEASE_NOTES.md)。它不是已通过正式市场发行验收的版本。
+
+## 当前验证状态（2026-09-07）
+
+- 主测试 687 项、AppKit 专项 104 项（套件有重叠），桌面 E2E 8 个流程通过；包及安装后的原生工作流各通过 14 组。默认原生入口没有可见 Web 页面。
 - 覆盖搜索、22 个来源、保存/撤销、论文及仓库分析、双设置草稿与密钥顺序、原生搜索/写入弹窗、中文组合输入、焦点恢复、关闭重开、布局持久化，以及 820×600 下的 150% 字体。
 - 富文本使用原生段落和表格；异常表格或超出样式预算时保留完整纯文本，避免不可信内容放大原生对象分配。深色侧栏截图已单独复审。
 - `npm run check` 同时执行主测试套件与 AppKit 专项覆盖率门槛；Objective-C++ 由原生构建和真实控件测试验证，不使用 TypeScript 覆盖率代替。
 - `THERSS_UI=web` 显式切回保留的兼容界面。旧 DOM、材质层和 `THERSS_NATIVE_GLASS` 测试仅验证该兼容路径。CI 运行原生行为检查；本地交付另外要求真实窗口截图和视觉检查。
 - 本轮使用临时数据目录与确定性 fixtures；没有实时来源/模型调用，没有写入真实 llm-wiki。最近真实来源复检仍保持其原日期边界。
-- 构建仍为 unsigned；没有新增 GitHub Release、付费 Apple 身份或生产自动更新承诺。
+- GitHub 以 unsigned pre-release 方式分发；Apple 签名、公证和同身份自动更新仍未验收。发布包排除早期界面试验文件。
 
-范围、架构、测试与截图见 [完整 AppKit 迁移审查](docs/audits/2026-09-06-full-appkit/audit.md) 和 [ADR 0011](docs/decisions/0011-complete-appkit-interface.md)。此前的 [原生材质迁移](docs/audits/2026-09-05-native-glass/audit.md) 和 [滚动修复](docs/audits/2026-09-06-native-scroll/audit.md) 是兼容路径的历史记录。
+最新交互与来源反馈见 [当前验收](docs/audits/2026-09-07-apple-design-status/REPORT.md)。范围、架构、测试与截图见 [完整 AppKit 迁移审查](docs/audits/2026-09-06-full-appkit/audit.md) 和 [ADR 0011](docs/decisions/0011-complete-appkit-interface.md)。此前的 [原生材质迁移](docs/audits/2026-09-05-native-glass/audit.md) 和 [滚动修复](docs/audits/2026-09-06-native-scroll/audit.md) 是兼容路径的历史记录。
 
 ## 模型配置示例
 

@@ -21,3 +21,9 @@
 当前功能验证为 687 项主测试、104 项 AppKit 测试、8 个桌面流程及新包/实际安装包各 14 组原生验收。安装前后全部 11 张用户数据表一致。推送钩子通过 lint、typecheck、687 项测试和构建，重新生成的 16 个输出与已安装应用内容一致。来源状态、设计参考和实际截图见 [最新报告](../2026-09-07-apple-design-status/REPORT.md)。
 
 PR 保持 open/draft，目标仍为 `main`，没有合并、标签或 Release。每个最终提交的 CI 结果仅以 [当前 PR 检查页](https://github.com/dtjgp/TheRSS/pull/49/checks) 为准；旧提交的成功结果不替代当前提交的验证。人工 UX 暂通过决定、来源/模型质量限制和正式 Apple 发行延期均继续保留。
+
+## 后续合并与预发布授权（2026-09-07）
+
+用户针对“PR 保持草稿，未合并或发布 Release”进一步要求“合并并且发布”，覆盖 PR #49 合并及 `v0.3.0` GitHub Release 的标签和资产上传。此前保留草稿/不发布的范围到此被新指令替代；Apple 付费签名、公证仍沿用延期决定。
+
+[预发布契约](../2026-09-07-public-prerelease/CHANGE_CONTRACT.md)要求匹配提交的 CI 成功、干净归档和解压后运行验收。发布范围是 Apple Silicon/macOS 26+ unsigned pre-release，附 ZIP、SHA-256 和包清单；最终合并状态、资产及对应提交由 [PR #49](https://github.com/dtjgp/TheRSS/pull/49) 和 [v0.3.0 Release](https://github.com/dtjgp/TheRSS/releases/tag/v0.3.0) 记录。它不代表完整市场发行门槛或研究质量验收完成。

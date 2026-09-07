@@ -1,0 +1,15 @@
+{
+  "archive": "TheRSS-0.3.0-macos-arm64-unsigned.zip",
+  "archiveBytes": 149040090,
+  "archiveSha256": "4d75dc3bf6754524e002de903133f4f77a426d504142ee74a8e2a701304da050",
+  "bundleContentSha256": "237c74cd619cdcaa3575a5078d889db7a7366ea92fc454e564f721f014179620",
+  "bundleEntries": 663,
+  "symlinks": 14,
+  "extractionMatchesContentModesAndLinks": true,
+  "linksStayInsideBundle": true,
+  "version": "0.3.0",
+  "bundleId": "dev.dtjgp.therss",
+  "developerIdSigned": false,
+  "notarizationPerformed": false,
+  "passed": true
+}

@@ -87,6 +87,7 @@
     },
     "files": [
       "out/**/*",
+      "!out/native-glass-spike/**/*",
       "package.json"
     ],
     "mac": {

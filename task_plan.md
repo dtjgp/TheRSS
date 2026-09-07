@@ -17,6 +17,12 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Status
 
+**Merge and unsigned pre-release authorized.** The user requested PR #49 merge and GitHub
+publication. `v0.3.0` ships an arm64/macOS 26+ preview ZIP and verification assets; Developer ID,
+notarization and production automatic updates remain deferred. The
+[release contract](docs/audits/2026-09-07-public-prerelease/CHANGE_CONTRACT.md) and
+[release notes](docs/audits/2026-09-07-public-prerelease/RELEASE_NOTES.md) own this delivery.
+
 **Recorded source feedback and project Apple design adaptation are verified and installed.**
 The [current report](docs/audits/2026-09-07-apple-design-status/REPORT.md) records the latest
 source/Discover observation projection, explicit local feedback, and native/Web design boundaries.

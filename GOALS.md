@@ -1,6 +1,13 @@
 # TheRSS Goals
 
-## Current stage: Recorded source feedback verified and installed
+## Current stage: 0.3.0 unsigned GitHub pre-release delivery
+
+The user authorized merging PR #49 and publishing a GitHub Release. The release contract is
+[here](docs/audits/2026-09-07-public-prerelease/CHANGE_CONTRACT.md); it retains the earlier
+Apple signing/notarization deferral and defines `v0.3.0` as an unsigned arm64/macOS 26+ pre-release.
+[Release notes](docs/audits/2026-09-07-public-prerelease/RELEASE_NOTES.md) describe artifacts,
+verification and remaining limits. The Release page and matching PR/main CI are authoritative for
+publication and remote status; a pre-release does not complete the market-ready goal below.
 
 The Apple design reference is adapted in the project UI skill for native AppKit and the Web
 fallback. Sources now reads the latest valid local source/Discover observation, distinguishes
@@ -12,7 +19,7 @@ Current checks pass 687 main and 104 AppKit tests (overlapping suites), eight de
 and 14 workflow groups for both the new package and exact installed app. All 11 user-data tables
 match the immediate installation backup; the previous app is retained. The app is reopened.
 The user explicitly authorized GitHub delivery on 2026-09-07. Implementation commits `199be74`
-and `541cbdb` are pushed to `codex/market-readiness`, and draft PR #49 now has the updated scope
+and `541cbdb` are pushed to `codex/market-readiness`, and PR #49 has the updated scope
 and validation narrative. Current CI is authoritative only for its matching PR head; see the
 [delivery record](docs/audits/2026-09-06-market-readiness/GITHUB_DELIVERY.md).
 
