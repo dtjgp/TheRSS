@@ -1,0 +1,12 @@
+{
+  "installedAt": "2026-09-07T15-41-04-844Z",
+  "receiptFile": "install-2026-09-07T15-41-04-844Z.json",
+  "appBackupRetained": true,
+  "databaseBackupRetained": true,
+  "allTablesMatchImmediateBackup": true,
+  "integrity": "ok",
+  "asarSha256": "f6d147d1314f27303a67c34399ef2f8204b27123bca888862255a21b35bf3ae9",
+  "bundleSha256": "eb5b3fb56e21ec1972907d46cec66ae0c49cd5328b9724a862545f89eb5d7adb",
+  "bundleMatchesPackage": true,
+  "tableCount": 11
+}

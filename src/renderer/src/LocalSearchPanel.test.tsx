@@ -27,9 +27,8 @@ describe('LocalSearchPanel', () => {
 
     const input = screen.getByRole('searchbox')
     const close = screen.getByRole('button', { name: 'Close local search' })
-    const submit = screen.getByRole('button', { name: /^Search$/ })
     expect(input).toHaveFocus()
-    expect(submit).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /^Search$/ })).toBeNull()
     await user.tab()
     expect(close).toHaveFocus()
     await user.tab()
@@ -41,11 +40,11 @@ describe('LocalSearchPanel', () => {
 
     await user.type(input, 'edge')
     await user.tab()
-    expect(submit).toHaveFocus()
-    await user.tab()
     expect(close).toHaveFocus()
+    await user.tab()
+    expect(input).toHaveFocus()
     await user.tab({ shift: true })
-    expect(submit).toHaveFocus()
+    expect(close).toHaveFocus()
   })
 
   it('includes newly returned links in the focus cycle and skips hidden result groups', async () => {
@@ -74,9 +73,6 @@ describe('LocalSearchPanel', () => {
 
     const links = await screen.findAllByRole('link')
     const close = screen.getByRole('button', { name: 'Close local search' })
-    const submit = screen.getByRole('button', { name: /^Search$/ })
-    await user.tab()
-    expect(submit).toHaveFocus()
     await user.tab()
     expect(links[0]).toHaveFocus()
     await user.tab()
@@ -90,7 +86,7 @@ describe('LocalSearchPanel', () => {
     close.hidden = true
     input.focus()
     await user.tab({ shift: true })
-    expect(submit).toHaveFocus()
+    expect(input).toHaveFocus()
     await user.tab()
     expect(input).toHaveFocus()
   })
@@ -122,16 +118,15 @@ describe('LocalSearchPanel', () => {
     await user.click(trigger)
     await user.type(screen.getByRole('searchbox'), 'edge')
     await user.tab()
-    const submit = screen.getByRole('button', { name: /^Search$/ })
-    expect(submit).toHaveFocus()
-
+    const close = screen.getByRole('button', { name: 'Close local search' })
+    expect(close).toHaveFocus()
     view.rerender(<SearchHarness api={{ searchLocal }} />)
-    expect(submit).toHaveFocus()
+    expect(close).toHaveFocus()
     await user.keyboard('{Escape}')
     expect(trigger).toHaveFocus()
   })
 
-  it('searches only after submit, labels result kinds, and closes with Escape', async () => {
+  it('supports immediate Return, labels result kinds, and closes with Escape', async () => {
     const searchLocal = vi.fn<TheRSSApi['searchLocal']>().mockResolvedValue({
       query: 'edge pruning',
       results: [

@@ -180,30 +180,6 @@
   line-height: 1.55;
 }
 
-.signal-detail__summary[data-expanded='false'] {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 6;
-}
-
-.signal-detail__summary-toggle {
-  width: fit-content;
-  margin-top: 9px;
-  padding: 3px 0;
-  color: var(--view-accent-text);
-  background: transparent;
-  border: 0;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.signal-detail__summary-toggle:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .signal-detail__reasons {
   max-width: 760px;
   margin-top: 30px;

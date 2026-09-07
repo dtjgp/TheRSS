@@ -1,21 +1,22 @@
 # TheRSS Goals
 
-## Current stage: Source and Saved updates verified locally; quality baseline limited
+## Current stage: Direct editing and navigation refinements verified and installed
 
-The user authorized continued source stability, an explicit local Saved snapshot update, and a
-bounded discovery/analysis quality baseline. The implementation and six public searches are complete;
-four analysis attempts include one timeout and one evidence-boundary failure. Assistant Top-10
-labels reveal limited direct relevance for compound constraints. Human precision and recall remain
-unmeasured. Paper prompt v3 adds guards, with live quality after that change unverified.
+The user identified an unnecessary Edit search gate and requested a broader interaction audit.
+Discover now keeps its query directly editable; list activation opens records, long summaries scroll
+without an expand step, local lookup filters while typing, and duplicate source-open controls are
+removed. Explicit model/network/persistence actions and write confirmations remain intentional.
 
-Current scope, evidence and delivery checks are in the
-[source-quality report](docs/audits/2026-09-07-source-quality/REPORT.md) and its change contract.
-Current checks pass 669 main and 96 AppKit tests, eight desktop cases, and 13 packaged native
-workflow groups. The app is installed with backups; all 11 user-data tables match the immediate
-backup. Remote delivery status is owned by PR #49 head checks.
-The [independent human checklist](docs/audits/2026-09-06-market-readiness/HUMAN_ACCEPTANCE.md)
-awaits real feedback. Custom paid model APIs, VoiceOver and formal Apple distribution remain
-deferred. GitHub delivery uses existing draft PR #49; no merge or software Release is included.
+Current checks pass 680 main and 103 AppKit tests (overlapping suites), eight desktop cases,
+13 packaged/installed native workflow groups and 15 local-navigation cycles. All 11 user-data tables
+match the immediate installation backup. See the
+[direct-interaction report](docs/audits/2026-09-07-direct-interaction/REPORT.md) for screenshots and the
+unreproduced test-window-close event. Draft PR #49 owns remote delivery and CI status.
+
+The user feedback is addressed; [human acceptance](docs/audits/2026-09-06-market-readiness/HUMAN_ACCEPTANCE.md)
+awaits actual retest. The previous [quality baseline](docs/audits/2026-09-07-source-quality/REPORT.md)
+remains limited; UI verification does not establish retrieval or analysis accuracy. Custom paid model
+APIs, VoiceOver and formal Apple distribution remain deferred.
 
 ## Deferred goal: Market-ready native research product
 

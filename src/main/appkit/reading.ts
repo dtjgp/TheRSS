@@ -87,7 +87,6 @@ export class ResearchReader implements NativeScreen {
   private item: DashboardItem | null = null
   private sessionId: string | undefined
   private extra = ''
-  private expanded = false
   private metadataExpanded = false
   private artifact: AnalysisArtifact | null = null
   private analysisPending = new Set<string>()
@@ -117,7 +116,6 @@ export class ResearchReader implements NativeScreen {
     this.extra = extra
     if (!changed && !sourceChanged) return
     if (changed) {
-      this.expanded = false
       this.metadataExpanded = false
     }
     this.artifact = item ? (this.analysisCache.get(item.id) ?? null) : null
@@ -240,34 +238,7 @@ export class ResearchReader implements NativeScreen {
                   : [])
               ]
             : []),
-          {
-            ...b.rich(
-              `${prefix}-summary`,
-              this.expanded || item.summary.length <= 420
-                ? item.summary
-                : `${item.summary.slice(0, 420)}…`
-            ),
-            size: 14
-          },
-          ...(item.summary.length > 420
-            ? [
-                row(`${prefix}-expand-row`, [
-                  {
-                    ...b.button(
-                      `${prefix}-expand`,
-                      this.expanded ? 'Show less' : 'Read full summary',
-                      () => {
-                        this.expanded = !this.expanded
-                        this.context.redraw()
-                      },
-                      true,
-                      `${key}:expand`
-                    ),
-                    emphasis: 'quiet'
-                  }
-                ])
-              ]
-            : []),
+          { ...b.rich(`${prefix}-summary`, item.summary), size: 14 },
           column(
             `${prefix}-evidence-panel`,
             [

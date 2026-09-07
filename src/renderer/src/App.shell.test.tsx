@@ -427,7 +427,7 @@ describe('App', () => {
     ).toBeVisible()
   })
 
-  it('keeps Saved triage actions before a collapsed long summary', async () => {
+  it('keeps Saved triage actions before the complete scrolling summary', async () => {
     const longSummary = 'Long abstract evidence. '.repeat(80)
     const savedItem: DashboardSnapshot['savedItems'][number] = {
       id: 'arxiv:long-summary',
@@ -457,24 +457,13 @@ describe('App', () => {
     expect(
       Boolean(saveAction.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING)
     ).toBe(true)
-    const summaryToggle = screen.getByRole('button', { name: 'Show full summary' })
-    expect(summaryToggle).toHaveAttribute('aria-expanded', 'false')
-    expect(summary).toHaveAttribute('data-expanded', 'false')
-
-    await user.click(summaryToggle)
-    expect(screen.getByRole('button', { name: 'Collapse summary' })).toHaveAttribute(
-      'aria-expanded',
-      'true'
-    )
-    expect(summary).toHaveAttribute('data-expanded', 'true')
-
+    expect(screen.queryByRole('button', { name: 'Show full summary' })).toBeNull()
+    expect(summary.textContent).toBe(longSummary)
+    expect(summary).not.toHaveAttribute('data-expanded', 'false')
     await user.click(
       screen.getByRole('button', { name: 'Select signal: Second long paper for Saved triage' })
     )
-    expect(screen.getByRole('button', { name: 'Show full summary' })).toHaveAttribute(
-      'aria-expanded',
-      'false'
-    )
+    expect(document.querySelector('.signal-detail__summary')?.textContent).toBe(longSummary)
   })
 
   it('restores the latest persisted analysis for the selected saved signal', async () => {

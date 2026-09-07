@@ -44,7 +44,6 @@ describe('native reading and triage', () => {
     await vi.waitFor(() =>
       expect(h.find(h.render(reader), 'saved-analysis-freshness')?.text).toContain('unchanged')
     )
-    await h.act(reader, 'saved-expand')
     reader.select({ ...item, triageState: 'saved' })
     expect(h.api.getLatestAnalysis).toHaveBeenCalledTimes(1)
     reader.select({ ...item, summary: 'A revised source. '.repeat(100) })
@@ -190,14 +189,13 @@ describe('native reading and triage', () => {
     expect(JSON.stringify(h.render(reader))).toContain('Other paper')
   })
 
-  it('expands complete summaries and supports analysis for non-paper Saved records', async () => {
+  it('shows complete summaries and supports analysis for non-paper Saved records', async () => {
     const analyze = vi.fn(async () => artifact)
     const h = nativeHarness({ analyzeItem: analyze })
     const reader = new ResearchReader(h.context, 'saved', new TriageHistory(h.context))
     reader.runner = 'codex'
     reader.select({ ...item, id: 'github:1', source: 'github', kind: 'repository' })
-    expect(JSON.stringify(h.render(reader))).not.toContain(item.summary)
-    await h.act(reader, 'saved-expand')
+    expect(h.find(h.render(reader), 'saved-expand')).toBeUndefined()
     expect(JSON.stringify(h.render(reader))).toContain(item.summary)
     await h.act(reader, 'saved-analyze')
     expect(analyze).toHaveBeenCalledWith('github:1', 'codex')

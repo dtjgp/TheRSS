@@ -39,6 +39,7 @@ export class NativeModals {
   private receipt: LlmWikiPromotionReceipt | null = null
   private consumed = false
   private disposed = false
+  private searchTimer: ReturnType<typeof setTimeout> | undefined
   focus: string | undefined
 
   constructor(private readonly context: NativeContext) {
@@ -55,6 +56,7 @@ export class NativeModals {
   }
   openSearch(restore = false): void {
     if (this.kind === 'promotion') return
+    this.clearSearchTimer()
     this.version++
     this.kind = 'search'
     if (!restore) {
@@ -71,6 +73,7 @@ export class NativeModals {
   }
   openDocument(title: string, content: string): void {
     if (this.kind === 'promotion') return
+    this.clearSearchTimer()
     this.version++
     this.kind = 'document'
     this.document = { title, content }
@@ -80,12 +83,14 @@ export class NativeModals {
     this.context.redraw()
   }
   dispose(): void {
+    this.clearSearchTimer()
     this.disposed = true
     this.version++
     this.kind = null
   }
   async close(): Promise<void> {
     if (this.blocksNavigation) return
+    this.clearSearchTimer()
     if (this.kind === 'promotion' && this.preview?.previewId && !this.consumed)
       await this.cancelPromotion()
     this.version++
@@ -177,36 +182,28 @@ export class NativeModals {
     const selected =
       response?.results.find((item) => resultKey(item) === this.selectedResult) ??
       response?.results[0]
-    const valid = localSearchQuerySchema.safeParse(this.query).success
     return [
       row('local-search-input-row', [
         b.input(
           'local-search-query',
           'Search saved items, sessions and analyses',
           this.query,
-          (query) => {
-            if (!this.busy) {
-              this.query = query
-              this.context.redraw()
-            }
-          },
+          (query) => this.changeQuery(query),
           200,
           {
             flex: 1,
-            enabled: !this.busy,
+            enabled: !this.opening,
             activate: this.context.presentation.action('local-search-enter', () => this.search())
           }
-        ),
-        b.button(
-          'local-search-submit',
-          this.busy && !this.opening ? 'Searching…' : 'Search',
-          () => this.search(),
-          valid && !this.busy
         )
       ]),
       label(
         'local-search-instructions',
-        'Enter 2–200 characters. Search reads the local index only.',
+        this.opening
+          ? 'Opening local record…'
+          : this.busy
+            ? 'Searching local records…'
+            : 'Type 2–200 characters to search locally. Click a result or press Return on it to open.',
         { weight: 'secondary' }
       ),
       ...(response
@@ -243,15 +240,6 @@ export class NativeModals {
               ? [
                   label('local-search-selected-detail', selected.detail),
                   row('local-search-result-actions', [
-                    {
-                      ...b.button(
-                        'local-search-open-in-app',
-                        this.opening ? 'Opening…' : 'Open in TheRSS',
-                        () => this.openLocalResult(),
-                        !this.busy
-                      ),
-                      emphasis: 'primary'
-                    },
                     b.button(
                       'local-search-open',
                       'Open original',
@@ -279,6 +267,26 @@ export class NativeModals {
           ])
     ]
   }
+  private clearSearchTimer(): void {
+    if (this.searchTimer !== undefined) clearTimeout(this.searchTimer)
+    this.searchTimer = undefined
+  }
+  private changeQuery(query: string): void {
+    if (this.opening) return
+    this.clearSearchTimer()
+    this.version++
+    this.query = query
+    this.response = null
+    this.selectedResult = ''
+    this.message = ''
+    this.busy = false
+    if (localSearchQuerySchema.safeParse(query).success)
+      this.searchTimer = setTimeout(() => {
+        this.searchTimer = undefined
+        void this.search()
+      }, 250)
+    this.context.redraw()
+  }
   private async openLocalResult(): Promise<void> {
     const selected =
       this.response?.results.find((item) => resultKey(item) === this.selectedResult) ??
@@ -304,8 +312,9 @@ export class NativeModals {
     }
   }
   private async search(): Promise<void> {
+    this.clearSearchTimer()
     const parsed = localSearchQuerySchema.safeParse(this.query)
-    if (!parsed.success || this.busy || this.kind !== 'search') return
+    if (!parsed.success || this.busy || this.kind !== 'search' || this.disposed) return
     const version = this.version
     this.busy = true
     this.message = ''

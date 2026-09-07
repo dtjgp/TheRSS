@@ -40,19 +40,11 @@ export class ReadingWorkspace {
       compactPane: this.context.compact() ? (this.reading ? 'detail' : 'list') : undefined
     }
   }
-  navigation(
-    backLabel = 'Back to results',
-    prepareReading?: () => void | Promise<void>
-  ): NativeNode[] {
-    if (!this.context.compact()) return []
+  navigation(backLabel = 'Back to results'): NativeNode[] {
+    if (!this.focused) return []
     return [
       row(`${this.scope}-reading-navigation`, [
-        this.reading
-          ? this.controls.button(`${this.scope}-back-to-results`, backLabel, () => this.back())
-          : this.controls.button(`${this.scope}-open-reader`, 'Read selected', async () => {
-              this.open()
-              await prepareReading?.()
-            })
+        this.controls.button(`${this.scope}-back-to-results`, backLabel, () => this.back())
       ])
     ]
   }

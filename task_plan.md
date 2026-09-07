@@ -17,14 +17,13 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Status
 
-**Source/Saved changes verified and installed; quality baseline limited.** Current work and
-quality results are recorded in the [source-quality report](docs/audits/2026-09-07-source-quality/REPORT.md).
-Six public searches returned 469 records; assistant labels expose compound-query relevance limits.
-Four analysis attempts include one timeout and one evidence-boundary failure. Human acceptance and
-human precision remain unmeasured; new paid APIs, VoiceOver and formal Apple release are deferred.
-Current gates: 669 main/96 AppKit tests, eight desktop cases and 13 packaged native workflows.
-Installation preserves all 11 user-data tables against the immediate backup. Existing draft PR #49
-owns remote delivery and CI status.
+**Direct interaction refinements verified and installed; human retest pending.** The user's Edit
+search feedback led to a five-category audit and simplification across search, reading, lists and
+local lookup. See the [current report](docs/audits/2026-09-07-direct-interaction/REPORT.md).
+Checks: 680 main/103 AppKit tests, eight desktop cases, 13 packaged/installed native workflow groups,
+15 local-navigation cycles, and all 11 user-data tables matched to the immediate backup. The report
+retains one unreproduced test-window-close event. Existing draft PR #49 owns CI and remote delivery.
+Prior source and model-quality limits remain separate from this UI verification.
 
 **All 39 phases through 2026-08-24 are complete.** The current head on `main` is the personal
 beta (v0.2.0): Discover-centered retrieval over the 22 live-verified sources, confirmation-gated

@@ -186,7 +186,7 @@ test('Discover-first search across every deployed source', async () => {
       sourceGroup.getByRole('checkbox', { name: 'Search 北京智源人工智能研究院' })
     ).toBeChecked()
     await sourceGroup.getByRole('button', { name: 'Clear all sources' }).click()
-    await expect(page.getByRole('button', { name: 'Expand and search' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeDisabled()
     await sourceGroup.getByRole('button', { name: 'Select all sources' }).click()
     await sourcePicker.click()
     await expect(sourcePicker).toHaveAttribute('aria-expanded', 'false')
@@ -194,7 +194,7 @@ test('Discover-first search across every deployed source', async () => {
       .getByRole('textbox', { name: 'Research question' })
       .fill('semantic communication pruning for edge deployment')
     await page.getByRole('combobox', { name: 'Search with' }).selectOption('codex')
-    await page.getByRole('button', { name: 'Expand and search' }).click()
+    await page.getByRole('button', { name: 'Search', exact: true }).click()
 
     const activePipeline = page.getByRole('region', { name: 'Discover run pipeline' })
     const liveProgress = activePipeline.getByRole('status', { name: 'Discover run progress' })
@@ -303,6 +303,11 @@ test('Discover-first search across every deployed source', async () => {
     await expect(resultRegion).toHaveCSS('overflow-y', 'hidden')
     await expect(discoverList).toHaveCSS('overflow-y', 'auto')
     await expect(selectedDiscover).toHaveCSS('overflow-y', 'auto')
+    await expect(selectedDiscover.locator('.signal-detail__summary')).toHaveCSS('display', 'block')
+    await expect(selectedDiscover.locator('.signal-detail__summary')).toContainText(
+      'Full fixture summary ends here.'
+    )
+    await expect(selectedDiscover.getByRole('button', { name: 'Show full summary' })).toHaveCount(0)
     const discoverListDivider = page.getByRole('separator', {
       name: 'Resize Discover result list'
     })
@@ -658,7 +663,7 @@ test('Discover-first search across every deployed source', async () => {
       'Personal context on'
     )
     await capture(page, '05b-personalized-discover-ready.png')
-    await page.getByRole('button', { name: 'Expand and search' }).click()
+    await page.getByRole('button', { name: 'Search', exact: true }).click()
     const personalizedPipeline = page.getByRole('region', { name: 'Discover run pipeline' })
     await expect(personalizedPipeline).toBeVisible()
     await expect(personalizedPipeline).toHaveCount(0, { timeout: 10_000 })

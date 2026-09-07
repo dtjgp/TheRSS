@@ -52,18 +52,25 @@ describe('native modal workflows', () => {
     modal.openSearch()
     const screen = { render: () => modal.render()! }
     await h.act(screen, 'local-search-query', 'paper')
-    await h.act(screen, 'local-search-submit')
+    await h.context.presentation.dispatch(
+      JSON.stringify({ action: h.find(h.render(screen), 'local-search-query')!.activate })
+    )
     const rows = h.find(h.render(screen), 'local-search-results')!.rows!
     expect(new Set(rows.map((row) => row.id)).size).toBe(2)
     await h.act(screen, 'local-search-results', 'analysis:same-id')
-    await h.act(screen, 'local-search-open-in-app')
+    await h.context.presentation.dispatch(
+      JSON.stringify({
+        action: h.find(h.render(screen), 'local-search-results')!.activate,
+        value: 'analysis:same-id'
+      })
+    )
     expect(h.context.openLocal).toHaveBeenCalledWith(
       { kind: 'analysis', analysisId: 'same-id' },
       expect.any(Function)
     )
     expect(h.context.openExternal).not.toHaveBeenCalled()
   })
-  it('searches only on explicit submission, validates length, and hides late results after close', async () => {
+  it('supports immediate Return, validates length, and hides late results after close', async () => {
     let finish!: (value: { query: string; results: [] }) => void
     const search = vi.fn(
       () =>
@@ -76,10 +83,12 @@ describe('native modal workflows', () => {
     modal.openSearch()
     const screen = { render: () => modal.render()! }
     await h.act(screen, 'local-search-query', 'x')
-    expect(h.find(h.render(screen), 'local-search-submit')?.enabled).toBe(false)
+    expect(h.find(h.render(screen), 'local-search-submit')).toBeUndefined()
     await h.act(screen, 'local-search-query', 'edge')
     expect(search).not.toHaveBeenCalled()
-    const running = h.act(screen, 'local-search-submit')
+    const running = h.context.presentation.dispatch(
+      JSON.stringify({ action: h.find(h.render(screen), 'local-search-query')!.activate })
+    )
     await modal.close()
     finish({ query: 'edge', results: [] })
     await running

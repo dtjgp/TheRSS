@@ -248,8 +248,7 @@ describe('Apple semantic color system', () => {
     expect(stylesheet).toMatch(
       /\.signal-detail__actions\s*\{[^}]*position:\s*sticky;[^}]*top:\s*0;/su
     )
-    expect(savedSummaryRule).toContain('-webkit-line-clamp: 6;')
-    expect(savedSummaryRule).toContain('overflow: hidden;')
+    expect(savedSummaryRule).toBeUndefined()
   })
 
   it('uses only Apple system typography without bundled third-party font assets', () => {

@@ -83,27 +83,31 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
   const [error, setError] = useState<string | null>(null)
   const activeRunId = useRef<string | null>(null)
   const cancellationRequested = useRef(false)
+  const editedFields = useRef({ intent: false, runner: false, sources: false })
+  const searchGeneration = useRef(0)
 
   useEffect(() => {
     let active = true
+    const generation = searchGeneration.current
     api
       .getLatestDiscover()
       .then((latest) => {
-        if (active && latest) {
+        if (active && latest && generation === searchGeneration.current) {
           const latestSources = DISCOVER_SOURCE_IDS.filter(
             (source) => latest.sourceOutcomes[source]?.status !== 'not_searched'
           )
           setSnapshot(latest)
           setVisibleResultCount(DISCOVER_RESULT_BATCH_SIZE)
-          setIntent(latest.intent)
-          setRunner(latest.runner)
-          if (latestSources.length > 0) {
+          if (!editedFields.current.intent) setIntent(latest.intent)
+          if (!editedFields.current.runner) setRunner(latest.runner)
+          if (!editedFields.current.sources && latestSources.length > 0) {
             setSources(latestSources)
           }
         }
       })
       .catch(() => {
-        if (active) setError('The previous Discover session could not be loaded.')
+        if (active && generation === searchGeneration.current)
+          setError('The previous Discover session could not be loaded.')
       })
     return () => {
       active = false
@@ -135,6 +139,14 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
 
   const canSearch = intent.trim().length > 0 && sources.length > 0 && !isSearching
   const sourceSet = useMemo(() => new Set(sources), [sources])
+  const draftChanged =
+    snapshot &&
+    (intent.trim() !== snapshot.intent ||
+      runner !== snapshot.runner ||
+      DISCOVER_SOURCE_IDS.some(
+        (source) =>
+          (snapshot.sourceOutcomes[source]?.status !== 'not_searched') !== sourceSet.has(source)
+      ))
   const filteredItems = useMemo(
     () =>
       snapshot?.items.filter((item) => {
@@ -160,6 +172,8 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
   )
 
   const toggleSource = (source: DiscoverSource) => {
+    if (isSearching) return
+    editedFields.current.sources = true
     setSources((current) =>
       current.includes(source)
         ? current.filter((candidate) => candidate !== source)
@@ -167,14 +181,26 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
     )
   }
 
-  const selectAllSources = () => setSources(DISCOVER_SOURCE_IDS)
-  const clearSources = () => setSources([])
+  const selectAllSources = () => {
+    if (!isSearching) {
+      editedFields.current.sources = true
+      setSources(DISCOVER_SOURCE_IDS)
+    }
+  }
+  const clearSources = () => {
+    if (!isSearching) {
+      editedFields.current.sources = true
+      setSources([])
+    }
+  }
 
   const search = async () => {
+    searchGeneration.current++
     const runId = createDiscoverRunId()
     activeRunId.current = runId
     cancellationRequested.current = false
     setIsSearching(true)
+    setIsSourcePickerOpen(false)
     setError(null)
     setRunNotice(null)
     setProgress({
@@ -221,6 +247,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
 
   const retryIncompleteSources = async () => {
     if (!snapshot || retryableSources.length === 0) return
+    searchGeneration.current++
     const runId = createDiscoverRunId()
     activeRunId.current = runId
     cancellationRequested.current = false
@@ -320,9 +347,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
       <div className="today-view__heading">
         <div>
           <h1>Discover research</h1>
-          <p className="discover-copy">
-            Expand one question into a bounded, inspectable search across selected local sources.
-          </p>
+          <p className="discover-copy">Search selected research sources and keep useful results.</p>
         </div>
       </div>
 
@@ -338,12 +363,21 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
           <textarea
             aria-label="Research question"
             value={intent}
-            onChange={(event) => setIntent(event.target.value)}
+            onChange={(event) => {
+              editedFields.current.intent = true
+              setIntent(event.target.value)
+            }}
             placeholder="Find work connecting structured pruning, semantic communications, and edge deployment"
             rows={3}
             maxLength={2_000}
+            disabled={isSearching}
           />
         </label>
+        {draftChanged && (
+          <p className="discover-draft-status" aria-label="Unsubmitted search changes">
+            Draft not searched. Results: {snapshot.intent}
+          </p>
+        )}
         <div
           className={`discover-personalization-status ${
             hasPersonalContext ? 'discover-personalization-status--active' : ''
@@ -367,6 +401,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
               aria-label={`Choose sources, ${sources.length} of ${DISCOVER_SOURCE_IDS.length} selected`}
               aria-expanded={isSourcePickerOpen}
               aria-controls="discover-source-options"
+              disabled={isSearching}
               onClick={() => setIsSourcePickerOpen((current) => !current)}
             >
               <span>Sources</span>
@@ -418,8 +453,12 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
             <span>Search with</span>
             <select
               aria-label="Search with"
+              disabled={isSearching}
               value={runner}
-              onChange={(event) => setRunner(event.target.value as DiscoverRunner)}
+              onChange={(event) => {
+                editedFields.current.runner = true
+                setRunner(event.target.value as DiscoverRunner)
+              }}
             >
               <option value="model-provider">Model provider</option>
               {localAgents.map((agent) => (
@@ -431,7 +470,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
             </select>
           </label>
           <button type="submit" className="primary-button" disabled={!canSearch}>
-            {isSearching ? 'Expanding and searching…' : 'Expand and search'}
+            {isSearching ? 'Searching…' : 'Search'}
           </button>
         </div>
       </form>

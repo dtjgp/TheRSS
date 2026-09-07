@@ -392,7 +392,7 @@ test('full native actions preserve Discover, Saved, promotion, Undo and keyboard
       .getByRole('textbox', { name: 'Research question' })
       .fill('structured pruning edge deployment')
     await page.getByRole('combobox', { name: 'Search with' }).selectOption('codex')
-    await page.getByRole('button', { name: 'Expand and search' }).click()
+    await page.getByRole('button', { name: 'Search', exact: true }).click()
     await expect(page.getByLabel('Selected Discover result')).toBeVisible()
     // Only visible controls are projected. A short CI display requires the same
     // scroll a user would perform before interacting with this floating strip.

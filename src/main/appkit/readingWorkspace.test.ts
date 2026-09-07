@@ -17,7 +17,7 @@ describe('compact reading without stacked panes', () => {
     )
     const reading = h.render(screen)
     expect(h.find(reading, 'discover-workspace')?.compactPane).toBe('detail')
-    expect(h.find(reading, 'discover-query-summary')).toBeUndefined()
+    expect(h.find(reading, 'discover-query')).toBeUndefined()
     expect(h.find(reading, 'discover-results')?.selected).toBe('arxiv:3')
     expect(h.find(reading, 'discover-reading-title')?.text).toBe('Paper 3')
     await h.act(screen, 'discover-back-to-results')

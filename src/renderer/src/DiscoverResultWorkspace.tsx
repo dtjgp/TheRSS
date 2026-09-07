@@ -105,7 +105,6 @@ export function DiscoverResultWorkspace({
 }: DiscoverResultWorkspaceProps) {
   const workspaceRef = useRef<HTMLDivElement>(null)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(items[0]?.id ?? null)
-  const [expandedSummaryId, setExpandedSummaryId] = useState<string | null>(null)
   const resolvedSelectedItemId = items.some((item) => item.id === selectedItemId)
     ? selectedItemId
     : (items[0]?.id ?? null)
@@ -116,7 +115,6 @@ export function DiscoverResultWorkspace({
   const selectedItem = items[selectedIndex] ?? null
 
   const selectItem = useCallback((item: DiscoverResultItem, moveFocus: boolean) => {
-    setExpandedSummaryId(null)
     setSelectedItemId(item.id)
     if (!moveFocus) return
     queueMicrotask(() => {
@@ -188,9 +186,6 @@ export function DiscoverResultWorkspace({
 
   if (!selectedItem) return null
 
-  const canCollapseSummary = selectedItem.summary.length > 420
-  const isSummaryExpanded = expandedSummaryId === selectedItem.id
-  const isFullSummaryVisible = !canCollapseSummary || isSummaryExpanded
   const selectedAnalysis = analysis?.itemId === selectedItem.id ? analysis : null
   const promotionStatusTargetId = `discover-promotion-status-${selectedItem.id.replaceAll(
     /[^A-Za-z0-9_-]/gu,
@@ -303,23 +298,7 @@ export function DiscoverResultWorkspace({
             aria-live="polite"
           />
 
-          <p className="signal-detail__summary" data-expanded={String(isFullSummaryVisible)}>
-            {selectedItem.summary}
-          </p>
-          {canCollapseSummary ? (
-            <button
-              type="button"
-              className="signal-detail__summary-toggle"
-              aria-expanded={isSummaryExpanded}
-              onClick={() =>
-                setExpandedSummaryId((current) =>
-                  current === selectedItem.id ? null : selectedItem.id
-                )
-              }
-            >
-              {isSummaryExpanded ? 'Collapse summary' : 'Show full summary'}
-            </button>
-          ) : null}
+          <p className="signal-detail__summary">{selectedItem.summary}</p>
 
           {selectedAnalysis ? <AnalysisPanel artifact={selectedAnalysis} /> : null}
 

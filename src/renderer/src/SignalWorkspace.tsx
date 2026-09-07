@@ -3,7 +3,7 @@ import {
   sourcePublicationLabel,
   sourceMatchReasons
 } from '../../shared/sourceDate'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { ExternalLink, EyeOff, Sparkles } from 'lucide-react'
 import type { DashboardItem, TheRSSApi, TriageState } from '../../shared/api'
 import type { AnalysisArtifact } from '../../shared/models'
@@ -114,7 +114,6 @@ export function SignalWorkspace({
   onSourceUpdated
 }: SignalWorkspaceProps) {
   const workspaceRef = useRef<HTMLDivElement>(null)
-  const [expandedSummaryId, setExpandedSummaryId] = useState<string | null>(null)
   const selectedIndex = useMemo(() => {
     const matchedIndex = items.findIndex((item) => item.id === selectedItemId)
     return matchedIndex >= 0 ? matchedIndex : 0
@@ -128,7 +127,6 @@ export function SignalWorkspace({
 
   const selectItem = useCallback(
     (item: DashboardItem, moveFocus: boolean) => {
-      setExpandedSummaryId(null)
       onSelectionChange(item.id)
       if (item.triageState === 'new') void onTriage(item.id, 'viewed')
       if (moveFocus) {
@@ -225,9 +223,6 @@ export function SignalWorkspace({
 
   const isSaved = selectedItem.triageState === 'saved'
   const isPaper = isPaperAnalysisCandidate(selectedItem)
-  const isSummaryExpanded = expandedSummaryId === selectedItem.id
-  const canCollapseSummary = selectedItem.summary.length > 420
-  const isFullSummaryVisible = !canCollapseSummary || isSummaryExpanded
   const selectedAnalysis = analysis?.itemId === selectedItem.id ? analysis : null
   const paperL1Analysis =
     isPaper && selectedAnalysis && isPaperL1PromptVersion(selectedAnalysis.promptVersion)
@@ -353,23 +348,7 @@ export function SignalWorkspace({
             />
           )}
 
-          <p className="signal-detail__summary" data-expanded={String(isFullSummaryVisible)}>
-            {selectedItem.summary}
-          </p>
-          {canCollapseSummary && (
-            <button
-              type="button"
-              className="signal-detail__summary-toggle"
-              aria-expanded={isSummaryExpanded}
-              onClick={() =>
-                setExpandedSummaryId((current) =>
-                  current === selectedItem.id ? null : selectedItem.id
-                )
-              }
-            >
-              {isSummaryExpanded ? 'Collapse summary' : 'Show full summary'}
-            </button>
-          )}
+          <p className="signal-detail__summary">{selectedItem.summary}</p>
 
           {isPaper && (
             <section className="paper-l1-analysis" aria-label="L1 paper analysis">

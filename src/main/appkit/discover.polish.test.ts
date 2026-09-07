@@ -21,29 +21,29 @@ describe('native search workspace hierarchy', () => {
     expect(h.find(h.render(screen), 'discover-query')?.value).toBe('Keep my research question')
     screen.dispose()
   })
-  it('restores results compactly, reopens the exact question with native focus and preserves an unsubmitted draft', async () => {
+  it('restores an editable query and preserves an unsubmitted draft without an editing mode', async () => {
     const h = nativeHarness({ getLatestDiscover: vi.fn(async () => nativeDiscoverFixture) })
     const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
     await screen.load()
-    expect(h.find(h.render(screen), 'discover-query')).toBeUndefined()
-    expect(h.find(h.render(screen), 'discover-query-summary')?.text).toBe(
-      nativeDiscoverFixture.intent
-    )
-    await h.act(screen, 'discover-edit-search')
     expect(h.find(h.render(screen), 'discover-query')?.value).toBe(nativeDiscoverFixture.intent)
-    expect(h.context.focus).toHaveBeenCalledWith('discover-query')
     await h.act(screen, 'discover-query', 'A different draft')
-    await h.act(screen, 'discover-done-editing')
-    expect(h.find(h.render(screen), 'discover-query-summary')?.text).toBe('A different draft')
+    expect(h.find(h.render(screen), 'discover-query')?.value).toBe('A different draft')
     expect(h.find(h.render(screen), 'discover-draft-status')?.text).toContain(
       nativeDiscoverFixture.intent
     )
     expect(h.find(h.render(screen), 'discover-results')?.rows).toHaveLength(24)
-    await h.act(screen, 'discover-edit-search')
-    expect(h.find(h.render(screen), 'discover-query')?.value).toBe('A different draft')
+    expect(h.find(h.render(screen), 'discover-edit-search')).toBeUndefined()
+    await h.act(screen, 'discover-query', nativeDiscoverFixture.intent)
+    h.context.data.agents = [
+      ...h.context.data.agents,
+      { runner: 'claude', label: 'Claude Code', available: true }
+    ]
+    await h.act(screen, 'discover-runner', 'claude')
+    expect(h.find(h.render(screen), 'discover-draft-status')).toBeDefined()
+    screen.dispose()
   })
 
-  it('collapses completed results but leaves empty, canceled and failed runs editable', async () => {
+  it('keeps completed, canceled, empty and failed searches directly editable', async () => {
     const search = vi.fn(async () => nativeDiscoverFixture)
     const h = nativeHarness({ searchDiscover: search })
     const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
@@ -51,12 +51,12 @@ describe('native search workspace hierarchy', () => {
     await h.act(screen, 'discover-runner', 'codex')
     await h.act(screen, 'discover-query', 'edge intelligence')
     await h.act(screen, 'discover-search')
-    expect(h.find(h.render(screen), 'discover-query')).toBeUndefined()
+    expect(h.find(h.render(screen), 'discover-query')?.enabled).toBe(true)
     for (const status of ['canceled', 'failed', 'no_results'] as const) {
-      if (!h.find(h.render(screen), 'discover-query')) await h.act(screen, 'discover-edit-search')
       search.mockResolvedValueOnce({ ...nativeDiscoverFixture, status, items: [] })
       await h.act(screen, 'discover-search')
-      expect(h.find(h.render(screen), 'discover-query')).toBeDefined()
+      expect(h.find(h.render(screen), 'discover-query')?.value).toBe('edge intelligence')
+      expect(h.find(h.render(screen), 'discover-query')?.enabled).toBe(true)
     }
     screen.dispose()
   })

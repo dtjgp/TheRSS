@@ -149,7 +149,7 @@ export class SourcesScreen implements NativeScreen {
             ]
           : []),
         ...(sources.length
-          ? this.workspace.navigation('Back to sources', () => this.activate(this.focused))
+          ? this.workspace.navigation('Back to sources')
           : [
               row('sources-empty-recovery', [
                 label('sources-filter-empty', 'No sources match these filters.', { flex: 1 }),
@@ -316,13 +316,6 @@ export class SourcesScreen implements NativeScreen {
               () => this.context.openExternal(entry.url),
               true,
               `source:${entry.id}:open`
-            ),
-            b.button(
-              'sources-load',
-              this.busy ? 'Loading…' : 'Open cached content',
-              () => this.activate(entry.id),
-              !this.busy,
-              `source:${entry.id}:load`
             ),
             b.button(
               'sources-refresh',

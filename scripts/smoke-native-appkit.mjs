@@ -190,6 +190,23 @@ try {
         app.getAppPath() + '/out/native-appkit/therss-ui.node'
       )
       globalThis.__nativeWindow = BrowserWindow.getAllWindows()[0]
+      if (process.env.THERSS_NATIVE_CLOSE_TRACE === '1') {
+        const { appendFileSync } = process.getBuiltinModule('node:fs')
+        const trace = (event) =>
+          appendFileSync(
+            app.getPath('userData') + '/native-close-trace.jsonl',
+            JSON.stringify({ event, at: Date.now(), stack: new Error().stack }) + '\n'
+          )
+        const window = globalThis.__nativeWindow
+        const close = window.close.bind(window)
+        window.close = (...args) => {
+          trace('close-method')
+          return close(...args)
+        }
+        window.on('close', () => trace('close-event'))
+        window.on('closed', () => trace('closed-event'))
+        app.on('before-quit', () => trace('before-quit'))
+      }
       if (process.env.THERSS_NATIVE_COMPACT_FIXTURE === '1')
         globalThis.__nativeWindow.setBounds({ width: 1024, height: 677 })
       globalThis.__nativeOpened = []
@@ -262,6 +279,11 @@ try {
     const result = await capture('discover-light')
     assert.equal(find(result.root, 'discover-results').documentClass, 'TRTable')
     assert.equal(find(result.root, 'discover-results').rows.length, 3)
+    assert.match(
+      find(result.root, 'discover-summary').text.trimEnd(),
+      /Full fixture summary ends here\.$/
+    )
+    assert(!find(result.root, 'discover-expand'))
     assert.match(find(result.root, 'discover-result-status').text, /completed/)
     const nav = find(result.root, 'navigate-discover')
     assert.equal(nav.emphasis, 'navigation')
@@ -270,18 +292,27 @@ try {
     assert.equal(nav.checked, true)
     assert.equal(find(result.root, 'discover-search').emphasis, 'primary')
     assert.equal(find(result.root, 'discover-search').hasSymbol, true)
-    assert.equal(find(result.root, 'discover-compact-search').surface, 'panel')
-    assert(!find(result.root, 'discover-query'))
-    await click('discover-edit-search')
+    assert.equal(find(result.root, 'discover-composer').surface, 'panel')
+    assert(find(result.root, 'discover-query'))
+    assert(!find(result.root, 'discover-edit-search'))
+    assert(!find(result.root, 'discover-done-editing'))
+    await act('discover-query', 'focus')
     const editing = await wait('discover-query')
     assert.equal(editing.firstResponderId, 'discover-query')
     assert.equal(find(editing.root, 'discover-query').value, '边缘计算 structured pruning')
     await act('discover-query', 'fill', 'An unsubmitted native draft')
-    await click('discover-done-editing')
     assert.match(find((await inspect()).root, 'discover-draft-status').text, /Draft not searched/)
-    await click('discover-edit-search')
+    await capture('discover-editable-draft')
     await act('discover-query', 'fill', '边缘计算 structured pruning')
-    await click('discover-done-editing')
+    await application.evaluate(({ nativeTheme }) => {
+      nativeTheme.themeSource = 'dark'
+    })
+    await wait('discover-search', (node) => node?.controlAppearance === 'NSAppearanceNameDarkAqua')
+    await capture('discover-editable-dark')
+    await application.evaluate(({ nativeTheme }) => {
+      nativeTheme.themeSource = 'light'
+    })
+    await wait('discover-search', (node) => node?.controlAppearance === 'NSAppearanceNameAqua')
     const table = find(result.root, 'discover-results')
     assert.equal(table.titleLines, 2)
     assert.equal(table.rowHeight, 70)
@@ -511,13 +542,14 @@ try {
   await step('Local search uses a native sheet and safe external-open routing', async () => {
     await menu('Find Local Research')
     const initial = await wait('local-search-query')
+    assert(!find(initial.modal, 'local-search-submit'))
     assert.equal(initial.firstResponderId, 'local-search-query')
     await act('local-search-query', 'key', 'tab')
     const tabbed = await inspect()
     assert(find(tabbed.modal, tabbed.firstResponderId), 'Tab focus must remain in the native sheet')
     await act('local-search-query', 'fill', 'pruning')
-    await click('local-search-submit')
     const state = await wait('local-search-results')
+    assert(!find(state.modal, 'local-search-open-in-app'))
     assert(find(state.modal, 'local-search-results').rows.length > 0)
     await click('local-search-open')
     const opened = await application.evaluate(() => globalThis.__nativeOpened)
@@ -530,7 +562,7 @@ try {
       )
       assert(target, `Fixture must include a ${kind} local target`)
       await act('local-search-results', 'select', target.id)
-      await click('local-search-open-in-app')
+      await act('local-search-results', 'key', 'enter')
       await wait('local-search-query', (node) => !node)
       const openedLocal = await wait('return-local-search')
       assert.equal(find(openedLocal.root, `${kind}-reading-title`).text, target.title)
@@ -542,7 +574,6 @@ try {
       assert.equal(find(restored.modal, 'local-search-query').value, 'pruning')
     }
     await act('local-search-query', 'fill', 'analysis')
-    await click('local-search-submit')
     await wait('local-search-result-count', (node) => /for “analysis”/.test(node?.text || ''))
     const analysisResults = await wait('local-search-results')
     const analysisTarget = find(analysisResults.modal, 'local-search-results').rows.find((row) =>
@@ -550,7 +581,7 @@ try {
     )
     assert(analysisTarget, 'Fixture must include a stored analysis target')
     await act('local-search-results', 'select', analysisTarget.id)
-    await click('local-search-open-in-app')
+    await act('local-search-results', 'key', 'enter')
     await wait('local-search-query', (node) => !node)
     const localAnalysis = await wait('analytics-local-record')
     assert(
@@ -636,14 +667,12 @@ try {
       }
     })
   await step('Native editing Undo, zoom, dividers and narrow window layout', async () => {
-    await click('discover-edit-search')
     await act('discover-query', 'fill', '')
     await act('discover-query', 'type', 'native undo fixture')
     await wait('discover-query', (node) => node?.value === 'native undo fixture')
     await menu('Undo')
     await wait('discover-query', (node) => node?.value === '')
     await act('discover-query', 'fill', '边缘计算 structured pruning')
-    await click('discover-done-editing')
     await menu('Zoom In')
     await delay(80)
     assert.equal((await inspect()).zoom, 1.1)
@@ -668,12 +697,12 @@ try {
     assert.equal(find(narrow.root, 'discover-results').hidden, false)
     assert.equal(find(narrow.root, 'discover-reading-scroll').hidden, true)
     const selectedBefore = find(narrow.root, 'discover-results').selected
-    await click('discover-open-reader')
+    await act('discover-results', 'key', 'enter')
     const reader = await capture('discover-narrow-reading')
     assert.equal(find(reader.root, 'discover-workspace').compactPane, 'detail')
     assert.equal(find(reader.root, 'discover-results').hidden, true)
     assert.equal(find(reader.root, 'discover-reading-scroll').hidden, false)
-    assert(!find(reader.root, 'discover-compact-search'))
+    assert(!find(reader.root, 'discover-composer'))
     assert.equal(reader.firstResponderId, 'discover-summary')
     await click('discover-back-to-results')
     const returned = await wait('discover-workspace', (node) => node?.compactPane === 'list')
@@ -685,7 +714,7 @@ try {
     )
     for (let count = 0; count < 5; count++) await menu('Zoom In')
     await delay(100)
-    await click('discover-open-reader')
+    await act('discover-results', 'key', 'enter')
     const zoomed = await inspect()
     assert.equal(zoomed.zoom, 1.5)
     assert.equal(find(zoomed.root, 'discover-workspace').compactPane, 'detail')
@@ -804,7 +833,7 @@ try {
       await wait('saved-source-update-status', (node) =>
         /No newer local snapshot/.test(node?.text || '')
       )
-      await click('saved-open-reader')
+      await act('saved-items', 'key', 'enter')
       const updated = await wait('saved-summary', (node) =>
         /Newer locally retrieved/.test(node?.text || '')
       )

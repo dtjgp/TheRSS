@@ -53,7 +53,9 @@ freshness from a verified empty result. Public signing and distribution remain s
 1. **Discover** — the primary semantic expansion search through the configured model provider,
    Codex CLI, or Claude Code. The user can search any subset of all 22 deployed sources, inspect the
    executed plan and each source outcome, and filter the persisted result session by record type
-   without rerunning the model or adapters. Source selection is summarized until requested; after a
+   without rerunning the model or adapters. The research question remains directly editable after
+   a search, with unsubmitted changes distinguished from the current result session. Source selection
+   is summarized until requested; after a
    run, ranked records occupy a resizable list-detail workspace with compact scan rows, roving
    keyboard selection, independently scrollable list/detail panes, and a collapsed
    plan/provenance/source-outcome inspector below it. Every selected result has a reversible
@@ -82,7 +84,8 @@ freshness from a verified empty result. Public signing and distribution remain s
    and an actionable attention filter. Selecting a source opens an in-app rolling 30-day view;
    arXiv opens the newest available official daily batch. The larger raw catalog remains dormant
    versioned metadata and is not exposed or scheduled.
-6. **Find Local Research** — a Command-F overlay that searches bounded fields across Saved items,
+6. **Find Local Research** — a Command-F overlay that filters as the user types, with a short
+   debounce and no separate submit step. It searches bounded fields across Saved items,
    persisted Discover sessions, and analysis content in local SQLite. It uses no model, embedding,
    telemetry, or network request.
 

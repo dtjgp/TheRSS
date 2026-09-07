@@ -37,12 +37,13 @@ function setup(resolve: () => Promise<LocalResearchRecord | null>) {
     openExternal: vi.fn()
   })
   const scene = () => JSON.parse(json)
-  const act = async (id: string, value?: string) => {
+  const act = async (id: string, value?: string, activate = false) => {
     const s = scene(),
       node = h.find(s.modal ?? s.root, id)!
-    if (!node?.action) throw new Error(`Missing ${id}`)
+    const action = activate ? node?.activate : node?.action
+    if (!action) throw new Error(`Missing ${id}`)
     await presenter.presentation.dispatch(
-      JSON.stringify({ action: node.action, ...(value === undefined ? {} : { value }) })
+      JSON.stringify({ action, ...(value === undefined ? {} : { value }) })
     )
     await Promise.resolve()
   }
@@ -50,7 +51,7 @@ function setup(resolve: () => Promise<LocalResearchRecord | null>) {
     await presenter.command('open-local-search')
     await Promise.resolve()
     await act('local-search-query', 'edge')
-    await act('local-search-submit')
+    await act('local-search-query', undefined, true)
   }
   return { h, presenter, scene, act, search }
 }
@@ -69,14 +70,14 @@ describe('in-app local research navigation', () => {
     try {
       await f.presenter.start()
       await f.search()
-      await f.act('local-search-open-in-app')
+      await f.act('local-search-results', 'discover:historical:arxiv:29', true)
       const work = f.act('discover-search')
       await Promise.resolve()
       expect(f.h.find(f.scene().root, 'return-local-search')?.enabled).toBe(false)
       await f.presenter.command('open-local-search')
       await Promise.resolve()
       expect(f.scene().modal).toBeUndefined()
-      expect(f.h.find(f.scene().root, 'discover-query-summary')?.text).toBe('Historical question')
+      expect(f.h.find(f.scene().root, 'discover-query')?.value).toBe('Historical question')
       finish(historical)
       await work
       expect(f.h.find(f.scene().root, 'return-local-search')?.enabled).toBe(true)
@@ -91,10 +92,9 @@ describe('in-app local research navigation', () => {
     const f = setup(async () => ({ kind: 'discover', snapshot: historical, itemId: 'arxiv:29' }))
     try {
       await f.presenter.start()
-      await f.act('discover-edit-search')
       await f.act('discover-query', 'My unsubmitted question')
       await f.search()
-      await f.act('local-search-open-in-app')
+      await f.act('local-search-results', 'discover:historical:arxiv:29', true)
       expect(f.scene().modal).toBeUndefined()
       expect(f.h.find(f.scene().root, 'discover-results')?.selected).toBe('arxiv:29')
       expect(f.h.find(f.scene().root, 'discover-reading-title')?.text).toBe('Paper 29')
@@ -114,7 +114,7 @@ describe('in-app local research navigation', () => {
     try {
       await f.presenter.start()
       await f.search()
-      await f.act('local-search-open-in-app')
+      await f.act('local-search-results', 'discover:historical:arxiv:29', true)
       expect(f.h.find(f.scene().modal, 'modal-message')?.text).toContain('no longer available')
       expect(f.h.find(f.scene().modal, 'local-search-query')?.value).toBe('edge')
     } finally {
@@ -133,7 +133,7 @@ describe('in-app local research navigation', () => {
     try {
       await f.presenter.start()
       await f.search()
-      const pending = f.act('local-search-open-in-app')
+      const pending = f.act('local-search-results', 'discover:historical:arxiv:29', true)
       await Promise.resolve()
       await f.act('modal-close')
       finish({

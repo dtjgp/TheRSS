@@ -43,7 +43,6 @@ describe('AppKit Discover', () => {
     })
     const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
     await screen.load()
-    await h.act(screen, 'discover-edit-search')
     await h.act(screen, 'discover-query', 'A new query')
     await h.act(screen, 'discover-search')
     expect(h.find(h.render(screen), 'discover-results')?.rows?.[0]?.title).toBe('Paper 0')

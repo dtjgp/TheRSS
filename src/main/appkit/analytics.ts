@@ -216,11 +216,7 @@ export class AnalyticsScreen implements NativeScreen {
                     )
                   ]
                 : []),
-              ...(s.analyzedItems.length
-                ? this.workspace.navigation('Back to history', () =>
-                    this.select(this.selected || s.analyzedItems[0]!.analysisId)
-                  )
-                : []),
+              ...(s.analyzedItems.length ? this.workspace.navigation('Back to history') : []),
               this.workspace.apply({
                 id: 'analytics-artifacts',
                 kind: 'split' as const,
