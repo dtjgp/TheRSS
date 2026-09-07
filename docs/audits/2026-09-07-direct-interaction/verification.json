@@ -42,7 +42,7 @@
     "fixtureCloseTracingRetained": true
   },
   "liveSourceOrModelCallsTriggeredForThisUiVerification": 0,
-  "humanAcceptance": "user_feedback_addressed_awaiting_retest",
+  "humanAcceptance": "provisionally_passed_by_user",
   "externalDelivery": {
     "branch": "codex/market-readiness",
     "draftPullRequest": "https://github.com/dtjgp/TheRSS/pull/49",
@@ -77,5 +77,13 @@
       "filename": "therss-direct-interaction-red.log",
       "sha256": "79e2235d18129999f28b208a7e8f9591a0bf7ee907a113ff5bbb8d45baafe9cc"
     }
+  },
+  "humanAcceptanceDecision": {
+    "date": "2026-09-07",
+    "decidedBy": "user",
+    "instruction": "人工测试暂时按照通过来进行,后续出现问题再来进行调整",
+    "scope": "manual UX acceptance",
+    "individualTestDetails": "not separately supplied",
+    "reopenAffectedItemsOnReportedIssues": true
   }
 }

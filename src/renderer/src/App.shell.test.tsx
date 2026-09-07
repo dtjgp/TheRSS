@@ -531,7 +531,7 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /Pending integrations/i })).not.toBeInTheDocument()
   })
 
-  it('opens the source directory filtered to the recorded attention set from the sidebar', async () => {
+  it('keeps failed source feedback in Sources without a global attention action', async () => {
     const user = userEvent.setup()
     render(
       <App
@@ -554,8 +554,12 @@ describe('App', () => {
       />
     )
 
-    await user.click(await screen.findByRole('button', { name: 'Source attention needed' }))
-    expect(screen.getByRole('button', { name: 'Show sources needing attention' })).toHaveAttribute(
+    expect(
+      screen.queryByRole('button', { name: 'Source attention needed' })
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '04 Sources' }))
+    await user.click(screen.getByRole('button', { name: 'Show failed or partial sources' }))
+    expect(screen.getByRole('button', { name: 'Show failed or partial sources' })).toHaveAttribute(
       'aria-pressed',
       'true'
     )

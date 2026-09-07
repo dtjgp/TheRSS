@@ -1,0 +1,125 @@
+{
+  "baseCommit": "199be74439fa2d2a58932bf2d5d4aefde15dfaad",
+  "sourceAndInstructionHashes": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "2abb7a1ed9b5b0f6967bddd22303d45d574e92e0cccb97e12dc82784be84a367"
+    },
+    {
+      "path": "PRODUCT.md",
+      "sha256": "20f58c0769c44087735e094b673da83ae308f6ec5c701283ee091ac76f1a27ac"
+    },
+    {
+      "path": "e2e/desktop.spec.ts",
+      "sha256": "7a689e511f417a7669c7613d552b7e7324eecd4dca5767800a6bfb04cc3c4d59"
+    },
+    {
+      "path": "e2e/native-glass.spec.ts",
+      "sha256": "6029199eb16d526cb5d03dc255e0b30590cb4f7f0c80d637fcc0e4ded682b904"
+    },
+    {
+      "path": "e2e/sidebar-resize.spec.ts",
+      "sha256": "84448b2e038cd5f34391d56fc483ab24b53fc9423da3fde114827f834f4e029b"
+    },
+    {
+      "path": "scripts/smoke-native-appkit.mjs",
+      "sha256": "a0c9a2cd2c2df8ee1fe4c753da98a5cf5950761cc6d1582be5ad82c5e9594385"
+    },
+    {
+      "path": "scripts/source-health-fixture.mjs",
+      "sha256": "186e56ac2b61921a59f7c129d61ae0eed2bb63e871dacf70d796303c7946f1ce"
+    },
+    {
+      "path": "skills/therss-ui-improvement/SKILL.md",
+      "sha256": "c9f8d174a2f16416d842fa3b84b1417f7ddc1fc75f00960803d68d16f61a7c58"
+    },
+    {
+      "path": "skills/therss-ui-improvement/references/apple-design.md",
+      "sha256": "c21cda3c30d943f9447d268646f10d1934a0f4b76fe14ffe5f540fc8e33af730"
+    },
+    {
+      "path": "skills/therss-ui-improvement/references/project-authority.md",
+      "sha256": "760d33a5c1746fd4c4eb28da1cac7331ee6cc49ff9d7ca5e917d0071f93c5bc9"
+    },
+    {
+      "path": "skills/therss-ui-improvement/references/taste-profile.md",
+      "sha256": "80c58a452ec8e864f3b4f4fbdb97354042c961d9203b27981ea5d3f9d763c02f"
+    },
+    {
+      "path": "src/core/storage/researchRepository.test.ts",
+      "sha256": "310d1f07443b26536152baa55f1f22bad4ae673e5135d7cadb9170feaee3c544"
+    },
+    {
+      "path": "src/core/storage/researchRepository.ts",
+      "sha256": "bc7ba4d27de14764769f1481446e2c68a4cbc9d93211b67b89131a96da6d3042"
+    },
+    {
+      "path": "src/core/storage/sourceHealthStore.test.ts",
+      "sha256": "e2130cab2dc870b9e4db393f87fa33a792c4f75f2cc26507c45fa9e8b383bc3d"
+    },
+    {
+      "path": "src/core/storage/sourceHealthStore.ts",
+      "sha256": "79fc9c6f56118a957f2a9d81277e4a8d2635d542200e3d7edac24f5d88032525"
+    },
+    {
+      "path": "src/main/appkit/presenter.test.ts",
+      "sha256": "4842551c839dd60020d116084163983d86f07b1f79bdfbde53faa057350daaa9"
+    },
+    {
+      "path": "src/main/appkit/presenter.ts",
+      "sha256": "89a8042a9bf2c9ccc465c6ddbf3dfb850966abbc30c56ee2de64854ac13f0d7a"
+    },
+    {
+      "path": "src/main/appkit/sources.test.ts",
+      "sha256": "68b8d12781ae4e5b40ebed49a76fdb11862db3e4bf769a73bcf038465561c19d"
+    },
+    {
+      "path": "src/main/appkit/sources.ts",
+      "sha256": "8347cd01bfa0ae5a62a7e2a5d276298017c333bc8c9d16fd5e1e6450a0db7f9c"
+    },
+    {
+      "path": "src/renderer/src/App.shell.test.tsx",
+      "sha256": "cd1941b465a34f82caa78ab17aecdc318bafa07eb526fe08f9b826c786357d5a"
+    },
+    {
+      "path": "src/renderer/src/App.test.tsx",
+      "sha256": "3d4fbeafa3b843a45fc59ae4fefb07f06d4a49b2ee67c7251a4eb43109755d83"
+    },
+    {
+      "path": "src/renderer/src/App.tsx",
+      "sha256": "e811ea09e59ac83fcc349513d79b6f72355ed8475ed8a6725ef5a9229fd75b40"
+    },
+    {
+      "path": "src/renderer/src/AppTopbar.test.tsx",
+      "sha256": "284d1b809e390b03b0557e60c7ffcff442207289b7fb31309eac139c888d3d62"
+    },
+    {
+      "path": "src/renderer/src/AppTopbar.tsx",
+      "sha256": "726279fcfa4e37569b14c5303c0231b15cd94a54f5695216637864b616e83b81"
+    },
+    {
+      "path": "src/renderer/src/SourceCatalogView.test.tsx",
+      "sha256": "bff64d37d9f2622d398f4ca4e814b8883ce94e6120895addaf1925559db567e3"
+    },
+    {
+      "path": "src/renderer/src/SourceCatalogView.tsx",
+      "sha256": "3cdf985f360ea2c90d30b97d1e64fdf92667c3b0ed28351a91bb4deb1cd49a12"
+    },
+    {
+      "path": "src/shared/api.ts",
+      "sha256": "6be415967458096d4c4546909c41911dc23c78aa73f0c1b4d07917a9b1441ad2"
+    },
+    {
+      "path": "src/shared/sourceHealth.test.ts",
+      "sha256": "80a4b916c6fef6b772d504ae369f0f01eb2a76e30be8fad49a5919cd192e3d6a"
+    },
+    {
+      "path": "src/shared/sourceHealth.ts",
+      "sha256": "f619f51be028f2aa1a5050cdf803479a1e4d9e91e79d9ec30c73c8b774fb5717"
+    }
+  ],
+  "relativeMarkdownReferences": "passed",
+  "addedCredentialPatterns": 0,
+  "newPublicArtifactsContainUserHomePaths": false,
+  "humanRelevanceLabelsUnchanged": true
+}

@@ -5,12 +5,7 @@ import {
 } from '../../shared/sourceDate'
 import { ArrowLeft, ArrowUpRight, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
-import type {
-  DashboardSnapshot,
-  SourceContentSnapshot,
-  SourceHealth,
-  TheRSSApi
-} from '../../shared/api'
+import type { DashboardSnapshot, SourceContentSnapshot, TheRSSApi } from '../../shared/api'
 import {
   RESEARCH_AXES,
   RESEARCH_AXIS_LABELS,
@@ -23,6 +18,8 @@ import {
   type SourcePriority
 } from '../../shared/sourceCatalog'
 import { discoverySourceFromCatalogId } from '../../shared/sourceIdentity'
+
+import { sourceHealthLabel, sourceObservationLabel } from '../../shared/sourceHealth'
 
 type PriorityFilter = 'all' | SourcePriority
 type ResearchAxisFilter = 'all' | ResearchAxis
@@ -43,6 +40,8 @@ interface SourceCatalogViewProps {
 interface SourceHealthCounts {
   readonly ready: number
   readonly attention: number
+  readonly failed: number
+  readonly partial: number
   readonly refreshing: number
   readonly idle: number
 }
@@ -96,24 +95,6 @@ function sourceSearchesThroughDiscover(sourceId: SourceContentSnapshot['source']
   return sourceId === 'github'
 }
 
-function sourceHealthLabel(health: SourceHealth | undefined): string {
-  switch (health) {
-    case 'healthy':
-      return 'Healthy'
-    case 'no_results':
-      return 'Healthy · no results'
-    case 'partial':
-      return 'Partial'
-    case 'failed':
-      return 'Failed'
-    case 'refreshing':
-      return 'Refreshing'
-    case 'idle':
-    default:
-      return 'Not checked this session'
-  }
-}
-
 function sourceSnapshotLabel(status: SourceContentSnapshot['status']): string {
   switch (status) {
     case 'cached':
@@ -138,14 +119,14 @@ function summarizeSourceHealth(
         return { ...counts, ready: counts.ready + 1 }
       }
       if (health === 'partial' || health === 'failed') {
-        return { ...counts, attention: counts.attention + 1 }
+        return { ...counts, attention: counts.attention + 1, [health]: counts[health] + 1 }
       }
       if (health === 'refreshing') {
         return { ...counts, refreshing: counts.refreshing + 1 }
       }
       return { ...counts, idle: counts.idle + 1 }
     },
-    { ready: 0, attention: 0, refreshing: 0, idle: 0 }
+    { ready: 0, attention: 0, failed: 0, partial: 0, refreshing: 0, idle: 0 }
   )
 }
 
@@ -261,19 +242,22 @@ function SourceDetail({
       )}
 
       <header className="source-detail-heading">
+        <h1>{source.name}</h1>
         <div className="source-catalog-card__meta">
-          <span className={`source-priority source-priority--${source.priority}`}>
-            Priority {source.priority}
-          </span>
           <span className={`source-health source-health--${currentHealth ?? 'idle'}`}>
-            {sourceHealthLabel(currentHealth)}
+            {sourceHealthLabel(currentHealth, currentHealthDetail?.context)}
           </span>
+          <span>{sourceObservationLabel(currentHealthDetail)}</span>
         </div>
+        {currentHealthDetail?.errorMessage && (
+          <p className="source-health-record" role="status">
+            {currentHealthDetail.errorMessage}
+          </p>
+        )}
+        <p>Last recorded outcome; cached content below is separate from this observation.</p>
         <p className="source-detail-scope">
           {isArxiv ? "Today's latest batch" : 'Rolling 30 days'}
         </p>
-        <h1>{source.name}</h1>
-        <p>Retained research source with bounded in-app retrieval and explicit local evidence.</p>
         <div className="source-detail-actions">
           {isActive && (
             <button
@@ -297,6 +281,10 @@ function SourceDetail({
       <details className="source-provenance">
         <summary>Source provenance</summary>
         <dl>
+          <div>
+            <dt>Priority</dt>
+            <dd>{source.priority}</dd>
+          </div>
           <div>
             <dt>Research role</dt>
             <dd>{source.role}</dd>
@@ -376,25 +364,10 @@ function SourceDetail({
               <strong>{snapshot.items.length}</strong>
             </div>
             <div>
-              <span>Last recorded health</span>
-              <strong>
-                {sourceHealthLabel(currentHealth)}
-                {currentHealthDetail?.observedAt
-                  ? ` · recorded ${formatTimestamp(currentHealthDetail.observedAt)}`
-                  : ' · not yet observed'}
-              </strong>
-            </div>
-            <div>
               <span>Local snapshot</span>
               <strong>{sourceSnapshotLabel(snapshot.status)}</strong>
             </div>
           </div>
-
-          {currentHealthDetail?.errorMessage && (
-            <p className="source-health-record" role="status">
-              {currentHealthDetail.errorMessage}
-            </p>
-          )}
 
           <p className="source-content-status-note">
             {sourceId === 'folo:611' &&
@@ -546,15 +519,15 @@ export function SourceCatalogView({
         <SummaryMetric
           label="Last recorded ready"
           value={healthCounts.ready}
-          detail="Healthy or explicit no-result in the latest recorded observation"
+          detail="Retrieved or explicit no-result in the latest recorded observation"
         />
         <SummaryMetric
-          label="Needs attention"
+          label="Failed or partial"
           value={healthCounts.attention}
-          detail="Partial or failed in the latest recorded health"
+          detail={`${healthCounts.failed} failed · ${healthCounts.partial} partial in the latest observations`}
         />
         <SummaryMetric
-          label="Not checked"
+          label="Not recorded"
           value={healthCounts.idle}
           detail={`${healthCounts.refreshing} refreshing · no current state is not a failure`}
         />
@@ -597,11 +570,11 @@ export function SourceCatalogView({
           <button
             type="button"
             className="source-attention-filter"
-            aria-label="Show sources needing attention"
+            aria-label="Show failed or partial sources"
             aria-pressed={attentionOnly}
             onClick={() => onAttentionOnlyChange(!attentionOnly)}
           >
-            Needs attention
+            Failed or partial
             <strong>{healthCounts.attention}</strong>
           </button>
         </div>
@@ -672,6 +645,9 @@ export function SourceCatalogView({
                     {sourceHealthLabel(
                       discoverySourceFromCatalogId(source.id)
                         ? sourceHealth?.[discoverySourceFromCatalogId(source.id)!]
+                        : undefined,
+                      discoverySourceFromCatalogId(source.id)
+                        ? sourceHealthDetails?.[discoverySourceFromCatalogId(source.id)!]?.context
                         : undefined
                     )}
                   </span>

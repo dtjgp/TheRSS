@@ -10,6 +10,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { fileURLToPath, URL } from 'node:url'
 import { _electron as electron } from '@playwright/test'
 import { classifyNativeSmokeStderr } from './native-smoke-diagnostics.mjs'
+import { sourceHealthFixture } from './source-health-fixture.mjs'
 import { savedSourceUpdateFixture } from './saved-source-update-fixture.mjs'
 
 const project = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -861,6 +862,48 @@ try {
         /Updated: Not supplied separately/
       )
       await capture('sources-publication-month')
+    }
+  )
+  await step(
+    'Latest recorded source feedback replaces old checks and stays local to Sources',
+    async () => {
+      const observedAt = await sourceHealthFixture(application, profile)
+      await application.evaluate(() =>
+        globalThis.__nativeWindow.setBounds({ width: 1360, height: 880 })
+      )
+      await click('navigate-sources')
+      await act('sources-list', 'select', 'folo:10', { activate: true })
+      await wait('source-detail-health', (node) => /Latest search/.test(node?.text || ''))
+      assert(!find((await inspect()).root, 'source-health-attention'))
+      await act('sources-list', 'select', 'folo:444', { activate: true })
+      const failed = await wait('source-detail-health', (node) =>
+        /Failed · Latest search/.test(node?.text || '')
+      )
+      assert.match(
+        find(failed.root, 'source-detail-health').text,
+        new RegExp(observedAt.slice(0, 10))
+      )
+      assert.match(find(failed.root, 'source-health-error').text, /twenty entries/)
+      await capture('sources-recorded-failed')
+      await act('sources-list', 'select', 'folo:523', { activate: true })
+      const empty = await wait('source-detail-health', (node) =>
+        /No matches · Latest search/.test(node?.text || '')
+      )
+      assert(!find(empty.root, 'source-health-error'))
+      await capture('sources-recorded-no-matches')
+      await act('sources-attention', 'click')
+      const filtered = await wait('sources-attention', (node) => node?.checked === true)
+      assert(!find(filtered.root, 'sources-list').rows.some((row) => row.id === 'folo:523'))
+      await act('sources-list', 'select', 'folo:611', { activate: true })
+      await wait('source-detail-health', (node) => /Partial · Latest search/.test(node?.text || ''))
+      await application.evaluate(() =>
+        globalThis.__nativeWindow.setBounds({ width: 820, height: 720 })
+      )
+      await application.evaluate(({ nativeTheme }) => {
+        nativeTheme.themeSource = 'dark'
+      })
+      const partial = await capture('sources-recorded-partial-narrow-dark')
+      assert.match(find(partial.root, 'source-health-error').text, /seven entries/)
     }
   )
   const final = await inspect()

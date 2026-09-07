@@ -37,56 +37,28 @@ function sourceStates(dashboard: DashboardSnapshot): readonly SourceHealth[] {
 }
 
 function sourceStatus(dashboard: DashboardSnapshot): {
-  readonly attention: number
+  readonly failed: number
+  readonly partial: number
   readonly idle: number
   readonly ready: number
   readonly refreshing: number
 } {
   const states = sourceStates(dashboard)
   return {
-    attention: states.filter((state) => state === 'failed' || state === 'partial').length,
+    failed: states.filter((state) => state === 'failed').length,
+    partial: states.filter((state) => state === 'partial').length,
     idle: states.filter((state) => state === 'idle').length,
     ready: states.filter((state) => state === 'healthy' || state === 'no_results').length,
     refreshing: states.filter((state) => state === 'refreshing').length
   }
 }
 
-function discoverContext(dashboard: DashboardSnapshot): TopbarContext {
-  const status = sourceStatus(dashboard)
-  if (status.attention > 0) {
-    return {
-      primary: `${ACTIVE_TODAY_SOURCE_IDS.length} sources`,
-      secondary: `${status.attention} need attention`,
-      tone: 'attention'
-    }
-  }
-  if (status.refreshing > 0) {
-    return {
-      primary: `${ACTIVE_TODAY_SOURCE_IDS.length} sources`,
-      secondary: `${status.refreshing} refreshing`,
-      tone: 'working'
-    }
-  }
-  if (status.ready === ACTIVE_TODAY_SOURCE_IDS.length) {
-    return {
-      primary: `${ACTIVE_TODAY_SOURCE_IDS.length} sources`,
-      secondary: 'Sources ready',
-      tone: 'ready'
-    }
-  }
-  return {
-    primary: `${ACTIVE_TODAY_SOURCE_IDS.length} sources`,
-    secondary: 'Some sources pending',
-    tone: 'idle'
-  }
-}
-
 function sourcesContext(dashboard: DashboardSnapshot): TopbarContext {
   const status = sourceStatus(dashboard)
   const secondary = `${ACTIVE_TODAY_SOURCE_IDS.length} configured`
-  if (status.attention > 0) {
+  if (status.failed + status.partial > 0) {
     return {
-      primary: `${status.attention} need attention`,
+      primary: `${status.failed} failed · ${status.partial} partial`,
       secondary,
       tone: 'attention'
     }
@@ -97,7 +69,7 @@ function sourcesContext(dashboard: DashboardSnapshot): TopbarContext {
   if (status.ready > 0) {
     return { primary: `${status.ready} recorded ready`, secondary, tone: 'ready' }
   }
-  return { primary: `${status.idle} not checked`, secondary, tone: 'idle' }
+  return { primary: `${status.idle} not recorded`, secondary, tone: 'idle' }
 }
 
 function topbarContext({
@@ -113,7 +85,12 @@ function topbarContext({
   if (!dashboard) {
     return { primary: 'Opening local index', secondary: 'No status yet', tone: 'idle' }
   }
-  if (activeView === 'discover') return discoverContext(dashboard)
+  if (activeView === 'discover')
+    return {
+      primary: `${ACTIVE_TODAY_SOURCE_IDS.length} sources`,
+      secondary: 'Search by research question',
+      tone: 'ready'
+    }
   if (activeView === 'saved') {
     return {
       primary: `${savedCount} saved`,

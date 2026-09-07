@@ -331,9 +331,6 @@ export class NativePresenter {
       collapsed = this.preferences.collapsed,
       compact = this.context.compact()
     this.presentation.begin()
-    const sourceAttention = Object.values(this.context.data.dashboard?.sourceHealth ?? {}).filter(
-      (status) => status === 'failed' || status === 'partial'
-    ).length
     const root = {
       id: 'native-workspace',
       kind: 'split' as const,
@@ -374,22 +371,6 @@ export class NativePresenter {
               height: 38
             })),
             label('native-sidebar-space', '', { flex: 1 }),
-            ...(sourceAttention
-              ? [
-                  b.button(
-                    'source-health-attention',
-                    collapsed
-                      ? `! ${sourceAttention}`
-                      : `${sourceAttention} sources need attention`,
-                    async () => {
-                      ;(this.screens.sources as SourcesScreen).attention = true
-                      this.redraw()
-                      await this.navigate('sources')
-                    },
-                    this.ready
-                  )
-                ]
-              : []),
             {
               ...b.button('sidebar-toggle', collapsed ? 'Expand' : 'Collapse sidebar', () =>
                 this.command('toggle-sidebar')

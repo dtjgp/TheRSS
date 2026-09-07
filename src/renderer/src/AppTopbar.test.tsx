@@ -37,7 +37,7 @@ describe('AppTopbar', () => {
     const status = screen.getByRole('group', { name: 'View context' })
 
     expect(within(status).getByText('22 sources')).toBeVisible()
-    expect(within(status).getByText('Sources ready')).toBeVisible()
+    expect(within(status).getByText('Search by research question')).toBeVisible()
     expect(status).toHaveAttribute('data-tone', 'ready')
     expect(status).toHaveAttribute('data-emphasis', 'false')
     expect(status).not.toHaveAttribute('aria-live')
@@ -57,7 +57,7 @@ describe('AppTopbar', () => {
         dashboard={dashboardWithHealth({ arxiv: 'failed', github: 'partial' })}
       />
     )
-    expect(within(status).getByText('2 need attention')).toBeVisible()
+    expect(within(status).getByText('1 failed · 1 partial')).toBeVisible()
     expect(within(status).getByText('22 configured')).toBeVisible()
     expect(status).toHaveAttribute('data-tone', 'attention')
     expect(status).toHaveAttribute('data-emphasis', 'true')

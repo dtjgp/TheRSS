@@ -96,27 +96,6 @@ interface LastTriageAction {
   readonly nextState: TriageState
 }
 
-function getSourceHealthSummary(snapshot: DashboardSnapshot | null): {
-  readonly label: string
-  readonly tone: 'ready' | 'working' | 'attention' | 'idle'
-} {
-  if (!snapshot) return { label: 'Opening local index', tone: 'idle' }
-  const states = Object.values(snapshot.sourceHealth)
-  if (states.some((state) => state === 'failed' || state === 'partial')) {
-    return { label: 'Source attention needed', tone: 'attention' }
-  }
-  if (states.some((state) => state === 'refreshing')) {
-    return { label: 'Refreshing sources', tone: 'working' }
-  }
-  if (states.every((state) => state === 'healthy' || state === 'no_results')) {
-    return { label: 'Sources ready', tone: 'ready' }
-  }
-  if (states.some((state) => state === 'healthy' || state === 'no_results')) {
-    return { label: 'Some sources pending', tone: 'idle' }
-  }
-  return { label: 'Local index ready', tone: 'idle' }
-}
-
 export function App({ api }: AppProps) {
   useNativeGlass(api.nativeGlass)
   const [dashboard, setDashboard] = useState<DashboardSnapshot | null>(null)
@@ -183,7 +162,6 @@ export function App({ api }: AppProps) {
   const additionalSources = ACTIVE_TODAY_SOURCE_IDS.filter(
     (source) => source !== 'arxiv' && source !== 'github'
   )
-  const sourceHealthSummary = getSourceHealthSummary(dashboard)
   const savedFilterLabel =
     sourceFilter === 'all'
       ? 'All sources'
@@ -537,19 +515,6 @@ export function App({ api }: AppProps) {
           >
             <Settings className="nav-item__icon" aria-hidden="true" size={17} strokeWidth={1.8} />
             <span className="nav-item__label">Settings</span>
-          </button>
-          <button
-            type="button"
-            className="sidebar__footer"
-            aria-label={sourceHealthSummary.label}
-            title={sourceHealthSummary.label}
-            onClick={() => {
-              setSourceAttentionOnly(sourceHealthSummary.tone === 'attention')
-              void navigate('sources')
-            }}
-          >
-            <span className={`status-dot status-dot--${sourceHealthSummary.tone}`} />
-            <span>{sourceHealthSummary.label}</span>
           </button>
         </nav>
       </aside>

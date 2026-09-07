@@ -1,0 +1,59 @@
+{
+  "date": "2026-09-07",
+  "baseCommit": "199be74439fa2d2a58932bf2d5d4aefde15dfaad",
+  "mainTests": 687,
+  "nativeTests": 104,
+  "suitesOverlap": true,
+  "coverageOrder": ["statements", "branches", "functions", "lines"],
+  "mainCoveragePercent": [91.11, 82.37, 94.72, 93.8],
+  "nativeCoveragePercent": [89.36, 82.24, 89.68, 92],
+  "fullCheckExitCode": 0,
+  "desktopCasesCoveredPassed": 8,
+  "packagedNativeGroupsPassed": 14,
+  "userDataTablesCompared": 11,
+  "allTablesMatchImmediateBackup": true,
+  "buildFilesMatchPackage": 16,
+  "fixturesOnly": true,
+  "sourceAndModelCalls": 0,
+  "humanAcceptance": "provisionally_passed_by_user",
+  "githubDelivery": "not_attempted_previous_explicit_authorization_gate_pending",
+  "logEvidence": {
+    "storageRed": {
+      "filename": "therss-apple-storage-red.log",
+      "sha256": "657d94ff83b668ff2c0233f3d91162d5a554137851a65700d725b00ca8e0c4db"
+    },
+    "uiRed": {
+      "filename": "therss-apple-ui-red.log",
+      "sha256": "2d63c0ec7a08a711d2f0c712e263ed4fadc011a7a731d093811a13be6191875e"
+    },
+    "fullCheck": {
+      "filename": "therss-apple-check.log",
+      "sha256": "0f5cfb918aecbbc8c4a607281d70c7bbb3b7fe1b32b9154ccc1dda56ee6bd127"
+    },
+    "desktopInitial": {
+      "filename": "therss-apple-e2e.log",
+      "sha256": "6d88df48a1d67370a9d3e1b84690ffd71cc4cc74a7e9161f110aada9b99c401a"
+    },
+    "desktopAffected": {
+      "filename": "therss-apple-e2e-affected.log",
+      "sha256": "b3c92c44a70aa5cedc0ad2ab25fea682a11177b477473f056c106515a4498c64"
+    },
+    "desktopFinal": {
+      "filename": "therss-apple-e2e-final-desktop.log",
+      "sha256": "48e9768902c9fd3a16086d7398abbdbaf703222e7c321ac0d9c54a692788aa90"
+    },
+    "packagedSmoke": {
+      "filename": "therss-apple-packaged-smoke.log",
+      "sha256": "33c7419ab37eb7397090ddd3e7b210cc76ed42a4e78dbdf6825770b2e00048d0"
+    },
+    "installedSmoke": {
+      "filename": "therss-apple-installed-smoke.log",
+      "sha256": "e0e5c3cb82c000bf813849fb5ac028a3f8ecb792012282f1c06375af3f998568"
+    }
+  },
+  "installedNativeGroupsPassed": 14,
+  "installedStartup": "passed",
+  "userAppReopened": true,
+  "recordedSidebarAttentionAbsent": true,
+  "unexpectedWindowCloseObservedThisRun": 0
+}

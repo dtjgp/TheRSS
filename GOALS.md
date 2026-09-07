@@ -1,22 +1,27 @@
 # TheRSS Goals
 
-## Current stage: Direct editing and navigation refinements verified and installed
+## Current stage: Recorded source feedback verified and installed
 
-The user identified an unnecessary Edit search gate and requested a broader interaction audit.
-Discover now keeps its query directly editable; list activation opens records, long summaries scroll
-without an expand step, local lookup filters while typing, and duplicate source-open controls are
-removed. Explicit model/network/persistence actions and write confirmations remain intentional.
+The Apple design reference is adapted in the project UI skill for native AppKit and the Web
+fallback. Sources now reads the latest valid local source/Discover observation, distinguishes
+failed/partial/no-match outcomes, and shows context, time and reason near the source title.
+Global attention prompts are removed. No schema, dependency or global skill changes were needed.
+See the [current report](docs/audits/2026-09-07-apple-design-status/REPORT.md).
 
-Current checks pass 680 main and 103 AppKit tests (overlapping suites), eight desktop cases,
-13 packaged/installed native workflow groups and 15 local-navigation cycles. All 11 user-data tables
-match the immediate installation backup. See the
-[direct-interaction report](docs/audits/2026-09-07-direct-interaction/REPORT.md) for screenshots and the
-unreproduced test-window-close event. Draft PR #49 owns remote delivery and CI status.
+Current checks pass 687 main and 104 AppKit tests (overlapping suites), eight desktop cases,
+and 14 workflow groups for both the new package and exact installed app. All 11 user-data tables
+match the immediate installation backup; the previous app is retained. The app is reopened.
+Local changes since `3a33614` remain unpushed; prior automatic approval rejected the push because
+explicit authorization for that delivery was not established. Draft PR #49 still represents its
+previous remote head, and its CI does not validate these local changes.
 
-The user feedback is addressed; [human acceptance](docs/audits/2026-09-06-market-readiness/HUMAN_ACCEPTANCE.md)
-awaits actual retest. The previous [quality baseline](docs/audits/2026-09-07-source-quality/REPORT.md)
-remains limited; UI verification does not establish retrieval or analysis accuracy. Custom paid model
-APIs, VoiceOver and formal Apple distribution remain deferred.
+The prior [direct-interaction changes](docs/audits/2026-09-07-direct-interaction/REPORT.md) remain
+in place. [Human UX acceptance](docs/audits/2026-09-06-market-readiness/HUMAN_ACCEPTANCE.md) is
+provisionally passed by the user's 2026-09-07 decision; reopen affected items if issues arise.
+The [quality baseline](docs/audits/2026-09-07-source-quality/REPORT.md) remains limited; UI checks
+do not establish retrieval or analysis accuracy. Custom paid model APIs, VoiceOver and formal
+Apple distribution remain deferred. The earlier unreproduced test-window-close event retains
+its diagnostic boundary; this iteration observed no new occurrence.
 
 ## Deferred goal: Market-ready native research product
 
@@ -32,7 +37,7 @@ credentials remain explicit blockers rather than being removed from scope.
 
 Current evidence (2026-09-07): A1-A9 and the current unsigned local acceptance are complete.
 The [report](docs/audits/2026-09-06-market-readiness/REPORT.md) preserves the dated source limitations
-and future distribution gates. The latest independent user instruction authorized GitHub delivery: the branch is pushed,
+and future distribution gates. The earlier authorized delivery through `3a33614` was pushed,
 [draft PR #49](https://github.com/dtjgp/TheRSS/pull/49) is open, and private vulnerability reporting
 is enabled. The [delivery record](docs/audits/2026-09-06-market-readiness/GITHUB_DELIVERY.md) links
 the authoritative PR/CI state. Paid signing/notarization and formal distribution remain deferred.

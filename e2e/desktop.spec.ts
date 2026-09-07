@@ -147,7 +147,7 @@ test('Discover-first search across every deployed source', async () => {
     await expect(sourcePicker).toHaveAttribute('aria-expanded', 'false')
     const viewContext = page.getByRole('group', { name: 'View context' })
     await expect(viewContext).toContainText('22 sources')
-    await expect(viewContext).toContainText(/Sources ready|need attention|sources pending/u)
+    await expect(viewContext).toContainText('Search by research question')
     await capture(page, '01-discover-first.png')
     if (!isBaselineCapture) {
       const originalBounds = await application.evaluate(({ BrowserWindow }) =>
@@ -701,7 +701,8 @@ test('Discover-first search across every deployed source', async () => {
     if (!isBaselineCapture) {
       await researchUtilities.getByRole('button', { name: '04 Sources' }).click()
       await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible()
-      await expect(viewContext).toContainText('22 not checked')
+      await expect(viewContext).toContainText('22 recorded ready')
+      await expect(page.locator('.source-detail-heading')).toContainText('Latest search')
       await expect(viewContext).toContainText('22 configured')
       await expect(
         page.getByRole('listbox', { name: 'Configured sources' }).getByRole('option')

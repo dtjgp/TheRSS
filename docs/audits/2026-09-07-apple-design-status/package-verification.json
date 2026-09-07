@@ -1,0 +1,88 @@
+{
+  "checkedAt": "2026-09-07T17:06:37.308Z",
+  "version": "0.3.0",
+  "asarSha256": "db23aca03d3c175acc80c9e1038267e8c8e85e67a97bcb3fdefccbc81fe044ad",
+  "checks": [
+    {
+      "path": "out/main/index.js",
+      "buildSha256": "4a80d4b2b4538ea7e0e910182d5c2cabeaab1964fea58d7ab22c642c2c34009d",
+      "packageSha256": "4a80d4b2b4538ea7e0e910182d5c2cabeaab1964fea58d7ab22c642c2c34009d"
+    },
+    {
+      "path": "out/mcp/stdio.js",
+      "buildSha256": "ff6352daccb3ee30622bf428307b4d5334bdeab4803b0a6ec93e8ceafbd5a5c5",
+      "packageSha256": "ff6352daccb3ee30622bf428307b4d5334bdeab4803b0a6ec93e8ceafbd5a5c5"
+    },
+    {
+      "path": "out/native-appkit/manifest.json",
+      "buildSha256": "5ae62baa985797b4defbf7c6417db49b5ad09fc6f7898c6958e59b550db67814",
+      "packageSha256": "5ae62baa985797b4defbf7c6417db49b5ad09fc6f7898c6958e59b550db67814"
+    },
+    {
+      "path": "out/native-appkit/therss-ui.node",
+      "buildSha256": "d7055f230b2282e2e149b442a5f2e164adcfae6cdde079f7df8a9e3f1d8a81c5",
+      "packageSha256": "d7055f230b2282e2e149b442a5f2e164adcfae6cdde079f7df8a9e3f1d8a81c5"
+    },
+    {
+      "path": "out/native-glass/manifest.json",
+      "buildSha256": "e67ab1d564dc1f3e03748034f338af979fc5bc7ca22c770ab480eee72f093e51",
+      "packageSha256": "e67ab1d564dc1f3e03748034f338af979fc5bc7ca22c770ab480eee72f093e51"
+    },
+    {
+      "path": "out/native-glass/therss-glass.node",
+      "buildSha256": "8003e91a11049a1c6f63aac4f01db4fd78dec136d9e224cff2043be0ec1d8177",
+      "packageSha256": "8003e91a11049a1c6f63aac4f01db4fd78dec136d9e224cff2043be0ec1d8177"
+    },
+    {
+      "path": "out/native-glass-spike/app-pilot.mjs",
+      "buildSha256": "b9e1a58d8e9456884b5d331317e62c8a5eb37f9c7c408ad55b2d3bc3f1fcd225",
+      "packageSha256": "b9e1a58d8e9456884b5d331317e62c8a5eb37f9c7c408ad55b2d3bc3f1fcd225"
+    },
+    {
+      "path": "out/native-glass-spike/entry.cjs",
+      "buildSha256": "223b09596a13b14e1cd41934fadba36b0bf35dc1eef9119de16ec34accd486c7",
+      "packageSha256": "223b09596a13b14e1cd41934fadba36b0bf35dc1eef9119de16ec34accd486c7"
+    },
+    {
+      "path": "out/native-glass-spike/probe.mm",
+      "buildSha256": "fb5fc82053f4089d654c88a41a0adb86b813b290352370808322150392d10c55",
+      "packageSha256": "fb5fc82053f4089d654c88a41a0adb86b813b290352370808322150392d10c55"
+    },
+    {
+      "path": "out/native-glass-spike/probe.node",
+      "buildSha256": "6d91cef8c3eefa1f0d987f8bb5b66c40852fd6d9faf3d7513b5ddcef9c4010fb",
+      "packageSha256": "6d91cef8c3eefa1f0d987f8bb5b66c40852fd6d9faf3d7513b5ddcef9c4010fb"
+    },
+    {
+      "path": "out/native-glass-spike/run.mjs",
+      "buildSha256": "bc50ae03848ab34c0421eadc0206221cd40791db203a359b451c3047746c8863",
+      "packageSha256": "bc50ae03848ab34c0421eadc0206221cd40791db203a359b451c3047746c8863"
+    },
+    {
+      "path": "out/preload/index.cjs",
+      "buildSha256": "20168c9948befa4f5452b07e08ff6e6d544da57be40876a70a3a2b2ec2ab2330",
+      "packageSha256": "20168c9948befa4f5452b07e08ff6e6d544da57be40876a70a3a2b2ec2ab2330"
+    },
+    {
+      "path": "out/renderer/assets/index-DQwchFNn.css",
+      "buildSha256": "41b40e76600cee4a89fbedec7df7b49276bb0d0b61b7340486d06e14decae988",
+      "packageSha256": "41b40e76600cee4a89fbedec7df7b49276bb0d0b61b7340486d06e14decae988"
+    },
+    {
+      "path": "out/renderer/assets/index-DkAIrb0e.js",
+      "buildSha256": "f9e01727470d182279c6334cf851207581d245add9fa768d7599ebd3aca0c6ba",
+      "packageSha256": "f9e01727470d182279c6334cf851207581d245add9fa768d7599ebd3aca0c6ba"
+    },
+    {
+      "path": "out/renderer/index.html",
+      "buildSha256": "4cd19e8ed0f5b975237f54b3a9386f3a0142f5577cd460ed2c0c5c540acb0f89",
+      "packageSha256": "4cd19e8ed0f5b975237f54b3a9386f3a0142f5577cd460ed2c0c5c540acb0f89"
+    },
+    {
+      "path": "out/renderer/native-host.html",
+      "buildSha256": "e35fa509602ed9c6ba587d28ec4de2974e32abff5556439fc521251c9b5f0c11",
+      "packageSha256": "e35fa509602ed9c6ba587d28ec4de2974e32abff5556439fc521251c9b5f0c11"
+    }
+  ],
+  "passed": true
+}

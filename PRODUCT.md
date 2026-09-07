@@ -80,8 +80,10 @@ freshness from a verified empty result. Public signing and distribution remain s
    Historical artifacts can be reopened by ID as bounded plain text; their stored source hash is
    compared with the current local record and labeled current, stale, source-missing, or legacy.
 5. **Sources** — a secondary searchable directory containing only the 22 retained sources, with
-   priority, full research-area labels, dated registry provenance, per-source recorded health time,
-   and an actionable attention filter. Selecting a source opens an in-app rolling 30-day view;
+   full research-area labels, dated registry provenance, and the latest locally recorded source or
+   Discover outcome with its time, context and bounded reason. Failed and partial observations are
+   distinct and have an explicit filter; global navigation does not show a persistent attention badge.
+   No query matches is a normal outcome, and recorded status is separate from cached content. Selecting a source opens an in-app rolling 30-day view;
    arXiv opens the newest available official daily batch. The larger raw catalog remains dormant
    versioned metadata and is not exposed or scheduled.
 6. **Find Local Research** — a Command-F overlay that filters as the user types, with a short

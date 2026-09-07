@@ -3,7 +3,8 @@ import {
   sourcePublicationEvidence,
   hasPublicationMonthOnly
 } from '../../shared/sourceDate'
-import type { SourceContentSnapshot } from '../../shared/api'
+import { sourceHealthLabel, sourceObservationLabel } from '../../shared/sourceHealth'
+import type { SourceContentSnapshot, SourceHealth } from '../../shared/api'
 import {
   SOURCE_CATALOG,
   SOURCE_PRIORITIES,
@@ -72,7 +73,8 @@ export class SourcesScreen implements NativeScreen {
       this.version++
     }
     const entry = sources.find((entry) => entry.id === this.selected)
-    const attentionCount = SOURCE_CATALOG.filter((entry) => this.needsAttention(entry)).length
+    const failedCount = SOURCE_CATALOG.filter((entry) => this.health(entry) === 'failed').length
+    const partialCount = SOURCE_CATALOG.filter((entry) => this.health(entry) === 'partial').length
     return column(
       'sources-page',
       [
@@ -81,7 +83,7 @@ export class SourcesScreen implements NativeScreen {
           ? [
               label(
                 'sources-summary',
-                `22 retained sources · ${attentionCount} need attention · ${sources.length} match current filters`,
+                `22 retained sources · ${failedCount} failed · ${partialCount} partial · ${sources.length} match current filters`,
                 { weight: 'secondary' }
               ),
               b.input(
@@ -141,7 +143,7 @@ export class SourcesScreen implements NativeScreen {
                   },
                   { width: 260 }
                 ),
-                b.check('sources-attention', 'Needs attention', this.attention, (value) => {
+                b.check('sources-attention', 'Failed or partial', this.attention, (value) => {
                   this.attention = value
                   this.context.redraw()
                 })
@@ -178,7 +180,7 @@ export class SourcesScreen implements NativeScreen {
               sources.map((source) => ({
                 id: source.id,
                 title: source.name,
-                subtitle: `${sourceGroup(discoverySourceFromCatalogId(source.id))?.title ?? source.role} · ${this.health(source)}`
+                subtitle: `${sourceGroup(discoverySourceFromCatalogId(source.id))?.title ?? source.role} · ${sourceHealthLabel(this.health(source), this.healthDetail(source)?.context)}`
               })),
               this.focused,
               (id) => {
@@ -248,9 +250,13 @@ export class SourcesScreen implements NativeScreen {
       }
     }
   }
-  private health(entry: SourceCatalogEntry): string {
+  private health(entry: SourceCatalogEntry): SourceHealth {
     const source = discoverySourceFromCatalogId(entry.id)
     return source ? (this.context.data.dashboard?.sourceHealth[source] ?? 'idle') : 'idle'
+  }
+  private healthDetail(entry: SourceCatalogEntry) {
+    const source = discoverySourceFromCatalogId(entry.id)
+    return source ? this.context.data.dashboard?.sourceHealthDetails[source] : undefined
   }
   private needsAttention(entry: SourceCatalogEntry): boolean {
     return ['failed', 'partial'].includes(this.health(entry))
@@ -284,7 +290,7 @@ export class SourcesScreen implements NativeScreen {
     const b = this.controls,
       source = discoverySourceFromCatalogId(entry.id),
       snapshot = this.snapshot
-    const health = source ? this.context.data.dashboard?.sourceHealthDetails[source] : null
+    const health = this.healthDetail(entry)
     const item = snapshot?.items.find((item) => item.id === this.selectedItem) ?? snapshot?.items[0]
     const status = snapshot
       ? {
@@ -302,12 +308,18 @@ export class SourcesScreen implements NativeScreen {
           heading('source-detail-title', entry.name),
           label(
             'source-detail-health',
-            `Priority ${entry.priority} · ${this.health(entry)}${health?.observedAt ? ` · ${health.observedAt}` : ''}`,
+            `${sourceHealthLabel(this.health(entry), health?.context)} · ${sourceObservationLabel(health)}`,
+            { weight: 'secondary' }
+          ),
+          ...(health?.errorMessage ? [label('source-health-error', health.errorMessage)] : []),
+          label(
+            'source-observation-boundary',
+            'Last recorded outcome; cached content below is separate from this observation.',
             { weight: 'secondary' }
           ),
           b.rich(
             'source-detail-description',
-            `${entry.role}\n\n${entry.reason}\n\nResearch axes: ${entry.researchAxes.map((axis) => RESEARCH_AXIS_LABELS[axis]).join(', ')}\n\nOrigin: ${entry.origin}\n\nAccess: ${entry.accessNote}`
+            `${entry.role}\n\n${entry.reason}\n\nPriority: ${entry.priority}\n\nResearch axes: ${entry.researchAxes.map((axis) => RESEARCH_AXIS_LABELS[axis]).join(', ')}\n\nOrigin: ${entry.origin}\n\nAccess: ${entry.accessNote}`
           ),
           row('source-detail-actions', [
             b.button(
@@ -344,7 +356,6 @@ export class SourcesScreen implements NativeScreen {
                 )
               ]
             : []),
-          ...(health?.errorMessage ? [label('source-health-error', health.errorMessage)] : []),
           ...(this.error ? [label('source-content-error', this.error)] : []),
           ...(snapshot
             ? [

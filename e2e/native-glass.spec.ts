@@ -148,7 +148,6 @@ test('native glass pilot preserves navigation, modal, focus, appearance and wind
       'analytics',
       'sources',
       'settings',
-      'source-status',
       'sidebar-toggle'
     ])
     expect(await native(application, 'hit', 'sidebar-toggle')).toBe(true)

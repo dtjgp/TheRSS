@@ -38,6 +38,7 @@ export interface SourceHealthDetail {
   readonly status: SourceHealth
   readonly observedAt: string | null
   readonly errorMessage: string | null
+  readonly context?: 'discover' | 'source'
 }
 
 export interface DashboardItem {

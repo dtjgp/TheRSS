@@ -23,6 +23,7 @@ import {
 } from '../../shared/personalization'
 import { localDateKey } from '../../shared/date'
 import { publicationIntervalEnd } from '../../shared/sourceDate'
+import { readSourceHealthDetails, type SourceRunRow } from './sourceHealthStore'
 import { buildAnalyticsSnapshot } from './analyticsRepository'
 import { migrateResearchDatabase } from './researchSchema'
 import {
@@ -71,15 +72,6 @@ const SOURCE_HEALTH = new Set<PersistedSourceHealth>([
   'failed'
 ])
 
-function boundedSourceError(value: string): string {
-  return value
-    .replaceAll(/\b(?:hf|ghp|github_pat)_[A-Za-z0-9_-]+\b/gu, '[redacted credential]')
-    .replaceAll(/\/(?:Users|home)\/[^\s:]+/gu, '[local path]')
-    .replaceAll(/\s+/gu, ' ')
-    .trim()
-    .slice(0, 300)
-}
-
 interface DashboardRow {
   id: string
   source: DiscoverySource
@@ -95,14 +87,6 @@ interface DashboardRow {
 
 interface SourceContentRow extends DashboardRow {
   updated_at: string
-}
-
-interface SourceRunRow {
-  source: DiscoverySource
-  status: PersistedSourceHealth
-  completed_at: string
-  error_message: string | null
-  result_count: number | null
 }
 
 interface DiscoveryRecordRow {
@@ -652,27 +636,10 @@ export class ResearchRepository {
     const sourceRuns = this.#database
       .prepare('SELECT source, status, completed_at, error_message, result_count FROM source_run')
       .all() as SourceRunRow[]
-    const healthFor = (source: DiscoverySource): SourceHealth => {
-      const run = sourceRuns.find((candidate) => candidate.source === source)
-      if (!run) return 'idle'
-      return run.status === 'healthy' && run.result_count === 0 ? 'no_results' : run.status
-    }
+    const sourceHealthDetails = readSourceHealthDetails(this.#database, sourceRuns)
     const sourceHealth = Object.fromEntries(
-      ACTIVE_TODAY_SOURCE_IDS.map((source) => [source, healthFor(source)])
+      ACTIVE_TODAY_SOURCE_IDS.map((source) => [source, sourceHealthDetails[source]!.status])
     ) as DashboardSnapshot['sourceHealth']
-    const sourceHealthDetails = Object.fromEntries(
-      ACTIVE_TODAY_SOURCE_IDS.map((source) => {
-        const run = sourceRuns.find((candidate) => candidate.source === source)
-        return [
-          source,
-          {
-            status: healthFor(source),
-            observedAt: run?.completed_at ?? null,
-            errorMessage: run?.error_message ? boundedSourceError(run.error_message) : null
-          }
-        ]
-      })
-    ) as DashboardSnapshot['sourceHealthDetails']
     const configuredSources = new Set<DiscoverySource>(
       ACTIVE_TODAY_SOURCE_IDS.filter((source) => source !== 'arxiv' && source !== 'github')
     )

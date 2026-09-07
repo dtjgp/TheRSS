@@ -36,7 +36,7 @@ Search、Analyze、Refresh、Save provider、更新收藏快照分别执行模�
 
 通过现有 [草稿 PR #49](https://github.com/dtjgp/TheRSS/pull/49) 交付；远端 CI 以该 PR 当前 head checks 为准。不合并、不创建标签或发布软件 Release。
 
-独立人工体验仍待用户复验；本轮按用户反馈修改，不预填验收通过。此前来源和检索/分析质量限制继续见 [质量报告](../2026-09-07-source-quality/REPORT.md)。
+2026-09-07 用户决定人工验收暂按通过，后续出现问题再调整。按该决定关闭当前人工体验阻塞项，逐项实测细节未另行提交；出现问题时重新打开对应项。此前来源和检索/分析质量限制继续见 [质量报告](../2026-09-07-source-quality/REPORT.md)。
 
 ## 当前界面证据
 

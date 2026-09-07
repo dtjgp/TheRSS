@@ -38,7 +38,7 @@ describe('App', () => {
       name: 'Application utilities'
     })
     expect(within(applicationUtilities).getByRole('button', { name: 'Settings' })).toBeVisible()
-    expect(applicationUtilities.querySelector('.sidebar__footer')).toBeVisible()
+    expect(applicationUtilities.querySelector('.sidebar__footer')).not.toBeInTheDocument()
     expect(within(navigation).queryByText('Today')).not.toBeInTheDocument()
     expect(within(navigation).queryByText('Interests')).not.toBeInTheDocument()
     await waitFor(() => expect(api.getDashboard).toHaveBeenCalledOnce())

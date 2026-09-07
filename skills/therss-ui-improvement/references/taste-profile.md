@@ -6,7 +6,7 @@ The upstream skill explicitly treats dashboards, dense product UI, data tables, 
 
 ## Approved Design Read
 
-`Existing local-first research desktop for one expert user; quiet editorial/native utility; targeted evolution; project-native semantic CSS; high information density with restrained feedback motion.`
+`Existing local-first research desktop for one expert user; quiet editorial/native utility; targeted evolution; native AppKit controls with a project-native CSS fallback; high information density with restrained feedback motion.`
 
 Approved desktop-product dials:
 
@@ -23,8 +23,8 @@ The user accepted these values on 2026-08-28. Reopen the decision gate before ch
 - Prefer targeted evolution and stop when the demonstrated problem is solved.
 - Verify dependencies before imports and keep one coherent component/design system.
 - Design truthful loading, empty, error, canceling, partial, stopped, and terminal states.
-- Use semantic HTML, visible focus, tabular numerals for counts, explicit narrow behavior, and restrained card/elevation usage.
-- Animate transform/opacity only when animation communicates hierarchy, feedback, or state; respect reduced motion and clean up effects.
+- Use native accessibility roles or semantic HTML, visible focus, readable counts, explicit narrow behavior, and restrained card/elevation usage.
+- Prefer native interaction and scrolling. For the Web fallback, animate transform/opacity only when it communicates hierarchy, feedback, or state; respect reduced motion and clean up effects.
 - Re-read visible product copy and reject invented precision or decorative pseudo-data.
 
 ## Adapt

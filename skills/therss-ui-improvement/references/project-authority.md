@@ -8,7 +8,7 @@
 4. `docs/DEVELOPMENT_WORKFLOW.md` and the task's `CHANGE_CONTRACT.md`.
 5. `docs/DESIGN.md`, `docs/ENGINEERING_PRACTICES.md`, relevant ADRs, typed contracts, tests, and current rendered evidence.
 6. `skills/therss-ui-improvement/SKILL.md`.
-7. Installed upstream taste guidance.
+7. Referenced Apple principles and installed upstream taste guidance.
 
 When sources disagree, prefer executable behavior, typed state, tests, current screenshots, and the higher authority. Record any contract change before editing acceptance tests.
 
@@ -33,9 +33,10 @@ For every non-trivial or user-visible change:
 
 ## Current Stack
 
-- Electron + Vite + React + TypeScript.
-- Project-native CSS variables and component CSS.
-- Apple-style semantic tokens, system accent support, per-view identity colors, semantic status colors, light/dark mode, increased contrast, forced colors, and reduced motion.
-- Lucide is the existing icon family.
+- Electron + Vite + TypeScript owns the application lifecycle and typed services.
+- AppKit is the primary macOS interface: the existing presentation bridge renders native controls, lists, scroll views, split views, menus and sheets. Follow [ADR 0011](../../../docs/decisions/0011-complete-appkit-interface.md) and the native source, not Web recipes.
+- Native system fonts, SF Symbols, semantic colors and accessibility labels remain authoritative. Respect reduced motion, increased contrast and reduced transparency through supported platform behavior.
+- React with project-native CSS and Lucide is the Web fallback. Keep its existing tokens, light/dark mode, focus, forced colors and reduced-motion behavior.
+- Both surfaces consume the same typed application state and preserve provenance, keyboard navigation and bounded feedback.
 
 Treat a new design system, animation library, font, icon family, or styling framework as a dependency and architecture decision, not as visual polish.

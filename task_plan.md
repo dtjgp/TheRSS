@@ -17,13 +17,15 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Status
 
-**Direct interaction refinements verified and installed; human retest pending.** The user's Edit
-search feedback led to a five-category audit and simplification across search, reading, lists and
-local lookup. See the [current report](docs/audits/2026-09-07-direct-interaction/REPORT.md).
-Checks: 680 main/103 AppKit tests, eight desktop cases, 13 packaged/installed native workflow groups,
-15 local-navigation cycles, and all 11 user-data tables matched to the immediate backup. The report
-retains one unreproduced test-window-close event. Existing draft PR #49 owns CI and remote delivery.
-Prior source and model-quality limits remain separate from this UI verification.
+**Recorded source feedback and project Apple design adaptation are verified and installed.**
+The [current report](docs/audits/2026-09-07-apple-design-status/REPORT.md) records the latest
+source/Discover observation projection, explicit local feedback, and native/Web design boundaries.
+Checks: 687 main/104 AppKit tests, eight desktop cases, 14 packaged and installed native workflow
+groups, and all 11 user-data tables matched to the immediate backup. Prior direct-editing and
+navigation improvements remain intact; no new unexpected window close occurred in this iteration.
+The user's provisional human UX acceptance persists. Source/model quality remains independently
+limited. Local changes after `3a33614` are not pushed: the previous automatic approval rejection
+requires explicit GitHub delivery authorization, and PR #49 still has the earlier remote head.
 
 **All 39 phases through 2026-08-24 are complete.** The current head on `main` is the personal
 beta (v0.2.0): Discover-centered retrieval over the 22 live-verified sources, confirmation-gated
