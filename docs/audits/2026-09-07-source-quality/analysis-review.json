@@ -1,0 +1,55 @@
+{
+  "assessor": "assistant",
+  "attempts": 4,
+  "completeArtifacts": 3,
+  "reviews": [
+    {
+      "caseId": "structured-pruning",
+      "runner": "codex",
+      "execution": "timeout",
+      "review": "not_reviewable",
+      "itemId": "arxiv:2608.05499v1",
+      "reason": "No completed artifact within the existing 120-second limit."
+    },
+    {
+      "caseId": "structured-pruning",
+      "runner": "claude",
+      "execution": "completed",
+      "review": "passed_for_this_sample",
+      "itemId": "github:intel/neural-compressor",
+      "reason": "Attributes repository claims and distinguishes publication/update/popularity from quality.",
+      "sha256": "071dc1c746fdf511c5d275c9ffde7cddf7d21c35f434b7864bbe8e661cb53bb0",
+      "sourceHash": "8623cb4e7e12a579663adba1d33a1f0fcd4762d28ca0e1a773139ceff3c71dd6",
+      "promptVersion": "discovery-analysis-v2"
+    },
+    {
+      "caseId": "energy-aware-training",
+      "runner": "codex",
+      "execution": "completed",
+      "review": "passed_for_this_sample",
+      "itemId": "arxiv:2602.23935v1",
+      "reason": "Reported percentages match supplied abstract, with author-reported metrics and provisional boundary retained; not directly about ML training deadlines.",
+      "sha256": "c3434a7f5524a007e6814072e7731c9f86df5203b0eab35be8b2db610ec7b1f4",
+      "sourceHash": "fee4e8665a8c6c55d42529c7853a3c5e2ad78e2062b2c81104f81e1e82aeebcf",
+      "promptVersion": "llm-wiki-paper-l1-v2"
+    },
+    {
+      "caseId": "residential-demand-response",
+      "runner": "claude",
+      "execution": "completed",
+      "review": "failed",
+      "itemId": "arxiv:2607.06632v1",
+      "reason": "Strengthens few studies into first, invents section numbers, and conflates not supplied with unpublished/unavailable.",
+      "sha256": "838e294786c0b79cf13624991794d2d3a6ca3f9da9ecc75aadedb3b713215ad9",
+      "sourceHash": "e9f1ce7552f2a2ca36fed4f35fcee4111f406b5c44be4dd95e3614bee2dc099a",
+      "promptVersion": "llm-wiki-paper-l1-v2"
+    }
+  ],
+  "mitigation": {
+    "paperPromptVersion": "llm-wiki-paper-l1-v3",
+    "offlinePromptRegression": "passed",
+    "liveAfterChange": "not_run_budget_exhausted",
+    "oldArtifactsPreserved": true
+  },
+  "boundary": "Sample review only, not a guarantee of model reliability or an independent human audit."
+}

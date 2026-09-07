@@ -1,3 +1,8 @@
+import {
+  hasPublicationMonthOnly,
+  sourcePublicationDate,
+  sourcePublicationLabel
+} from '../../shared/sourceDate'
 import { ArrowLeft, ArrowUpRight, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import type {
@@ -392,6 +397,8 @@ function SourceDetail({
           )}
 
           <p className="source-content-status-note">
+            {sourceId === 'folo:611' &&
+              'Publication months overlapping this window are included; exact days may be unavailable. '}
             {snapshot.status === 'cached'
               ? 'Showing stored local records; cache availability does not prove that the source is currently reachable.'
               : 'The local snapshot reflects the latest completed in-app source request.'}{' '}
@@ -424,7 +431,17 @@ function SourceDetail({
                     <article className="source-content-card">
                       <div className="source-content-card__meta">
                         <span>{item.kind ?? 'item'}</span>
-                        <time dateTime={recentTimestamp}>{formatTimestamp(recentTimestamp)}</time>
+                        <time
+                          dateTime={
+                            hasPublicationMonthOnly(item)
+                              ? sourcePublicationDate(item)
+                              : recentTimestamp
+                          }
+                        >
+                          {hasPublicationMonthOnly(item)
+                            ? sourcePublicationLabel(item)
+                            : formatTimestamp(recentTimestamp)}
+                        </time>
                       </div>
                       <h2>{item.title}</h2>
                       <p>{item.summary}</p>

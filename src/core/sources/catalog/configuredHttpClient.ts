@@ -37,7 +37,7 @@ function assertFinalOrigin(response: Response, endpoint: string, sourceId: strin
   }
 }
 
-async function fetchFixedOrigin(
+export async function fetchFixedOrigin(
   endpoint: string,
   sourceId: string,
   fetcher: typeof fetch,

@@ -8,6 +8,22 @@ import {
 } from './sourceNormalizer'
 
 describe('configured source normalization', () => {
+  it.each([
+    '<html>Access denied</html>',
+    '<rss><channel><item></channel></rss>',
+    '<!DOCTYPE rss [<!ENTITY injected "unsafe">]><rss><channel/></rss>'
+  ])('does not call an invalid feed an empty result', (body) => {
+    expect(() =>
+      normalizeFeedDocument({
+        sourceId: 'folo:44',
+        transport: 'feed',
+        endpoint: 'https://news.ycombinator.com/rss',
+        contentType: 'application/xml',
+        retrievedAt: '2026-09-07',
+        body
+      })
+    ).toThrow()
+  })
   it('normalizes RSS and Atom entries to bounded plain-text discovery items', () => {
     const document: ConfiguredHttpDocument = {
       sourceId: 'folo:302',

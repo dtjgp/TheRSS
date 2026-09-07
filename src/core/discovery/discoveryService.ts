@@ -14,7 +14,7 @@ import {
   type FetchConfiguredSourceOptions
 } from '../sources/catalog/configuredSourceAdapter'
 import type { NormalizedSourceBatch } from '../sources/catalog/sourceNormalizer'
-import { classifySourceBatch } from '../sources/catalog/sourceBatchStatus'
+import { classifySourceBatch, sourceRejectionDetail } from '../sources/catalog/sourceBatchStatus'
 import type { ResearchRepository } from '../storage/researchRepository'
 
 interface GitHubFetchOptions {
@@ -53,6 +53,7 @@ interface SuccessfulRefresh {
   readonly source: DiscoverySource
   readonly returnedCount: number
   readonly rejectedCount: number
+  readonly rejectionReason?: string
   readonly ranked: readonly RankedDiscoveryItem[]
 }
 
@@ -191,7 +192,7 @@ export class DiscoveryService {
       const status = classifySourceBatch(batch)
       if (status === 'failed') {
         throw new Error(
-          `All ${batch.rejectedCount} source entries were rejected; cached content was retained`
+          `All ${batch.rejectedCount} source entries were rejected; cached content was retained${batch.rejectionReason ? `. ${batch.rejectionReason}` : ''}`
         )
       }
       const ranked = batch.items.map((item) => ({
@@ -203,7 +204,7 @@ export class DiscoveryService {
         source,
         status === 'partial' ? 'partial' : 'healthy',
         now.toISOString(),
-        batch.rejectedCount ? `${batch.rejectedCount} invalid entries were ignored` : null,
+        batch.rejectedCount ? sourceRejectionDetail(batch) : null,
         batch.items.length,
         false
       )
@@ -279,7 +280,7 @@ export class DiscoveryService {
               source,
               'failed',
               completedAt,
-              `All ${result.value.rejectedCount} source entries were rejected; previous results were retained`,
+              `All ${result.value.rejectedCount} source entries were rejected; previous results were retained${result.value.rejectionReason ? `. ${result.value.rejectionReason}` : ''}`,
               0
             )
             return
@@ -288,6 +289,9 @@ export class DiscoveryService {
             source,
             returnedCount: result.value.items.length,
             rejectedCount: result.value.rejectedCount,
+            ...(result.value.rejectionReason
+              ? { rejectionReason: result.value.rejectionReason }
+              : {}),
             ranked: result.value.items.map((item) => rankDiscoveryItem(item, profile, now))
           })
         } else {
@@ -313,7 +317,7 @@ export class DiscoveryService {
           result.source,
           result.rejectedCount > 0 ? 'partial' : 'healthy',
           completedAt,
-          result.rejectedCount > 0 ? `${result.rejectedCount} invalid entries were ignored` : null,
+          result.rejectedCount > 0 ? sourceRejectionDetail(result) : null,
           result.returnedCount
         )
       } catch (error) {

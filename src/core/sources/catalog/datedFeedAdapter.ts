@@ -1,10 +1,10 @@
-import { XMLParser } from 'fast-xml-parser'
+import { parseSourceFeed } from './sourceFeedDocument'
 import { readBoundedText } from '../../security/boundedResponse'
 import type {
   ConfiguredSourceDefinition,
   DatedFeedConfiguredSourceDefinition
 } from './configuredSources'
-import { fetchConfiguredHttpDocument } from './configuredHttpClient'
+import { fetchConfiguredHttpDocument, fetchFixedOrigin } from './configuredHttpClient'
 import { normalizeConfiguredItem, type NormalizedSourceBatch } from './sourceNormalizer'
 
 interface FetchDatedFeedOptions {
@@ -70,14 +70,7 @@ function plainText(value: unknown, maxLength: number): string {
 }
 
 function feedCandidates(body: string, maximum: number): readonly FeedCandidate[] {
-  const parser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: '@_',
-    removeNSPrefix: true,
-    parseTagValue: false,
-    trimValues: true
-  })
-  const parsed = parser.parse(body) as Record<string, unknown>
+  const parsed = parseSourceFeed(body)
   const rss = parsed.rss as Record<string, unknown> | undefined
   const channel = rss?.channel as Record<string, unknown> | undefined
   const rdf = parsed.RDF as Record<string, unknown> | undefined
@@ -105,13 +98,21 @@ function publicationDate(html: string, names: readonly string[]): string {
     const name = attribute(tag, 'name').toLocaleLowerCase()
     if (!accepted.has(name)) continue
     const raw = attribute(tag, 'content')
-    const simpleDate = raw.match(/^(\d{4})\/(\d{2})\/(\d{2})$/u)
-    const timestamp = simpleDate
-      ? Date.UTC(Number(simpleDate[1]), Number(simpleDate[2]) - 1, Number(simpleDate[3]))
-      : Date.parse(raw)
+    const date = raw.match(/^(\d{4})[-/](\d{2})[-/](\d{2})(?:$|T)/u)
+    if (!date) continue
+    const calendar = `${date[1]}-${date[2]}-${date[3]}`
+    const day = new Date(`${calendar}T00:00:00.000Z`)
+    if (!Number.isFinite(day.getTime()) || day.toISOString().slice(0, 10) !== calendar) continue
+    const timestamp = raw.length === 10 ? day.getTime() : Date.parse(raw)
     if (Number.isFinite(timestamp)) return new Date(timestamp).toISOString()
   }
   throw new Error('Article page has no accepted publication-date metadata')
+}
+
+class ArticleAccessDenied extends Error {
+  constructor(readonly status: number) {
+    super(`Official article access denied (HTTP ${status}); unstarted detail requests were skipped`)
+  }
 }
 
 function assertDatedFeedDefinition(
@@ -138,17 +139,21 @@ async function enrichCandidate(
   ) {
     throw new Error('Feed article is outside the fixed official origin')
   }
-  const response = await fetcher(articleUrl.toString(), {
+  const response = await fetchFixedOrigin(articleUrl.toString(), definition.id, fetcher, {
     headers: {
       Accept: 'text/html, application/xhtml+xml',
       'User-Agent': 'TheRSS/0.2 (local research source client)'
     },
-    redirect: 'follow',
     signal: signal
       ? AbortSignal.any([signal, AbortSignal.timeout(30_000)])
       : AbortSignal.timeout(30_000)
   })
-  if (!response.ok) throw new Error(`Article request failed with status ${response.status}`)
+  if (!response.ok) {
+    await response.body?.cancel()
+    if (response.status === 401 || response.status === 403)
+      throw new ArticleAccessDenied(response.status)
+    throw new Error(`Article request failed with status ${response.status}`)
+  }
   if (response.url && new URL(response.url).origin !== definition.articleOrigin) {
     throw new Error('Article redirected outside the fixed official origin')
   }
@@ -191,11 +196,25 @@ export async function fetchDatedFeedSource(
     }
   )
   const candidates = feedCandidates(document.body, definition.maxItems)
-  const results = await mapWithConcurrency(candidates, 4, (candidate) =>
-    enrichCandidate(definition, candidate, dependencies.fetcher ?? fetch, options.signal)
-  )
+  let denied: ArticleAccessDenied | undefined
+  const results = await mapWithConcurrency(candidates, 4, async (candidate) => {
+    if (denied) throw denied
+    options.signal?.throwIfAborted()
+    try {
+      return await enrichCandidate(
+        definition,
+        candidate,
+        dependencies.fetcher ?? fetch,
+        options.signal
+      )
+    } catch (error) {
+      if (error instanceof ArticleAccessDenied) denied = error
+      throw error
+    }
+  })
   return {
     items: results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])),
-    rejectedCount: results.filter((result) => result.status === 'rejected').length
+    rejectedCount: results.filter((result) => result.status === 'rejected').length,
+    ...(denied ? { rejectionReason: denied.message } : {})
   }
 }

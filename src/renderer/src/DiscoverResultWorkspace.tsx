@@ -1,3 +1,8 @@
+import {
+  sourcePublicationDate,
+  sourcePublicationLabel,
+  sourceMatchReasons
+} from '../../shared/sourceDate'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ExternalLink, Sparkles } from 'lucide-react'
 import type { TheRSSApi } from '../../shared/api'
@@ -75,7 +80,7 @@ function DiscoverResultRow({
       >
         <span className="signal-row__meta">
           <SourceMark source={item.source} />
-          <time dateTime={item.publishedAt}>{new Date(item.publishedAt).toLocaleDateString()}</time>
+          <time dateTime={sourcePublicationDate(item)}>{sourcePublicationLabel(item, true)}</time>
           <span>{resultKindLabel(item)}</span>
           <span className="signal-row__score">{item.score}</span>
         </span>
@@ -238,8 +243,8 @@ export function DiscoverResultWorkspace({
           <header className="signal-detail__header">
             <div className="signal-detail__meta">
               <SourceMark source={selectedItem.source} />
-              <time dateTime={selectedItem.publishedAt}>
-                {new Date(selectedItem.publishedAt).toLocaleDateString()}
+              <time dateTime={sourcePublicationDate(selectedItem)}>
+                {sourcePublicationLabel(selectedItem, true)}
               </time>
               <span>{resultKindLabel(selectedItem)}</span>
               <span>signal {selectedItem.score}</span>
@@ -321,7 +326,7 @@ export function DiscoverResultWorkspace({
           <section className="signal-detail__reasons" aria-label="Discover match reasons">
             <span className="signal-detail__section-label">Why this matched</span>
             <ul>
-              {selectedItem.reasons.map((reason) => (
+              {sourceMatchReasons(selectedItem).map((reason) => (
                 <li key={reason}>{reason}</li>
               ))}
             </ul>

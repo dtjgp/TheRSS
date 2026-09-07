@@ -14,6 +14,7 @@ import type { NativeNode } from './presentation'
 import { ResearchReader, type TriageHistory } from './reading'
 import { researchSubtitle } from './researchMetadata'
 import { ReadingWorkspace } from './readingWorkspace'
+import { SavedSourceUpdateControls } from './savedSourceUpdate'
 
 export class SavedScreen implements NativeScreen {
   readonly reader: ResearchReader
@@ -23,6 +24,7 @@ export class SavedScreen implements NativeScreen {
   private runner: AnalysisRunner = 'model-provider'
   private readonly workspace: ReadingWorkspace
   private localItem: DashboardItem | null = null
+  private readonly sourceUpdate: SavedSourceUpdateControls
   constructor(
     private readonly context: NativeContext,
     private readonly triage: TriageHistory
@@ -30,9 +32,13 @@ export class SavedScreen implements NativeScreen {
     this.controls = new Controls(context)
     this.reader = new ResearchReader(context, 'saved', triage)
     this.workspace = new ReadingWorkspace(context, 'saved', 'saved-items', 'saved-summary')
+    this.sourceUpdate = new SavedSourceUpdateControls(context, (item, id) => {
+      if (this.localItem?.id === id) this.localItem = item?.triageState === 'saved' ? item : null
+    })
   }
   dispose(): void {
     this.reader.dispose()
+    this.sourceUpdate.dispose()
   }
   openLocal(item: DashboardItem): () => void {
     const previous = { selected: this.selected, filter: this.filter, localItem: this.localItem }
@@ -63,6 +69,7 @@ export class SavedScreen implements NativeScreen {
     this.selected = selected?.id ?? ''
     this.reader.runner = this.runner
     this.reader.select(selected)
+    this.sourceUpdate.select(selected)
     return column(
       'saved-page',
       [
@@ -96,6 +103,7 @@ export class SavedScreen implements NativeScreen {
           })
         ]),
         ...(items.length ? this.workspace.navigation('Back to Saved') : []),
+        ...(selected ? [this.sourceUpdate.render()] : []),
         ...(items.length
           ? [
               this.workspace.apply(

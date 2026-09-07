@@ -1,19 +1,21 @@
 # TheRSS Goals
 
-## Current stage: Non-release technical acceptance complete; human acceptance pending
+## Current stage: Source and Saved updates verified locally; quality baseline limited
 
-The user asked to finish the remaining non-release work, then explicitly deferred new paid model APIs
-and VoiceOver. Codex and Claude completed real public-data planning/analysis and persistence checks.
-Three news sources now use verified official lists; NBER failed and NCPSD partial results retain
-honest degradation and cached content. Date labels, generic analysis evidence rules and same-record
-source freshness were repaired with RED/GREEN regressions.
+The user authorized continued source stability, an explicit local Saved snapshot update, and a
+bounded discovery/analysis quality baseline. The implementation and six public searches are complete;
+four analysis attempts include one timeout and one evidence-boundary failure. Assistant Top-10
+labels reveal limited direct relevance for compound constraints. Human precision and recall remain
+unmeasured. Paper prompt v3 adds guards, with live quality after that change unverified.
 
-Full checks pass 630 main and 90 AppKit tests; desktop E2E 8/8; exact packaged and installed native
-workflows 12/12. The updated 0.3.0 app is installed with backups, and all 11 real-data tables match
-the immediate backup. See [remaining acceptance](docs/audits/2026-09-06-market-readiness/REMAINING_ACCEPTANCE.md).
-The [independent human checklist](docs/audits/2026-09-06-market-readiness/HUMAN_ACCEPTANCE.md) awaits
-actual user feedback. Continue GitHub delivery through existing draft PR #49; do not merge or
-publish a software release without the relevant authorization.
+Current scope, evidence and delivery checks are in the
+[source-quality report](docs/audits/2026-09-07-source-quality/REPORT.md) and its change contract.
+Current checks pass 669 main and 96 AppKit tests, eight desktop cases, and 13 packaged native
+workflow groups. The app is installed with backups; all 11 user-data tables match the immediate
+backup. Remote delivery status is owned by PR #49 head checks.
+The [independent human checklist](docs/audits/2026-09-06-market-readiness/HUMAN_ACCEPTANCE.md)
+awaits real feedback. Custom paid model APIs, VoiceOver and formal Apple distribution remain
+deferred. GitHub delivery uses existing draft PR #49; no merge or software Release is included.
 
 ## Deferred goal: Market-ready native research product
 

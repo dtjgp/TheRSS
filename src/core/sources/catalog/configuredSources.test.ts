@@ -49,7 +49,7 @@ describe('CONFIGURED_SOURCE_DEFINITIONS', () => {
       if (source.transport !== 'huggingface') {
         expect(new URL(source.endpoint).protocol).toBe('https:')
         expect(source.verifiedOn).toBe(
-          ['folo:182', 'folo:302', 'folo:93', 'folo:67'].includes(source.id)
+          ['folo:182', 'folo:302', 'folo:93', 'folo:67', 'folo:253'].includes(source.id)
             ? '2026-09-07'
             : '2026-08-19'
         )

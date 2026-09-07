@@ -22,6 +22,7 @@ import {
   type DiscoverPersonalizationSettings
 } from '../../shared/personalization'
 import { localDateKey } from '../../shared/date'
+import { publicationIntervalEnd } from '../../shared/sourceDate'
 import { buildAnalyticsSnapshot } from './analyticsRepository'
 import { migrateResearchDatabase } from './researchSchema'
 import {
@@ -41,6 +42,11 @@ import {
 import { parseStringList } from './rowParsers'
 import { searchLocal as searchPersistedLocal } from './localSearchStore'
 import type { LocalSearchResponse } from '../../shared/localSearch'
+import {
+  savedSourceUpdateRequestSchema,
+  type SavedSourceUpdateRequest
+} from '../../shared/savedSourceUpdate'
+import { getSavedSourceUpdate, applySavedSourceUpdate } from './savedSourceUpdateStore'
 import {
   getLatestDiscoverSnapshot as readLatestDiscoverSnapshot,
   getDiscoverSnapshot as readDiscoverSnapshot,
@@ -362,6 +368,10 @@ export class ResearchRepository {
       start.setUTCHours(0, 0, 0, 0)
     } else start.setTime(now.getTime() - windowDays * 24 * 60 * 60 * 1_000)
     const windowStart = start.toISOString()
+    const candidateStart =
+      source === 'folo:611'
+        ? new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1)).toISOString()
+        : windowStart
     const arxivWindowEnd = new Date(start)
     arxivWindowEnd.setUTCDate(arxivWindowEnd.getUTCDate() + 1)
     const datePredicate =
@@ -380,8 +390,8 @@ export class ResearchRepository {
       )
       .all(
         source,
-        windowStart,
-        source === 'arxiv' ? arxivWindowEnd.toISOString() : windowStart
+        candidateStart,
+        source === 'arxiv' ? arxivWindowEnd.toISOString() : candidateStart
       ) as SourceContentRow[]
     const indexRow = this.#database
       .prepare('SELECT MAX(last_seen_at) AS last_indexed_at FROM discovery_item WHERE source = ?')
@@ -396,19 +406,30 @@ export class ResearchRepository {
       lastIndexedAt: indexRow.last_indexed_at,
       returnedCount: 0,
       rejectedCount: 0,
-      items: rows.map((row) => ({
-        id: row.id,
-        source: row.source,
-        kind: row.item_kind,
-        title: row.title,
-        summary: row.summary,
-        url: row.url,
-        publishedAt: row.published_at,
-        updatedAt: row.updated_at,
-        score: row.score,
-        triageState: row.triage_state,
-        reasons: parseStringList(row.reasons_json)
-      }))
+      items: rows
+        .filter(
+          (row) =>
+            source !== 'folo:611' ||
+            Date.parse(row.updated_at) >= start.getTime() ||
+            publicationIntervalEnd({
+              source: row.source,
+              summary: row.summary,
+              publishedAt: row.published_at
+            }) >= start.getTime()
+        )
+        .map((row) => ({
+          id: row.id,
+          source: row.source,
+          kind: row.item_kind,
+          title: row.title,
+          summary: row.summary,
+          url: row.url,
+          publishedAt: row.published_at,
+          updatedAt: row.updated_at,
+          score: row.score,
+          triageState: row.triage_state,
+          reasons: parseStringList(row.reasons_json)
+        }))
     }
   }
 
@@ -448,6 +469,18 @@ export class ResearchRepository {
           reasons: parseStringList(row.reasons_json)
         }
       : null
+  }
+
+  getSavedSourceUpdate(id: string) {
+    return getSavedSourceUpdate(this.#database, id)
+  }
+
+  applySavedSourceUpdate(request: SavedSourceUpdateRequest, updatedAt = new Date().toISOString()) {
+    return applySavedSourceUpdate(
+      this.#database,
+      savedSourceUpdateRequestSchema.parse(request),
+      updatedAt
+    )
   }
 
   getDiscoveryRecord(id: string): DiscoveryItem | null {

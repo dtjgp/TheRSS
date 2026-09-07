@@ -15,6 +15,7 @@ import {
   type DiscoverStatus
 } from '../../shared/discover'
 import type { ArxivInterest, GitHubInterest, InterestProfile } from '../interests/interestProfile'
+import { sourceRejectionDetail } from '../sources/catalog/sourceBatchStatus'
 import { rankDiscoveryItem } from '../ranking/rankDiscoveryItem'
 import { fetchArxivItems } from '../sources/arxiv/arxivClient'
 import {
@@ -485,10 +486,7 @@ export class DiscoverService {
                     ? 'no_results'
                     : 'healthy',
             resultCount: ranked.length,
-            error:
-              result.value.rejectedCount > 0
-                ? `${result.value.rejectedCount} invalid entries were ignored`
-                : null
+            error: result.value.rejectedCount > 0 ? sourceRejectionDetail(result.value) : null
           }
           rankedSourceItems.push(...ranked)
         } else if (result.reason instanceof DiscoverCanceledError) {

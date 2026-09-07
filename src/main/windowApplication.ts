@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { savedSourceUpdateRequestSchema } from '../shared/savedSourceUpdate'
 import { interestProfileSchema } from '../core/interests/interestProfile'
 import type { ResearchRepository } from '../core/storage/researchRepository'
 import type { DiscoveryService } from '../core/discovery/discoveryService'
@@ -171,6 +172,17 @@ export class WindowApplication {
           const validated = triageInput.parse({ id, state })
           repository.setTriageState(validated.id, validated.state)
           return repository.getDashboardSnapshot()
+        }),
+      getSavedSourceUpdate: (id) => task(() => repository.getSavedSourceUpdate(itemId.parse(id))),
+      applySavedSourceUpdate: (candidate) =>
+        task(() => {
+          const input = savedSourceUpdateRequestSchema.parse(candidate)
+          const status = repository.applySavedSourceUpdate(input)
+          return {
+            status,
+            item: repository.getDiscoveryItem(input.itemId),
+            dashboard: repository.getDashboardSnapshot()
+          }
         }),
       getModelProvider: () => task(() => provider.getSummary()),
       saveModelProvider: (candidate) => task(() => provider.save(candidate)),

@@ -3,6 +3,68 @@ import { fetchDatedFeedSource } from './datedFeedAdapter'
 import { getConfiguredSourceDefinition } from './configuredSources'
 
 describe('fetchDatedFeedSource', () => {
+  it('rejects a cross-origin redirect before requesting that destination', async () => {
+    const fetchDocument = vi.fn().mockResolvedValue({
+      sourceId: 'folo:444',
+      transport: 'feed',
+      endpoint: 'https://back.nber.org/rss/new.xml',
+      contentType: 'application/xml',
+      retrievedAt: '2026-09-07',
+      body: '<rss><channel><item><title>Paper</title><link>https://www.nber.org/papers/w1</link></item></channel></rss>'
+    })
+    const fetcher = vi.fn<typeof fetch>(async () => {
+      return new Response(null, {
+        status: 302,
+        headers: { location: 'https://untrusted.invalid/' }
+      })
+    })
+    const batch = await fetchDatedFeedSource(
+      getConfiguredSourceDefinition('folo:444'),
+      { now: new Date('2026-09-07') },
+      { fetchDocument, fetcher }
+    )
+    expect(fetcher).toHaveBeenCalledOnce()
+    expect(fetcher.mock.calls[0]?.[1]?.redirect).toBe('manual')
+    expect(batch).toMatchObject({ items: [], rejectedCount: 1 })
+  })
+  it('rejects invalid calendar dates and stops starting further requests after access is denied', async () => {
+    const fetchDocument = vi.fn().mockResolvedValue({
+      sourceId: 'folo:444',
+      transport: 'feed',
+      endpoint: 'https://back.nber.org/rss/new.xml',
+      contentType: 'application/xml',
+      retrievedAt: '2026-09-07',
+      body:
+        '<rss><channel>' +
+        Array.from(
+          { length: 20 },
+          (_, i) =>
+            `<item><title>Paper ${i}</title><link>https://www.nber.org/papers/w${i + 1}</link></item>`
+        ).join('') +
+        '</channel></rss>'
+    })
+    const denied = vi.fn<typeof fetch>(async () => new Response('Access denied', { status: 403 }))
+    const blocked = await fetchDatedFeedSource(
+      getConfiguredSourceDefinition('folo:444'),
+      { now: new Date('2026-09-07') },
+      { fetchDocument, fetcher: denied }
+    )
+    expect(denied.mock.calls.length).toBeLessThanOrEqual(4)
+    expect(blocked.rejectedCount).toBe(20)
+    const invalid = vi.fn<typeof fetch>(
+      async () =>
+        new Response('<meta name="citation_publication_date" content="2026/02/30">', {
+          headers: { 'content-type': 'text/html' }
+        })
+    )
+    const result = await fetchDatedFeedSource(
+      getConfiguredSourceDefinition('folo:444'),
+      { now: new Date('2026-09-07') },
+      { fetchDocument, fetcher: invalid }
+    )
+    expect(result.items).toHaveLength(0)
+    expect(result.rejectedCount).toBe(20)
+  })
   it('enriches undated NBER RSS entries from fixed-origin article metadata', async () => {
     const fetchDocument = vi.fn().mockResolvedValue({
       sourceId: 'folo:444',
@@ -33,7 +95,7 @@ describe('fetchDatedFeedSource', () => {
 
     expect(fetcher).toHaveBeenCalledWith(
       'https://www.nber.org/papers/w35591#fromrss',
-      expect.objectContaining({ redirect: 'follow' })
+      expect.objectContaining({ redirect: 'manual' })
     )
     expect(batch).toEqual({
       items: [

@@ -1,11 +1,16 @@
 import type { DiscoveryItem } from '../../shared/discovery'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
+import {
+  sourcePublicationEvidence,
+  sourcePublicationLabel,
+  hasPublicationMonthOnly
+} from '../../shared/sourceDate'
 
 export function researchSubtitle(
-  item: Pick<DiscoveryItem, 'source' | 'publishedAt'>,
+  item: Pick<DiscoveryItem, 'source' | 'publishedAt'> & Partial<Pick<DiscoveryItem, 'summary'>>,
   saved = false
 ): string {
-  return `${sourceDisplayName(item.source)} · ${item.publishedAt.slice(0, 10)}${saved ? ' · Saved' : ''}`
+  return `${sourceDisplayName(item.source)} · ${sourcePublicationLabel(item)}${saved ? ' · Saved' : ''}`
 }
 
 /** Present relevant fields; no source value is rewritten and zero is not treated as missing. */
@@ -24,7 +29,7 @@ export function researchMetadata(item: DiscoveryItem): string {
     ...(item.stars !== null ? [`Stars: ${item.stars}`] : []),
     ...(item.metrics.downloads !== undefined ? [`Downloads: ${item.metrics.downloads}`] : []),
     ...(item.metrics.likes !== undefined ? [`Likes: ${item.metrics.likes}`] : []),
-    `Published: ${item.publishedAt}`,
-    `Updated: ${item.updatedAt}`
+    `Published: ${sourcePublicationEvidence(item)}`,
+    `Updated: ${hasPublicationMonthOnly(item) ? 'Not supplied separately' : item.updatedAt}`
   ].join('\n')
 }

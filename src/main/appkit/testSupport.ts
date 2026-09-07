@@ -22,6 +22,8 @@ export function nativeHarness(overrides: Partial<TheRSSApi> = {}) {
     getDashboard: vi.fn(async () => dashboard),
     setSettingsDirty: vi.fn(),
     getLatestAnalysis: vi.fn(async () => null),
+    getSavedSourceUpdate: vi.fn(async () => null),
+    applySavedSourceUpdate: vi.fn(async () => ({ status: 'unchanged', item: null, dashboard })),
     getAnalysisArtifact: vi.fn(async () => null),
     getLatestDiscover: vi.fn(async () => null),
     getModelProvider: vi.fn(async () => null),

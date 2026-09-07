@@ -17,17 +17,14 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Status
 
-**Non-release technical acceptance complete; independent human acceptance pending.** Codex and
-Claude real planning/analysis, immutable artifact persistence and ordinary keyboard workflows
-passed. Three failing news routes now use verified official lists; NBER remains failed and NCPSD
-partial, with cache and health state preserved. Real testing also fixed creation/update labeling,
-unsupported model inference from stars and stale source-freshness display for an unchanged record ID.
-Full checks pass 630 main and 90 AppKit tests, desktop E2E 8/8, package/installed native workflows
-12/12. The updated app is installed with backups and all 11 real-data tables unchanged from the
-immediate backup. See [remaining acceptance](docs/audits/2026-09-06-market-readiness/REMAINING_ACCEPTANCE.md)
-and its [human checklist](docs/audits/2026-09-06-market-readiness/HUMAN_ACCEPTANCE.md).
-The user deferred custom paid model APIs, VoiceOver and formal Apple distribution. GitHub delivery
-uses existing draft PR #49 and its authoritative checks; no merge or software release is included.
+**Source/Saved changes verified and installed; quality baseline limited.** Current work and
+quality results are recorded in the [source-quality report](docs/audits/2026-09-07-source-quality/REPORT.md).
+Six public searches returned 469 records; assistant labels expose compound-query relevance limits.
+Four analysis attempts include one timeout and one evidence-boundary failure. Human acceptance and
+human precision remain unmeasured; new paid APIs, VoiceOver and formal Apple release are deferred.
+Current gates: 669 main/96 AppKit tests, eight desktop cases and 13 packaged native workflows.
+Installation preserves all 11 user-data tables against the immediate backup. Existing draft PR #49
+owns remote delivery and CI status.
 
 **All 39 phases through 2026-08-24 are complete.** The current head on `main` is the personal
 beta (v0.2.0): Discover-centered retrieval over the 22 live-verified sources, confirmation-gated

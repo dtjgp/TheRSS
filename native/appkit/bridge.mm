@@ -164,11 +164,11 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     if (value < [node.spec[@"minWidth"] doubleValue] || value > [node.spec[@"maxWidth"] doubleValue]) return fail(env,"Invalid fixture divider position");
     [(NSSplitView *)node.control setPosition:value ofDividerAtIndex:0];
   } else if ([action isEqual:@"key"]) {
-    NSDictionary *codes = @{@"left":@123,@"right":@124,@"down":@125,@"up":@126,@"home":@115,@"end":@119,@"escape":@53,@"enter":@36,@"tab":@48};
+    NSDictionary *codes = @{@"left":@123,@"right":@124,@"down":@125,@"up":@126,@"home":@115,@"end":@119,@"escape":@53,@"enter":@36,@"tab":@48,@"space":@49};
     NSNumber *code = codes[input[@"value"]]; if (!code) return fail(env,"Unsupported fixture key");
     NSView *control = node.control ?: node; if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
     [control.window makeFirstResponder:control];
-    NSDictionary *characters = @{@"left":@"\uF702",@"right":@"\uF703",@"up":@"\uF700",@"down":@"\uF701",@"home":@"\uF729",@"end":@"\uF72B",@"escape":@"\x1b",@"enter":@"\r",@"tab":@"\t"};
+    NSDictionary *characters = @{@"left":@"\uF702",@"right":@"\uF703",@"up":@"\uF700",@"down":@"\uF701",@"home":@"\uF729",@"end":@"\uF72B",@"escape":@"\x1b",@"enter":@"\r",@"tab":@"\t",@"space":@" "};
     NSEvent *event = [NSEvent keyEventWithType:NSEventTypeKeyDown location:NSZeroPoint modifierFlags:[input[@"shift"] boolValue] ? NSEventModifierFlagShift : 0 timestamp:0 windowNumber:control.window.windowNumber context:nil characters:characters[input[@"value"]] charactersIgnoringModifiers:characters[input[@"value"]] isARepeat:NO keyCode:code.unsignedShortValue];
     [(control.window.firstResponder ?: control) keyDown:event];
   } else if ([action isEqual:@"appearance"]) {

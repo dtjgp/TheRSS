@@ -1,0 +1,434 @@
+{
+  "structured-pruning:codex": [
+    {
+      "itemId": "arxiv:2608.05499v1",
+      "sourceHash": "9ffd37ae67350778ecb71921f2f5ff825ad89ede9527ee1e7efadeb212f331fb",
+      "assessor": "assistant",
+      "relevance": 2,
+      "rationale": "明确结合结构化剪枝、混合精度与边缘网络效率。"
+    },
+    {
+      "itemId": "arxiv:2608.10724v1",
+      "sourceHash": "d88ce3fd7ff23b3d5dc609baa9d311d03c710547144a71e8f10adea06f0cc66b",
+      "assessor": "assistant",
+      "relevance": 2,
+      "rationale": "明确研究 RGB-IR 检测器的结构化通道剪枝。"
+    },
+    {
+      "itemId": "arxiv:2609.04705v1",
+      "sourceHash": "db54dd60905108d7b9687236f7dfee96b4ae34a0586737787368078a349d7d2b",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "边缘 DNN 的 DVFS 能效与热调度相关，但没有剪枝。"
+    },
+    {
+      "itemId": "arxiv:2609.05081v1",
+      "sourceHash": "4972926cc1477a40afde0668b54b9c207f977eb24c482d67e9ed62e159510f49",
+      "assessor": "assistant",
+      "relevance": 2,
+      "rationale": "微控制器管线明确结合结构化剪枝和量化。"
+    },
+    {
+      "itemId": "arxiv:2608.16010v1",
+      "sourceHash": "8b927e99ab231b68f1dba74219e57f3f7fd8c072d2c748d03e0be40fb01866be",
+      "assessor": "assistant",
+      "relevance": 2,
+      "rationale": "恢复压缩边界，同时报告结构化剪枝实验。"
+    },
+    {
+      "itemId": "arxiv:2608.21142v1",
+      "sourceHash": "baf95054fbba34e8fc19127fa03e1b4e8ecf98aec53b96014f14d696f4429bb3",
+      "assessor": "assistant",
+      "relevance": 2,
+      "rationale": "结构化列剪枝后的 LLM 补偿，直接关联推理成本。"
+    },
+    {
+      "itemId": "arxiv:2608.21825v1",
+      "sourceHash": "26af5461d5aa7d51a7a81ce67dd193f3c2061a737e070c5c0fbf000e31fdd996",
+      "assessor": "assistant",
+      "relevance": 0,
+      "rationale": "从图像恢复图邻接矩阵；edge 指图边，没有模型压缩。"
+    },
+    {
+      "itemId": "arxiv:2608.22115v1",
+      "sourceHash": "ef431a4d3055c504379f873a2555fb1f49aa7123f989acd9ff95fd5a97a7a5df",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "边缘推理的特征传输压缩相关，但不是网络通道剪枝。"
+    },
+    {
+      "itemId": "arxiv:2608.29765v1",
+      "sourceHash": "50f3fbdfea33cb7ab90744aa6d2ac9c3c1a571f09e3d414d01dbdf553342a160",
+      "assessor": "assistant",
+      "relevance": 2,
+      "rationale": "直接评估结构化剪枝中掩码选择的可靠性。"
+    },
+    {
+      "itemId": "arxiv:2607.02819v1",
+      "sourceHash": "a16f6095eea645abafde2a8b511392f29273ac68ada081f9d41943610067f887",
+      "assessor": "assistant",
+      "relevance": 0,
+      "rationale": "云边视觉 token 安全攻击，没有剪枝或压缩效率方法。"
+    }
+  ],
+  "structured-pruning:claude": [
+    {
+      "itemId": "arxiv:2609.02684v1",
+      "sourceHash": "c5ae709f8685e850135a4ac76b103feaf03401369d0f2312f54c7d0c1d1fd6fb",
+      "assessor": "assistant",
+      "relevance": 2,
+      "rationale": "ONNX 图手术明确采用通道选择并报告边缘推理加速。"
+    },
+    {
+      "itemId": "arxiv:2609.03604v1",
+      "sourceHash": "1768b9689081831a1e757642fbf007b1b4c88317d10bd0d6b816cae00af86791",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "结构化模型压缩与适应性相关，但摘要未确认通道剪枝。"
+    },
+    {
+      "itemId": "arxiv:2608.13773v1",
+      "sourceHash": "6f884c19ef553d95fd75911c8c52c33ac525d107469d1dfed6094b2128e8d178",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "隐私目标的神经网络稀疏化，未明确结构化通道与成本。"
+    },
+    {
+      "itemId": "arxiv:2608.21825v1",
+      "sourceHash": "8399c341eb8986c875e511bdd4dce076bda645eb958b20f6a0f57e139d0439c2",
+      "assessor": "assistant",
+      "relevance": 0,
+      "rationale": "图拓扑恢复中的稀疏邻居采样，没有网络模型压缩。"
+    },
+    {
+      "itemId": "github:intel/neural-compressor",
+      "sourceHash": "8623cb4e7e12a579663adba1d33a1f0fcd4762d28ca0e1a773139ceff3c71dd6",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "压缩、稀疏与 pruning 主题相关，描述未确认结构化通道。"
+    },
+    {
+      "itemId": "github:sonysemiconductorsolutions/mct-model-optimization",
+      "sourceHash": "bb139dac318c4d645c420af4e7a968e7c2b2968ecfc01fa7c799847220141c59",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "硬件约束的模型量化压缩工具，未说明通道剪枝。"
+    },
+    {
+      "itemId": "github:nikolareljin/shrink-llm",
+      "sourceHash": "bb6db2e40775d3c1829a399e0d340e93dd0be90bd314254e47cfb398a1562c82",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "手机部署的压缩剪枝工具，未说明结构化通道方法。"
+    },
+    {
+      "itemId": "github:saadhvik/orbit-8",
+      "sourceHash": "a51a101601d4d48112e9003014665675a2c42bc166b9d770eeff1fe99f152008",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "CNN 压缩与推理效率相关，未明确结构化剪枝。"
+    },
+    {
+      "itemId": "arxiv:2609.04705v1",
+      "sourceHash": "db54dd60905108d7b9687236f7dfee96b4ae34a0586737787368078a349d7d2b",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "边缘 DNN 的 DVFS 能效与热调度相关，但没有剪枝。"
+    },
+    {
+      "itemId": "github:fasterai-labs/fasterai",
+      "sourceHash": "71178cf34f7223aba6b4ea34a14ae9005becd1d08cfc522ebbbaa3029b46b090",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "神经网络剪枝与蒸馏工具，描述未确认结构化通道。"
+    }
+  ],
+  "energy-aware-training:codex": [
+    {
+      "itemId": "arxiv:2602.23935v1",
+      "sourceHash": "fee4e8665a8c6c55d42529c7853a3c5e2ad78e2062b2c81104f81e1e82aeebcf",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "碳感知 serverless 资源保留调度，不是带期限的 ML 训练。"
+    },
+    {
+      "itemId": "arxiv:2608.12915v1",
+      "sourceHash": "ac74b43abd34f5883bca259c41e95cec29f2271ebcdb9409cc9c32fa630704f1",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "LLM 推理的能耗碳排与部署规划，缺少训练和期限。"
+    },
+    {
+      "itemId": "arxiv:2606.06438v1",
+      "sourceHash": "2bead3d76a2f9236ac04f22032d75e72dcbaa58f2d1c87f070de829e05cae9f2",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "计算硬件碳核算与调度相关，缺少 ML 训练期限。"
+    },
+    {
+      "itemId": "github:nirholas/x402-carbon",
+      "sourceHash": "c7922f3e0470dfabf58635eb3e7db7afd9a885c0e0881da92e70970c0a0fa338",
+      "assessor": "assistant",
+      "relevance": 0,
+      "rationale": "碳强度数据与最佳时间窗服务，未提供计算任务调度证据。"
+    },
+    {
+      "itemId": "github:peterklingelhofer/carbon-aware-dispatcher",
+      "sourceHash": "ec7eb16cbf4735e8082ac59b5604c016dab3571d34ae7a26ecd56f72992d93ef",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "按碳强度调度 CI/CD 计算任务，未涉及 ML 训练期限。"
+    },
+    {
+      "itemId": "github:akshaya-cin19/green-cloud-optimizer",
+      "sourceHash": "9608cc02bcce62cd9fdbc1c0569bdc5166cfa1668e417e6c49df94e83ab4b2ad",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "描述涉及云计算任务的碳感知调度，但仅页面/数据库且无训练期限。"
+    },
+    {
+      "itemId": "github:fabiocicerchia/carbon-region-picker",
+      "sourceHash": "63389d8f39555c5d3b5908ca25382b80a97192294b3fa43bdd3358ad11291769",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "按碳强度选择云区域，关联计算部署但没有训练调度。"
+    },
+    {
+      "itemId": "github:fergalslime06/carbon-intensity-dashboard",
+      "sourceHash": "0d64612b68fccb7b7288380eedd6a578756d10a8bdd82cd6d2a85f35711c16cf",
+      "assessor": "assistant",
+      "relevance": 0,
+      "rationale": "电网碳强度图表，没有计算任务调度。"
+    },
+    {
+      "itemId": "github:muhammad-haris-3/gridcast",
+      "sourceHash": "252b3e5ce102205093c944a73f8836eb041ab060744cad0a4ca7cc1b7482c5c1",
+      "assessor": "assistant",
+      "relevance": 0,
+      "rationale": "电网碳强度预测，没有计算任务调度。"
+    },
+    {
+      "itemId": "github:tybradf/gridflex",
+      "sourceHash": "fb7bddd30b9fd05a8b1b2dc9407275b4b48ddbd2a897acc08477caeba9c665c1",
+      "assessor": "assistant",
+      "relevance": 0,
+      "rationale": "电网灵活需求价值分析，没有计算或 ML 训练任务。"
+    }
+  ],
+  "energy-aware-training:claude": [
+    {
+      "itemId": "arxiv:2403.14792v1",
+      "sourceHash": "72fd26ded8ac454c40b6593fb618c8181d5b6a3faba4f52e18f5d0b8d84e54d6",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "带延迟约束的 Web 服务碳调度，不是 ML 训练期限。"
+    },
+    {
+      "itemId": "arxiv:2410.15087v1",
+      "sourceHash": "06e2e8d76521de847693cccbb98b55c7fecf20062d8f7f0fbd7ae71b5e4b1610",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "计算任务调度的碳核算方法，未明确训练和期限。"
+    },
+    {
+      "itemId": "arxiv:2304.00404v1",
+      "sourceHash": "7dc553515e5c80bc15ee60d0379cacb978a5c931c51676d1252569893f4b479c",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "边云应用碳调度包含 AI，但未明确训练和期限。"
+    },
+    {
+      "itemId": "arxiv:2304.09781v2",
+      "sourceHash": "f2bc89281599a44a47e7baddb1c9aee2a5d00e63d4be0036209a798af59814a9",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "ML 推理的碳、性能与 SLA 调度，任务为推理而非训练。"
+    },
+    {
+      "itemId": "arxiv:2310.20375v1",
+      "sourceHash": "b9e11f7d17394c25db2a794af83d47aa160b556e4bca168151d251f1cf9cdcfc",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "serverless 函数的碳调度，不是 ML 训练期限。"
+    },
+    {
+      "itemId": "arxiv:2508.17341v3",
+      "sourceHash": "483a452255415bb8d183a2ca359af0cd4374ebb6f5ff8e4b9ab0f9b4f2f774f0",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "联邦学习与碳感知调度相关，未提供完成期限约束。"
+    },
+    {
+      "itemId": "arxiv:2603.27420v2",
+      "sourceHash": "2f1d5c62eea9d8b445ec3a9e9a682dabf292141c56ca100e34c0d2688e9a7a44",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "碳感知深度学习推理调度，缺少训练期限。"
+    },
+    {
+      "itemId": "arxiv:2606.01766v1",
+      "sourceHash": "3b549fb5e1c394f3b9c2e661a52ee80d182230974fcbe80d12f712b9ff35ee5a",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "ML GPU 作业的碳与期限模拟，但未确认任务为训练或实际测量。"
+    },
+    {
+      "itemId": "arxiv:2607.09318v1",
+      "sourceHash": "bd4d1ac71f78899d558562086938765e06a4e028c9484a7166dac9372c5ccd3d",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "边云碳调度模拟，使用合成批任务且没有训练期限。"
+    },
+    {
+      "itemId": "github:jesicasabau1212/the-sustainable-queue",
+      "sourceHash": "70d5efb7b1e52e560df3ed75e8af60d3f2d04402106f62ec9e8ef453921a2be9",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "延迟灵活计算任务到低碳窗口，未说明 ML 训练期限。"
+    }
+  ],
+  "residential-demand-response:codex": [
+    {
+      "itemId": "arxiv:2112.06358v3",
+      "sourceHash": "2badf8828dd08dcc665b1ac4a651a04b69ab987146030014c8652efd644954cd",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "分时电价与储能投资，缺少用户舒适约束。"
+    },
+    {
+      "itemId": "arxiv:2304.11770v1",
+      "sourceHash": "79e6f36f48bcc3ca65ee7cc34bb48530fd1a28c761336c1182d902ff29330d35",
+      "assessor": "assistant",
+      "relevance": 2,
+      "rationale": "住宅负荷协调同时优化电费并限制延后负荷的使用扰动。"
+    },
+    {
+      "itemId": "arxiv:2203.08639v1",
+      "sourceHash": "da97b33a7a741b7c4c7516b77736317ce963990e0faca67dfd9e8cdd784e5924",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "真实零售电价下家庭 PV/电池经济调度，未明确舒适约束。"
+    },
+    {
+      "itemId": "arxiv:2206.06158v1",
+      "sourceHash": "9aa42f258576a5606ee79bbaf451cdf6e1856bb2179fb9b1aad927ba1031d098",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "家庭能源控制中的电池老化模型，未联合电价与舒适约束。"
+    },
+    {
+      "itemId": "arxiv:2207.04635v4",
+      "sourceHash": "1f855994300215cfbd35005844734544fb3a4494d3637cac6d81a62a9a4d918c",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "居民分时电价下储能与光伏投资，缺少舒适约束。"
+    },
+    {
+      "itemId": "arxiv:2207.12022v2",
+      "sourceHash": "ee5382fe3325e883970baf689453e79098112964688bb1af4fd4d4c05229485c",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "居民共享储能与分时电价成本分配，缺少舒适约束。"
+    },
+    {
+      "itemId": "arxiv:2305.08885v1",
+      "sourceHash": "0ac4629341909ed3d4521a67b4542d1a55698ec7f275bca7c6356944bde0ab23",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "用于家庭能管的合成数据与 Q-learning，未明确舒适约束。"
+    },
+    {
+      "itemId": "arxiv:2310.19159v1",
+      "sourceHash": "29c91063a65ef7c425be9e161d25e3a98b525438cb62104c888eb7640e1e692f",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "家庭负荷预测已连接控制和电费评估，缺少舒适约束。"
+    },
+    {
+      "itemId": "arxiv:2403.11947v1",
+      "sourceHash": "2a6bab50af4133ddc42a8cc13af83fd7c4aae5e026a6ee6a411f6e808424cd04",
+      "assessor": "assistant",
+      "relevance": 2,
+      "rationale": "明确家庭控制、电费节约与保持用户舒适。"
+    },
+    {
+      "itemId": "arxiv:2404.14110v1",
+      "sourceHash": "8fb898826f7b2dfc4380940e562830d8c1002f54ccd640f5d0d5b259d92bbc08",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "真实住宅能管测试床与实时电价电池控制，未明确舒适约束。"
+    }
+  ],
+  "residential-demand-response:claude": [
+    {
+      "itemId": "github:mateogreil/homeassistant-comwatt",
+      "sourceHash": "74ab4ef97c0f3e8a09a2316e72d131b38e0725d9a51bf6c4fa33fe4068749041",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "家庭能源管理集成主题相关，未提供电价和舒适模型。"
+    },
+    {
+      "itemId": "github:mateogreil/python-comwatt-client",
+      "sourceHash": "e69216e3330b10c0f6ad064f1d926c2f835b329783b0f297dfe9e46c2f867190",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "家庭能源管理 API 客户端主题相关，未提供联合约束。"
+    },
+    {
+      "itemId": "github:sariekiriyuu/smartems-multiagent-demo",
+      "sourceHash": "ee351f7b9eab050600d745eebf0f9a7a8356707f537f4bdcde9561380304f295",
+      "assessor": "assistant",
+      "relevance": 0,
+      "rationale": "一般多智能体能源演示，描述未体现居民、电价响应或舒适约束。"
+    },
+    {
+      "itemId": "arxiv:2607.06632v1",
+      "sourceHash": "e9f1ce7552f2a2ca36fed4f35fcee4111f406b5c44be4dd95e3614bee2dc099a",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "工业需求响应与电价攻击相关，场景并非居民舒适调度。"
+    },
+    {
+      "itemId": "github:anacodicai-labs/carbon-aware-load-scheduling",
+      "sourceHash": "26bf446663d84c1bb37de3bd949dac1ff96d0e9b14b57c4ab61d19230f500ee1",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "EV/热泵灵活电负荷的碳调度，未联合电费与舒适约束。"
+    },
+    {
+      "itemId": "arxiv:2608.11359v1",
+      "sourceHash": "fe386d664554815854bb86c93c7aef8d64b37ee21829025c2fb924608edab2f8",
+      "assessor": "assistant",
+      "relevance": 0,
+      "rationale": "批发电价预测方法，未涉及居民需求响应决策。"
+    },
+    {
+      "itemId": "arxiv:2608.17091v1",
+      "sourceHash": "e1c89ee2e0fab66dffd1d4ea9da2f9940a542cdc37c93ed7229cd2ff13c02de5",
+      "assessor": "assistant",
+      "relevance": 0,
+      "rationale": "跨国电价预测比较，未涉及居民需求响应决策。"
+    },
+    {
+      "itemId": "arxiv:2608.18785v1",
+      "sourceHash": "9bdc987d2b280aec828114abeafca4e989a954f44f8272f13d3edd4c008950db",
+      "assessor": "assistant",
+      "relevance": 0,
+      "rationale": "学校通勤交通调度，demand response 不是电力需求响应。"
+    },
+    {
+      "itemId": "arxiv:2608.25249v1",
+      "sourceHash": "9e10b4cbfb82745d32f0e2028e6db39db695327640ca1af80fdb2e9e1c4e21fa",
+      "assessor": "assistant",
+      "relevance": 1,
+      "rationale": "工业生产需求响应模型，不是居民电费与舒适调度。"
+    },
+    {
+      "itemId": "arxiv:2608.26234v1",
+      "sourceHash": "7bfa2028b1401ed4ac1049335d6af483baa17b04a1ddb84ba093d0608a2ec669",
+      "assessor": "assistant",
+      "relevance": 0,
+      "rationale": "零售电价预测与市场分析，没有居民负荷响应决策。"
+    }
+  ]
+}

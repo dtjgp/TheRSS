@@ -736,6 +736,18 @@ export function App({ api }: AppProps) {
                     onTriage={updateTriage}
                     onAnalyze={analyzeItem}
                     onSelectionChange={setSelectedSignalId}
+                    onSourceUpdated={(result) => {
+                      const updated = result.item
+                      setDashboard(
+                        updated?.triageState === 'saved' &&
+                          !result.dashboard.savedItems.some((item) => item.id === updated.id)
+                          ? {
+                              ...result.dashboard,
+                              savedItems: [updated, ...result.dashboard.savedItems]
+                            }
+                          : result.dashboard
+                      )
+                    }}
                   />
                 )}
               </div>

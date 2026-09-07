@@ -115,8 +115,9 @@ const definitions = [
   {
     id: 'folo:253',
     transport: 'feed',
-    endpoint: 'https://rsshub.rssforever.com/cnbc/rss',
-    verifiedOn: VERIFIED_ON
+    endpoint:
+      'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114',
+    verifiedOn: '2026-09-07'
   },
   {
     id: 'folo:44',

@@ -283,7 +283,7 @@
     "researchAxes": ["GA", "SG", "AB"],
     "role": "市场新闻",
     "acquisition": "active",
-    "accessNote": "已配置：公开RSSHub路由（2026-08-19当日验证）",
+    "accessNote": "已配置：官方 Top News RSS，摘要与链接（2026-09-07验证）",
     "reason": "能源、宏观和企业事件背景",
     "origin": "Folo 1543目录"
   },

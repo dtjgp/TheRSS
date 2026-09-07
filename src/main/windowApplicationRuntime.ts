@@ -168,6 +168,8 @@ export class WindowApplicationRuntime {
       'getAnalytics',
       'saveDiscoverResult',
       'setTriageState',
+      'getSavedSourceUpdate',
+      'applySavedSourceUpdate',
       'getModelProvider',
       'saveModelProvider',
       'testModelProvider',

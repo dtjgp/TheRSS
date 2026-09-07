@@ -1,0 +1,1374 @@
+{
+  "createdAt": "2026-09-07T13:57:00.716Z",
+  "results": [
+    {
+      "caseId": "structured-pruning",
+      "runner": "codex",
+      "elapsedMs": 48709,
+      "metrics": {
+        "runId": "discover:1ee2dbbc-2cc2-46e1-8682-50ed59980d38",
+        "k": 10,
+        "returned": 92,
+        "diagnostics": {
+          "duplicateIds": 0,
+          "duplicateUrls": 0,
+          "unsafeUrls": 0,
+          "invalidDates": 0,
+          "futurePublicationDates": 0,
+          "missingDescriptions": 0,
+          "unexpectedKinds": 0,
+          "failedSources": 0,
+          "partialSources": 0
+        },
+        "human": {
+          "judged": 0,
+          "unknown": 0,
+          "total": 10,
+          "precisionAtK": null,
+          "directRelevanceAtK": null
+        },
+        "assistant": {
+          "judged": 10,
+          "unknown": 0,
+          "total": 10,
+          "precisionAtK": 0.8,
+          "directRelevanceAtK": 0.6
+        },
+        "recall": null,
+        "boundary": "Human and assistant judgments are separate. Scores are not relevance labels. Missing top-k labels and an unknown relevant corpus do not support precision or recall claims."
+      },
+      "sourceOutcomes": {
+        "arxiv": {
+          "status": "healthy",
+          "resultCount": 50,
+          "error": null
+        },
+        "github": {
+          "status": "healthy",
+          "resultCount": 42,
+          "error": null
+        },
+        "folo:64": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:302": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:611": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:444": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:182": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:77": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:208": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:93": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:84": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:67": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:523": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:253": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:44": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:792": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:79": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:172": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:1104": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:177": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:257": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:312": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        }
+      },
+      "top10": [
+        {
+          "rank": 1,
+          "id": "arxiv:2608.05499v1",
+          "title": "APQF: Agentic Profiling-Guided Structured Pruning and Mixed-Precision Quantization with Adaptive Fine-Tuning",
+          "url": "https://arxiv.org/abs/2608.05499v1",
+          "sourceHash": "9ffd37ae67350778ecb71921f2f5ff825ad89ede9527ee1e7efadeb212f331fb"
+        },
+        {
+          "rank": 2,
+          "id": "arxiv:2608.10724v1",
+          "title": "InterPruner: Interactive Structured Pruning via Taylor-Implicit Criterion and Language-Prior Modulator for Multimodal Object Detection",
+          "url": "https://arxiv.org/abs/2608.10724v1",
+          "sourceHash": "d88ce3fd7ff23b3d5dc609baa9d311d03c710547144a71e8f10adea06f0cc66b"
+        },
+        {
+          "rank": 3,
+          "id": "arxiv:2609.04705v1",
+          "title": "Sustainable Edge Vision via Empirically Calibrated DVFS: Eliminating Thermal Throttling on Passively Cooled Hardware",
+          "url": "https://arxiv.org/abs/2609.04705v1",
+          "sourceHash": "db54dd60905108d7b9687236f7dfee96b4ae34a0586737787368078a349d7d2b"
+        },
+        {
+          "rank": 4,
+          "id": "arxiv:2609.05081v1",
+          "title": "Deep Microcompression: Structured Pruning and Bit-packed Quantization for Microcontrollers",
+          "url": "https://arxiv.org/abs/2609.05081v1",
+          "sourceHash": "4972926cc1477a40afde0668b54b9c207f977eb24c482d67e9ed62e159510f49"
+        },
+        {
+          "rank": 5,
+          "id": "arxiv:2608.16010v1",
+          "title": "Breaking the Compression Barrier: Cross-Architecture Compression Boundary Learning via Reverse Regrowth",
+          "url": "https://arxiv.org/abs/2608.16010v1",
+          "sourceHash": "8b927e99ab231b68f1dba74219e57f3f7fd8c072d2c748d03e0be40fb01866be"
+        },
+        {
+          "rank": 6,
+          "id": "arxiv:2608.21142v1",
+          "title": "COEC: Calibrated Orthogonal-Equivalence Compensation for Structured Pruning of Large Language Models",
+          "url": "https://arxiv.org/abs/2608.21142v1",
+          "sourceHash": "baf95054fbba34e8fc19127fa03e1b4e8ecf98aec53b96014f14d696f4429bb3"
+        },
+        {
+          "rank": 7,
+          "id": "arxiv:2608.21825v1",
+          "title": "VisAdj: Learning Adjacency Matrices from Node-Link Images",
+          "url": "https://arxiv.org/abs/2608.21825v1",
+          "sourceHash": "26af5461d5aa7d51a7a81ce67dd193f3c2061a737e070c5c0fbf000e31fdd996"
+        },
+        {
+          "rank": 8,
+          "id": "arxiv:2608.22115v1",
+          "title": "CST: Collaborative Selective Transmission for Communication-Efficient Multimodal Edge Inference",
+          "url": "https://arxiv.org/abs/2608.22115v1",
+          "sourceHash": "ef431a4d3055c504379f873a2555fb1f49aa7123f989acd9ff95fd5a97a7a5df"
+        },
+        {
+          "rank": 9,
+          "id": "arxiv:2608.29765v1",
+          "title": "PruneShift: A Framework for Evaluating Decision Reliability in Structured Pruning",
+          "url": "https://arxiv.org/abs/2608.29765v1",
+          "sourceHash": "50f3fbdfea33cb7ab90744aa6d2ac9c3c1a571f09e3d414d01dbdf553342a160"
+        },
+        {
+          "rank": 10,
+          "id": "arxiv:2607.02819v1",
+          "title": "Vision Token Manipulation Attacks on Cloud-Edge Inference of Large Vision-Language Models",
+          "url": "https://arxiv.org/abs/2607.02819v1",
+          "sourceHash": "a16f6095eea645abafde2a8b511392f29273ac68ada081f9d41943610067f887"
+        }
+      ]
+    },
+    {
+      "caseId": "structured-pruning",
+      "runner": "claude",
+      "elapsedMs": 42048,
+      "metrics": {
+        "runId": "discover:39e1ff31-8f23-4b79-a602-728a47aecaf6",
+        "k": 10,
+        "returned": 100,
+        "diagnostics": {
+          "duplicateIds": 0,
+          "duplicateUrls": 0,
+          "unsafeUrls": 0,
+          "invalidDates": 0,
+          "futurePublicationDates": 0,
+          "missingDescriptions": 0,
+          "unexpectedKinds": 0,
+          "failedSources": 0,
+          "partialSources": 0
+        },
+        "human": {
+          "judged": 0,
+          "unknown": 0,
+          "total": 10,
+          "precisionAtK": null,
+          "directRelevanceAtK": null
+        },
+        "assistant": {
+          "judged": 10,
+          "unknown": 0,
+          "total": 10,
+          "precisionAtK": 0.9,
+          "directRelevanceAtK": 0.1
+        },
+        "recall": null,
+        "boundary": "Human and assistant judgments are separate. Scores are not relevance labels. Missing top-k labels and an unknown relevant corpus do not support precision or recall claims."
+      },
+      "sourceOutcomes": {
+        "arxiv": {
+          "status": "healthy",
+          "resultCount": 31,
+          "error": null
+        },
+        "github": {
+          "status": "healthy",
+          "resultCount": 69,
+          "error": null
+        },
+        "folo:64": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:302": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:611": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:444": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:182": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:77": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:208": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:93": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:84": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:67": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:523": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:253": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:44": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:792": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:79": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:172": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:1104": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:177": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:257": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:312": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        }
+      },
+      "top10": [
+        {
+          "rank": 1,
+          "id": "arxiv:2609.02684v1",
+          "title": "H3DNAS: Hardware-Aware ONNX-Native 3D Point Cloud Model Compression",
+          "url": "https://arxiv.org/abs/2609.02684v1",
+          "sourceHash": "c5ae709f8685e850135a4ac76b103feaf03401369d0f2312f54c7d0c1d1fd6fb"
+        },
+        {
+          "rank": 2,
+          "id": "arxiv:2609.03604v1",
+          "title": "On the Interaction Between Model Compression and Test-Time Adaptation",
+          "url": "https://arxiv.org/abs/2609.03604v1",
+          "sourceHash": "1768b9689081831a1e757642fbf007b1b4c88317d10bd0d6b816cae00af86791"
+        },
+        {
+          "rank": 3,
+          "id": "arxiv:2608.13773v1",
+          "title": "CutClean: Neural Network Pruning for Privacy-Preserving Inference",
+          "url": "https://arxiv.org/abs/2608.13773v1",
+          "sourceHash": "6f884c19ef553d95fd75911c8c52c33ac525d107469d1dfed6094b2128e8d178"
+        },
+        {
+          "rank": 4,
+          "id": "arxiv:2608.21825v1",
+          "title": "VisAdj: Learning Adjacency Matrices from Node-Link Images",
+          "url": "https://arxiv.org/abs/2608.21825v1",
+          "sourceHash": "8399c341eb8986c875e511bdd4dce076bda645eb958b20f6a0f57e139d0439c2"
+        },
+        {
+          "rank": 5,
+          "id": "github:intel/neural-compressor",
+          "title": "intel/neural-compressor",
+          "url": "https://github.com/intel/neural-compressor",
+          "sourceHash": "8623cb4e7e12a579663adba1d33a1f0fcd4762d28ca0e1a773139ceff3c71dd6"
+        },
+        {
+          "rank": 6,
+          "id": "github:sonysemiconductorsolutions/mct-model-optimization",
+          "title": "SonySemiconductorSolutions/mct-model-optimization",
+          "url": "https://github.com/SonySemiconductorSolutions/mct-model-optimization",
+          "sourceHash": "bb139dac318c4d645c420af4e7a968e7c2b2968ecfc01fa7c799847220141c59"
+        },
+        {
+          "rank": 7,
+          "id": "github:nikolareljin/shrink-llm",
+          "title": "nikolareljin/shrink-llm",
+          "url": "https://github.com/nikolareljin/shrink-llm",
+          "sourceHash": "bb6db2e40775d3c1829a399e0d340e93dd0be90bd314254e47cfb398a1562c82"
+        },
+        {
+          "rank": 8,
+          "id": "github:saadhvik/orbit-8",
+          "title": "saadhvik/orbit-8",
+          "url": "https://github.com/saadhvik/orbit-8",
+          "sourceHash": "a51a101601d4d48112e9003014665675a2c42bc166b9d770eeff1fe99f152008"
+        },
+        {
+          "rank": 9,
+          "id": "arxiv:2609.04705v1",
+          "title": "Sustainable Edge Vision via Empirically Calibrated DVFS: Eliminating Thermal Throttling on Passively Cooled Hardware",
+          "url": "https://arxiv.org/abs/2609.04705v1",
+          "sourceHash": "db54dd60905108d7b9687236f7dfee96b4ae34a0586737787368078a349d7d2b"
+        },
+        {
+          "rank": 10,
+          "id": "github:fasterai-labs/fasterai",
+          "title": "FasterAI-Labs/fasterai",
+          "url": "https://github.com/FasterAI-Labs/fasterai",
+          "sourceHash": "71178cf34f7223aba6b4ea34a14ae9005becd1d08cfc522ebbbaa3029b46b090"
+        }
+      ]
+    },
+    {
+      "caseId": "energy-aware-training",
+      "runner": "codex",
+      "elapsedMs": 50499,
+      "metrics": {
+        "runId": "discover:7660cecf-751a-4a90-9ed7-58a0064deb0c",
+        "k": 10,
+        "returned": 22,
+        "diagnostics": {
+          "duplicateIds": 0,
+          "duplicateUrls": 0,
+          "unsafeUrls": 0,
+          "invalidDates": 0,
+          "futurePublicationDates": 0,
+          "missingDescriptions": 0,
+          "unexpectedKinds": 0,
+          "failedSources": 0,
+          "partialSources": 0
+        },
+        "human": {
+          "judged": 0,
+          "unknown": 0,
+          "total": 10,
+          "precisionAtK": null,
+          "directRelevanceAtK": null
+        },
+        "assistant": {
+          "judged": 10,
+          "unknown": 0,
+          "total": 10,
+          "precisionAtK": 0.6,
+          "directRelevanceAtK": 0
+        },
+        "recall": null,
+        "boundary": "Human and assistant judgments are separate. Scores are not relevance labels. Missing top-k labels and an unknown relevant corpus do not support precision or recall claims."
+      },
+      "sourceOutcomes": {
+        "arxiv": {
+          "status": "healthy",
+          "resultCount": 3,
+          "error": null
+        },
+        "github": {
+          "status": "healthy",
+          "resultCount": 19,
+          "error": null
+        },
+        "folo:64": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:302": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:611": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:444": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:182": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:77": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:208": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:93": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:84": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:67": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:523": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:253": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:44": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:792": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:79": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:172": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:1104": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:177": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:257": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:312": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        }
+      },
+      "top10": [
+        {
+          "rank": 1,
+          "id": "arxiv:2602.23935v1",
+          "title": "Green or Fast? Learning to Balance Cold Starts and Idle Carbon in Serverless Computing",
+          "url": "https://arxiv.org/abs/2602.23935v1",
+          "sourceHash": "fee4e8665a8c6c55d42529c7853a3c5e2ad78e2062b2c81104f81e1e82aeebcf"
+        },
+        {
+          "rank": 2,
+          "id": "arxiv:2608.12915v1",
+          "title": "InFactPlanner: Planning Sustainable Geo-Distributed LLM Data Centers",
+          "url": "https://arxiv.org/abs/2608.12915v1",
+          "sourceHash": "ac74b43abd34f5883bca259c41e95cec29f2271ebcdb9409cc9c32fa630704f1"
+        },
+        {
+          "rank": 3,
+          "id": "arxiv:2606.06438v1",
+          "title": "CarbonSim: A Lifecycle-Aware Framework for Evaluating Carbon Tradeoffs in Hardware Upgrade Decisions",
+          "url": "https://arxiv.org/abs/2606.06438v1",
+          "sourceHash": "2bead3d76a2f9236ac04f22032d75e72dcbaa58f2d1c87f070de829e05cae9f2"
+        },
+        {
+          "rank": 4,
+          "id": "github:nirholas/x402-carbon",
+          "title": "nirholas/x402-carbon",
+          "url": "https://github.com/nirholas/x402-carbon",
+          "sourceHash": "c7922f3e0470dfabf58635eb3e7db7afd9a885c0e0881da92e70970c0a0fa338"
+        },
+        {
+          "rank": 5,
+          "id": "github:peterklingelhofer/carbon-aware-dispatcher",
+          "title": "peterklingelhofer/carbon-aware-dispatcher",
+          "url": "https://github.com/peterklingelhofer/carbon-aware-dispatcher",
+          "sourceHash": "ec7eb16cbf4735e8082ac59b5604c016dab3571d34ae7a26ecd56f72992d93ef"
+        },
+        {
+          "rank": 6,
+          "id": "github:akshaya-cin19/green-cloud-optimizer",
+          "title": "akshaya-cin19/Green-Cloud-Optimizer",
+          "url": "https://github.com/akshaya-cin19/Green-Cloud-Optimizer",
+          "sourceHash": "9608cc02bcce62cd9fdbc1c0569bdc5166cfa1668e417e6c49df94e83ab4b2ad"
+        },
+        {
+          "rank": 7,
+          "id": "github:fabiocicerchia/carbon-region-picker",
+          "title": "fabiocicerchia/carbon-region-picker",
+          "url": "https://github.com/fabiocicerchia/carbon-region-picker",
+          "sourceHash": "63389d8f39555c5d3b5908ca25382b80a97192294b3fa43bdd3358ad11291769"
+        },
+        {
+          "rank": 8,
+          "id": "github:fergalslime06/carbon-intensity-dashboard",
+          "title": "FergalSlime06/carbon-intensity-dashboard",
+          "url": "https://github.com/FergalSlime06/carbon-intensity-dashboard",
+          "sourceHash": "0d64612b68fccb7b7288380eedd6a578756d10a8bdd82cd6d2a85f35711c16cf"
+        },
+        {
+          "rank": 9,
+          "id": "github:muhammad-haris-3/gridcast",
+          "title": "Muhammad-Haris-3/GridCast",
+          "url": "https://github.com/Muhammad-Haris-3/GridCast",
+          "sourceHash": "252b3e5ce102205093c944a73f8836eb041ab060744cad0a4ca7cc1b7482c5c1"
+        },
+        {
+          "rank": 10,
+          "id": "github:tybradf/gridflex",
+          "title": "tybradf/gridflex",
+          "url": "https://github.com/tybradf/gridflex",
+          "sourceHash": "fb7bddd30b9fd05a8b1b2dc9407275b4b48ddbd2a897acc08477caeba9c665c1"
+        }
+      ]
+    },
+    {
+      "caseId": "energy-aware-training",
+      "runner": "claude",
+      "elapsedMs": 35145,
+      "metrics": {
+        "runId": "discover:f4234941-f933-41e6-850b-ee392669a5e5",
+        "k": 10,
+        "returned": 55,
+        "diagnostics": {
+          "duplicateIds": 0,
+          "duplicateUrls": 0,
+          "unsafeUrls": 0,
+          "invalidDates": 0,
+          "futurePublicationDates": 0,
+          "missingDescriptions": 0,
+          "unexpectedKinds": 0,
+          "failedSources": 0,
+          "partialSources": 0
+        },
+        "human": {
+          "judged": 0,
+          "unknown": 0,
+          "total": 10,
+          "precisionAtK": null,
+          "directRelevanceAtK": null
+        },
+        "assistant": {
+          "judged": 10,
+          "unknown": 0,
+          "total": 10,
+          "precisionAtK": 1,
+          "directRelevanceAtK": 0
+        },
+        "recall": null,
+        "boundary": "Human and assistant judgments are separate. Scores are not relevance labels. Missing top-k labels and an unknown relevant corpus do not support precision or recall claims."
+      },
+      "sourceOutcomes": {
+        "arxiv": {
+          "status": "healthy",
+          "resultCount": 20,
+          "error": null
+        },
+        "github": {
+          "status": "healthy",
+          "resultCount": 35,
+          "error": null
+        },
+        "folo:64": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:302": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:611": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:444": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:182": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:77": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:208": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:93": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:84": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:67": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:523": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:253": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:44": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:792": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:79": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:172": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:1104": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:177": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:257": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:312": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        }
+      },
+      "top10": [
+        {
+          "rank": 1,
+          "id": "arxiv:2403.14792v1",
+          "title": "CASPER: Carbon-Aware Scheduling and Provisioning for Distributed Web Services",
+          "url": "https://arxiv.org/abs/2403.14792v1",
+          "sourceHash": "72fd26ded8ac454c40b6593fb618c8181d5b6a3faba4f52e18f5d0b8d84e54d6"
+        },
+        {
+          "rank": 2,
+          "id": "arxiv:2410.15087v1",
+          "title": "The Sunk Carbon Fallacy: Rethinking Carbon Footprint Metrics for Effective Carbon-Aware Scheduling",
+          "url": "https://arxiv.org/abs/2410.15087v1",
+          "sourceHash": "06e2e8d76521de847693cccbb98b55c7fecf20062d8f7f0fbd7ae71b5e4b1610"
+        },
+        {
+          "rank": 3,
+          "id": "arxiv:2304.00404v1",
+          "title": "GreenScale: Carbon-Aware Systems for Edge Computing",
+          "url": "https://arxiv.org/abs/2304.00404v1",
+          "sourceHash": "7dc553515e5c80bc15ee60d0379cacb978a5c931c51676d1252569893f4b479c"
+        },
+        {
+          "rank": 4,
+          "id": "arxiv:2304.09781v2",
+          "title": "Clover: Toward Sustainable AI with Carbon-Aware Machine Learning Inference Service",
+          "url": "https://arxiv.org/abs/2304.09781v2",
+          "sourceHash": "f2bc89281599a44a47e7baddb1c9aee2a5d00e63d4be0036209a798af59814a9"
+        },
+        {
+          "rank": 5,
+          "id": "arxiv:2310.20375v1",
+          "title": "GreenCourier: Carbon-Aware Scheduling for Serverless Functions",
+          "url": "https://arxiv.org/abs/2310.20375v1",
+          "sourceHash": "b9e11f7d17394c25db2a794af83d47aa160b556e4bca168151d251f1cf9cdcfc"
+        },
+        {
+          "rank": 6,
+          "id": "arxiv:2508.17341v3",
+          "title": "MetaFed: Advancing Privacy, Performance, and Sustainability in Federated Metaverse Systems",
+          "url": "https://arxiv.org/abs/2508.17341v3",
+          "sourceHash": "483a452255415bb8d183a2ca359af0cd4374ebb6f5ff8e4b9ab0f9b4f2f774f0"
+        },
+        {
+          "rank": 7,
+          "id": "arxiv:2603.27420v2",
+          "title": "CarbonEdge: Carbon-Aware Deep Learning Inference Framework for Sustainable Edge Computing",
+          "url": "https://arxiv.org/abs/2603.27420v2",
+          "sourceHash": "2f1d5c62eea9d8b445ec3a9e9a682dabf292141c56ca100e34c0d2688e9a7a44"
+        },
+        {
+          "rank": 8,
+          "id": "arxiv:2606.01766v1",
+          "title": "Night-Window Batching versus Carbon-Aware Scheduling for Clinical AI GPU Workloads",
+          "url": "https://arxiv.org/abs/2606.01766v1",
+          "sourceHash": "3b549fb5e1c394f3b9c2e661a52ee80d182230974fcbe80d12f712b9ff35ee5a"
+        },
+        {
+          "rank": 9,
+          "id": "arxiv:2607.09318v1",
+          "title": "EcoKube: Simulating Carbon-Aware Scheduling Policies in Heterogeneous Edge-Cloud Environments",
+          "url": "https://arxiv.org/abs/2607.09318v1",
+          "sourceHash": "bd4d1ac71f78899d558562086938765e06a4e028c9484a7166dac9372c5ccd3d"
+        },
+        {
+          "rank": 10,
+          "id": "github:jesicasabau1212/the-sustainable-queue",
+          "title": "jesicasabau1212/The-Sustainable-Queue",
+          "url": "https://github.com/jesicasabau1212/The-Sustainable-Queue",
+          "sourceHash": "70d5efb7b1e52e560df3ed75e8af60d3f2d04402106f62ec9e8ef453921a2be9"
+        }
+      ]
+    },
+    {
+      "caseId": "residential-demand-response",
+      "runner": "codex",
+      "elapsedMs": 47411,
+      "metrics": {
+        "runId": "discover:f4f020ca-caf4-4679-9cd9-4a69fe6c94c9",
+        "k": 10,
+        "returned": 100,
+        "diagnostics": {
+          "duplicateIds": 0,
+          "duplicateUrls": 0,
+          "unsafeUrls": 0,
+          "invalidDates": 0,
+          "futurePublicationDates": 0,
+          "missingDescriptions": 0,
+          "unexpectedKinds": 0,
+          "failedSources": 0,
+          "partialSources": 0
+        },
+        "human": {
+          "judged": 0,
+          "unknown": 0,
+          "total": 10,
+          "precisionAtK": null,
+          "directRelevanceAtK": null
+        },
+        "assistant": {
+          "judged": 10,
+          "unknown": 0,
+          "total": 10,
+          "precisionAtK": 1,
+          "directRelevanceAtK": 0.2
+        },
+        "recall": null,
+        "boundary": "Human and assistant judgments are separate. Scores are not relevance labels. Missing top-k labels and an unknown relevant corpus do not support precision or recall claims."
+      },
+      "sourceOutcomes": {
+        "arxiv": {
+          "status": "healthy",
+          "resultCount": 50,
+          "error": null
+        },
+        "github": {
+          "status": "healthy",
+          "resultCount": 50,
+          "error": null
+        },
+        "folo:64": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:302": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:611": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:444": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:182": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:77": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:208": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:93": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:84": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:67": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:523": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:253": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:44": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:792": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:79": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:172": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:1104": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:177": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:257": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:312": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        }
+      },
+      "top10": [
+        {
+          "rank": 1,
+          "id": "arxiv:2112.06358v3",
+          "title": "Time-of-use Pricing for Energy Storage Investment",
+          "url": "https://arxiv.org/abs/2112.06358v3",
+          "sourceHash": "2badf8828dd08dcc665b1ac4a651a04b69ab987146030014c8652efd644954cd"
+        },
+        {
+          "rank": 2,
+          "id": "arxiv:2304.11770v1",
+          "title": "Development and Evaluation of an Online Home Energy Management Strategy for Load Coordination in Smart Homes with Renewable Energy Sources",
+          "url": "https://arxiv.org/abs/2304.11770v1",
+          "sourceHash": "79e6f36f48bcc3ca65ee7cc34bb48530fd1a28c761336c1182d902ff29330d35"
+        },
+        {
+          "rank": 3,
+          "id": "arxiv:2203.08639v1",
+          "title": "Economic evaluation of stochastic home energy management systems in a realistic rolling horizon setting",
+          "url": "https://arxiv.org/abs/2203.08639v1",
+          "sourceHash": "da97b33a7a741b7c4c7516b77736317ce963990e0faca67dfd9e8cdd784e5924"
+        },
+        {
+          "rank": 4,
+          "id": "arxiv:2206.06158v1",
+          "title": "A Semi Empirical Approach to a Physically Based Aging Model for Home Energy Management Systems",
+          "url": "https://arxiv.org/abs/2206.06158v1",
+          "sourceHash": "9aa42f258576a5606ee79bbaf451cdf6e1856bb2179fb9b1aad927ba1031d098"
+        },
+        {
+          "rank": 5,
+          "id": "arxiv:2207.04635v4",
+          "title": "Optimal Storage and Solar Capacity of a Residential Household under Net Metering and Time-of-Use Pricing",
+          "url": "https://arxiv.org/abs/2207.04635v4",
+          "sourceHash": "1f855994300215cfbd35005844734544fb3a4494d3637cac6d81a62a9a4d918c"
+        },
+        {
+          "rank": 6,
+          "id": "arxiv:2207.12022v2",
+          "title": "Peer-to-Peer Sharing of Energy Storage Systems under Net Metering and Time-of-Use Pricing",
+          "url": "https://arxiv.org/abs/2207.12022v2",
+          "sourceHash": "ee5382fe3325e883970baf689453e79098112964688bb1af4fd4d4c05229485c"
+        },
+        {
+          "rank": 7,
+          "id": "arxiv:2305.08885v1",
+          "title": "Smart Home Energy Management: VAE-GAN synthetic dataset generator and Q-learning",
+          "url": "https://arxiv.org/abs/2305.08885v1",
+          "sourceHash": "0ac4629341909ed3d4521a67b4542d1a55698ec7f275bca7c6356944bde0ab23"
+        },
+        {
+          "rank": 8,
+          "id": "arxiv:2310.19159v1",
+          "title": "Transfer Learning in Transformer-Based Demand Forecasting For Home Energy Management System",
+          "url": "https://arxiv.org/abs/2310.19159v1",
+          "sourceHash": "29c91063a65ef7c425be9e161d25e3a98b525438cb62104c888eb7640e1e692f"
+        },
+        {
+          "rank": 9,
+          "id": "arxiv:2403.11947v1",
+          "title": "Explainable Reinforcement Learning-based Home Energy Management Systems using Differentiable Decision Trees",
+          "url": "https://arxiv.org/abs/2403.11947v1",
+          "sourceHash": "2a6bab50af4133ddc42a8cc13af83fd7c4aae5e026a6ee6a411f6e808424cd04"
+        },
+        {
+          "rank": 10,
+          "id": "arxiv:2404.14110v1",
+          "title": "HomeLabGym: A real-world testbed for home energy management systems",
+          "url": "https://arxiv.org/abs/2404.14110v1",
+          "sourceHash": "8fb898826f7b2dfc4380940e562830d8c1002f54ccd640f5d0d5b259d92bbc08"
+        }
+      ]
+    },
+    {
+      "caseId": "residential-demand-response",
+      "runner": "claude",
+      "elapsedMs": 42404,
+      "metrics": {
+        "runId": "discover:a2c1d0e5-00ca-48f8-a689-2e304e0ba610",
+        "k": 10,
+        "returned": 100,
+        "diagnostics": {
+          "duplicateIds": 0,
+          "duplicateUrls": 0,
+          "unsafeUrls": 0,
+          "invalidDates": 0,
+          "futurePublicationDates": 0,
+          "missingDescriptions": 0,
+          "unexpectedKinds": 0,
+          "failedSources": 0,
+          "partialSources": 0
+        },
+        "human": {
+          "judged": 0,
+          "unknown": 0,
+          "total": 10,
+          "precisionAtK": null,
+          "directRelevanceAtK": null
+        },
+        "assistant": {
+          "judged": 10,
+          "unknown": 0,
+          "total": 10,
+          "precisionAtK": 0.5,
+          "directRelevanceAtK": 0
+        },
+        "recall": null,
+        "boundary": "Human and assistant judgments are separate. Scores are not relevance labels. Missing top-k labels and an unknown relevant corpus do not support precision or recall claims."
+      },
+      "sourceOutcomes": {
+        "arxiv": {
+          "status": "healthy",
+          "resultCount": 37,
+          "error": null
+        },
+        "github": {
+          "status": "healthy",
+          "resultCount": 63,
+          "error": null
+        },
+        "folo:64": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:302": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:611": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:444": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:182": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:77": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:208": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:93": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:84": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:67": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:523": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:253": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:44": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:792": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:79": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:172": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:1104": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:177": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:257": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        },
+        "folo:312": {
+          "status": "not_searched",
+          "resultCount": 0,
+          "error": null
+        }
+      },
+      "top10": [
+        {
+          "rank": 1,
+          "id": "github:mateogreil/homeassistant-comwatt",
+          "title": "MateoGreil/homeassistant-comwatt",
+          "url": "https://github.com/MateoGreil/homeassistant-comwatt",
+          "sourceHash": "74ab4ef97c0f3e8a09a2316e72d131b38e0725d9a51bf6c4fa33fe4068749041"
+        },
+        {
+          "rank": 2,
+          "id": "github:mateogreil/python-comwatt-client",
+          "title": "MateoGreil/python-comwatt-client",
+          "url": "https://github.com/MateoGreil/python-comwatt-client",
+          "sourceHash": "e69216e3330b10c0f6ad064f1d926c2f835b329783b0f297dfe9e46c2f867190"
+        },
+        {
+          "rank": 3,
+          "id": "github:sariekiriyuu/smartems-multiagent-demo",
+          "title": "sariekiriyuu/smartEMS-MultiAgent-Demo",
+          "url": "https://github.com/sariekiriyuu/smartEMS-MultiAgent-Demo",
+          "sourceHash": "ee351f7b9eab050600d745eebf0f9a7a8356707f537f4bdcde9561380304f295"
+        },
+        {
+          "rank": 4,
+          "id": "arxiv:2607.06632v1",
+          "title": "Does Demand Response Increase Vulnerability to Cyber Attacks by Adversarial Data Modifications?",
+          "url": "https://arxiv.org/abs/2607.06632v1",
+          "sourceHash": "e9f1ce7552f2a2ca36fed4f35fcee4111f406b5c44be4dd95e3614bee2dc099a"
+        },
+        {
+          "rank": 5,
+          "id": "github:anacodicai-labs/carbon-aware-load-scheduling",
+          "title": "anacodicAI-labs/carbon-aware-load-scheduling",
+          "url": "https://github.com/anacodicAI-labs/carbon-aware-load-scheduling",
+          "sourceHash": "26bf446663d84c1bb37de3bd949dac1ff96d0e9b14b57c4ab61d19230f500ee1"
+        },
+        {
+          "rank": 6,
+          "id": "arxiv:2608.11359v1",
+          "title": "Market-Information-Aware Gated-LoRA of Foundation Models for Transferable Day-Ahead Electricity Price Forecasting",
+          "url": "https://arxiv.org/abs/2608.11359v1",
+          "sourceHash": "fe386d664554815854bb86c93c7aef8d64b37ee21829025c2fb924608edab2f8"
+        },
+        {
+          "rank": 7,
+          "id": "arxiv:2608.17091v1",
+          "title": "Deep Learning for Cross-Border Electricity Price Forecasting: A Comparative Study",
+          "url": "https://arxiv.org/abs/2608.17091v1",
+          "sourceHash": "e1c89ee2e0fab66dffd1d4ea9da2f9940a542cdc37c93ed7229cd2ff13c02de5"
+        },
+        {
+          "rank": 8,
+          "id": "arxiv:2608.18785v1",
+          "title": "Mitigating Regional Traffic Congestion via School Start Time Scheduling: A Bilevel Alternating Optimization Approach",
+          "url": "https://arxiv.org/abs/2608.18785v1",
+          "sourceHash": "9bdc987d2b280aec828114abeafca4e989a954f44f8272f13d3edd4c008950db"
+        },
+        {
+          "rank": 9,
+          "id": "arxiv:2608.25249v1",
+          "title": "LSTN: A Linear Model of Industrial Production Process for Demand Response",
+          "url": "https://arxiv.org/abs/2608.25249v1",
+          "sourceHash": "9e10b4cbfb82745d32f0e2028e6db39db695327640ca1af80fdb2e9e1c4e21fa"
+        },
+        {
+          "rank": 10,
+          "id": "arxiv:2608.26234v1",
+          "title": "A causal graph-informed temporal convolution architecture for interpretable retail electricity price forecasting",
+          "url": "https://arxiv.org/abs/2608.26234v1",
+          "sourceHash": "7bfa2028b1401ed4ac1049335d6af483baa17b04a1ddb84ba093d0608a2ec669"
+        }
+      ]
+    }
+  ],
+  "analyses": [
+    {
+      "caseId": "structured-pruning",
+      "runner": "codex",
+      "kind": "paper",
+      "status": "failed",
+      "error": "Local agent analysis timed out"
+    },
+    {
+      "caseId": "structured-pruning",
+      "runner": "claude",
+      "kind": "repository",
+      "status": "completed",
+      "itemId": "github:intel/neural-compressor",
+      "file": "structured-pruning-claude-analysis.json",
+      "sha256": "071dc1c746fdf511c5d275c9ffde7cddf7d21c35f434b7864bbe8e661cb53bb0",
+      "sourceHash": "8623cb4e7e12a579663adba1d33a1f0fcd4762d28ca0e1a773139ceff3c71dd6",
+      "promptVersion": "discovery-analysis-v2"
+    },
+    {
+      "caseId": "energy-aware-training",
+      "runner": "codex",
+      "kind": "paper",
+      "status": "completed",
+      "itemId": "arxiv:2602.23935v1",
+      "file": "energy-aware-training-codex-analysis.json",
+      "sha256": "c3434a7f5524a007e6814072e7731c9f86df5203b0eab35be8b2db610ec7b1f4",
+      "sourceHash": "fee4e8665a8c6c55d42529c7853a3c5e2ad78e2062b2c81104f81e1e82aeebcf",
+      "promptVersion": "llm-wiki-paper-l1-v2"
+    },
+    {
+      "caseId": "residential-demand-response",
+      "runner": "claude",
+      "kind": "paper",
+      "status": "completed",
+      "itemId": "arxiv:2607.06632v1",
+      "file": "residential-demand-response-claude-analysis.json",
+      "sha256": "838e294786c0b79cf13624991794d2d3a6ca3f9da9ecc75aadedb3b713215ad9",
+      "sourceHash": "e9f1ce7552f2a2ca36fed4f35fcee4111f406b5c44be4dd95e3614bee2dc099a",
+      "promptVersion": "llm-wiki-paper-l1-v2"
+    }
+  ],
+  "boundary": "Wall time includes anonymous GitHub pacing. Human precision requires complete human labels; recall is not measured."
+}

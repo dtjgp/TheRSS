@@ -25,6 +25,11 @@ import type { DiscoveryItemKind, DiscoverySource } from './discovery'
 import type { LlmWikiPromotionPreview, LlmWikiPromotionReceipt } from './llmWikiPromotion'
 import type { LocalSearchResponse } from './localSearch'
 import type { LocalResearchRecord, LocalResearchTarget } from './localResearch'
+import type {
+  SavedSourceUpdateCandidate,
+  SavedSourceUpdateRequest,
+  SavedSourceUpdateResult
+} from './savedSourceUpdate'
 
 export type SourceHealth = 'idle' | 'refreshing' | 'healthy' | 'no_results' | 'partial' | 'failed'
 export type TriageState = 'new' | 'viewed' | 'saved' | 'dismissed'
@@ -115,6 +120,8 @@ export interface TheRSSApi {
   getAnalytics(): Promise<AnalyticsSnapshot>
   saveDiscoverResult(sessionId: string, itemId: string): Promise<DashboardSnapshot>
   setTriageState(id: string, state: TriageState): Promise<DashboardSnapshot>
+  getSavedSourceUpdate(id: string): Promise<SavedSourceUpdateCandidate | null>
+  applySavedSourceUpdate(request: SavedSourceUpdateRequest): Promise<SavedSourceUpdateResult>
   getModelProvider(): Promise<ModelProviderSummary | null>
   saveModelProvider(input: ModelProviderInput): Promise<ModelProviderSummary>
   testModelProvider(input: ModelProviderInput): Promise<ProviderConnectionResult>

@@ -7,7 +7,7 @@ question in natural language, ask a configured model, Codex, or Claude Code to e
 into an inspectable plan, and search exactly 22 retained research sources that passed the dated
 deployment-verification gate through one Discover
 workflow. arXiv and GitHub execute bounded
-source-specific queries; the 19 fixed RSS/HTML routes and Hugging Face return bounded recent
+source-specific queries; the 19 fixed RSS/HTML/JSON routes and Hugging Face return bounded recent
 records that TheRSS filters and ranks locally against the same transient plan. Every result retains
 typed provenance and an independent source outcome. Deeper item analysis retains model/tool
 provenance without copying secrets.
@@ -66,6 +66,9 @@ freshness from a verified empty result. Public signing and distribution remain s
    the persisted plan without invoking the planner again.
 2. **Saved** — one persisted shelf for explicitly retained research signals from every active
    source. A selected saved arXiv paper can enter the same llm-wiki preview/confirmation workflow.
+   An explicit update can adopt a newer local Discover snapshot for the same record, preserving
+   Saved time and immutable analysis history. It performs no network or model call; changed
+   source content makes prior analysis stale.
 3. **Settings** — two focused panes for Personal Prompt and one model provider profile, plus local
    Codex/Claude availability. Provider drafts can be tested explicitly before saving; connection
    results are classified without returning credentials, and a saved credential can be replaced or

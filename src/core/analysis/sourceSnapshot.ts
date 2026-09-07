@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import type { DashboardItem } from '../../shared/api'
+import { hasPublicationMonthOnly, sourceMatchReasons } from '../../shared/sourceDate'
 
 export function hashAnalysisSource(item: DashboardItem): string {
   const promptSource = {
@@ -10,7 +11,8 @@ export function hashAnalysisSource(item: DashboardItem): string {
     url: item.url,
     publishedAt: item.publishedAt,
     score: item.score,
-    reasons: [...item.reasons]
+    reasons: [...sourceMatchReasons(item)],
+    ...(hasPublicationMonthOnly(item) ? { publicationPrecision: 'month' } : {})
   }
   return createHash('sha256').update(JSON.stringify(promptSource), 'utf8').digest('hex')
 }

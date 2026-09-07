@@ -331,7 +331,7 @@ test('Discover-first search across every deployed source', async () => {
     )
     await selectedDiscover.getByRole('button', { name: 'Analyze paper' }).click()
     await expect(selectedDiscover.getByLabel('L1 paper analysis result')).toContainText(
-      'llm-wiki-paper-l1-v1'
+      'llm-wiki-paper-l1-v3'
     )
     await expect(paperSave).toHaveAttribute('aria-pressed', 'false')
     const resultTop = await page

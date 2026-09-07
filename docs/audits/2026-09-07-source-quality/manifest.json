@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "startedAt": "2026-09-07T13:33:05.760Z",
+  "publicCasesSha256": "580f7acf28c0888330c10cac0f894dbf2c9b6c6da9cea66d042e145f7b0ea1d1",
+  "runs": [
+    {
+      "caseId": "structured-pruning",
+      "runner": "codex",
+      "status": "completed",
+      "file": "structured-pruning-codex.json",
+      "sha256": "0d6bbff329f0952e60a0dc20677df54357ca109563a5d5e7bf6e6c2de4da46e4",
+      "elapsedMs": 48709
+    },
+    {
+      "caseId": "structured-pruning",
+      "runner": "claude",
+      "status": "completed",
+      "file": "structured-pruning-claude.json",
+      "sha256": "13eaecd3f131c943c1f5cee8f281fdb87d4613060de20488fd392196312c3ba0",
+      "elapsedMs": 42048
+    },
+    {
+      "caseId": "energy-aware-training",
+      "runner": "codex",
+      "status": "completed",
+      "file": "energy-aware-training-codex.json",
+      "sha256": "1208806ae803fc37521912514c819083e3e6e7ba4c4e3da46191bc7b7f884c79",
+      "elapsedMs": 50499
+    },
+    {
+      "caseId": "energy-aware-training",
+      "runner": "claude",
+      "status": "completed",
+      "file": "energy-aware-training-claude.json",
+      "sha256": "b70de10f376ce7caeb5518b95cf48157185a3b6e00285a756a23772a6b80ad51",
+      "elapsedMs": 35145
+    },
+    {
+      "caseId": "residential-demand-response",
+      "runner": "codex",
+      "status": "completed",
+      "file": "residential-demand-response-codex.json",
+      "sha256": "ffc5a067f1391ef4601e36ca5022ad4a90916b4019b3491eb0ced117422a3a45",
+      "elapsedMs": 47411
+    },
+    {
+      "caseId": "residential-demand-response",
+      "runner": "claude",
+      "status": "completed",
+      "file": "residential-demand-response-claude.json",
+      "sha256": "6b5e93890c6eeb462e7d8aaa406c03eb34fe6a37b81515abf80bae4a5601b963",
+      "elapsedMs": 42404
+    }
+  ],
+  "analyses": [
+    {
+      "caseId": "structured-pruning",
+      "runner": "codex",
+      "kind": "paper",
+      "status": "failed",
+      "error": "Local agent analysis timed out"
+    },
+    {
+      "caseId": "structured-pruning",
+      "runner": "claude",
+      "kind": "repository",
+      "status": "completed",
+      "itemId": "github:intel/neural-compressor",
+      "file": "structured-pruning-claude-analysis.json",
+      "sha256": "071dc1c746fdf511c5d275c9ffde7cddf7d21c35f434b7864bbe8e661cb53bb0",
+      "sourceHash": "8623cb4e7e12a579663adba1d33a1f0fcd4762d28ca0e1a773139ceff3c71dd6",
+      "promptVersion": "discovery-analysis-v2"
+    },
+    {
+      "caseId": "energy-aware-training",
+      "runner": "codex",
+      "kind": "paper",
+      "status": "completed",
+      "itemId": "arxiv:2602.23935v1",
+      "file": "energy-aware-training-codex-analysis.json",
+      "sha256": "c3434a7f5524a007e6814072e7731c9f86df5203b0eab35be8b2db610ec7b1f4",
+      "sourceHash": "fee4e8665a8c6c55d42529c7853a3c5e2ad78e2062b2c81104f81e1e82aeebcf",
+      "promptVersion": "llm-wiki-paper-l1-v2"
+    },
+    {
+      "caseId": "residential-demand-response",
+      "runner": "claude",
+      "kind": "paper",
+      "status": "completed",
+      "itemId": "arxiv:2607.06632v1",
+      "file": "residential-demand-response-claude-analysis.json",
+      "sha256": "838e294786c0b79cf13624991794d2d3a6ca3f9da9ecc75aadedb3b713215ad9",
+      "sourceHash": "e9f1ce7552f2a2ca36fed4f35fcee4111f406b5c44be4dd95e3614bee2dc099a",
+      "promptVersion": "llm-wiki-paper-l1-v2"
+    }
+  ]
+}

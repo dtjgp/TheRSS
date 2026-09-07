@@ -2,6 +2,16 @@ import { describe, expect, it, vi } from 'vitest'
 import { fetchConfiguredHttpDocument } from './configuredHttpClient'
 
 describe('fetchConfiguredHttpDocument', () => {
+  it('reads CNBC directly from the confirmed official Top News RSS endpoint', async () => {
+    const fetcher = vi.fn<typeof fetch>(
+      async () =>
+        new Response('<rss><channel/></rss>', { headers: { 'content-type': 'application/xml' } })
+    )
+    await fetchConfiguredHttpDocument('folo:253', { fetcher })
+    expect(fetcher.mock.calls[0]?.[0]).toBe(
+      'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114'
+    )
+  })
   it('uses only the fixed public read method and JSON content type for official news APIs', async () => {
     for (const [id, method, endpoint] of [
       ['folo:302', 'POST', 'https://hub-api.baai.ac.cn/api/v1/story/list?page=1&sort=new&tag_id='],

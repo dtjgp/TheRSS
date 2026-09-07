@@ -82,7 +82,7 @@ describe('AnalysisService', () => {
       providerId: 'default',
       providerName: 'Local model',
       model: 'research-model',
-      promptVersion: 'llm-wiki-paper-l1-v1',
+      promptVersion: 'llm-wiki-paper-l1-v3',
       sourceHash: 'edc71265ddad97262e686e86523de7ae647accbd0ca09853baa3ec2aef42bec2',
       content: '## Research fit\nHighly relevant.',
       createdAt: '2026-08-15T12:00:00.000Z'
@@ -129,7 +129,7 @@ describe('AnalysisService', () => {
       providerId: 'local-agent:codex',
       providerName: 'Codex CLI',
       model: 'codex-cli',
-      promptVersion: 'llm-wiki-paper-l1-v1',
+      promptVersion: 'llm-wiki-paper-l1-v3',
       sourceHash: 'edc71265ddad97262e686e86523de7ae647accbd0ca09853baa3ec2aef42bec2'
     })
     expect(modelGateway).not.toHaveBeenCalled()

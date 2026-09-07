@@ -48,6 +48,26 @@ function setup() {
 }
 
 describe('DiscoveryService', () => {
+  it('includes month-overlapping NCPSD records in the source window without claiming an exact publication day', async () => {
+    const repository = setup()
+    const monthly = {
+      ...paper,
+      id: 'folo:611:article:month',
+      source: 'folo:611' as const,
+      summary: '《研究期刊》2026年8月',
+      publishedAt: '2026-08-01T00:00:00.000Z',
+      updatedAt: '2026-08-01T00:00:00.000Z'
+    }
+    const service = new DiscoveryService(repository, {
+      configuredDefinitions: [getConfiguredSourceDefinition('folo:611')],
+      fetchConfiguredSource: vi.fn(async () => ({ items: [monthly], rejectedCount: 0 }))
+    })
+    const result = await service.refreshSourceContent('folo:611', {
+      now: new Date('2026-09-07T00:00:00Z')
+    })
+    expect(result.items.map((item) => item.id)).toContain(monthly.id)
+    repository.close()
+  })
   it('retains daily results when every configured-source entry is rejected', async () => {
     const repository = setup()
     const item = { ...paper, id: 'folo:302:article:kept', source: 'folo:302' as const }

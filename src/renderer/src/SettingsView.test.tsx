@@ -20,6 +20,8 @@ function settingsApi(): TheRSSApi {
     refresh: vi.fn(),
     searchLocal: vi.fn(),
     getLocalResearch: vi.fn(),
+    getSavedSourceUpdate: vi.fn(),
+    applySavedSourceUpdate: vi.fn(),
     onDiscoverProgress: vi.fn().mockReturnValue(() => undefined),
     searchDiscover: vi.fn(),
     retryDiscover: vi.fn(),

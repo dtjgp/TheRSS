@@ -408,7 +408,7 @@ test('full native actions preserve Discover, Saved, promotion, Undo and keyboard
     await expect(save).toHaveAttribute('aria-pressed', 'true')
     await expect(save).toHaveAttribute('data-native-control', 'true')
     await native(application, 'press', 'analyze-item')
-    await expect(page.getByLabel('L1 paper analysis result')).toContainText('llm-wiki-paper-l1-v1')
+    await expect(page.getByLabel('L1 paper analysis result')).toContainText('llm-wiki-paper-l1-v3')
     await native(application, 'press', 'promote-item')
     await expect(page.getByRole('dialog', { name: 'Promote paper to llm-wiki' })).toBeVisible()
     await expect.poll(async () => (await inspect(application)).modal).toBe(true)

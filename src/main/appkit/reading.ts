@@ -18,6 +18,7 @@ import {
 } from './common'
 import type { NativeNode } from './presentation'
 import { hashAnalysisSource } from '../../core/analysis/sourceSnapshot'
+import { sourcePublicationLabel, sourceMatchReasons } from '../../shared/sourceDate'
 
 export class TriageHistory {
   private previous: { id: string; state: TriageState } | null = null
@@ -166,7 +167,7 @@ export class ResearchReader implements NativeScreen {
           heading(`${prefix}-reading-title`, item.title),
           label(
             `${prefix}-reading-meta`,
-            `${sourceDisplayName(item.source)} · ${item.publishedAt.slice(0, 10)}${saved ? ' · Saved' : ''}`,
+            `${sourceDisplayName(item.source)} · ${sourcePublicationLabel(item)}${saved ? ' · Saved' : ''}`,
             { weight: 'secondary' }
           ),
           row(`${prefix}-reading-actions`, [
@@ -273,18 +274,20 @@ export class ResearchReader implements NativeScreen {
               label(
                 `${prefix}-evidence`,
                 item.kind === 'paper'
-                  ? 'Evidence: arXiv abstract and metadata. Full-paper results are not verified here.'
+                  ? 'Evidence: paper discovery metadata and retrieved summary. Full-paper results are not verified here.'
                   : 'Evidence: source metadata and retrieved summary.',
                 { weight: 'secondary', size: 12 }
               )
             ],
             { surface: 'inset', padding: 10 }
           ),
-          ...(item.reasons.length
+          ...(sourceMatchReasons(item).length
             ? [
                 b.rich(
                   `${prefix}-reasons`,
-                  `## Why this matches\n\n${item.reasons.map((reason) => `- ${reason}`).join('\n')}`
+                  `## Why this matches\n\n${sourceMatchReasons(item)
+                    .map((reason) => `- ${reason}`)
+                    .join('\n')}`
                 )
               ]
             : []),

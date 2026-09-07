@@ -360,6 +360,25 @@ export function saveDiscoverResult(
   )
 }
 
+export function replaceSavedDiscoverSnapshot(
+  database: Database.Database,
+  sessionId: string,
+  itemId: string,
+  updatedAt: string
+): void {
+  const existing = database
+    .prepare("SELECT 1 FROM discovery_item WHERE id = ? AND triage_state = 'saved'")
+    .get(itemId)
+  if (!existing) throw new Error('This record is no longer saved')
+  upsertDiscoverResult(
+    database,
+    getDiscoverResult(database, sessionId, itemId),
+    'saved',
+    false,
+    updatedAt
+  )
+}
+
 export function materializeDiscoverResultForAnalysis(
   database: Database.Database,
   sessionId: string,

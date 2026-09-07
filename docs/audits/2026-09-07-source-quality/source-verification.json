@@ -1,0 +1,131 @@
+{
+  "fullBatch": {
+    "date": "2026-09-07",
+    "completedAround": "13:24 UTC",
+    "exitCode": 1,
+    "counts": {
+      "fetched": 17,
+      "partial": 1,
+      "failed": 2
+    },
+    "rows": [
+      {
+        "source": "folo:302",
+        "status": "fetched",
+        "detail": "6 normalized; 6 dated today; latest=2026-09-07T09:30:00.000Z; rejected=0"
+      },
+      {
+        "source": "folo:611",
+        "status": "partial",
+        "detail": "3 normalized; 0 dated today; latest=2026-08; rejected=7; 7 entries lack a publication month; issue numbers were not converted to dates"
+      },
+      {
+        "source": "folo:444",
+        "status": "failed",
+        "detail": "0 normalized; 0 dated today; latest=none; rejected=20; Official article access denied (HTTP 403); unstarted detail requests were skipped"
+      },
+      {
+        "source": "folo:182",
+        "status": "fetched",
+        "detail": "100 normalized; 1 dated today; latest=2026-09-07T00:00:00.000Z; rejected=0"
+      },
+      {
+        "source": "folo:77",
+        "status": "fetched",
+        "detail": "20 normalized; 20 dated today; latest=2026-09-07T06:34:11.000Z; rejected=0"
+      },
+      {
+        "source": "folo:208",
+        "status": "fetched",
+        "detail": "10 normalized; 8 dated today; latest=2026-09-07T09:34:06.000Z; rejected=0"
+      },
+      {
+        "source": "folo:93",
+        "status": "fetched",
+        "detail": "10 normalized; 6 dated today; latest=2026-09-07T12:09:29.000Z; rejected=0"
+      },
+      {
+        "source": "folo:84",
+        "status": "fetched",
+        "detail": "50 normalized; 1 dated today; latest=2026-09-06T22:00:00.000Z; rejected=0"
+      },
+      {
+        "source": "folo:67",
+        "status": "fetched",
+        "detail": "20 normalized; 20 dated today; latest=2026-09-07T09:41:29.000Z; rejected=0"
+      },
+      {
+        "source": "folo:523",
+        "status": "fetched",
+        "detail": "12 normalized; 9 dated today; latest=2026-09-07T00:00:00.000Z; rejected=0"
+      },
+      {
+        "source": "folo:253",
+        "status": "failed",
+        "detail": "Configured source folo:253 request failed: The operation was aborted due to timeout"
+      },
+      {
+        "source": "folo:44",
+        "status": "fetched",
+        "detail": "30 normalized; 20 dated today; latest=2026-09-07T13:00:48.000Z; rejected=0"
+      },
+      {
+        "source": "folo:792",
+        "status": "fetched",
+        "detail": "100 normalized; 100 dated today; latest=2026-09-07T00:00:00.000Z; rejected=0"
+      },
+      {
+        "source": "folo:79",
+        "status": "fetched",
+        "detail": "20 normalized; 9 dated today; latest=2026-09-07T11:11:16.000Z; rejected=0"
+      },
+      {
+        "source": "folo:172",
+        "status": "fetched",
+        "detail": "20 normalized; 0 dated today; latest=2026-09-06T21:41:06.000Z; rejected=0"
+      },
+      {
+        "source": "folo:1104",
+        "status": "fetched",
+        "detail": "100 normalized; 5 dated today; latest=2026-09-07T11:47:50.000Z; rejected=0"
+      },
+      {
+        "source": "folo:177",
+        "status": "fetched",
+        "detail": "20 normalized; 14 dated today; latest=2026-09-07T12:26:00.000Z; rejected=0"
+      },
+      {
+        "source": "folo:257",
+        "status": "fetched",
+        "detail": "10 normalized; 4 dated today; latest=2026-09-07T12:00:00.000Z; rejected=0"
+      },
+      {
+        "source": "folo:312",
+        "status": "fetched",
+        "detail": "50 normalized; 8 dated today; latest=2026-09-07T12:00:00.000Z; rejected=0"
+      },
+      {
+        "source": "folo:64",
+        "status": "fetched",
+        "detail": "30 normalized; 20 dated today; latest=2026-09-07T13:24:23.000Z; rejected=0"
+      }
+    ],
+    "logSha256": "626b66ae0e81bdc52fec73740d0e46294a20d1dbba202c7cf6cbc85e2053bc9c"
+  },
+  "cnbcTargetedFollowup": {
+    "checkedAt": "2026-09-07T13:41:20.455Z",
+    "endpoint": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
+    "status": "fetched",
+    "count": 30,
+    "rejectedCount": 0,
+    "elapsedMs": 327,
+    "numericIdentityPreserved": true,
+    "itemsSha256": "bbd1360d32a47b559c7542cb7b7f71a30aee7c56a059f766a1b7ad68550b4dc3"
+  },
+  "nber": {
+    "articleHttpStatus": 403,
+    "candidateCrossrefHttpStatus": 404,
+    "noFallbackAdopted": true
+  },
+  "boundary": "The full batch preceded CNBC replacement. Targeted follow-up is not a second full batch. NBER failed and NCPSD partial remain explicit."
+}

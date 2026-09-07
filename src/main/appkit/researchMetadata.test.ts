@@ -3,6 +3,18 @@ import { researchMetadata, researchSubtitle } from './researchMetadata'
 import { nativeDiscoverFixture } from './testSupport'
 
 describe('readable research metadata without changing evidence', () => {
+  it('does not render a month sorting anchor as an exact publication or update day', () => {
+    const monthly = {
+      ...nativeDiscoverFixture.items[0]!,
+      source: 'folo:611' as const,
+      summary: '《研究期刊》2026年8月',
+      publishedAt: '2026-08-01T00:00:00.000Z'
+    }
+    expect(researchSubtitle(monthly)).toContain('2026-08 (month only)')
+    expect(researchMetadata(monthly)).toContain('exact day unavailable')
+    expect(researchMetadata(monthly)).not.toContain('Published: 2026-08-01')
+    expect(researchMetadata(monthly)).toContain('Updated: Not supplied separately')
+  })
   it('shows paper fields without repository placeholders and keeps exact provenance timestamps', () => {
     const paper = nativeDiscoverFixture.items[0]!
     const text = researchMetadata(paper)

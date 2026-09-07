@@ -36,6 +36,17 @@ const baseItem: DiscoveryItem = {
 }
 
 describe('rankDiscoveryItem', () => {
+  it('does not turn a source publication month into a day-level recency claim', () => {
+    const monthly = {
+      ...baseItem,
+      source: 'folo:611' as const,
+      summary: '《研究期刊》2026年9月',
+      publishedAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-01T00:00:00.000Z'
+    }
+    const result = rankDiscoveryItem(monthly, profile, new Date('2026-09-01T12:00:00Z'))
+    expect(result.reasons.some((reason) => reason.kind === 'recency')).toBe(false)
+  })
   it('returns deterministic score and visible match reasons', () => {
     const result = rankDiscoveryItem(baseItem, profile, new Date('2026-08-15T00:00:00Z'))
 

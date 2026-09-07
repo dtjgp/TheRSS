@@ -66,6 +66,13 @@ export async function fetchConfiguredSourceBatch(
     })
     if (['folo:302', 'folo:93', 'folo:67'].includes(definition.id))
       return normalizeOfficialNews(document)
+    if (definition.id === 'folo:253') {
+      const batch = normalizeFeedDocument(document)
+      return {
+        ...batch,
+        items: batch.items.filter((item) => !item.url.startsWith('https://www.cnbc.com/select/'))
+      }
+    }
     return definition.transport === 'feed'
       ? normalizeFeedDocument(document)
       : definition.id === 'folo:611'

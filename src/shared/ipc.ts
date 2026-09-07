@@ -43,6 +43,8 @@ export const IPC_CHANNELS = {
   getInterestProfile: 'interests:get',
   saveInterestProfile: 'interests:save',
   setTriageState: 'triage:set',
+  getSavedSourceUpdate: 'saved:get-source-update',
+  applySavedSourceUpdate: 'saved:apply-source-update',
   getModelProvider: 'models:get-provider',
   saveModelProvider: 'models:save-provider',
   testModelProvider: 'models:test-provider',

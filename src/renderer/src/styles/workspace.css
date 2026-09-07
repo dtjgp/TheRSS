@@ -250,6 +250,21 @@
   backdrop-filter: blur(18px) saturate(1.2);
 }
 
+.signal-detail__source-update {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-block: 12px;
+}
+
+.signal-detail__source-update p {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .paper-l1-analysis {
   display: grid;
   gap: 12px;

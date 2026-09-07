@@ -1,3 +1,8 @@
+import {
+  sourcePublicationLabel,
+  sourcePublicationEvidence,
+  hasPublicationMonthOnly
+} from '../../shared/sourceDate'
 import type { SourceContentSnapshot } from '../../shared/api'
 import {
   SOURCE_CATALOG,
@@ -333,7 +338,9 @@ export class SourcesScreen implements NativeScreen {
               ? 'Use Discover for query-based GitHub retrieval. This source view is read-only.'
               : source === 'arxiv'
                 ? 'arXiv content covers the latest source day.'
-                : 'Source content covers a rolling 30-day window.',
+                : entry.id === 'folo:611'
+                  ? 'Publication months overlapping the 30-day window are included; exact days may be unavailable.'
+                  : 'Source content covers a rolling 30-day window.',
             { weight: 'secondary' }
           ),
           ...(!this.activated
@@ -363,7 +370,7 @@ export class SourcesScreen implements NativeScreen {
                           snapshot.items.map((item) => ({
                             id: item.id,
                             title: item.title,
-                            subtitle: `${item.publishedAt.slice(0, 10)} · ${item.kind ?? 'item'}`
+                            subtitle: `${sourcePublicationLabel(item)} · ${item.kind ?? 'item'}`
                           })),
                           item?.id ?? '',
                           (id) => {
@@ -386,7 +393,7 @@ export class SourcesScreen implements NativeScreen {
                             ),
                             b.rich(
                               'source-content-summary',
-                              `${item.summary}\n\nPublished: ${item.publishedAt}\nUpdated: ${item.updatedAt}\n\nSource metadata only.`
+                              `${item.summary}\n\nPublished: ${sourcePublicationEvidence(item)}\nUpdated: ${hasPublicationMonthOnly(item) ? 'Not supplied separately' : item.updatedAt}\n\nSource metadata only.`
                             )
                           ]
                         : [])

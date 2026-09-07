@@ -10,6 +10,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { fileURLToPath, URL } from 'node:url'
 import { _electron as electron } from '@playwright/test'
 import { classifyNativeSmokeStderr } from './native-smoke-diagnostics.mjs'
+import { savedSourceUpdateFixture } from './saved-source-update-fixture.mjs'
 
 const project = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const output = resolve(
@@ -783,6 +784,54 @@ try {
       const settings = await wait('personal-prompt')
       assert.equal(find(settings.root, 'personal-prompt').value, '资源高效 AI 与边缘智能')
       await click('navigate-discover')
+    }
+  )
+  await step(
+    'Explicit Saved snapshot update preserves SQLite history and refreshes native reading',
+    async () => {
+      const before = await savedSourceUpdateFixture(application, profile, true)
+      await click('navigate-saved')
+      await wait('saved-items')
+      await act('saved-source-filter', 'choose', 'github')
+      await wait('saved-update-source', (node) => node?.enabled)
+      await application.evaluate(() =>
+        globalThis.__nativeWindow.setBounds({ width: 820, height: 600 })
+      )
+      await delay(100)
+      await capture('saved-update-ready-narrow')
+      await act('saved-update-source', 'focus')
+      await act('saved-update-source', 'key', 'space')
+      await wait('saved-source-update-status', (node) =>
+        /No newer local snapshot/.test(node?.text || '')
+      )
+      await click('saved-open-reader')
+      const updated = await wait('saved-summary', (node) =>
+        /Newer locally retrieved/.test(node?.text || '')
+      )
+      await wait('saved-analysis-freshness', (node) => /changed|stale/i.test(node?.text || ''))
+      assert.equal(find(updated.root, 'saved-update-source').enabled, false)
+      const after = await savedSourceUpdateFixture(application, profile)
+      assert.equal(after.item.triage_state, 'saved')
+      assert.equal(after.item.triage_updated_at, before.item.triage_updated_at)
+      assert.equal(after.item.first_seen_at, before.item.first_seen_at)
+      assert.deepEqual(after.artifacts, before.artifacts)
+      assert.notEqual(after.item.summary, before.item.summary)
+      await capture('saved-update-stale-analysis-narrow')
+      await application.evaluate(() =>
+        globalThis.__nativeWindow.setBounds({ width: 1280, height: 900 })
+      )
+      await click('navigate-sources')
+      await wait('sources-list')
+      await act('sources-list', 'select', 'folo:611', { activate: true })
+      const month = await wait('source-content-summary', (node) =>
+        /exact day unavailable/.test(node?.text || '')
+      )
+      assert.match(find(month.root, 'source-content-items').rows[0].subtitle, /month only/)
+      assert.match(
+        find(month.root, 'source-content-summary').text,
+        /Updated: Not supplied separately/
+      )
+      await capture('sources-publication-month')
     }
   )
   const final = await inspect()
