@@ -1,6 +1,6 @@
 # TheRSS Goals
 
-## Active goal: Market-ready native research product
+## Blocked goal: Market-ready native research product
 
 The user authorized implementation of all findings in the current UI audit and the work required
 to reach market-release quality. The full scope, acceptance IDs and stop condition live in
@@ -17,7 +17,10 @@ the AppKit coverage gate passes 87 tests, and compatibility E2E passes 6/6. Nati
 controls, safeStorage, MCP and isolated unsigned upgrade/rollback have passed. The
 [current report](docs/audits/2026-09-06-market-readiness/REPORT.md) records partial release gates:
 live account verification, explicit installation/third-party authorization, signing/notarization,
-human acceptance and GitHub delivery remain open. The full market-release goal remains active.
+human acceptance and GitHub delivery remain open. The objective remains incomplete and is blocked
+pending those external inputs. Revalidation found no source drift, a matching verified candidate
+package, zero valid Developer ID identities and no supplied notarization profile. Resume the same
+full objective when the required authorization and signing prerequisites are available.
 
 ## Completed goal: Core reliability updates
 
