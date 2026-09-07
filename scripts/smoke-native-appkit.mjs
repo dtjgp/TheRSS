@@ -302,8 +302,31 @@ try {
   await step('Native reading, Save, full analysis and search details sheet', async () => {
     if (process.env.THERSS_NATIVE_COMPACT_FIXTURE === '1')
       await act('discover-reading-scroll', 'scroller', 'legacy')
+    const beforeSave = await inspect()
+    const actions = find(beforeSave.root, 'discover-reading-actions')
+    assert(find(actions, 'discover-analyze'), 'Analysis must be in the top reading actions')
     await click('discover-save')
-    await wait('discover-save', (node) => node?.title === 'Unsave')
+    const afterSave = await wait('discover-save', (node) => node?.title === 'Unsave')
+    for (const id of ['discover-page', 'discover-workspace', 'discover-reading-scroll'])
+      assert.equal(
+        find(afterSave.root, id).frame,
+        find(beforeSave.root, id).frame,
+        `${id} moved after Save`
+      )
+    assert.equal(
+      find(afterSave.root, 'discover-reading-scroll').scrollOrigin,
+      find(beforeSave.root, 'discover-reading-scroll').scrollOrigin
+    )
+    assert.equal(afterSave.announcementCount, beforeSave.announcementCount + 1)
+    await capture('discover-saved-feedback')
+    await wait('native-notice', (node) => !node?.text)
+    const expired = await inspect()
+    assert.equal(
+      find(expired.root, 'discover-reading-scroll').frame,
+      find(beforeSave.root, 'discover-reading-scroll').frame
+    )
+    assert.equal(expired.announcementCount, afterSave.announcementCount)
+    await click('discover-metadata-toggle')
     await click('discover-analyze')
     const state = await wait('discover-analysis')
     assert.equal(find(state.root, 'discover-analysis').class, 'NSTextView')
@@ -372,7 +395,7 @@ try {
     const hashes = await application.evaluate(() => globalThis.__fixtureCipherHashes)
     assert(hashes.includes(createHash('sha256').update(fixtureCredential).digest('hex')))
     await click('provider-test')
-    await wait('settings-status', (node) => /connected/.test(node?.text || ''))
+    await wait('settings-status', (node) => /Connection successful/.test(node?.text || ''))
     await capture('settings-provider')
     const form = await inspect()
     const frameWidth = (node) => Number(node.frame.match(/-?\d+(?:\.\d+)?/gu)[2])
@@ -430,8 +453,14 @@ try {
     await act('analytics-trend-kind', 'choose', 'discover')
     await click('analytics-toggle-values')
     const daily = find((await inspect()).root, 'analytics-daily')
+    assert.equal(daily.rowHeight, 26)
+    assert.deepEqual(
+      daily.columns.map((column) => column.id),
+      ['date', 'returned', 'discover', 'legacy', 'analyses']
+    )
+    assert(daily.rows.every((row) => Object.keys(row.cells).length === 5))
     assert.equal(daily.rows.length, 7)
-    assert(Number(daily.frame.match(/-?\d+(?:\.\d+)?/gu)[3]) >= 155)
+    assert(Number(daily.frame.match(/-?\d+(?:\.\d+)?/gu)[3]) >= 220)
     await capture('analytics-daily-values')
     await click('analytics-toggle-values')
     const state = await inspect(),
@@ -493,6 +522,44 @@ try {
     const opened = await application.evaluate(() => globalThis.__nativeOpened)
     assert(opened.every((url) => new URL(url).protocol === 'https:'))
     await capture('local-search')
+    for (const kind of ['saved', 'discover']) {
+      const searchState = await inspect()
+      const target = find(searchState.modal, 'local-search-results').rows.find((row) =>
+        row.id.startsWith(kind + ':')
+      )
+      assert(target, `Fixture must include a ${kind} local target`)
+      await act('local-search-results', 'select', target.id)
+      await click('local-search-open-in-app')
+      await wait('local-search-query', (node) => !node)
+      const openedLocal = await wait('return-local-search')
+      assert.equal(find(openedLocal.root, `${kind}-reading-title`).text, target.title)
+      assert.equal(openedLocal.modal, null)
+      await capture(`local-open-${kind}`)
+      await click('return-local-search')
+      const restored = await wait('local-search-results')
+      assert.equal(find(restored.modal, 'local-search-results').selected, target.id)
+      assert.equal(find(restored.modal, 'local-search-query').value, 'pruning')
+    }
+    await act('local-search-query', 'fill', 'analysis')
+    await click('local-search-submit')
+    await wait('local-search-result-count', (node) => /for “analysis”/.test(node?.text || ''))
+    const analysisResults = await wait('local-search-results')
+    const analysisTarget = find(analysisResults.modal, 'local-search-results').rows.find((row) =>
+      row.id.startsWith('analysis:')
+    )
+    assert(analysisTarget, 'Fixture must include a stored analysis target')
+    await act('local-search-results', 'select', analysisTarget.id)
+    await click('local-search-open-in-app')
+    await wait('local-search-query', (node) => !node)
+    const localAnalysis = await wait('analytics-local-record')
+    assert(
+      find(localAnalysis.root, 'analytics-analysis-content').text.includes(
+        analysisTarget.id.slice('analysis:'.length)
+      )
+    )
+    await capture('local-open-analysis')
+    await click('return-local-search')
+    await wait('local-search-results')
     await act('local-search-query', 'key', 'escape')
     await wait('local-search-query', (node) => !node)
     assert((await inspect()).firstResponderId, 'Closing a sheet must restore native focus')
@@ -596,39 +663,50 @@ try {
     )
     await delay(200)
     const narrow = await capture('discover-narrow')
-    assert.equal(find(narrow.root, 'discover-workspace').vertical, false)
-    assert.match(find(narrow.root, 'native-sidebar').frame, /184,/)
+    assert.equal(find(narrow.root, 'discover-workspace').compactPane, 'list')
+    assert.equal(find(narrow.root, 'discover-results').hidden, false)
+    assert.equal(find(narrow.root, 'discover-reading-scroll').hidden, true)
+    const selectedBefore = find(narrow.root, 'discover-results').selected
+    await click('discover-open-reader')
+    const reader = await capture('discover-narrow-reading')
+    assert.equal(find(reader.root, 'discover-workspace').compactPane, 'detail')
+    assert.equal(find(reader.root, 'discover-results').hidden, true)
+    assert.equal(find(reader.root, 'discover-reading-scroll').hidden, false)
+    assert(!find(reader.root, 'discover-compact-search'))
+    assert.equal(reader.firstResponderId, 'discover-summary')
+    await click('discover-back-to-results')
+    const returned = await wait('discover-workspace', (node) => node?.compactPane === 'list')
+    assert.equal(find(returned.root, 'discover-results').selected, selectedBefore)
+    assert.equal(returned.firstResponderId, 'discover-results')
     const frameValues = (frame) => frame.match(/-?\d+(?:\.\d+)?/g).map(Number)
-    const splitHeight = () =>
-      inspect().then((state) => frameValues(find(state.root, 'discover-list-pane').frame)[3])
-    const initialHeight = await splitHeight()
-    await act('discover-workspace', 'focus')
-    await act('discover-workspace', 'key', 'down')
-    assert.equal(await splitHeight(), initialHeight + 8)
-    await act('discover-workspace', 'key', 'escape')
-    assert.equal(await splitHeight(), initialHeight)
     await application.evaluate(() =>
       globalThis.__nativeWindow.setBounds({ width: 820, height: 600 })
     )
     for (let count = 0; count < 5; count++) await menu('Zoom In')
     await delay(100)
+    await click('discover-open-reader')
     const zoomed = await inspect()
     assert.equal(zoomed.zoom, 1.5)
+    assert.equal(find(zoomed.root, 'discover-workspace').compactPane, 'detail')
     assert.equal(find(zoomed.root, 'discover-results').rowFontSize, 19.5)
-    const zoomedTitle = find(zoomed.root, 'discover-results')
-    assert(frameValues(zoomedTitle.titleFrame)[3] >= 2 * zoomedTitle.titleLineHeight)
     assert(
-      frameValues(find(zoomed.root, 'discover-workspace').frame)[3] >= 320,
-      'Minimum-height zoomed window must retain usable list and reading panes'
+      frameValues(find(zoomed.root, 'discover-reading-scroll').frame)[3] >= 300,
+      'Compact zoomed reading must keep a usable full-width viewport'
     )
-    await act('native-main', 'scroll', 300)
-    assert.notEqual(find((await inspect()).root, 'native-main').scrollOrigin, '{0, 0}')
+    const main = find(zoomed.root, 'native-main')
+    assert(
+      frameValues(main.documentFrame)[3] <= frameValues(main.viewportSize)[1] + 1,
+      'Reading mode must not require an outer page scroll at minimum window size'
+    )
     await capture('discover-narrow-zoomed')
+    await click('discover-back-to-results')
     await menu('Actual Size')
     await application.evaluate(() =>
       globalThis.__nativeWindow.setBounds({ width: 820, height: 720 })
     )
     await click('navigate-sources')
+    if (find((await inspect()).root, 'sources-back-to-results'))
+      await click('sources-back-to-results')
     await wait('sources-filters')
     const sourceNarrow = await capture('sources-narrow')
     const filters = find(sourceNarrow.root, 'sources-filters')

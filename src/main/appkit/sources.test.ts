@@ -58,9 +58,14 @@ describe('AppKit Sources', () => {
     })
     const screen = new SourcesScreen(h.context)
     await screen.activate('official:arxiv')
+    vi.mocked(h.api.getDashboard).mockResolvedValue({
+      ...h.dashboard,
+      sourceHealth: { arxiv: 'failed', github: 'idle' }
+    })
     await screen.activate('official:arxiv', true)
     expect(h.find(h.render(screen), 'source-content-title')?.text).toBe('Readable cached paper')
     expect(h.find(h.render(screen), 'source-content-error')?.text).toContain('Refresh failed')
+    expect(h.find(h.render(screen), 'source-detail-health')?.text).toContain('failed')
   })
   it('shows an empty state and removes old source actions when filters match nothing', async () => {
     const h = nativeHarness(),

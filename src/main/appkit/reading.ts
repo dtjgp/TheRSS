@@ -1,5 +1,5 @@
 import type { DashboardItem, TriageState } from '../../shared/api'
-import type { AnalysisArtifact, AnalysisRunner } from '../../shared/models'
+import type { AnalysisArtifact, AnalysisFreshness, AnalysisRunner } from '../../shared/models'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
 import {
   analysisText,
@@ -11,6 +11,7 @@ import {
   recordViewId,
   row,
   runnerAvailable,
+  runnerUnavailableReason,
   scroll,
   type NativeContext,
   type NativeScreen
@@ -43,7 +44,7 @@ export class TriageHistory {
         )
       }
     } catch (error) {
-      this.context.notify(readableError(error))
+      this.context.notify(readableError(error), 'error')
     } finally {
       this.busy = false
       this.context.redraw()
@@ -70,7 +71,7 @@ export class TriageHistory {
       this.completedStates.set(previous.id, previous.state)
       this.context.notify('Last triage action undone.')
     } catch (error) {
-      this.context.notify(readableError(error))
+      this.context.notify(readableError(error), 'error')
     } finally {
       this.busy = false
       this.context.redraw()
@@ -85,11 +86,14 @@ export class ResearchReader implements NativeScreen {
   private sessionId: string | undefined
   private extra = ''
   private expanded = false
+  private metadataExpanded = false
   private artifact: AnalysisArtifact | null = null
   private analysisPending = new Set<string>()
   private readonly analysisCache = new Map<string, AnalysisArtifact>()
   private readonly analysisGeneration = new Map<string, number>()
   private storedReadFailed = false
+  private storedLoading = false
+  private artifactFreshness: AnalysisFreshness | 'checking' | 'unavailable' = 'unavailable'
   private error = ''
   private version = 0
   private disposed = false
@@ -109,7 +113,10 @@ export class ResearchReader implements NativeScreen {
     this.extra = extra
     if (!changed) return
     this.expanded = false
+    this.metadataExpanded = false
     this.artifact = item ? (this.analysisCache.get(item.id) ?? null) : null
+    this.artifactFreshness = this.artifact ? 'checking' : 'unavailable'
+    this.storedLoading = false
     this.storedReadFailed = false
     this.error = ''
     this.version++
@@ -154,7 +161,7 @@ export class ResearchReader implements NativeScreen {
           heading(`${prefix}-reading-title`, item.title),
           label(
             `${prefix}-reading-meta`,
-            `${sourceDisplayName(item.source)} · ${item.kind ?? 'item'} · ${item.publishedAt.slice(0, 10)} · Score ${item.score}`,
+            `${sourceDisplayName(item.source)} · ${item.publishedAt.slice(0, 10)}${saved ? ' · Saved' : ''}`,
             { weight: 'secondary' }
           ),
           row(`${prefix}-reading-actions`, [
@@ -176,7 +183,17 @@ export class ResearchReader implements NativeScreen {
                 !this.triage.busy,
                 `${key}:save:${saved}`
               ),
-              symbol: 'star'
+              symbol: saved ? 'star.fill' : 'star'
+            },
+            {
+              ...b.button(
+                `${prefix}-analyze`,
+                analyzing ? 'Analyzing…' : this.artifact ? 'Analyze again' : 'Analyze',
+                () => this.analyze(),
+                !analyzing && this.canAnalyze(),
+                `${key}:analyze`
+              ),
+              symbol: 'sparkles'
             },
             ...(prefix === 'saved'
               ? [
@@ -190,6 +207,24 @@ export class ResearchReader implements NativeScreen {
                 ]
               : [])
           ]),
+          ...(!this.canAnalyze() && !analyzing
+            ? [
+                label(
+                  `${prefix}-analysis-readiness`,
+                  this.scope === 'discover' && item.kind !== 'paper'
+                    ? 'Save this record to analyze it from Saved.'
+                    : runnerUnavailableReason(this.context, this.runner),
+                  { weight: 'secondary' }
+                ),
+                ...(this.scope === 'saved' || item.kind === 'paper'
+                  ? [
+                      b.button(`${prefix}-analysis-configure-runner`, 'Open Settings', () =>
+                        this.context.navigate('settings')
+                      )
+                    ]
+                  : [])
+              ]
+            : []),
           {
             ...b.rich(
               `${prefix}-summary`,
@@ -239,15 +274,18 @@ export class ResearchReader implements NativeScreen {
                 )
               ]
             : []),
-          ...(this.extra ? [b.rich(`${prefix}-provenance`, this.extra)] : []),
-          row(`${prefix}-analysis-actions`, [
-            b.button(
-              `${prefix}-analyze`,
-              analyzing ? 'Analyzing…' : 'Analyze',
-              () => this.analyze(),
-              !analyzing && this.canAnalyze(),
-              `${key}:analyze`
-            ),
+          row(`${prefix}-detail-actions`, [
+            {
+              ...b.button(
+                `${prefix}-metadata-toggle`,
+                this.metadataExpanded ? 'Hide source details' : 'Source details',
+                () => {
+                  this.metadataExpanded = !this.metadataExpanded
+                  this.context.redraw()
+                }
+              ),
+              emphasis: 'quiet'
+            },
             ...(item.source === 'arxiv'
               ? [
                   b.button(
@@ -260,6 +298,14 @@ export class ResearchReader implements NativeScreen {
                 ]
               : [])
           ]),
+          ...(this.metadataExpanded
+            ? [
+                b.rich(
+                  `${prefix}-provenance`,
+                  `${this.extra ? this.extra + '\n\n' : ''}## Ranking\nMatch score: ${item.score}\nDeterministic relevance ranking, not confidence or verified research quality.`
+                )
+              ]
+            : []),
           ...(this.error ? [label(`${prefix}-analysis-error`, this.error)] : []),
           ...(this.storedReadFailed
             ? [
@@ -273,12 +319,43 @@ export class ResearchReader implements NativeScreen {
               ]
             : []),
           ...(this.artifact
-            ? [b.rich(`${prefix}-analysis`, analysisText(this.artifact))]
-            : [
-                label(`${prefix}-no-analysis`, 'No stored analysis for this item.', {
-                  weight: 'secondary'
-                })
-              ])
+            ? [
+                label(
+                  `${prefix}-analysis-freshness`,
+                  {
+                    current: 'Source checked: unchanged when this analysis was opened.',
+                    stale: 'Source changed since this analysis. Reanalyze before relying on it.',
+                    source_missing:
+                      'The original local source is missing. This is retained historical analysis.',
+                    legacy_unavailable: 'This legacy analysis has no verifiable source hash.',
+                    checking: 'Checking stored analysis against the local source…',
+                    unavailable:
+                      'Source freshness could not be verified. Original analysis provenance is retained.'
+                  }[this.artifactFreshness],
+                  { weight: this.artifactFreshness === 'stale' ? 'bold' : 'secondary' }
+                ),
+                ...(this.artifactFreshness === 'unavailable'
+                  ? [
+                      row(`${prefix}-freshness-actions`, [
+                        b.button(`${prefix}-retry-freshness`, 'Recheck source', () =>
+                          this.checkFreshness(this.artifact!, this.version)
+                        )
+                      ])
+                    ]
+                  : []),
+                b.rich(`${prefix}-analysis`, analysisText(this.artifact))
+              ]
+            : this.storedLoading
+              ? [
+                  label(`${prefix}-stored-analysis-loading`, 'Loading stored analysis…', {
+                    weight: 'secondary'
+                  })
+                ]
+              : [
+                  label(`${prefix}-no-analysis`, 'No stored analysis for this item.', {
+                    weight: 'secondary'
+                  })
+                ])
         ],
         { padding: 22, gap: 12 }
       ),
@@ -303,6 +380,7 @@ export class ResearchReader implements NativeScreen {
       if (!this.disposed && this.item?.id === item.id && this.sessionId === sessionId) {
         this.artifact = artifact
         this.storedReadFailed = false
+        await this.checkFreshness(artifact, this.version)
       }
     } catch (error) {
       if (!this.disposed && this.item?.id === item.id && this.sessionId === sessionId)
@@ -314,24 +392,43 @@ export class ResearchReader implements NativeScreen {
   }
   private async loadStoredAnalysis(): Promise<void> {
     const item = this.item
-    if (!item) return
+    if (!item || this.storedLoading) return
     const version = this.version,
       generation = this.analysisGeneration.get(item.id)
     this.storedReadFailed = false
+    this.storedLoading = true
     this.error = ''
+    this.context.redraw()
     try {
       const artifact = await this.context.api.getLatestAnalysis(item.id)
       if (
         !this.disposed &&
         version === this.version &&
         generation === this.analysisGeneration.get(item.id)
-      )
+      ) {
         this.artifact = artifact ?? this.analysisCache.get(item.id) ?? null
+        if (this.artifact) await this.checkFreshness(this.artifact, version)
+      }
     } catch {
       if (!this.disposed && version === this.version) {
         this.error = 'Stored analysis could not be opened.'
         this.storedReadFailed = true
       }
+    }
+    if (version === this.version) this.storedLoading = false
+    this.context.redraw()
+  }
+  private async checkFreshness(artifact: AnalysisArtifact, version: number): Promise<void> {
+    this.artifactFreshness = 'checking'
+    this.context.redraw()
+    try {
+      const state = await this.context.api.getAnalysisArtifact(artifact.id)
+      if (!this.disposed && version === this.version && this.artifact?.id === artifact.id)
+        this.artifactFreshness =
+          state?.artifact.id === artifact.id ? state.freshness : 'unavailable'
+    } catch {
+      if (!this.disposed && version === this.version && this.artifact?.id === artifact.id)
+        this.artifactFreshness = 'unavailable'
     }
     this.context.redraw()
   }

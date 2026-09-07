@@ -1,5 +1,6 @@
 import type { AnalyticsSnapshot } from '../../shared/analytics'
 import type { AnalysisArtifactState } from '../../shared/models'
+import type { LocalResearchRecord } from '../../shared/localResearch'
 import {
   analysisText,
   column,
@@ -14,8 +15,10 @@ import {
   type NativeScreen
 } from './common'
 import type { NativeNode } from './presentation'
+import { ReadingWorkspace } from './readingWorkspace'
 
 export class AnalyticsScreen implements NativeScreen {
+  private readonly workspace: ReadingWorkspace
   private readonly controls: Controls
   private snapshot: AnalyticsSnapshot | null = null
   private trendKind: 'discover' | 'today' | 'analysis' = 'discover'
@@ -28,12 +31,45 @@ export class AnalyticsScreen implements NativeScreen {
   private artifactError = ''
   private version = 0
   private disposed = false
+  private localRecord: Extract<LocalResearchRecord, { kind: 'analysis' }> | null = null
+  private restoreHistory: (() => void) | null = null
   constructor(private readonly context: NativeContext) {
+    this.workspace = new ReadingWorkspace(
+      context,
+      'analytics',
+      'analytics-analyses',
+      'analytics-analysis-content'
+    )
     this.controls = new Controls(context)
   }
   dispose(): void {
     this.disposed = true
     this.version++
+  }
+  openLocal(record: Extract<LocalResearchRecord, { kind: 'analysis' }>): () => void {
+    const previous = {
+      selected: this.selected,
+      artifact: this.artifact,
+      artifactBusy: this.artifactBusy,
+      artifactError: this.artifactError,
+      localRecord: this.localRecord,
+      restoreHistory: this.restoreHistory
+    }
+    this.version++
+    this.localRecord = record
+    this.selected = record.state.artifact.id
+    this.artifact = record.state
+    this.artifactBusy = false
+    this.artifactError = ''
+    const restore = () => {
+      this.version++
+      Object.assign(this, previous)
+      this.context.redraw()
+    }
+    this.restoreHistory = restore
+    this.context.focus('analytics-analysis-content')
+    this.context.redraw()
+    return restore
   }
   async load(): Promise<void> {
     if (this.busy) return
@@ -53,6 +89,20 @@ export class AnalyticsScreen implements NativeScreen {
   render(): NativeNode {
     const b = this.controls,
       s = this.snapshot
+    if (this.localRecord)
+      return column(
+        'analytics-local-record',
+        [
+          row('analytics-local-actions', [
+            b.button('analytics-return-history', 'Back to analysis history', () => {
+              this.restoreHistory?.()
+              this.context.focus('analytics-analyses')
+            })
+          ]),
+          this.reading()
+        ],
+        { flex: 1 }
+      )
     const metric = (id: string, title: string, count: number) =>
       column(
         id,
@@ -65,59 +115,113 @@ export class AnalyticsScreen implements NativeScreen {
     return column(
       'analytics-page',
       [
-        heading('analytics-title', 'Data Analytics'),
-        row('analytics-header', [
-          label(
-            'analytics-period',
-            s ? `Last ${s.windowDays} local days · Recorded activity` : 'Loading local activity…',
-            { flex: 1, weight: 'secondary' }
-          ),
-          b.button(
-            'analytics-retry',
-            this.busy ? 'Loading…' : 'Refresh',
-            () => this.load(),
-            !this.busy
-          )
-        ]),
+        ...(!this.workspace.focused ? [heading('analytics-title', 'Data Analytics')] : []),
+        ...(!this.workspace.focused
+          ? [
+              row('analytics-header', [
+                label(
+                  'analytics-period',
+                  s
+                    ? `Last ${s.windowDays} local days · Recorded activity`
+                    : 'Loading local activity…',
+                  { flex: 1, weight: 'secondary' }
+                ),
+                b.button(
+                  'analytics-retry',
+                  this.busy ? 'Loading…' : 'Refresh',
+                  () => this.load(),
+                  !this.busy
+                )
+              ])
+            ]
+          : []),
         ...(this.error ? [label('analytics-error', this.error)] : []),
         ...(s
           ? [
-              row('analytics-metrics', [
-                metric('analytics-searches', 'Lifetime returned records', s.totals.searchResults),
-                metric(
-                  'analytics-window',
-                  `Last ${s.windowDays} local days`,
-                  s.daily.reduce((sum, day) => sum + day.searchResults, 0)
-                ),
-                metric('analytics-completed', 'Deep analyses', s.totals.deepAnalyses),
-                metric('analytics-papers', 'Analyzed papers', s.totals.analyzedPapers)
-              ]),
-              this.trend(s),
-              ...(this.showValues
+              ...(!this.workspace.focused
                 ? [
-                    {
-                      ...b.table(
-                        'analytics-daily',
-                        'Daily activity',
-                        s.daily.map((day) => ({
-                          id: day.date,
-                          title: day.date,
-                          subtitle: `Search ${day.searchResults} · Source ${day.todayResults} · Discover ${day.discoverResults} · Analysis ${day.deepAnalyses}`
-                        })),
-                        '',
-                        () => undefined
+                    row('analytics-metrics', [
+                      metric(
+                        'analytics-searches',
+                        'Lifetime returned records',
+                        s.totals.searchResults
                       ),
-                      flex: 0,
-                      height: 155
-                    }
+                      metric(
+                        'analytics-window',
+                        `Last ${s.windowDays} local days`,
+                        s.daily.reduce((sum, day) => sum + day.searchResults, 0)
+                      ),
+                      metric('analytics-completed', 'Deep analyses', s.totals.deepAnalyses),
+                      metric('analytics-papers', 'Analyzed papers', s.totals.analyzedPapers)
+                    ]),
+                    this.trend(s),
+                    ...(this.showValues
+                      ? [
+                          {
+                            ...b.table(
+                              'analytics-daily',
+                              'Daily activity',
+                              s.daily.map((day) => ({
+                                id: day.date,
+                                title: day.date,
+                                subtitle: `Search ${day.searchResults} · Source ${day.todayResults} · Discover ${day.discoverResults} · Analysis ${day.deepAnalyses}`,
+                                cells: {
+                                  date: day.date,
+                                  returned: String(day.searchResults),
+                                  discover: String(day.discoverResults),
+                                  legacy: String(day.todayResults),
+                                  analyses: String(day.deepAnalyses)
+                                }
+                              })),
+                              '',
+                              () => undefined
+                            ),
+                            flex: 0,
+                            height: 220,
+                            maxWidth: 800,
+                            columns: [
+                              { id: 'date', title: 'Date', width: 110 },
+                              {
+                                id: 'returned',
+                                title: 'Returned',
+                                width: 85,
+                                alignment: 'right' as const
+                              },
+                              {
+                                id: 'discover',
+                                title: 'Discover',
+                                width: 85,
+                                alignment: 'right' as const
+                              },
+                              {
+                                id: 'legacy',
+                                title: 'Legacy',
+                                width: 75,
+                                alignment: 'right' as const
+                              },
+                              {
+                                id: 'analyses',
+                                title: 'Analyses',
+                                width: 85,
+                                alignment: 'right' as const
+                              }
+                            ]
+                          }
+                        ]
+                      : []),
+                    label(
+                      'analytics-analysis-heading',
+                      `Latest ${Math.min(50, s.analyzedItems.length)} analyses · ${s.totals.analyzedPapers} unique analyzed papers`,
+                      { weight: 'bold' }
+                    )
                   ]
                 : []),
-              label(
-                'analytics-analysis-heading',
-                `Latest ${Math.min(50, s.analyzedItems.length)} analyses · ${s.totals.analyzedPapers} unique analyzed papers`,
-                { weight: 'bold' }
-              ),
-              {
+              ...(s.analyzedItems.length
+                ? this.workspace.navigation('Back to history', () =>
+                    this.select(this.selected || s.analyzedItems[0]!.analysisId)
+                  )
+                : []),
+              this.workspace.apply({
                 id: 'analytics-artifacts',
                 kind: 'split' as const,
                 flex: 1,
@@ -135,11 +239,17 @@ export class AnalyticsScreen implements NativeScreen {
                       subtitle: `${item.providerName} · ${item.model} · ${item.createdAt.slice(0, 10)}`
                     })),
                     this.selected,
-                    (id) => this.select(id)
+                    (id) => this.select(id),
+                    {
+                      activate: (id) => {
+                        this.workspace.open()
+                        return this.select(id)
+                      }
+                    }
                   ),
                   this.reading()
                 ]
-              }
+              })
             ]
           : [
               column(
@@ -250,23 +360,32 @@ export class AnalyticsScreen implements NativeScreen {
   }
   private reading(): NativeNode {
     const b = this.controls,
-      item = this.snapshot?.analyzedItems.find((item) => item.analysisId === this.selected),
+      item = this.localRecord
+        ? this.localRecord.item
+          ? { ...this.localRecord.item, analysisId: this.localRecord.state.artifact.id }
+          : null
+        : this.snapshot?.analyzedItems.find((item) => item.analysisId === this.selected),
       state = this.artifact
     return scroll(
       'analytics-reading',
       column(
         recordViewId('analytics-document', this.selected),
         [
-          heading('analytics-document-title', item?.title ?? 'Persistent analysis'),
+          heading(
+            'analytics-document-title',
+            item?.title ?? this.localRecord?.state.artifact.itemId ?? 'Persistent analysis'
+          ),
           ...(item
             ? [
-                b.button(
-                  'analytics-open-original',
-                  'Open original',
-                  () => this.context.openExternal(item.url),
-                  true,
-                  `analysis:${item.analysisId}:open`
-                )
+                row('analytics-original-action', [
+                  b.button(
+                    'analytics-open-original',
+                    'Open original',
+                    () => this.context.openExternal(item.url),
+                    true,
+                    `analysis:${item.analysisId}:open`
+                  )
+                ])
               ]
             : []),
           ...(this.artifactBusy

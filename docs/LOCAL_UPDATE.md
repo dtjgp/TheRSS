@@ -6,17 +6,19 @@
 
 需要验证真实 `.app` 时运行：
 
+先保存工作并退出 TheRSS，包括开发模式。安装器会拒绝替换正在运行的目标应用。
+
 ```bash
 npm run install:local
 ```
 
 它执行以下步骤：获取 `~/Library/Application Support/therss/install.lock`；比较 packaged 与
-installed `app.asar` 哈希；若数据库存在则先验证并调用 SQLite 在线备份；用 macOS `ditto`
+installed 的完整应用包指纹（文件内容、执行权限与符号链接），并保留 `app.asar` 哈希；若数据库存在则先验证并调用 SQLite 在线备份；用 macOS `ditto`
 复制 bundle 以保留 framework 符号链接；验证关键链接、`icudtl.dat`、安装后哈希与数据库
 完整性；保留上一版应用；最后原子切换安装目录并在 `install-receipts/` 写入结构化完成
 回执。无论成功或失败，当前进程都会释放安装锁。
 
-若已安装应用与 packaged `app.asar` 完全一致，命令会在生成重复备份前停止。只有明确需要
+若已安装应用与 packaged 完整应用包一致，命令会在生成重复备份前停止。仅原生模块、框架或签名变化也会被识别为不同构建。只有明确需要
 重装同一构建时才运行：
 
 ```bash

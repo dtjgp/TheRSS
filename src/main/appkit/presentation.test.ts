@@ -156,6 +156,26 @@ describe('native presentation boundary', () => {
     ).toThrow()
   })
 
+  it('rejects mismatched or unbounded native data-table columns and preserves complete cell values', () => {
+    const view = new NativePresentation()
+    const table: NativeNode = {
+      id: 'daily',
+      kind: 'table',
+      columns: [{ id: 'date', title: 'Date', width: 100 }],
+      rows: [{ id: 'day', title: 'Day', cells: { date: '2026-09-07' } }]
+    }
+    expect(JSON.parse(view.finish(table)).root.rows[0].cells.date).toBe('2026-09-07')
+    expect(() =>
+      view.finish({ ...table, rows: [{ id: 'day', title: 'Day', cells: { other: '10' } }] })
+    ).toThrow()
+    expect(() =>
+      view.finish({ ...table, columns: [...table.columns!, ...table.columns!] })
+    ).toThrow()
+    expect(() =>
+      view.finish({ ...table, columns: [{ id: 'date', title: 'Date', width: Infinity }] })
+    ).toThrow()
+  })
+
   it('accepts only current row IDs and bounded layouts, preserves full research content', async () => {
     const view = new NativePresentation()
     const selected = vi.fn()

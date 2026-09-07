@@ -1,5 +1,24 @@
 # TheRSS Goals
 
+## Active goal: Market-ready native research product
+
+The user authorized implementation of all findings in the current UI audit and the work required
+to reach market-release quality. The full scope, acceptance IDs and stop condition live in
+[`docs/audits/2026-09-06-market-readiness/CHANGE_CONTRACT.md`](docs/audits/2026-09-06-market-readiness/CHANGE_CONTRACT.md).
+
+Complete the native reading, feedback, narrow-window, local-navigation, settings and empty-state
+improvements; verify reliability, evidence/security boundaries, accessibility, supported packaging,
+installation/rollback, signed distribution/update, documentation and GitHub delivery. Do not call
+an unsigned beta market-ready. All requirements need current evidence; missing external release
+credentials remain explicit blockers rather than being removed from scope.
+
+Current evidence (2026-09-07): A1-A9 are implemented and verified. Main checks pass 602 tests,
+the AppKit coverage gate passes 87 tests, and compatibility E2E passes 6/6. Native workflows,
+controls, safeStorage, MCP and isolated unsigned upgrade/rollback have passed. The
+[current report](docs/audits/2026-09-06-market-readiness/REPORT.md) records partial release gates:
+live account verification, explicit installation/third-party authorization, signing/notarization,
+human acceptance and GitHub delivery remain open. The full market-release goal remains active.
+
 ## Completed goal: Core reliability updates
 
 ### Objective

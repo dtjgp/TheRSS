@@ -108,14 +108,34 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
   if (focus) {
     TRNode *node = [self find:focus]; NSView *control = node.control ?: node;
     if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
-    if (control.window) [control.window makeFirstResponder:control];
+    if (control.window) {
+      [control.window makeFirstResponder:control];
+      if ([node.spec[@"kind"] isEqual:@"table"]) [(NSTableView *)control scrollRowToVisible:((NSTableView *)control).selectedRow];
+      if ([node.spec[@"kind"] isEqual:@"input"] || [node.spec[@"kind"] isEqual:@"secure"])
+        [node scrollRectToVisible:NSMakeRect(0,0,node.bounds.size.width,MIN(node.bounds.size.height,40*self.zoom))];
+    }
+  }
+  if (!self.sheet && [self.window.firstResponder isKindOfClass:NSView.class] && ((NSView *)self.window.firstResponder).isHiddenOrHasHiddenAncestor) [self ensureNativeFocus];
+  NSDictionary *announcement = scene[@"announcement"];
+  NSUInteger identifier = [announcement[@"id"] unsignedIntegerValue];
+  NSString *message = announcement[@"message"];
+  if (identifier > self.announcementId && [message isKindOfClass:NSString.class] && message.length && message.length <= 2000) {
+    self.announcementId = identifier;
+    NSAccessibilityPostNotificationWithUserInfo(NSApp,NSAccessibilityAnnouncementRequestedNotification,@{
+      NSAccessibilityAnnouncementKey:message, NSAccessibilityPriorityKey:@(NSAccessibilityPriorityMedium)
+    });
+    self.announcementCount++;
   }
 }
 - (void)ensureNativeFocus {
   if (self.disposed || self.sheet || !self.root) return;
   NSResponder *responder = self.window.firstResponder;
-  if ([responder isKindOfClass:NSView.class] && [(NSView *)responder isDescendantOf:self.root]) return;
-  TRNode *input = [self.root find:@"discover-query"] ?: [self.root find:@"personal-prompt"] ?: [self.root find:@"provider-name"] ?: [self.root find:@"sources-query"] ?: [self.root find:@"discover-results"] ?: [self.root find:@"saved-items"] ?: [self.root find:@"analytics-analyses"];
+  if ([responder isKindOfClass:NSView.class] && [(NSView *)responder isDescendantOf:self.root] && !((NSView *)responder).isHiddenOrHasHiddenAncestor) return;
+  TRNode *input = nil;
+  for (NSString *identifier in @[@"discover-query",@"personal-prompt",@"provider-name",@"sources-query",@"discover-results",@"saved-items",@"analytics-analyses",@"discover-summary",@"saved-summary",@"analytics-analysis-content",@"source-detail-description"]) {
+    TRNode *candidate = [self.root find:identifier];
+    if (candidate && !candidate.isHiddenOrHasHiddenAncestor) { input = candidate; break; }
+  }
   NSView *target = input.control ?: self.root.control;
   if ([target isKindOfClass:NSScrollView.class]) target = ((NSScrollView *)target).documentView;
   [self.window makeFirstResponder:target];
@@ -168,6 +188,6 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
   NSMutableArray *ownedWindows = [NSMutableArray array];
   NSArray *windows = CFBridgingRelease(CGWindowListCopyWindowInfo(kCGWindowListOptionAll,kCGNullWindowID));
   for (NSDictionary *window in windows) if ([window[(id)kCGWindowOwnerPID] intValue] == NSProcessInfo.processInfo.processIdentifier) [ownedWindows addObject:window];
-  return @{@"alerts":TRFixtureAlerts(self),@"firstResponderId":TRFocusOwner(self.modal ?: self.root,(self.sheet ?: self.window).firstResponder) ?: @"",@"windowAppearance":self.window.appearance.name ?: @"automatic",@"windowEffectiveAppearance":self.window.effectiveAppearance.name,@"nativeRoot":NSStringFromClass(self.window.contentView.class),@"webHidden":@(self.original.hidden),@"windowNumber":@(self.window.windowNumber),@"visible":@(self.window.visible),@"onActiveSpace":@(self.window.onActiveSpace),@"miniaturized":@(self.window.miniaturized),@"zoom":@(self.zoom),@"root":[self.root inspect] ?: @{},@"modal":self.modal ? [self.modal inspect] : NSNull.null,@"firstResponder":NSStringFromClass((self.sheet ?: self.window).firstResponder.class),@"disposed":@(self.disposed),@"secureDrafts":secure,@"ownedWindowServerEntries":ownedWindows};
+  return @{@"announcementCount":@(self.announcementCount),@"announcementId":@(self.announcementId),@"alerts":TRFixtureAlerts(self),@"firstResponderId":TRFocusOwner(self.modal ?: self.root,(self.sheet ?: self.window).firstResponder) ?: @"",@"windowAppearance":self.window.appearance.name ?: @"automatic",@"windowEffectiveAppearance":self.window.effectiveAppearance.name,@"nativeRoot":NSStringFromClass(self.window.contentView.class),@"webHidden":@(self.original.hidden),@"windowNumber":@(self.window.windowNumber),@"visible":@(self.window.visible),@"onActiveSpace":@(self.window.onActiveSpace),@"miniaturized":@(self.window.miniaturized),@"zoom":@(self.zoom),@"root":[self.root inspect] ?: @{},@"modal":self.modal ? [self.modal inspect] : NSNull.null,@"firstResponder":NSStringFromClass((self.sheet ?: self.window).firstResponder.class),@"disposed":@(self.disposed),@"secureDrafts":secure,@"ownedWindowServerEntries":ownedWindows};
 }
 @end

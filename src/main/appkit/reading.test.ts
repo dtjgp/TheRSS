@@ -28,6 +28,57 @@ const artifact = {
 }
 
 describe('native reading and triage', () => {
+  it('distinguishes a pending saved-analysis read from no analysis and exposes stale source evidence', async () => {
+    let finish!: (value: typeof artifact) => void
+    const h = nativeHarness({
+      getLatestAnalysis: vi.fn(
+        () =>
+          new Promise<typeof artifact>((resolve) => {
+            finish = resolve
+          })
+      ),
+      getAnalysisArtifact: vi.fn(async () => ({
+        artifact,
+        freshness: 'stale' as const,
+        currentSourceHash: 'changed'
+      }))
+    })
+    const reader = new ResearchReader(h.context, 'saved', new TriageHistory(h.context))
+    reader.select(item)
+    expect(h.find(h.render(reader), 'saved-stored-analysis-loading')?.text).toContain('Loading')
+    expect(h.find(h.render(reader), 'saved-no-analysis')).toBeUndefined()
+    finish(artifact)
+    await vi.waitFor(() =>
+      expect(h.find(h.render(reader), 'saved-analysis-freshness')?.text).toContain('Source changed')
+    )
+    expect(h.find(h.render(reader), 'saved-analysis')?.text).toContain(artifact.content)
+    expect(h.api.getAnalysisArtifact).toHaveBeenCalledWith(artifact.id)
+  })
+  it('keeps analysis before long content and expands intact supplementary metadata on request', async () => {
+    const h = nativeHarness()
+    const reader = new ResearchReader(h.context, 'discover', new TriageHistory(h.context))
+    reader.runner = 'codex'
+    reader.select(
+      item,
+      'session-1',
+      '## Source details\nAuthors: Researcher\nPublished: exact timestamp'
+    )
+    const scene = h.render(reader)
+    const content = scene.children![0]!
+    const topActions = h.find(content, 'discover-reading-actions')!
+    expect(h.find(topActions, 'discover-analyze')?.enabled).toBe(true)
+    expect(h.find(scene, 'discover-provenance')).toBeUndefined()
+    expect(h.find(scene, 'discover-evidence')?.text).toContain(
+      'Full-paper results are not verified'
+    )
+    await h.act(reader, 'discover-metadata-toggle')
+    expect(h.find(h.render(reader), 'discover-provenance')?.text).toContain(
+      'Published: exact timestamp'
+    )
+    await h.act(reader, 'discover-metadata-toggle')
+    expect(h.find(h.render(reader), 'discover-provenance')).toBeUndefined()
+    expect(h.find(h.render(reader), 'discover-reading-meta')?.text).not.toContain('Score 8')
+  })
   it('shows an analysis completed after switching away and back to the same item', async () => {
     let finish!: (value: typeof artifact) => void
     const h = nativeHarness({

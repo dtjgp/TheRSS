@@ -52,6 +52,10 @@ describe('LocalSearchPanel', () => {
     const searchLocal = vi.fn<TheRSSApi['searchLocal']>().mockResolvedValue({
       query: 'edge',
       results: ['saved', 'analysis'].map((kind, index) => ({
+        target:
+          kind === 'saved'
+            ? { kind: 'saved' as const, itemId: `arxiv:${index}` }
+            : { kind: 'analysis' as const, analysisId: `result-${index}` },
         id: `result-${index}`,
         kind: kind as 'saved' | 'analysis',
         itemId: `arxiv:${index}`,
@@ -134,6 +138,7 @@ describe('LocalSearchPanel', () => {
         {
           id: 'discover-session-1:arxiv:1',
           kind: 'discover',
+          target: { kind: 'discover', sessionId: 'fixture-session', itemId: 'arxiv:1' },
           itemId: 'arxiv:1',
           title: 'Edge pruning paper',
           detail: 'Bounded Discover result',

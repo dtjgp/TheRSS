@@ -32,6 +32,7 @@ export const IPC_CHANNELS = {
   refreshSourceContent: 'sources:refresh-content',
   refresh: 'dashboard:refresh',
   searchLocal: 'search:local',
+  getLocalResearch: 'search:get-local-research',
   searchDiscover: 'discover:search',
   retryDiscover: 'discover:retry',
   cancelDiscover: 'discover:cancel',

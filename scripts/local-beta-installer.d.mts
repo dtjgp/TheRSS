@@ -10,6 +10,8 @@ export interface LocalBetaInstallReceipt {
   databasePreserved: boolean
   sourceAsarSha256: string
   installedAsarSha256: string
+  sourceBundleSha256: string
+  installedBundleSha256: string
   receiptPath: string
 }
 
@@ -19,6 +21,7 @@ export interface LocalBetaInstallOptions {
   copyApp?: (source: string, destination: string) => void | Promise<void>
   databasePath: string
   force?: boolean
+  isAppRunning?: (applicationPath: string) => boolean
   processId: number
   sourceApp: string
   timestamp: string

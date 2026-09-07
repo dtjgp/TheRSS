@@ -40,6 +40,8 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 @property(nonatomic) CGFloat zoom;
 @property(nonatomic) BOOL fixture;
 @property(nonatomic) BOOL disposed;
+@property(nonatomic) NSUInteger announcementId;
+@property(nonatomic) NSUInteger announcementCount;
 @property(nonatomic) napi_env env;
 @property(nonatomic) napi_ref regularRef;
 @property(nonatomic) napi_ref secretRef;
@@ -68,6 +70,7 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 @property(nonatomic) CGFloat preferredSplit;
 @property(nonatomic) CGFloat stackedFraction;
 @property(nonatomic) BOOL resetScrollAfterLayout;
+@property(nonatomic) BOOL revealSelection;
 - (instancetype)initWithHost:(TRHost *)host spec:(NSDictionary *)spec;
 - (void)update:(NSDictionary *)spec;
 - (CGFloat)heightForWidth:(CGFloat)width;

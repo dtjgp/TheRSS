@@ -43,6 +43,7 @@ import { searchLocal as searchPersistedLocal } from './localSearchStore'
 import type { LocalSearchResponse } from '../../shared/localSearch'
 import {
   getLatestDiscoverSnapshot as readLatestDiscoverSnapshot,
+  getDiscoverSnapshot as readDiscoverSnapshot,
   materializeDiscoverResultForAnalysis as materializeResultForAnalysis,
   materializeDiscoverResultForLlmWikiPromotion as materializeResultForLlmWikiPromotion,
   saveDiscoverResult as savePersistedDiscoverResult,
@@ -488,6 +489,9 @@ export class ResearchRepository {
 
   getLatestDiscoverSnapshot(): DiscoverSnapshot | null {
     return readLatestDiscoverSnapshot(this.#database)
+  }
+  getDiscoverSnapshot(id: string): DiscoverSnapshot | null {
+    return readDiscoverSnapshot(this.#database, id)
   }
 
   searchLocal(query: string): LocalSearchResponse {

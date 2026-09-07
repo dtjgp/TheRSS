@@ -1,0 +1,145 @@
+{
+  "passed": true,
+  "scope": "Real unsigned application upgrade and rollback with isolated fixtures",
+  "baselineVersion": "0.2.0",
+  "candidateVersion": "0.3.0",
+  "originalUserDataTouched": false,
+  "before": {
+    "analysis_artifact": {
+      "count": 1,
+      "sha256": "e7b3d24b57e3b73ca9e68410fa4d685998d5c22fc9f22f65cf63f62b78062bf8"
+    },
+    "discover_personalization": {
+      "count": 1,
+      "sha256": "2f38903dbf7ce3a659231f2900bcb68feee24f9dcb14fee5f819bdacb3819795"
+    },
+    "discover_result": {
+      "count": 3,
+      "sha256": "dbfe3472f1ea650b92b76c033607a052d2ef7ffb180767d07e32f6875f8a2f33"
+    },
+    "discover_session": {
+      "count": 1,
+      "sha256": "fdb24edc369f5bce1a02397b6755c0e519ceb8471a7e18039b3843da848bc357"
+    },
+    "discover_source_run": {
+      "count": 22,
+      "sha256": "41433e11c658c86b2f3e3ffb0b93abc31e32053a4a448276f81da37f4cc348ca"
+    },
+    "discovery_item": {
+      "count": 1,
+      "sha256": "18650c4a3509728a44e4ce5c869a86d984e4f8b368fbc75f9096dc5998778130"
+    },
+    "interest_profile": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "llm_wiki_promotion_receipt": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "model_provider": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "source_run": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "source_search_event": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  "after": {
+    "analysis_artifact": {
+      "count": 1,
+      "sha256": "e7b3d24b57e3b73ca9e68410fa4d685998d5c22fc9f22f65cf63f62b78062bf8"
+    },
+    "discover_personalization": {
+      "count": 1,
+      "sha256": "2f38903dbf7ce3a659231f2900bcb68feee24f9dcb14fee5f819bdacb3819795"
+    },
+    "discover_result": {
+      "count": 3,
+      "sha256": "dbfe3472f1ea650b92b76c033607a052d2ef7ffb180767d07e32f6875f8a2f33"
+    },
+    "discover_session": {
+      "count": 1,
+      "sha256": "fdb24edc369f5bce1a02397b6755c0e519ceb8471a7e18039b3843da848bc357"
+    },
+    "discover_source_run": {
+      "count": 22,
+      "sha256": "41433e11c658c86b2f3e3ffb0b93abc31e32053a4a448276f81da37f4cc348ca"
+    },
+    "discovery_item": {
+      "count": 1,
+      "sha256": "18650c4a3509728a44e4ce5c869a86d984e4f8b368fbc75f9096dc5998778130"
+    },
+    "interest_profile": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "llm_wiki_promotion_receipt": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "model_provider": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "source_run": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "source_search_event": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  "rollback": {
+    "analysis_artifact": {
+      "count": 1,
+      "sha256": "e7b3d24b57e3b73ca9e68410fa4d685998d5c22fc9f22f65cf63f62b78062bf8"
+    },
+    "discover_personalization": {
+      "count": 1,
+      "sha256": "2f38903dbf7ce3a659231f2900bcb68feee24f9dcb14fee5f819bdacb3819795"
+    },
+    "discover_result": {
+      "count": 3,
+      "sha256": "dbfe3472f1ea650b92b76c033607a052d2ef7ffb180767d07e32f6875f8a2f33"
+    },
+    "discover_session": {
+      "count": 1,
+      "sha256": "fdb24edc369f5bce1a02397b6755c0e519ceb8471a7e18039b3843da848bc357"
+    },
+    "discover_source_run": {
+      "count": 22,
+      "sha256": "41433e11c658c86b2f3e3ffb0b93abc31e32053a4a448276f81da37f4cc348ca"
+    },
+    "discovery_item": {
+      "count": 1,
+      "sha256": "18650c4a3509728a44e4ce5c869a86d984e4f8b368fbc75f9096dc5998778130"
+    },
+    "interest_profile": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "llm_wiki_promotion_receipt": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "model_provider": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "source_run": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "source_search_event": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  }
+}

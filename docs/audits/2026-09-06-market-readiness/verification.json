@@ -1,0 +1,289 @@
+{
+  "version": "0.3.0",
+  "status": "market-release-incomplete",
+  "baselineCommit": "f9bc6a2b55e203d17ef258cd2d2e56df436782ea",
+  "branch": "codex/market-readiness",
+  "environment": {
+    "os": "macOS 27.0",
+    "osBuild": "26A5425a",
+    "architecture": "arm64",
+    "node": "26.7.0",
+    "electron": "44.1.1"
+  },
+  "buildInputsSha256": "26301a216b934c2110b188397deeb6255783fa1ba5b311b1a3736ba458561ca6",
+  "tests": {
+    "main": {
+      "files": 91,
+      "passed": 602,
+      "coverage": {
+        "statements": 90.53,
+        "branches": 80.87,
+        "functions": 94.24,
+        "lines": 93.4
+      }
+    },
+    "appkit": {
+      "files": 21,
+      "passed": 87,
+      "coverage": {
+        "statements": 88.99,
+        "branches": 81.63,
+        "functions": 88.4,
+        "lines": 91.45
+      }
+    },
+    "compatibilityE2E": {
+      "passed": 6
+    }
+  },
+  "checks": [
+    {
+      "name": "full-check",
+      "command": "npm run check",
+      "exitCode": 0,
+      "evidenceLog": "/private/tmp/therss-market-final-check.log",
+      "logSha256": "9412aa3d9a0c62a3c05697f746b2d75e778c2598ab1785c067d47c84c2f76f39",
+      "completedAt": "2026-09-07T01:57:25.590664+00:00"
+    },
+    {
+      "name": "compatibility-e2e",
+      "command": "npx playwright test",
+      "exitCode": 0,
+      "evidenceLog": "/private/tmp/therss-market-desktop-e2e.log",
+      "logSha256": "0d95c73640e173f95635738cde80b6a12605e9f609405a94f5bd7427d6ef2433",
+      "completedAt": "2026-09-07T00:36:16.995609+00:00"
+    },
+    {
+      "name": "credentials",
+      "command": "npm run smoke:credentials",
+      "exitCode": 0,
+      "evidenceLog": "/private/tmp/therss-market-credentials-verified.log",
+      "logSha256": "4acfb374263b89aa01f6a41212daf779ec376d24f3788d93c0a3dbe6d1352332",
+      "completedAt": "2026-09-07T01:30:43.072096+00:00"
+    },
+    {
+      "name": "mcp",
+      "command": "npm run smoke:mcp",
+      "exitCode": 0,
+      "evidenceLog": "/private/tmp/therss-market-mcp-smoke.log",
+      "logSha256": "3b49a8f396ff9ddc842dfd9d3796d6fe9b34d0b1d9dba402ca8bd52d89e7a582",
+      "completedAt": "2026-09-07T01:06:24.482058+00:00"
+    },
+    {
+      "name": "descendant-red",
+      "command": "vitest run src/core/agents/localAgentService.test.ts",
+      "exitCode": 1,
+      "evidenceLog": "/private/tmp/therss-market-descendant-red.log",
+      "logSha256": "6c6d80587ef3214459afaa837bd2007fb36305b53169b2bd0bb555003371fe85",
+      "completedAt": "2026-09-07T01:56:22.617077+00:00"
+    },
+    {
+      "name": "descendant-green",
+      "command": "vitest run src/core/agents/localAgentService.test.ts",
+      "exitCode": 0,
+      "evidenceLog": "/private/tmp/therss-market-descendant-green.log",
+      "logSha256": "8ce956d9e0520518b010c361797153ca7eded0e09cf78463cc7ad8d2da933073",
+      "completedAt": "2026-09-07T01:56:50.340525+00:00"
+    },
+    {
+      "name": "upgrade-rollback",
+      "command": "isolated 0.2.0 -> 0.3.0 -> 0.2.0 application rehearsal",
+      "exitCode": 0,
+      "evidenceLog": "/private/tmp/therss-market-upgrade-rehearsal.log",
+      "logSha256": "9e92f4d109326ab392a3f93897a45b082c42b8652fa0dcdb769b3a8776e112df",
+      "completedAt": "2026-09-07T01:17:44.000760+00:00"
+    },
+    {
+      "name": "primary-sources",
+      "command": "npm run smoke:sources",
+      "exitCode": 0,
+      "evidenceLog": "/private/tmp/therss-market-final-live-sources.log",
+      "logSha256": "d736058832ef3f0f5048e16c204e555c235b15dcbf74b82b307bb1af6e427ee2",
+      "completedAt": "2026-09-07T01:52:33.000547+00:00"
+    },
+    {
+      "name": "configured-sources",
+      "command": "npm run smoke:configured-sources",
+      "exitCode": 1,
+      "evidenceLog": "/private/tmp/therss-market-final-configured-sources.log",
+      "logSha256": "652959fa002b7d9bda1d156a71ac80d004a8f59d04cc4a6c2ba5720e1a5bb228",
+      "completedAt": "2026-09-07T01:54:35.661837+00:00"
+    },
+    {
+      "name": "native-workflows",
+      "passed": true,
+      "checks": [
+        {
+          "name": "Native root, blank Web page and Unicode boundary",
+          "passed": true,
+          "elapsedMs": 235
+        },
+        {
+          "name": "All 22 source choices and semantic search",
+          "passed": true,
+          "elapsedMs": 3354
+        },
+        {
+          "name": "Native reading, Save, full analysis and search details sheet",
+          "passed": true,
+          "elapsedMs": 7894
+        },
+        {
+          "name": "Saved repository analysis and independent source/runner filters",
+          "passed": true,
+          "elapsedMs": 915
+        },
+        {
+          "name": "Secure key then immediate Save uses the real ordered callback queue",
+          "passed": true,
+          "elapsedMs": 1044
+        },
+        {
+          "name": "Secure draft survives tabs and explicit discard clears the hidden native field",
+          "passed": true,
+          "elapsedMs": 1501
+        },
+        {
+          "name": "Persisted Analytics metrics and complete analysis artifact",
+          "passed": true,
+          "elapsedMs": 2046
+        },
+        {
+          "name": "Source focus is separate from activation; content stays read-only",
+          "passed": true,
+          "elapsedMs": 970
+        },
+        {
+          "name": "Local search uses a native sheet and safe external-open routing",
+          "passed": true,
+          "elapsedMs": 5711
+        },
+        {
+          "name": "Promotion preview includes verified facts and produces a fixture receipt only after confirmation",
+          "passed": true,
+          "elapsedMs": 5287
+        },
+        {
+          "name": "Native editing Undo, zoom, dividers and narrow window layout",
+          "passed": true,
+          "elapsedMs": 4941
+        },
+        {
+          "name": "Dirty marked-text close guard and native window recreation preserve data/preferences",
+          "passed": true,
+          "elapsedMs": 2046
+        }
+      ],
+      "evidenceLog": "test-results/market-readiness/final-native/result.json"
+    },
+    {
+      "name": "native-controls",
+      "passed": true,
+      "checks": [
+        "Native table cells, complete Unicode content, code and inline styles",
+        "Ragged Markdown table preserves text without cell-allocation amplification",
+        "Whole-document cell budget falls back to complete literal text",
+        "Real marked-text composition survives asynchronous presentation and commits intact",
+        "Native chart has a zero baseline and proportional bars; compact labels retain complete accessible text",
+        "Native high-contrast appearances and reduced-transparency fallback",
+        "Native numeric columns retain 1000 exact rows, reveal the selected record and preserve scroll on refresh",
+        "Compact research navigation preserves a thousand-row list position and independent long-reading position"
+      ],
+      "evidenceLog": "test-results/market-readiness/final-controls/result.json"
+    },
+    {
+      "name": "final-package",
+      "command": "npm run smoke:package",
+      "exitCode": 0,
+      "checks": [
+        {
+          "name": "Native root, blank Web page and Unicode boundary",
+          "passed": true,
+          "elapsedMs": 224
+        },
+        {
+          "name": "All 22 source choices and semantic search",
+          "passed": true,
+          "elapsedMs": 3681
+        },
+        {
+          "name": "Native reading, Save, full analysis and search details sheet",
+          "passed": true,
+          "elapsedMs": 7943
+        },
+        {
+          "name": "Saved repository analysis and independent source/runner filters",
+          "passed": true,
+          "elapsedMs": 936
+        },
+        {
+          "name": "Secure key then immediate Save uses the real ordered callback queue",
+          "passed": true,
+          "elapsedMs": 1089
+        },
+        {
+          "name": "Secure draft survives tabs and explicit discard clears the hidden native field",
+          "passed": true,
+          "elapsedMs": 1415
+        },
+        {
+          "name": "Persisted Analytics metrics and complete analysis artifact",
+          "passed": true,
+          "elapsedMs": 2165
+        },
+        {
+          "name": "Source focus is separate from activation; content stays read-only",
+          "passed": true,
+          "elapsedMs": 971
+        },
+        {
+          "name": "Local search uses a native sheet and safe external-open routing",
+          "passed": true,
+          "elapsedMs": 5630
+        },
+        {
+          "name": "Promotion preview includes verified facts and produces a fixture receipt only after confirmation",
+          "passed": true,
+          "elapsedMs": 5379
+        },
+        {
+          "name": "Native editing Undo, zoom, dividers and narrow window layout",
+          "passed": true,
+          "elapsedMs": 5263
+        },
+        {
+          "name": "Dirty marked-text close guard and native window recreation preserve data/preferences",
+          "passed": true,
+          "elapsedMs": 2091
+        }
+      ],
+      "evidenceLog": "/private/tmp/therss-market-final-package-smoke.log",
+      "logSha256": "24b8b23764c46039fa10d0cd0ec8694f833d57046429cbdc98fd4bf60bc9dc3d",
+      "completedAt": "2026-09-07T02:00:35.939997+00:00"
+    }
+  ],
+  "releaseGates": {
+    "A1-A9": "passed",
+    "R1": "passed",
+    "R2": "code-reviewed; private reporting authorization pending",
+    "R3": "unsigned fixture verification passed; real install authorization pending",
+    "R4": "partial: 5 configured timeouts and real account validation pending",
+    "R5": "blocked: Developer ID and notarization prerequisites unavailable",
+    "R6": "documentation complete; human acceptance pending",
+    "R7": "reviewed local candidate; GitHub push/PR/CI pending authorization"
+  },
+  "userApplicationReplaced": false,
+  "realModelAccountInvoked": false,
+  "privateVulnerabilityReportingEnabled": false,
+  "published": false,
+  "limitations": [
+    "Native and Web compatibility runtime evidence is from macOS 27 only.",
+    "No human black-box or VoiceOver sign-off was performed.",
+    "Earlier fixture gates precede the last isolated child-process fix; the full check includes it.",
+    "Upgrade rehearsal proves unsigned data preservation, not signed automatic updates."
+  ],
+  "packageEvidence": "package-verification.json",
+  "sourceEvidence": "source-verification.json",
+  "distributionEvidence": "distribution-verification.json",
+  "completedLocalVerificationAt": "2026-09-07T02:01:39.334242+00:00"
+}

@@ -7,6 +7,7 @@ import {
 } from '../../shared/localSearch'
 import type { DiscoverySource } from '../../shared/discovery'
 import { isDiscoverySource } from '../../shared/sourceIdentity'
+import { localResearchTargetSchema } from '../../shared/localResearch'
 
 interface LocalSearchRow {
   id: string
@@ -17,6 +18,7 @@ interface LocalSearchRow {
   url: string
   source: DiscoverySource
   created_at: string
+  session_id?: string
 }
 
 function escapedLikePattern(query: string): string {
@@ -29,6 +31,13 @@ function parseRows(rows: readonly LocalSearchRow[]): LocalSearchResult[] {
       throw new Error('The local search index contains an unsupported source')
     }
     return {
+      target: localResearchTargetSchema.parse(
+        row.kind === 'discover'
+          ? { kind: row.kind, sessionId: row.session_id, itemId: row.item_id }
+          : row.kind === 'saved'
+            ? { kind: row.kind, itemId: row.item_id }
+            : { kind: row.kind, analysisId: row.id }
+      ),
       id: row.id,
       kind: row.kind,
       itemId: row.item_id,
@@ -63,7 +72,7 @@ export function searchLocal(database: Database.Database, candidate: string): Loc
       `WITH matched AS (
          SELECT s.id || ':' || r.item_id AS id, 'discover' AS kind, r.item_id,
                 r.title, substr(r.summary, 1, 300) AS detail, r.url, r.source,
-                s.created_at,
+                s.created_at, s.id AS session_id,
                 row_number() OVER (
                   PARTITION BY r.item_id ORDER BY s.created_at DESC, s.id DESC
                 ) AS item_rank
@@ -74,7 +83,7 @@ export function searchLocal(database: Database.Database, candidate: string): Loc
             OR r.reasons_json LIKE ? ESCAPE '\\' COLLATE NOCASE
             OR s.intent LIKE ? ESCAPE '\\' COLLATE NOCASE
        )
-       SELECT id, kind, item_id, title, detail, url, source, created_at
+       SELECT id, kind, item_id, title, detail, url, source, created_at, session_id
        FROM matched
        WHERE item_rank = 1
        ORDER BY created_at DESC, item_id ASC

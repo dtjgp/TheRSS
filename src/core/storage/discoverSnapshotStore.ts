@@ -161,14 +161,26 @@ export function saveDiscoverSnapshot(
 }
 
 export function getLatestDiscoverSnapshot(database: Database.Database): DiscoverSnapshot | null {
-  const session = database
-    .prepare(
-      `SELECT id, intent, runner, status, plan_json, provenance_json, created_at
+  return readDiscoverSnapshot(database)
+}
+
+export function getDiscoverSnapshot(
+  database: Database.Database,
+  id: string
+): DiscoverSnapshot | null {
+  return readDiscoverSnapshot(database, id)
+}
+
+function readDiscoverSnapshot(database: Database.Database, id?: string): DiscoverSnapshot | null {
+  const statement = database.prepare(
+    `SELECT id, intent, runner, status, plan_json, provenance_json, created_at
        FROM discover_session
+       ${id === undefined ? '' : 'WHERE id = ?'}
        ORDER BY created_at DESC, id DESC
        LIMIT 1`
-    )
-    .get() as DiscoverSessionRow | undefined
+  )
+  const session = (id === undefined ? statement.get() : statement.get(id)) as
+    DiscoverSessionRow | undefined
   if (!session) return null
 
   const sourceRows = database

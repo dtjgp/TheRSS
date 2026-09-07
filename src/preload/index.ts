@@ -102,6 +102,7 @@ const api: TheRSSApi = {
   saveInterestProfile: (profile) => ipcRenderer.invoke(IPC_CHANNELS.saveInterestProfile, profile),
   refresh: () => ipcRenderer.invoke(IPC_CHANNELS.refresh),
   searchLocal: (query) => ipcRenderer.invoke(IPC_CHANNELS.searchLocal, query),
+  getLocalResearch: (target) => ipcRenderer.invoke(IPC_CHANNELS.getLocalResearch, target),
   onDiscoverProgress: (listener) => {
     const handleProgress = (_event: Electron.IpcRendererEvent, progress: unknown) => {
       const parsed = parseDiscoverProgress(progress)

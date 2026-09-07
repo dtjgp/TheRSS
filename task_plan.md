@@ -17,6 +17,17 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Status
 
+**Active: market-readiness implementation.** The user authorized every finding in the current UI
+audit and the complete path to market-release quality. Work proceeds on `codex/market-readiness`
+from `f9bc6a2`; the [current contract](docs/audits/2026-09-06-market-readiness/CHANGE_CONTRACT.md)
+owns the A1-A9 product acceptance and R1-R7 release gates. A1-A9 are implemented and verified;
+the [current report](docs/audits/2026-09-06-market-readiness/REPORT.md) and machine-readable
+verification record own the current gate outcomes. Complete checks pass 602 main tests and
+87 AppKit tests, compatibility E2E passes 6/6, and native workflow/control, credential, MCP,
+package and isolated unsigned upgrade/rollback evidence is available. Real account verification,
+installation/third-party authorization, Developer ID signing and notarization, human acceptance,
+and GitHub delivery remain open. No release-completion claim is made.
+
 **All 39 phases through 2026-08-24 are complete.** The current head on `main` is the personal
 beta (v0.2.0): Discover-centered retrieval over the 22 live-verified sources, confirmation-gated
 llm-wiki promotion, and the Apple-native design pass. Builds remain unsigned.

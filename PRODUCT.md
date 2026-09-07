@@ -43,6 +43,13 @@ provenance without copying secrets.
 
 ## Current initial surfaces
 
+The market-readiness native refinement adds stable non-shifting feedback, explicit runner recovery,
+top-level reading actions, inspectable source metadata, single-pane reading with a retained list on
+narrow windows, local search that reopens exact local records, inline provider-field errors and safe
+empty-filter recovery. Source lookup inside the picker never changes the research question. Native
+daily-value tables preserve every displayed count. Stored analyses distinguish loading and source
+freshness from a verified empty result. Public signing and distribution remain separate release gates.
+
 1. **Discover** — the primary semantic expansion search through the configured model provider,
    Codex CLI, or Claude Code. The user can search any subset of all 22 deployed sources, inspect the
    executed plan and each source outcome, and filter the persisted result session by record type

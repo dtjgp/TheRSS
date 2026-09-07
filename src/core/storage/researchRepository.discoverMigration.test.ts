@@ -188,6 +188,22 @@ function createLegacyDiscoverDatabase(): Database.Database {
 }
 
 describe('ResearchRepository Discover migration', () => {
+  it('reopens an exact historical session without replacing the newest persisted session', () => {
+    const repository = new ResearchRepository(new Database(':memory:'))
+    const older = discoverSnapshotWithDataset()
+    const newer = {
+      ...older,
+      id: 'newer-session',
+      intent: 'A different search',
+      createdAt: '2026-09-06T10:00:00.000Z'
+    }
+    repository.saveDiscoverSnapshot(older)
+    repository.saveDiscoverSnapshot(newer)
+    expect(repository.getDiscoverSnapshot(older.id)?.intent).toBe(older.intent)
+    expect(repository.getLatestDiscoverSnapshot()?.id).toBe(newer.id)
+    expect(repository.getDiscoverSnapshot('missing-session')).toBeNull()
+    repository.close()
+  })
   it('removes the legacy two-source constraints without losing old sessions', () => {
     const database = createLegacyDiscoverDatabase()
     const repository = new ResearchRepository(database)

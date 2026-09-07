@@ -20,6 +20,7 @@ import {
   type NativeScreen
 } from './common'
 import type { NativeNode } from './presentation'
+import { ReadingWorkspace } from './readingWorkspace'
 
 export class SourcesScreen implements NativeScreen {
   attention = false
@@ -37,8 +38,15 @@ export class SourcesScreen implements NativeScreen {
   private error = ''
   private version = 0
   private disposed = false
+  private readonly workspace: ReadingWorkspace
   constructor(private readonly context: NativeContext) {
     this.controls = new Controls(context)
+    this.workspace = new ReadingWorkspace(
+      context,
+      'sources',
+      'sources-list',
+      'source-detail-description'
+    )
   }
   dispose(): void {
     this.disposed = true
@@ -63,75 +71,94 @@ export class SourcesScreen implements NativeScreen {
     return column(
       'sources-page',
       [
-        heading('sources-title', 'Sources'),
-        label(
-          'sources-summary',
-          `22 retained sources · ${attentionCount} need attention · ${sources.length} match current filters`,
-          { weight: 'secondary' }
-        ),
-        b.input(
-          'sources-query',
-          'Search sources',
-          this.query,
-          (query) => {
-            this.query = query
-            this.context.redraw()
-          },
-          200,
-          { placeholder: 'Search source name, research role, origin or access notes' }
-        ),
-        row('sources-filters', [
-          b.select(
-            'sources-group',
-            'Source group',
-            this.group,
-            [
-              { id: 'all', title: 'All source groups' },
-              ...SOURCE_GROUPS.map((group) => ({
-                id: group.id,
-                title: `${group.title} (${group.sources.length})`
-              }))
-            ],
-            (value) => {
-              this.group = value
-              this.context.redraw()
-            },
-            { width: 240 }
-          ),
-          b.select(
-            'sources-priority',
-            'Source priority',
-            this.priority,
-            [
-              { id: 'all', title: 'All priorities' },
-              ...SOURCE_PRIORITIES.map((id) => ({ id, title: `Priority ${id}` }))
-            ],
-            (value) => {
-              this.priority = value
-              this.context.redraw()
-            },
-            { width: 160 }
-          ),
-          b.select(
-            'sources-axis',
-            'Research axis',
-            this.axis,
-            [
-              { id: 'all', title: 'All research axes' },
-              ...RESEARCH_AXES.map((id) => ({ id, title: RESEARCH_AXIS_LABELS[id] }))
-            ],
-            (value) => {
-              this.axis = value
-              this.context.redraw()
-            },
-            { width: 260 }
-          ),
-          b.check('sources-attention', 'Needs attention', this.attention, (value) => {
-            this.attention = value
-            this.context.redraw()
-          })
-        ]),
-        {
+        ...(!this.workspace.focused ? [heading('sources-title', 'Sources')] : []),
+        ...(!this.workspace.focused
+          ? [
+              label(
+                'sources-summary',
+                `22 retained sources · ${attentionCount} need attention · ${sources.length} match current filters`,
+                { weight: 'secondary' }
+              ),
+              b.input(
+                'sources-query',
+                'Search sources',
+                this.query,
+                (query) => {
+                  this.query = query
+                  this.context.redraw()
+                },
+                200,
+                { placeholder: 'Search source name, research role, origin or access notes' }
+              ),
+              row('sources-filters', [
+                b.select(
+                  'sources-group',
+                  'Source group',
+                  this.group,
+                  [
+                    { id: 'all', title: 'All source groups' },
+                    ...SOURCE_GROUPS.map((group) => ({
+                      id: group.id,
+                      title: `${group.title} (${group.sources.length})`
+                    }))
+                  ],
+                  (value) => {
+                    this.group = value
+                    this.context.redraw()
+                  },
+                  { width: 240 }
+                ),
+                b.select(
+                  'sources-priority',
+                  'Source priority',
+                  this.priority,
+                  [
+                    { id: 'all', title: 'All priorities' },
+                    ...SOURCE_PRIORITIES.map((id) => ({ id, title: `Priority ${id}` }))
+                  ],
+                  (value) => {
+                    this.priority = value
+                    this.context.redraw()
+                  },
+                  { width: 160 }
+                ),
+                b.select(
+                  'sources-axis',
+                  'Research axis',
+                  this.axis,
+                  [
+                    { id: 'all', title: 'All research axes' },
+                    ...RESEARCH_AXES.map((id) => ({ id, title: RESEARCH_AXIS_LABELS[id] }))
+                  ],
+                  (value) => {
+                    this.axis = value
+                    this.context.redraw()
+                  },
+                  { width: 260 }
+                ),
+                b.check('sources-attention', 'Needs attention', this.attention, (value) => {
+                  this.attention = value
+                  this.context.redraw()
+                })
+              ])
+            ]
+          : []),
+        ...(sources.length
+          ? this.workspace.navigation('Back to sources', () => this.activate(this.focused))
+          : [
+              row('sources-empty-recovery', [
+                label('sources-filter-empty', 'No sources match these filters.', { flex: 1 }),
+                b.button('sources-reset-filters', 'Clear filters', () => {
+                  this.query = ''
+                  this.group = 'all'
+                  this.priority = 'all'
+                  this.axis = 'all'
+                  this.attention = false
+                  this.workspace.back()
+                })
+              ])
+            ]),
+        this.workspace.apply({
           id: 'sources-workspace',
           kind: 'split',
           flex: 1,
@@ -146,7 +173,7 @@ export class SourcesScreen implements NativeScreen {
               sources.map((source) => ({
                 id: source.id,
                 title: source.name,
-                subtitle: `${source.priority} · ${source.researchAxes.join(', ')} · ${this.health(source)}`
+                subtitle: `${sourceGroup(discoverySourceFromCatalogId(source.id))?.title ?? source.role} · ${this.health(source)}`
               })),
               this.focused,
               (id) => {
@@ -163,7 +190,7 @@ export class SourcesScreen implements NativeScreen {
                   { flex: 1 }
                 )
           ]
-        }
+        })
       ],
       { flex: 1 }
     )
@@ -177,6 +204,7 @@ export class SourcesScreen implements NativeScreen {
     this.selected = catalogId
     this.focused = catalogId
     this.activated = true
+    this.workspace.open()
     if (changed) {
       this.snapshot = null
       this.selectedItem = ''
@@ -198,10 +226,17 @@ export class SourcesScreen implements NativeScreen {
         if (this.disposed || version !== this.version) return
         this.snapshot = snapshot
       }
-      this.context.data.dashboard = await this.context.api.getDashboard()
     } catch (error) {
       if (!this.disposed && version === this.version) this.error = readableError(error)
     } finally {
+      if (!this.disposed && version === this.version) {
+        try {
+          const dashboard = await this.context.api.getDashboard()
+          if (!this.disposed && version === this.version) this.context.data.dashboard = dashboard
+        } catch {
+          /* Keep the original retrieval error and cached content if the local status read fails. */
+        }
+      }
       if (version === this.version) {
         this.busy = false
         this.context.redraw()

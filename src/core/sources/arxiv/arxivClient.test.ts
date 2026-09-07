@@ -24,6 +24,27 @@ const interest: ArxivInterest = {
 }
 
 describe('arXiv client', () => {
+  it('keeps large legitimate collaborations within an aggregate metadata budget', () => {
+    const authors = Array.from(
+      { length: 1500 },
+      (_, index) => `<author><name>Researcher ${index}</name></author>`
+    ).join('')
+    const feed = atomFeed.replace('<author><name>A. Researcher</name></author>', authors)
+    expect(parseArxivFeed(feed)[0]?.authors).toHaveLength(1501)
+  })
+  it('preserves canonical legacy identifiers and rejects oversized discovery text', () => {
+    const legacy = atomFeed.replace('2608.00001v2', 'cs/9901002v1')
+    expect(parseArxivFeed(legacy)[0]?.id).toBe('arxiv:cs/9901002v1')
+    expect(() =>
+      parseArxivFeed(atomFeed.replace('Structured pruning\n for edge deployment', 'x'.repeat(5000)))
+    ).toThrow()
+  })
+  it('does not report an HTML challenge, malformed XML or an error document as an empty feed', () => {
+    expect(() => parseArxivFeed('<html><body>Try again later</body></html>')).toThrow(/feed|XML/i)
+    expect(() => parseArxivFeed('<feed><entry>')).toThrow(/XML/i)
+    expect(() => parseArxivFeed('<feed><error>Unavailable</error></feed>')).toThrow(/error|feed/i)
+    expect(parseArxivFeed('<feed></feed>')).toEqual([])
+  })
   it('normalizes Atom entries into immutable discovery items', () => {
     expect(parseArxivFeed(atomFeed)).toEqual([
       {

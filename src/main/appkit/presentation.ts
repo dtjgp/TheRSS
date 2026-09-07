@@ -3,6 +3,7 @@ import { z } from 'zod'
 const nativeSymbols = [
   'sparkle.magnifyingglass',
   'star',
+  'star.fill',
   'chart.bar',
   'square.stack',
   'gearshape',
@@ -18,6 +19,13 @@ export interface NativeRow {
   readonly id: string
   readonly title: string
   readonly subtitle?: string | undefined
+  readonly cells?: Readonly<Record<string, string>> | undefined
+}
+export interface NativeColumn {
+  readonly id: string
+  readonly title: string
+  readonly width: number
+  readonly alignment?: 'left' | 'right' | undefined
 }
 export interface NativeOption {
   readonly id: string
@@ -39,6 +47,10 @@ export type NativeKind =
   | 'table'
   | 'chart'
 export interface NativeNode {
+  readonly compactPane?: 'list' | 'detail' | undefined
+  readonly wrap?: boolean | undefined
+  readonly help?: string | undefined
+  readonly destructive?: boolean | undefined
   readonly id: string
   readonly kind: NativeKind
   readonly maxLines?: number | undefined
@@ -57,6 +69,7 @@ export interface NativeNode {
   readonly enabled?: boolean | undefined
   readonly selected?: string | undefined
   readonly rows?: readonly NativeRow[] | undefined
+  readonly columns?: readonly NativeColumn[] | undefined
   readonly options?: readonly NativeOption[] | undefined
   readonly children?: readonly NativeNode[] | undefined
   readonly width?: number | undefined
@@ -99,6 +112,10 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
         'table',
         'chart'
       ]),
+      compactPane: z.enum(['list', 'detail']).optional(),
+      wrap: z.boolean().optional(),
+      help: short.optional(),
+      destructive: z.boolean().optional(),
       emphasis: z.enum(['primary', 'navigation', 'quiet']).optional(),
       symbol: z.enum(nativeSymbols).optional(),
       surface: z.enum(['panel', 'inset', 'reading']).optional(),
@@ -125,8 +142,31 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
       enabled: z.boolean().optional(),
       selected: short.optional(),
       rows: z
-        .array(z.object({ id: short, title: short, subtitle: short.optional() }).strict())
+        .array(
+          z
+            .object({
+              id: short,
+              title: short,
+              subtitle: short.optional(),
+              cells: z.record(z.string().min(1).max(40), z.string().max(300)).optional()
+            })
+            .strict()
+        )
         .max(10000)
+        .optional(),
+      columns: z
+        .array(
+          z
+            .object({
+              id: z.string().min(1).max(40),
+              title: short,
+              width: z.number().min(40).max(400),
+              alignment: z.enum(['left', 'right']).optional()
+            })
+            .strict()
+        )
+        .min(1)
+        .max(8)
         .optional(),
       options: z
         .array(z.object({ id: short, title: short, enabled: z.boolean().optional() }).strict())
@@ -153,6 +193,23 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
     })
     .strict()
     .superRefine((node, context) => {
+      if (node.columns) {
+        const ids = new Set(node.columns.map((column) => column.id))
+        if (
+          node.kind !== 'table' ||
+          ids.size !== node.columns.length ||
+          node.rows?.some(
+            (row) =>
+              !row.cells ||
+              Object.keys(row.cells).length !== ids.size ||
+              [...ids].some((id) => !(id in row.cells!))
+          )
+        )
+          context.addIssue({
+            code: 'custom',
+            message: 'Native table cells must match the unique declared columns'
+          })
+      }
       if (node.kind === 'secure' && (node.value !== undefined || node.text !== undefined))
         context.addIssue({
           code: 'custom',
@@ -181,6 +238,11 @@ const eventSchema = z
   .strict()
 
 /** Callbacks are scoped to live control semantics, never remote metadata or selectors. */
+export interface NativeAnnouncement {
+  readonly id: number
+  readonly message: string
+}
+
 export class NativePresentation {
   private active = new Map<string, Binding>()
   private next = new Map<string, Binding>()
@@ -207,7 +269,13 @@ export class NativePresentation {
     return id
   }
 
-  finish(root: NativeNode, modal?: NativeNode, focus?: string, zoom = 1): string {
+  finish(
+    root: NativeNode,
+    modal?: NativeNode,
+    focus?: string,
+    zoom = 1,
+    announcement?: NativeAnnouncement
+  ): string {
     const ids = new Set<string>()
     const check = (node: NativeNode, depth: number) => {
       if (depth > 24 || ids.size > 2000 || ids.has(node.id))
@@ -224,6 +292,14 @@ export class NativePresentation {
       ...(modal ? { modal: nodeSchema.parse(modal) } : {}),
       ...(focus ? { focus } : {}),
       zoom: z.number().min(0.8).max(1.5).parse(zoom),
+      ...(announcement
+        ? {
+            announcement: z
+              .object({ id: z.number().int().positive(), message: z.string().min(1).max(2000) })
+              .strict()
+              .parse(announcement)
+          }
+        : {}),
       clearSecure: [...this.secureResets]
     }
     const json = JSON.stringify(validated)

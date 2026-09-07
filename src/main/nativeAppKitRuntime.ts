@@ -55,6 +55,10 @@ export async function attachAppKit(
     persist: (next) => writeNativePreferences(path, next),
     openExternal: (url) => {
       if (isSafeExternalUrl(url)) void shell.openExternal(url)
+    },
+    contentSize: () => {
+      const { width, height } = window.getContentBounds()
+      return { width, height }
     }
   })
   bridge.attach(
@@ -63,7 +67,10 @@ export async function attachAppKit(
     (json) => presenter.receive(json, true)
   )
   sessions.set(window, { presenter, bridge, handle })
+  const resize = () => presenter.layoutChanged()
+  window.on('resize', resize)
   window.once('closed', () => {
+    window.removeListener('resize', resize)
     sessions.delete(window)
     presenter.dispose()
     const work = presenter.flushPreferences()

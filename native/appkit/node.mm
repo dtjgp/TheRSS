@@ -76,6 +76,16 @@ static NSColor *TRChartColor(NSColor *accent) {
 }
 @end
 
+@interface TRDataCell : NSTableCellView
+@property(nonatomic) CGFloat zoom;
+@end
+@implementation TRDataCell
+- (void)layout {
+  [super layout];
+  self.textField.frame = NSInsetRect(self.bounds,6*self.zoom,3*self.zoom);
+}
+@end
+
 @interface TRTable : NSTableView
 @property(nonatomic, weak) TRNode *node;
 @end
@@ -96,9 +106,11 @@ static NSColor *TRChartColor(NSColor *accent) {
 @property(nonatomic) CGFloat initialPosition;
 @end
 @implementation TRSplit
-- (BOOL)acceptsFirstResponder { return YES; }
+- (BOOL)acceptsFirstResponder { return !self.node.spec[@"compactPane"]; }
+- (CGFloat)dividerThickness { return self.node.spec[@"compactPane"] ? 0 : [super dividerThickness]; }
 - (BOOL)becomeFirstResponder { self.initialPosition = self.vertical ? self.subviews.firstObject.frame.size.width : self.subviews.firstObject.frame.size.height; return YES; }
 - (void)keyDown:(NSEvent *)event {
+  if (self.node.spec[@"compactPane"]) { [super keyDown:event]; return; }
   CGFloat position = self.vertical ? self.subviews.firstObject.frame.size.width : self.subviews.firstObject.frame.size.height;
   CGFloat step = (event.modifierFlags & NSEventModifierFlagShift) ? 32 : 8;
   CGFloat minimum = [self.node splitView:self constrainMinCoordinate:0 ofSubviewAt:0];
@@ -164,11 +176,20 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       chart.highContrast = self.host.increaseContrast;
       chart.needsDisplay = YES;
     }
+    if ([spec[@"kind"] isEqual:@"table"]) {
+      NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
+      NSRange visible = [table rowsInRect:table.visibleRect];
+      if (visible.location != NSNotFound) for (NSUInteger i = visible.location; i < NSMaxRange(visible); i++) {
+        NSTableCellView *cell = [table viewAtColumn:0 row:i makeIfNecessary:NO];
+        if ([cell isKindOfClass:TRResearchCell.class]) ((TRResearchCell *)cell).detailField.textColor = self.host.increaseContrast ? NSColor.labelColor : NSColor.secondaryLabelColor;
+      }
+    }
     if ([spec[@"kind"] isEqual:@"button"]) {
       TRButton *button = (TRButton *)self.control;
       button.emphasis = spec[@"emphasis"];
       BOOL navigation = [button.emphasis isEqual:@"navigation"], quiet = [button.emphasis isEqual:@"quiet"], primary = [button.emphasis isEqual:@"primary"];
       button.bordered = !navigation && !quiet;
+      button.hasDestructiveAction = [spec[@"destructive"] boolValue];
       button.alignment = navigation ? NSTextAlignmentLeft : NSTextAlignmentCenter;
       button.accent = self.host.fixture && self.host.fixtureAccent ? self.host.fixtureAccent : NSColor.controlAccentColor;
       button.highContrast = self.host.increaseContrast;
@@ -267,6 +288,8 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   self.identifier = spec[@"id"];
   self.control.identifier = self.identifier;
   self.control.accessibilityLabel = spec[@"title"] ?: spec[@"placeholder"] ?: ([kind isEqual:@"text"] ? @"Research content" : nil);
+  self.control.accessibilityHelp = spec[@"help"];
+  if (spec[@"help"]) self.control.toolTip = spec[@"help"];
   if ([self.control isKindOfClass:NSControl.class]) {
     NSControl *control = (NSControl *)self.control; control.enabled = spec[@"enabled"] ? [spec[@"enabled"] boolValue] : YES; control.font = self.font;
   }
@@ -321,16 +344,33 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     for (NSMenuItem *item in select.itemArray) if ([item.representedObject isEqual:spec[@"selected"]]) [select selectItem:item];
   } else if ([kind isEqual:@"table"]) {
     NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
-    BOOL fontChanged = table.rowHeight != 70 * self.host.zoom;
-    table.rowHeight = 70 * self.host.zoom;
+    NSArray *columns = spec[@"columns"];
+    BOOL columnsChanged = ![old[@"columns"] ?: @[] isEqual:columns ?: @[]];
+    if (columnsChanged) {
+      for (NSTableColumn *column in table.tableColumns.copy) [table removeTableColumn:column];
+      for (NSDictionary *entry in columns ?: @[@{@"id":@"content",@"title":@""}]) {
+        NSTableColumn *column = [[NSTableColumn alloc] initWithIdentifier:entry[@"id"]]; column.title = entry[@"title"]; column.resizingMask = NSTableColumnNoResizing;
+        column.headerCell.alignment = [entry[@"alignment"] isEqual:@"right"] ? NSTextAlignmentRight : NSTextAlignmentLeft;
+        [table addTableColumn:column];
+      }
+      table.headerView = columns ? [[NSTableHeaderView alloc] initWithFrame:NSMakeRect(0,0,100,24*self.host.zoom)] : nil;
+      ((NSScrollView *)self.control).hasHorizontalScroller = columns != nil;
+      table.columnAutoresizingStyle = NSTableViewNoColumnAutoresizing;
+    }
+    CGFloat rowHeight = (columns ? 26 : 70) * self.host.zoom;
+    table.style = columns ? NSTableViewStylePlain : NSTableViewStyleInset;
+    BOOL fontChanged = table.rowHeight != rowHeight;
+    table.rowHeight = rowHeight;
+    for (NSTableColumn *column in table.tableColumns) column.headerCell.font = [NSFont systemFontOfSize:12*self.host.zoom weight:NSFontWeightMedium];
     table.backgroundColor = NSColor.textBackgroundColor;
     NSPoint origin = ((NSScrollView *)self.control).contentView.bounds.origin;
-    if (fontChanged || ![old[@"rows"] isEqual:spec[@"rows"]]) [table reloadData];
+    if (fontChanged || columnsChanged || ![old[@"rows"] isEqual:spec[@"rows"]]) [table reloadData];
     NSInteger selected = -1, row = 0;
     for (NSDictionary *item in spec[@"rows"]) { if ([item[@"id"] isEqual:spec[@"selected"]]) selected = row; row++; }
     if (selected < 0) [table deselectAll:nil];
     else if (table.selectedRow != selected) [table selectRowIndexes:[NSIndexSet indexSetWithIndex:selected] byExtendingSelection:NO];
     [((NSScrollView *)self.control).contentView scrollToPoint:origin];
+    if (selected >= 0 && ![old[@"selected"] isEqual:spec[@"selected"]]) self.revealSelection = YES;
   }
   NSMutableDictionary *existing = [NSMutableDictionary dictionary];
   for (TRNode *node in self.nodes) existing[node.identifier] = node;
@@ -360,6 +400,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   return 180 * self.host.zoom;
 }
 - (BOOL)wrapsRowAtWidth:(CGFloat)width {
+  if (self.spec[@"wrap"] && ![self.spec[@"wrap"] boolValue]) return NO;
   CGFloat padding = TRNumber(self.spec,@"padding",0) * self.host.zoom, gap = TRNumber(self.spec,@"gap",10) * self.host.zoom;
   CGFloat fixed = MAX(0,(NSInteger)self.nodes.count-1)*gap;
   for (TRNode *child in self.nodes) fixed += [child.spec[@"flex"] doubleValue] > 0 ? MIN(180*self.host.zoom,child.preferredWidth) : child.preferredWidth;
@@ -401,7 +442,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     NSRect rect = [text.layoutManager usedRectForTextContainer:text.textContainer];
     return ceil(rect.size.height) + 2*text.textContainerInset.height;
   }
-  if ([kind isEqual:@"split"]) return TRNumber(self.spec,@"minHeight",self.spec[@"collapseAt"] && width < [self.spec[@"collapseAt"] doubleValue] ? 340 : 200) * zoom;
+  if ([kind isEqual:@"split"]) return TRNumber(self.spec,@"minHeight",!self.spec[@"compactPane"] && self.spec[@"collapseAt"] && width < [self.spec[@"collapseAt"] doubleValue] ? 340 : 200) * zoom;
   if ([kind isEqual:@"scroll"] || [kind isEqual:@"table"]) return TRNumber(self.spec,@"minHeight",200) * zoom;
   if ([kind isEqual:@"input"] && [self.spec[@"multiline"] boolValue]) return 120 * zoom;
   return 32 * zoom;
@@ -429,6 +470,20 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     self.container.frame = NSMakeRect(0,0,contentWidth,MAX(y,scroll.contentSize.height));
   } else if ([kind isEqual:@"split"] && self.nodes.count == 2) {
     NSSplitView *split = (NSSplitView *)self.control;
+    NSString *pane = self.spec[@"compactPane"];
+    if (pane) {
+      split.vertical = YES;
+      NSUInteger visible = [pane isEqual:@"detail"] ? 1 : 0;
+      for (NSUInteger i = 0; i < self.nodes.count; i++) {
+        self.nodes[i].hidden = i != visible;
+        if (i == visible) self.nodes[i].frame = self.bounds;
+      }
+      self.nodes[visible].needsLayout = YES;
+      [self.nodes[visible] layoutSubtreeIfNeeded];
+      self.applying = wasApplying;
+      return;
+    }
+    for (TRNode *child in self.nodes) child.hidden = NO;
     BOOL vertical = !self.spec[@"collapseAt"] || width >= [self.spec[@"collapseAt"] doubleValue];
     BOOL changed = split.vertical != vertical; split.vertical = vertical;
     CGFloat limit = vertical ? width : height;
@@ -460,8 +515,21 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       position += extent + gap;
     }
   } else if ([kind isEqual:@"table"]) {
-    NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
-    table.tableColumns.firstObject.width = MAX(60, ((NSScrollView *)self.control).contentSize.width);
+    NSScrollView *scroll = (NSScrollView *)self.control;
+    NSTableView *table = (NSTableView *)scroll.documentView;
+    [scroll tile]; [table tile];
+    // AppKit's list styles add horizontal column insets. Derive them from the
+    // actual column geometry so the rightmost value remains inside the clip view.
+    CGFloat inset = table.tableColumns.count ? MAX(0,[table rectOfColumn:0].origin.x) : 0;
+    CGFloat available = MAX(60, scroll.contentView.bounds.size.width-2*inset);
+    NSArray *columns = self.spec[@"columns"];
+    if (columns) {
+      CGFloat total = 0; for (NSDictionary *entry in columns) total += [entry[@"width"] doubleValue]*self.host.zoom;
+      CGFloat extra = MAX(0,available-total)/columns.count;
+      for (NSUInteger i = 0; i < columns.count; i++) table.tableColumns[i].width = [columns[i][@"width"] doubleValue]*self.host.zoom+extra;
+      table.headerView.frame = NSMakeRect(0,0,MAX(available,total)+2*inset,24*self.host.zoom);
+    } else table.tableColumns.firstObject.width = available;
+    if (self.revealSelection && !self.isHiddenOrHasHiddenAncestor) { [table scrollRowToVisible:table.selectedRow]; self.revealSelection = NO; }
   } else if ([kind isEqual:@"input"] && [self.spec[@"multiline"] boolValue]) {
     NSScrollView *scroll = (NSScrollView *)self.control;
     NSTextView *input = (NSTextView *)scroll.documentView;
@@ -482,13 +550,24 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
 - (NSView *)tableView:(NSTableView *)table viewForTableColumn:(NSTableColumn *)column row:(NSInteger)row {
   NSArray *rows = self.spec[@"rows"]; if (row < 0 || row >= (NSInteger)rows.count) return nil;
   NSDictionary *item = rows[row];
+  if (self.spec[@"columns"]) {
+    NSDictionary *definition = nil; for (NSDictionary *entry in self.spec[@"columns"]) if ([entry[@"id"] isEqual:column.identifier]) definition = entry;
+    TRDataCell *cell = [TRDataCell new]; cell.zoom = self.host.zoom;
+    NSTextField *label = [NSTextField labelWithString:TRString(item[@"cells"][column.identifier])];
+    label.font = [NSFont monospacedDigitSystemFontOfSize:13*self.host.zoom weight:NSFontWeightRegular];
+    label.maximumNumberOfLines = 1; label.lineBreakMode = NSLineBreakByTruncatingTail;
+    label.alignment = [definition[@"alignment"] isEqual:@"right"] ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    [cell addSubview:label]; cell.textField = label; cell.toolTip = label.stringValue;
+    cell.accessibilityLabel = [NSString stringWithFormat:@"%@: %@. %@",definition[@"title"],label.stringValue,item[@"title"]];
+    return cell;
+  }
   TRResearchCell *cell = [TRResearchCell new]; cell.zoom = self.host.zoom;
   NSTextField *label = [NSTextField wrappingLabelWithString:item[@"title"]];
   label.font = [NSFont systemFontOfSize:self.font.pointSize weight:NSFontWeightMedium]; label.maximumNumberOfLines = 2; label.lineBreakMode = NSLineBreakByWordWrapping;
   label.cell.wraps = YES; label.cell.usesSingleLineMode = NO;
   label.preferredMaxLayoutWidth = MAX(30,column.width-24*self.host.zoom);
   [cell addSubview:label]; cell.textField = label;
-  NSTextField *detail = [NSTextField labelWithString:TRString(item[@"subtitle"])]; detail.font = [NSFont systemFontOfSize:11*self.host.zoom]; detail.textColor = NSColor.secondaryLabelColor;
+  NSTextField *detail = [NSTextField labelWithString:TRString(item[@"subtitle"])]; detail.font = [NSFont systemFontOfSize:12*self.host.zoom]; detail.textColor = self.host.increaseContrast ? NSColor.labelColor : NSColor.secondaryLabelColor;
   detail.lineBreakMode = NSLineBreakByTruncatingTail;
   [cell addSubview:detail]; cell.detailField = detail; cell.toolTip = item[@"title"];
   cell.accessibilityLabel = [NSString stringWithFormat:@"%@. %@",item[@"title"],TRString(item[@"subtitle"])];
@@ -549,6 +628,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
 - (CGFloat)splitView:(NSSplitView *)split constrainMinCoordinate:(CGFloat)proposed ofSubviewAt:(NSInteger)index { return split.vertical ? TRNumber(self.spec,@"minWidth",180) : 160; }
 - (CGFloat)splitView:(NSSplitView *)split constrainMaxCoordinate:(CGFloat)proposed ofSubviewAt:(NSInteger)index { return split.vertical ? MAX(TRNumber(self.spec,@"minWidth",180),MIN(TRNumber(self.spec,@"maxWidth",520),split.bounds.size.width-TRNumber(self.spec,@"minContentWidth",200))) : split.bounds.size.height-160; }
 - (void)splitViewDidResizeSubviews:(NSNotification *)notification {
+  if (self.spec[@"compactPane"]) return;
   NSSplitView *split = (NSSplitView *)self.control;
   if (!self.applying && !split.vertical && self.window && split.bounds.size.height > 0) self.stackedFraction = split.subviews.firstObject.frame.size.height/split.bounds.size.height;
   if (!self.applying && split.vertical && self.lastWidth && self.window) {
@@ -564,12 +644,15 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
 - (NSDictionary *)inspect {
   NSMutableDictionary *result = [@{@"id":self.identifier ?: @"", @"kind":self.spec[@"kind"], @"class":self.control ? NSStringFromClass(self.control.class) : NSStringFromClass(self.class), @"frame":NSStringFromRect(self.frame), @"label":self.control.accessibilityLabel ?: @""} mutableCopy];
   result[@"appearance"] = self.effectiveAppearance.name;
+  result[@"hidden"] = @(self.isHiddenOrHasHiddenAncestor);
+  if (self.spec[@"compactPane"]) result[@"compactPane"] = self.spec[@"compactPane"];
   if (self.control) result[@"controlAppearance"] = self.control.effectiveAppearance.name;
   if (self.spec[@"surface"]) result[@"surface"] = self.spec[@"surface"];
   if ([self.control isKindOfClass:TRButton.class]) {
     result[@"emphasis"] = ((TRButton *)self.control).emphasis ?: @"standard";
     result[@"hasSymbol"] = @(((NSButton *)self.control).image != nil);
     result[@"bordered"] = @(((NSButton *)self.control).bordered);
+    result[@"destructive"] = @(((NSButton *)self.control).hasDestructiveAction);
     result[@"alignment"] = @(((NSButton *)self.control).alignment);
     TRButton *button = (TRButton *)self.control;
     if ([button.emphasis isEqual:@"primary"] && button.enabled) {
@@ -612,9 +695,19 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     if (input) { result[@"enabled"] = @(input.editable); result[@"selection"] = NSStringFromRange(input.selectedRange); result[@"marked"] = @(input.hasMarkedText); }
   }
   if ([self.spec[@"kind"] isEqual:@"table"]) {
+    if (self.spec[@"columns"]) result[@"columns"] = self.spec[@"columns"];
     result[@"selected"] = [self selectedRowId] ?: @""; result[@"rows"] = self.spec[@"rows"] ?: @[];
     NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
     result[@"rowHeight"] = @(table.rowHeight); result[@"tableStyle"] = @(table.style);
+    if (self.spec[@"columns"] && table.selectedRow >= 0) {
+      NSMutableArray *cells = [NSMutableArray array];
+      for (NSUInteger i = 0; i < table.tableColumns.count; i++) {
+        NSTableCellView *cell = [table viewAtColumn:i row:table.selectedRow makeIfNecessary:YES];
+        [cell layoutSubtreeIfNeeded];
+        [cells addObject:@{@"column":table.tableColumns[i].identifier,@"text":cell.textField.stringValue ?: @"",@"cellFrame":NSStringFromRect(cell.frame),@"textFrame":NSStringFromRect(cell.textField.frame)}];
+      }
+      result[@"selectedCells"] = cells;
+    }
     if (table.numberOfRows) {
       TRResearchCell *cell = (TRResearchCell *)[table viewAtColumn:0 row:0 makeIfNecessary:YES];
       result[@"titleLines"] = @(cell.textField.maximumNumberOfLines);
@@ -627,7 +720,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     if (table.numberOfRows) result[@"rowFontSize"] = @(((NSTableCellView *)[table viewAtColumn:0 row:0 makeIfNecessary:YES]).textField.font.pointSize);
   }
   if ([self.control isKindOfClass:NSControl.class]) result[@"enabled"] = @(((NSControl *)self.control).enabled);
-  if ([self.control isKindOfClass:NSScrollView.class]) { result[@"documentClass"] = NSStringFromClass(((NSScrollView *)self.control).documentView.class); result[@"scrollOrigin"] = NSStringFromPoint(((NSScrollView *)self.control).contentView.bounds.origin); }
+  if ([self.control isKindOfClass:NSScrollView.class]) { result[@"documentClass"] = NSStringFromClass(((NSScrollView *)self.control).documentView.class); result[@"scrollOrigin"] = NSStringFromPoint(((NSScrollView *)self.control).contentView.bounds.origin); result[@"documentFrame"] = NSStringFromRect(((NSScrollView *)self.control).documentView.frame); result[@"viewportSize"] = NSStringFromSize(((NSScrollView *)self.control).contentSize); }
   NSMutableArray *children = [NSMutableArray array]; for (TRNode *child in self.nodes) [children addObject:[child inspect]]; result[@"children"] = children;
   return result;
 }

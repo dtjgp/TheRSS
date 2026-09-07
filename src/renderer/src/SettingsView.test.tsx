@@ -19,6 +19,7 @@ function settingsApi(): TheRSSApi {
     saveInterestProfile: vi.fn(),
     refresh: vi.fn(),
     searchLocal: vi.fn(),
+    getLocalResearch: vi.fn(),
     onDiscoverProgress: vi.fn().mockReturnValue(() => undefined),
     searchDiscover: vi.fn(),
     retryDiscover: vi.fn(),

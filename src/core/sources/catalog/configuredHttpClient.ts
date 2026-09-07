@@ -36,11 +36,35 @@ function assertFinalOrigin(response: Response, endpoint: string, sourceId: strin
   }
 }
 
+async function fetchFixedOrigin(
+  endpoint: string,
+  sourceId: string,
+  fetcher: typeof fetch,
+  init: RequestInit
+): Promise<Response> {
+  let current = endpoint
+  const origin = new URL(endpoint).origin
+  for (let hop = 0; hop <= 3; hop++) {
+    const response = await fetcher(current, { ...init, redirect: 'manual' })
+    if (![301, 302, 303, 307, 308].includes(response.status)) return response
+    const location = response.headers.get('location')
+    await response.body?.cancel()
+    if (!location || hop === 3)
+      throw new Error(`Configured source ${sourceId} exceeded its bounded redirect policy`)
+    const next = new URL(location, current)
+    if (next.protocol !== 'https:' || next.origin !== origin || next.username || next.password)
+      throw new Error(`Configured source ${sourceId} redirected outside its fixed HTTPS origin`)
+    current = next.href
+  }
+  throw new Error(`Configured source ${sourceId} exceeded its bounded redirect policy`)
+}
+
 export async function fetchConfiguredHttpDocument(
   sourceId: string,
   options: FetchConfiguredHttpOptions = {}
 ): Promise<ConfiguredHttpDocument> {
   const source = getConfiguredSourceDefinition(sourceId)
+  options.signal?.throwIfAborted()
   if (
     source.transport !== 'feed' &&
     source.transport !== 'html' &&
@@ -66,7 +90,7 @@ export async function fetchConfiguredHttpDocument(
     const endpointAttempts = endpointIndex === 0 ? attempts : 1
     for (let attempt = 1; attempt <= endpointAttempts; attempt += 1) {
       try {
-        response = await fetcher(endpoint, {
+        response = await fetchFixedOrigin(endpoint, sourceId, fetcher, {
           headers: {
             Accept:
               transport === 'feed'
@@ -74,7 +98,6 @@ export async function fetchConfiguredHttpDocument(
                 : 'text/html, application/xhtml+xml, application/json;q=0.8',
             'User-Agent': 'TheRSS/0.2 (local research source client)'
           },
-          redirect: 'follow',
           signal: options.signal
             ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)])
             : AbortSignal.timeout(30_000)
@@ -85,6 +108,7 @@ export async function fetchConfiguredHttpDocument(
         )
         if (response.status < 500 && response.status !== 429) throw lastError
       } catch (error) {
+        if (options.signal?.aborted) throw error
         lastError = error
       }
       response = undefined

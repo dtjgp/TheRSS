@@ -2,6 +2,37 @@ import { describe, expect, it, vi } from 'vitest'
 import { fetchConfiguredHttpDocument } from './configuredHttpClient'
 
 describe('fetchConfiguredHttpDocument', () => {
+  it('rejects a cross-origin redirect before requesting the destination', async () => {
+    const fetcher = vi.fn<typeof fetch>(async (_url, options) => {
+      expect(options?.redirect).toBe('manual')
+      return new Response(null, {
+        status: 302,
+        headers: { location: 'https://untrusted.invalid/private' }
+      })
+    })
+    await expect(fetchConfiguredHttpDocument('folo:44', { fetcher })).rejects.toThrow(
+      /fixed HTTPS origin/
+    )
+    expect(fetcher).toHaveBeenCalledOnce()
+  })
+  it('follows a bounded same-origin redirect with the original request deadline', async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(null, { status: 301, headers: { location: '/new-feed' } })
+      )
+      .mockResolvedValueOnce(
+        new Response('<rss><channel/></rss>', {
+          headers: { 'content-type': 'application/rss+xml' }
+        })
+      )
+    await fetchConfiguredHttpDocument('folo:44', { fetcher })
+    expect(fetcher.mock.calls.map(([url]) => String(url))).toEqual([
+      'https://news.ycombinator.com/rss',
+      'https://news.ycombinator.com/new-feed'
+    ])
+    expect(fetcher.mock.calls[0]![1]!.signal).toBe(fetcher.mock.calls[1]![1]!.signal)
+  })
   it('retrieves a configured feed through the bounded credential-free client', async () => {
     const fetcher = vi.fn<typeof fetch>(async (input, init) => {
       expect(String(input)).toBe('https://news.ycombinator.com/rss')

@@ -160,6 +160,7 @@ export class WindowApplicationRuntime {
       'saveInterestProfile',
       'refresh',
       'searchLocal',
+      'getLocalResearch',
       'searchDiscover',
       'retryDiscover',
       'cancelDiscover',

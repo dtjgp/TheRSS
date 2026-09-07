@@ -5,6 +5,22 @@ import { TriageHistory } from './reading'
 import { nativeHarness, nativeDiscoverFixture } from './testSupport'
 
 describe('native search workspace hierarchy', () => {
+  it('locates source choices without changing the research question or hidden selections', async () => {
+    const h = nativeHarness()
+    const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
+    await screen.load()
+    await h.act(screen, 'discover-query', 'Keep my research question')
+    await h.act(screen, 'discover-source-picker')
+    await h.act(screen, 'discover-source-query', 'GitHub')
+    expect(h.find(h.render(screen), 'discover-source-github')).toBeDefined()
+    expect(h.find(h.render(screen), 'discover-source-arxiv')).toBeUndefined()
+    await h.act(screen, 'discover-source-github', false)
+    await h.act(screen, 'discover-source-query', '')
+    expect(h.find(h.render(screen), 'discover-source-arxiv')?.checked).toBe(true)
+    expect(h.find(h.render(screen), 'discover-source-github')?.checked).toBe(false)
+    expect(h.find(h.render(screen), 'discover-query')?.value).toBe('Keep my research question')
+    screen.dispose()
+  })
   it('restores results compactly, reopens the exact question with native focus and preserves an unsubmitted draft', async () => {
     const h = nativeHarness({ getLatestDiscover: vi.fn(async () => nativeDiscoverFixture) })
     const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))

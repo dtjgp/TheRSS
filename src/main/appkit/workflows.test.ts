@@ -191,6 +191,7 @@ describe('native workflow branches', () => {
             id: 'result-1',
             itemId: item.id,
             kind: 'analysis',
+            target: { kind: 'analysis', analysisId: 'result-1' },
             title: 'Stored analysis',
             detail: 'Longer local context',
             url: item.url,
@@ -210,7 +211,7 @@ describe('native workflow branches', () => {
     await h.act(screen, 'local-search-submit')
     expect(h.find(h.render(screen), 'modal-message')?.text).toContain('Index unavailable')
     await h.act(screen, 'local-search-submit')
-    await h.act(screen, 'local-search-results', 'result-1')
+    await h.act(screen, 'local-search-results', 'analysis:result-1')
     await h.act(screen, 'local-search-open')
     expect(h.context.openExternal).toHaveBeenCalledWith(item.url)
     await h.act(screen, 'modal-close')

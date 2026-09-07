@@ -77,10 +77,22 @@ describe('ResearchRepository local search', () => {
       expect.arrayContaining([expect.objectContaining({ kind: 'saved', itemId: 'arxiv:saved' })])
     )
     expect(repository.searchLocal('quantum edge').results).toEqual([
-      expect.objectContaining({ kind: 'discover', itemId: 'github:quantum/edge' })
+      expect.objectContaining({
+        kind: 'discover',
+        itemId: 'github:quantum/edge',
+        target: {
+          kind: 'discover',
+          sessionId: 'discover-session-search',
+          itemId: 'github:quantum/edge'
+        }
+      })
     ])
     expect(repository.searchLocal('energy-aware').results).toEqual([
-      expect.objectContaining({ kind: 'analysis', id: 'analysis-search' })
+      expect.objectContaining({
+        kind: 'analysis',
+        id: 'analysis-search',
+        target: { kind: 'analysis', analysisId: 'analysis-search' }
+      })
     ])
     repository.close()
   })

@@ -1,0 +1,123 @@
+{
+  "checkedAt": "2026-09-07T01:54:35.661837+00:00",
+  "primary": {
+    "status": "passed",
+    "arxivInterest": 3,
+    "arxivRecent": 200,
+    "github": 25
+  },
+  "configured": {
+    "status": "failed",
+    "total": 20,
+    "fetched": 15,
+    "failed": 5,
+    "results": [
+      {
+        "sourceId": "folo:302",
+        "status": "failed",
+        "detail": "Configured source folo:302 request failed: The operation was aborted due to timeout"
+      },
+      {
+        "sourceId": "folo:611",
+        "status": "fetched",
+        "detail": "3 normalized; 0 dated today; latest=2026-08-01T00:00:00.000Z; rejected=7"
+      },
+      {
+        "sourceId": "folo:444",
+        "status": "fetched",
+        "detail": "20 normalized; 0 dated today; latest=2026-08-31T00:00:00.000Z; rejected=0"
+      },
+      {
+        "sourceId": "folo:182",
+        "status": "failed",
+        "detail": "Configured source folo:182 request failed: The operation was aborted due to timeout"
+      },
+      {
+        "sourceId": "folo:77",
+        "status": "fetched",
+        "detail": "20 normalized; 20 dated today; latest=2026-09-07T07:06:12.000Z; rejected=0"
+      },
+      {
+        "sourceId": "folo:208",
+        "status": "fetched",
+        "detail": "10 normalized; 0 dated today; latest=2026-09-06T11:44:21.000Z; rejected=0"
+      },
+      {
+        "sourceId": "folo:93",
+        "status": "failed",
+        "detail": "Configured source folo:93 request failed: The operation was aborted due to timeout"
+      },
+      {
+        "sourceId": "folo:84",
+        "status": "fetched",
+        "detail": "50 normalized; 1 dated today; latest=2026-09-06T22:00:00.000Z; rejected=0"
+      },
+      {
+        "sourceId": "folo:67",
+        "status": "failed",
+        "detail": "Configured source folo:67 request failed: The operation was aborted due to timeout"
+      },
+      {
+        "sourceId": "folo:523",
+        "status": "fetched",
+        "detail": "12 normalized; 4 dated today; latest=2026-09-07T00:00:00.000Z; rejected=0"
+      },
+      {
+        "sourceId": "folo:253",
+        "status": "failed",
+        "detail": "Configured source folo:253 request failed: The operation was aborted due to timeout"
+      },
+      {
+        "sourceId": "folo:44",
+        "status": "fetched",
+        "detail": "30 normalized; 5 dated today; latest=2026-09-07T00:21:01.000Z; rejected=0"
+      },
+      {
+        "sourceId": "folo:792",
+        "status": "fetched",
+        "detail": "100 normalized; 3 dated today; latest=2026-09-07T00:00:00.000Z; rejected=0"
+      },
+      {
+        "sourceId": "folo:79",
+        "status": "fetched",
+        "detail": "19 normalized; 0 dated today; latest=2026-09-06T15:05:02.000Z; rejected=0"
+      },
+      {
+        "sourceId": "folo:172",
+        "status": "fetched",
+        "detail": "20 normalized; 0 dated today; latest=2026-09-06T21:41:06.000Z; rejected=0"
+      },
+      {
+        "sourceId": "folo:1104",
+        "status": "fetched",
+        "detail": "100 normalized; 1 dated today; latest=2026-09-06T23:44:36.000Z; rejected=0"
+      },
+      {
+        "sourceId": "folo:177",
+        "status": "fetched",
+        "detail": "20 normalized; 2 dated today; latest=2026-09-07T01:23:44.000Z; rejected=0"
+      },
+      {
+        "sourceId": "folo:257",
+        "status": "fetched",
+        "detail": "10 normalized; 1 dated today; latest=2026-09-06T23:36:04.000Z; rejected=0"
+      },
+      {
+        "sourceId": "folo:312",
+        "status": "fetched",
+        "detail": "50 normalized; 0 dated today; latest=2026-09-06T11:30:00.000Z; rejected=0"
+      },
+      {
+        "sourceId": "folo:64",
+        "status": "fetched",
+        "detail": "30 normalized; 20 dated today; latest=2026-09-07T01:54:33.000Z; rejected=0"
+      }
+    ]
+  },
+  "limitations": [
+    "Fetched does not prove complete parsing, current-day publication or source truth.",
+    "folo:611 retained 3 records and rejected 7.",
+    "Source timestamps are untrusted publisher metadata; they are not execution timestamps.",
+    "No real model account call was performed."
+  ]
+}
