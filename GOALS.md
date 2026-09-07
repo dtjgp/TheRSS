@@ -11,9 +11,10 @@ See the [current report](docs/audits/2026-09-07-apple-design-status/REPORT.md).
 Current checks pass 687 main and 104 AppKit tests (overlapping suites), eight desktop cases,
 and 14 workflow groups for both the new package and exact installed app. All 11 user-data tables
 match the immediate installation backup; the previous app is retained. The app is reopened.
-Local changes since `3a33614` remain unpushed; prior automatic approval rejected the push because
-explicit authorization for that delivery was not established. Draft PR #49 still represents its
-previous remote head, and its CI does not validate these local changes.
+The user explicitly authorized GitHub delivery on 2026-09-07. Implementation commits `199be74`
+and `541cbdb` are pushed to `codex/market-readiness`, and draft PR #49 now has the updated scope
+and validation narrative. Current CI is authoritative only for its matching PR head; see the
+[delivery record](docs/audits/2026-09-06-market-readiness/GITHUB_DELIVERY.md).
 
 The prior [direct-interaction changes](docs/audits/2026-09-07-direct-interaction/REPORT.md) remain
 in place. [Human UX acceptance](docs/audits/2026-09-06-market-readiness/HUMAN_ACCEPTANCE.md) is

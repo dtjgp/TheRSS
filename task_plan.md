@@ -24,8 +24,10 @@ Checks: 687 main/104 AppKit tests, eight desktop cases, 14 packaged and installe
 groups, and all 11 user-data tables matched to the immediate backup. Prior direct-editing and
 navigation improvements remain intact; no new unexpected window close occurred in this iteration.
 The user's provisional human UX acceptance persists. Source/model quality remains independently
-limited. Local changes after `3a33614` are not pushed: the previous automatic approval rejection
-requires explicit GitHub delivery authorization, and PR #49 still has the earlier remote head.
+limited. The user explicitly authorized the two pending commits and draft PR update on 2026-09-07.
+Commits `199be74` and `541cbdb` are pushed, and PR #49's body is updated. The
+[delivery record](docs/audits/2026-09-06-market-readiness/GITHUB_DELIVERY.md) links the current
+PR head checks; prior CI results are not substituted for this delivery.
 
 **All 39 phases through 2026-08-24 are complete.** The current head on `main` is the personal
 beta (v0.2.0): Discover-centered retrieval over the 22 live-verified sources, confirmation-gated

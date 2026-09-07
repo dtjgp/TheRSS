@@ -16,7 +16,7 @@
   "fixturesOnly": true,
   "sourceAndModelCalls": 0,
   "humanAcceptance": "provisionally_passed_by_user",
-  "githubDelivery": "not_attempted_previous_explicit_authorization_gate_pending",
+  "githubDelivery": "implementation_commits_pushed_and_draft_pr_updated_after_explicit_user_authorization",
   "logEvidence": {
     "storageRed": {
       "filename": "therss-apple-storage-red.log",
@@ -55,5 +55,14 @@
   "installedStartup": "passed",
   "userAppReopened": true,
   "recordedSidebarAttentionAbsent": true,
-  "unexpectedWindowCloseObservedThisRun": 0
+  "unexpectedWindowCloseObservedThisRun": 0,
+  "githubDeliveryEvidence": {
+    "implementationCommits": [
+      "199be74439fa2d2a58932bf2d5d4aefde15dfaad",
+      "541cbdb06296c5d87281cadd911831539bf109ef"
+    ],
+    "pullRequest": "https://github.com/dtjgp/TheRSS/pull/49",
+    "draft": true,
+    "ci": "Use checks matching the current PR head; no future result is prefilled."
+  }
 }
