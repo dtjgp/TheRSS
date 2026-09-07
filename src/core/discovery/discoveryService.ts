@@ -14,6 +14,7 @@ import {
   type FetchConfiguredSourceOptions
 } from '../sources/catalog/configuredSourceAdapter'
 import type { NormalizedSourceBatch } from '../sources/catalog/sourceNormalizer'
+import { classifySourceBatch } from '../sources/catalog/sourceBatchStatus'
 import type { ResearchRepository } from '../storage/researchRepository'
 
 interface GitHubFetchOptions {
@@ -160,44 +161,69 @@ export class DiscoveryService {
     if (!isDiscoverySource(source)) throw new Error(`Unsupported discovery source: ${source}`)
     const profile = this.#repository.getInterestProfile()
     const now = options.now ?? new Date()
-    let batch: NormalizedSourceBatch
-
-    if (source === 'arxiv') {
-      batch = { items: await this.#fetchArxivRecent({ now }), rejectedCount: 0 }
-    } else if (source === 'github') {
-      if (!profile || !hasGitHubRules(profile.github)) {
-        throw new Error('Configure GitHub interests before refreshing this source')
-      }
-      batch = {
-        items: await this.#fetchGitHub(profile.github, {
-          now,
-          token: options.githubToken?.trim() || undefined
-        }),
-        rejectedCount: 0
-      }
-    } else {
-      const definition = this.#configuredDefinitions.find((candidate) => candidate.id === source)
-      if (!definition) throw new Error(`Source ${source} has no configured retrieval adapter`)
-      batch = await this.#fetchConfiguredSource(definition, profile ?? SOURCE_BROWSE_PROFILE, {
-        now,
-        ...(options.huggingFaceToken?.trim()
-          ? { huggingFaceToken: options.huggingFaceToken.trim() }
-          : {})
-      })
+    if (source === 'github' && (!profile || !hasGitHubRules(profile.github))) {
+      throw new Error('Configure GitHub interests before refreshing this source')
     }
+    try {
+      let batch: NormalizedSourceBatch
 
-    const ranked = batch.items.map((item) => ({
-      ...rankDiscoveryItem(item, profile ?? SOURCE_BROWSE_PROFILE, now),
-      excluded: false
-    }))
-    this.#repository.upsertSourceHistoryItems(ranked, now.toISOString())
-    const cached = this.#repository.getSourceContentSnapshot(source, now)
-    return {
-      ...cached,
-      status:
-        batch.rejectedCount > 0 ? 'partial' : batch.items.length > 0 ? 'fetched' : 'no_results',
-      returnedCount: batch.items.length,
-      rejectedCount: batch.rejectedCount
+      if (source === 'arxiv') {
+        batch = { items: await this.#fetchArxivRecent({ now }), rejectedCount: 0 }
+      } else if (source === 'github') {
+        batch = {
+          items: await this.#fetchGitHub(profile!.github, {
+            now,
+            token: options.githubToken?.trim() || undefined
+          }),
+          rejectedCount: 0
+        }
+      } else {
+        const definition = this.#configuredDefinitions.find((candidate) => candidate.id === source)
+        if (!definition) throw new Error(`Source ${source} has no configured retrieval adapter`)
+        batch = await this.#fetchConfiguredSource(definition, profile ?? SOURCE_BROWSE_PROFILE, {
+          now,
+          ...(options.huggingFaceToken?.trim()
+            ? { huggingFaceToken: options.huggingFaceToken.trim() }
+            : {})
+        })
+      }
+
+      const status = classifySourceBatch(batch)
+      if (status === 'failed') {
+        throw new Error(
+          `All ${batch.rejectedCount} source entries were rejected; cached content was retained`
+        )
+      }
+      const ranked = batch.items.map((item) => ({
+        ...rankDiscoveryItem(item, profile ?? SOURCE_BROWSE_PROFILE, now),
+        excluded: false
+      }))
+      this.#repository.upsertSourceHistoryItems(ranked, now.toISOString())
+      this.#repository.recordSourceRun(
+        source,
+        status === 'partial' ? 'partial' : 'healthy',
+        now.toISOString(),
+        batch.rejectedCount ? `${batch.rejectedCount} invalid entries were ignored` : null,
+        batch.items.length,
+        false
+      )
+      const cached = this.#repository.getSourceContentSnapshot(source, now)
+      return {
+        ...cached,
+        status,
+        returnedCount: batch.items.length,
+        rejectedCount: batch.rejectedCount
+      }
+    } catch (error) {
+      this.#repository.recordSourceRun(
+        source,
+        'failed',
+        now.toISOString(),
+        boundedErrorMessage(error),
+        null,
+        false
+      )
+      throw error
     }
   }
 
@@ -248,6 +274,16 @@ export class DiscoveryService {
       results.forEach((result, index) => {
         const source = batch[index]!.source
         if (result.status === 'fulfilled') {
+          if (classifySourceBatch(result.value) === 'failed') {
+            this.#repository.recordSourceRun(
+              source,
+              'failed',
+              completedAt,
+              `All ${result.value.rejectedCount} source entries were rejected; previous results were retained`,
+              0
+            )
+            return
+          }
           successful.push({
             source,
             returnedCount: result.value.items.length,

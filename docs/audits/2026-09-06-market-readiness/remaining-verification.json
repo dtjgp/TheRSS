@@ -1,0 +1,399 @@
+{
+  "checkedAt": "2026-09-07T12:04:58.673969+00:00",
+  "scope": "Non-release technical acceptance; independent human acceptance pending",
+  "sourceChecks": {
+    "primary": {
+      "arxivInterest": 3,
+      "arxivRecent": 200,
+      "github": 25,
+      "passed": true
+    },
+    "fullConfiguredSnapshot": {
+      "log": {
+        "name": "full-source-scan",
+        "exitCode": 1,
+        "logSha256": "211b87b1351c41cf2cb4eddc332c0fe7c1aaf8c65b9609b5d87f509b54a4b79b",
+        "completedAt": "2026-09-07T09:44:53.593526+00:00",
+        "localLog": "/private/tmp/therss-remaining-configured-sources.log"
+      },
+      "results": [
+        {
+          "sourceId": "folo:302",
+          "status": "failed",
+          "originalScriptStatus": "failed",
+          "returnedCount": null,
+          "rejectedCount": null,
+          "detail": "Configured source folo:302 request failed: The operation was aborted due to timeout"
+        },
+        {
+          "sourceId": "folo:611",
+          "status": "partial",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 3,
+          "rejectedCount": 7,
+          "detail": "3 normalized; 0 dated today; latest=2026-08-01T00:00:00.000Z; rejected=7"
+        },
+        {
+          "sourceId": "folo:444",
+          "status": "failed",
+          "originalScriptStatus": "no_posts",
+          "returnedCount": 0,
+          "rejectedCount": 20,
+          "detail": "0 normalized; 0 dated today; latest=none; rejected=20"
+        },
+        {
+          "sourceId": "folo:182",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 100,
+          "rejectedCount": 0,
+          "detail": "100 normalized; 1 dated today; latest=2026-09-07T00:00:00.000Z; rejected=0"
+        },
+        {
+          "sourceId": "folo:77",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 20,
+          "rejectedCount": 0,
+          "detail": "20 normalized; 20 dated today; latest=2026-09-07T03:05:17.000Z; rejected=0"
+        },
+        {
+          "sourceId": "folo:208",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 10,
+          "rejectedCount": 0,
+          "detail": "10 normalized; 4 dated today; latest=2026-09-07T06:53:26.000Z; rejected=0"
+        },
+        {
+          "sourceId": "folo:93",
+          "status": "failed",
+          "originalScriptStatus": "failed",
+          "returnedCount": null,
+          "rejectedCount": null,
+          "detail": "Configured source folo:93 request failed: The operation was aborted due to timeout"
+        },
+        {
+          "sourceId": "folo:84",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 50,
+          "rejectedCount": 0,
+          "detail": "50 normalized; 1 dated today; latest=2026-09-06T22:00:00.000Z; rejected=0"
+        },
+        {
+          "sourceId": "folo:67",
+          "status": "failed",
+          "originalScriptStatus": "failed",
+          "returnedCount": null,
+          "rejectedCount": null,
+          "detail": "Configured source folo:67 request failed: The operation was aborted due to timeout"
+        },
+        {
+          "sourceId": "folo:523",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 25,
+          "rejectedCount": 0,
+          "detail": "25 normalized; 15 dated today; latest=2026-09-07T00:00:00.000Z; rejected=0"
+        },
+        {
+          "sourceId": "folo:253",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 30,
+          "rejectedCount": 0,
+          "detail": "30 normalized; 12 dated today; latest=2026-09-07T08:08:54.000Z; rejected=0"
+        },
+        {
+          "sourceId": "folo:44",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 30,
+          "rejectedCount": 0,
+          "detail": "30 normalized; 11 dated today; latest=2026-09-07T09:02:47.000Z; rejected=0"
+        },
+        {
+          "sourceId": "folo:792",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 100,
+          "rejectedCount": 0,
+          "detail": "100 normalized; 100 dated today; latest=2026-09-07T00:00:00.000Z; rejected=0"
+        },
+        {
+          "sourceId": "folo:79",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 20,
+          "rejectedCount": 0,
+          "detail": "20 normalized; 6 dated today; latest=2026-09-07T08:52:42.000Z; rejected=0"
+        },
+        {
+          "sourceId": "folo:172",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 20,
+          "rejectedCount": 0,
+          "detail": "20 normalized; 0 dated today; latest=2026-09-06T21:41:06.000Z; rejected=0"
+        },
+        {
+          "sourceId": "folo:1104",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 100,
+          "rejectedCount": 0,
+          "detail": "100 normalized; 2 dated today; latest=2026-09-07T08:07:20.000Z; rejected=0"
+        },
+        {
+          "sourceId": "folo:177",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 20,
+          "rejectedCount": 0,
+          "detail": "20 normalized; 13 dated today; latest=2026-09-07T09:38:42.000Z; rejected=0"
+        },
+        {
+          "sourceId": "folo:257",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 10,
+          "rejectedCount": 0,
+          "detail": "10 normalized; 1 dated today; latest=2026-09-06T23:36:04.000Z; rejected=0"
+        },
+        {
+          "sourceId": "folo:312",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 50,
+          "rejectedCount": 0,
+          "detail": "50 normalized; 2 dated today; latest=2026-09-07T09:36:00.000Z; rejected=0"
+        },
+        {
+          "sourceId": "folo:64",
+          "status": "fetched",
+          "originalScriptStatus": "fetched",
+          "returnedCount": 30,
+          "rejectedCount": 0,
+          "detail": "30 normalized; 20 dated today; latest=2026-09-07T09:44:51.000Z; rejected=0"
+        }
+      ],
+      "classificationCorrection": "The original script called NBER all-rejected no_posts and NCPSD partial fetched. Structured statuses here correct those observed counts; this is not a new network scan."
+    },
+    "officialNewsFollowUp": [
+      {
+        "sourceId": "folo:302",
+        "checkedAt": "2026-09-07T10:57:46.542Z",
+        "live": true,
+        "endpoint": "https://hub-api.baai.ac.cn/api/v1/story/list?page=1&sort=new&tag_id=",
+        "status": "fetched",
+        "returnedCount": 6,
+        "rejectedCount": 0,
+        "elapsedMs": 1288,
+        "itemsHash": "4efa78a33e9386d665c7e246f583da9bd757906baa175e134d28c79db415c03f"
+      },
+      {
+        "sourceId": "folo:93",
+        "checkedAt": "2026-09-07T10:57:46.542Z",
+        "live": true,
+        "endpoint": "https://apii.web.mittrchina.com/information/index?limit=10",
+        "status": "fetched",
+        "returnedCount": 10,
+        "rejectedCount": 0,
+        "elapsedMs": 1082,
+        "itemsHash": "89da656aeeaad04143b6d3defd74ababc5ef4a66f3d13c2f7321c7e70361b9f6"
+      },
+      {
+        "sourceId": "folo:67",
+        "checkedAt": "2026-09-07T10:57:46.542Z",
+        "live": true,
+        "endpoint": "https://www.aibase.com/zh/news",
+        "status": "fetched",
+        "returnedCount": 20,
+        "rejectedCount": 0,
+        "elapsedMs": 765,
+        "itemsHash": "0a89c144f22d089baeb94d3bfd12ee0314e73fc947cf4369b8a435596158cf83"
+      }
+    ],
+    "nberDiagnostic": {
+      "checkedAt": "2026-09-07T09:54:55.758Z",
+      "url": "https://www.nber.org/papers/w35670#fromrss",
+      "status": 403,
+      "contentType": "text/html; charset=UTF-8",
+      "elapsedMs": 245,
+      "bytes": 63434,
+      "dateMetaTags": [],
+      "challengeMarkers": false
+    },
+    "residuals": [
+      "NBER rejected all 20 candidates; the separately checked first official article returned HTTP 403. No publication dates fabricated; old cache retained.",
+      "NCPSD retained 3 and rejected 7; partial content remains explicit."
+    ],
+    "boundary": "Full batch and targeted repairs have separate timestamps. Source dates are untrusted publisher metadata; no claim that all 22 sources are currently healthy."
+  },
+  "liveWorkflow": {
+    "fixturesEnabled": false,
+    "profile": "Isolated temporary profile containing only public acceptance data",
+    "prompt": "Find recent arXiv papers and public GitHub code on structured channel pruning for efficient neural networks.",
+    "selectedSources": ["arxiv", "github"],
+    "planningCalls": 3,
+    "analysisCalls": 3,
+    "runs": [
+      {
+        "id": "discover:01c64b80-4477-48bb-a6ef-97495b888b26",
+        "runner": "codex",
+        "status": "completed",
+        "createdAt": "2026-09-07T09:50:41.380Z"
+      },
+      {
+        "id": "discover:ae1e593f-be44-4b96-8149-0d23a70c31c9",
+        "runner": "claude",
+        "status": "completed",
+        "createdAt": "2026-09-07T10:10:36.379Z"
+      },
+      {
+        "id": "discover:e5ab7c6a-6d9f-4fc3-a76b-26452d52410d",
+        "runner": "claude",
+        "status": "completed",
+        "createdAt": "2026-09-07T11:00:56.676Z"
+      }
+    ],
+    "artifacts": [
+      {
+        "artifactId": "f223d534-8670-41ce-9be8-b3a40507966f",
+        "sourceId": "arxiv:2608.29765v1",
+        "provider": "Codex CLI",
+        "model": "codex-cli",
+        "promptVersion": "llm-wiki-paper-l1-v1",
+        "sourceHash": "1ff25265cbadccd3f4b57cf8b9819b98ede1b6f2f5654a1683dce9a1d9d98017",
+        "contentSha256": "360039e6b861e1636451d3e11474feddd278d1bae88fdc129400930807d18bf7",
+        "createdAt": "2026-09-07T09:54:21.908Z",
+        "currentSourceMatches": true,
+        "immutableAfterRestart": true
+      },
+      {
+        "artifactId": "133efa3f-eb5f-495a-a926-338992b10cde",
+        "sourceId": "github:stsoftwareau/neat-ai-ockham",
+        "provider": "Claude Code",
+        "model": "claude-code",
+        "promptVersion": "discovery-analysis-v1",
+        "sourceHash": "8176e1a082e86b4d73a3ccc97ed8271fdc17f9e9207247832299335b433662e9",
+        "contentSha256": "616cf6c816ad1f63e76da8824a9684023b574f3e1b9879de85bbce680c0767fc",
+        "createdAt": "2026-09-07T10:22:13.012Z",
+        "currentSourceMatches": false,
+        "immutableAfterRestart": true
+      },
+      {
+        "artifactId": "c364dfda-8f4e-4e7d-959f-9f4f2ef593c4",
+        "sourceId": "github:stsoftwareau/neat-ai-ockham",
+        "provider": "Claude Code",
+        "model": "claude-code",
+        "promptVersion": "discovery-analysis-v2",
+        "sourceHash": "883a456f094699f96ea7e5071453d9adb6e0f3341dc6ceda2611d5e3ba911f64",
+        "contentSha256": "7cc81a54e5aa99c5bfeeb892a1a7231b56b78d813e8b87d3ebe3aa507834634e",
+        "createdAt": "2026-09-07T11:51:09.636Z",
+        "currentSourceMatches": true,
+        "immutableAfterRestart": true
+      }
+    ],
+    "savedRecords": 2,
+    "integrity": "ok",
+    "vaultPromotionReceipts": 0,
+    "semanticReview": {
+      "codexPaper": "passed: abstract-only/provisional; numerical statements checked against the supplied abstract, no full-paper verification claimed",
+      "claudeV1": "failed evidence review: update mislabeled publication and 1 star used to infer absent validation/citations",
+      "claudeV2": "passed bounded follow-up: correct creation/update distinction, popularity separated from quality, unavailable evidence explicit; one case is not a general model-accuracy guarantee"
+    },
+    "customModelProvider": "deferred by user; no paid API or new credential added"
+  },
+  "keyboard": {
+    "commandF": "Passed: focused local-search field",
+    "typingAndReturn": "Passed: public prune query returned 25 local results",
+    "escape": "Passed: returns to same Saved reader",
+    "arrowSelection": "Passed: Down selects paper and Up returns to repository with matching reader",
+    "commandQAndRestart": "Passed: 3 artifacts unchanged and 2 Saved records preserved"
+  },
+  "voiceOver": {
+    "status": "deferred-by-user",
+    "initialState": "off",
+    "enabledDuringTask": false,
+    "configurationWritten": false,
+    "note": "Utility startup attempt did not return a usable app; user then canceled VoiceOver work."
+  },
+  "independentHuman": {
+    "status": "pending",
+    "checklist": "HUMAN_ACCEPTANCE.md",
+    "notSubstitutedByAgentTests": true
+  },
+  "verification": {
+    "mainTests": 630,
+    "nativeTests": 90,
+    "mainCoverage": [90.81, 81.65, 94.35, 93.55],
+    "nativeCoverage": [89.01, 81.96, 88.42, 91.46],
+    "desktopE2E": 8,
+    "packageWorkflows": 12,
+    "checks": [
+      {
+        "name": "full-check",
+        "exitCode": 0,
+        "logSha256": "ccd47d1ae37aeef225e01c9e1be926eeef2760832e6125bcc3226efd0010af45",
+        "completedAt": "2026-09-07T11:52:00.566900+00:00",
+        "localLog": "/private/tmp/therss-remaining-final-check.log"
+      },
+      {
+        "name": "desktop-e2e",
+        "exitCode": 0,
+        "logSha256": "909c8a52df0acdd6f234d621602a702bd450b8dcc838d729d5648c5b6a9948f1",
+        "completedAt": "2026-09-07T11:58:32.069313+00:00",
+        "localLog": "/private/tmp/therss-remaining-e2e.log"
+      },
+      {
+        "name": "package-smoke",
+        "exitCode": 0,
+        "logSha256": "a2d1fd49a13ddb63d2367e3c876fc77d5091e6ba23a792752c5e5e5cb95a821a",
+        "completedAt": "2026-09-07T12:01:06.461440+00:00",
+        "localLog": "/private/tmp/therss-remaining-package-smoke.log"
+      },
+      {
+        "name": "same-id-freshness-red",
+        "exitCode": 1,
+        "logSha256": "8759707694a67152dd0f98c5953cc0d7d61578f64eda3aab875ae9abeea42f8e",
+        "completedAt": "2026-09-07T11:06:39.637178+00:00",
+        "localLog": "/private/tmp/therss-same-id-freshness-red.log"
+      },
+      {
+        "name": "same-id-freshness-green",
+        "exitCode": 0,
+        "logSha256": "1f4e7642b8e04296956ef87ed6f849e577663a877a4d6e7e95398fdcd8523208",
+        "completedAt": "2026-09-07T11:06:46.829039+00:00",
+        "localLog": "/private/tmp/therss-same-id-freshness-green.log"
+      },
+      {
+        "name": "installed-package-smoke",
+        "exitCode": 0,
+        "localLog": "/private/tmp/therss-remaining-installed-smoke.log",
+        "logSha256": "b557939f9442920b1ace02b2588b5f91ed3f5f5fd0c863a03b7ca596ad726c62",
+        "completedAt": "2026-09-07T12:04:13.890391+00:00"
+      }
+    ],
+    "installedWorkflows": 12,
+    "installedStartup": true
+  },
+  "installation": {
+    "checkedAt": "2026-09-07T12:03:23.833825+00:00",
+    "databaseIntegrity": "ok",
+    "allTablesEqualToImmediateBackup": true,
+    "tableCount": 11,
+    "installedBundleMatches": true,
+    "installedAsarSha256": "9bf1c34a1971ee2e24467167e33377635deb9110548dc2951f30f10b9e218555",
+    "backupExists": true,
+    "previousAppExists": true
+  },
+  "distribution": "Unsigned local candidate. Paid Apple enrollment, signing, notarization and formal release deferred by user.",
+  "github": {
+    "pullRequest": "https://github.com/dtjgp/TheRSS/pull/49",
+    "delivery": "Follow-up on existing draft PR",
+    "ciAuthority": "https://github.com/dtjgp/TheRSS/pull/49/checks",
+    "merged": false
+  }
+}

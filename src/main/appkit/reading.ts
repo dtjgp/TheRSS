@@ -17,6 +17,7 @@ import {
   type NativeScreen
 } from './common'
 import type { NativeNode } from './presentation'
+import { hashAnalysisSource } from '../../core/analysis/sourceSnapshot'
 
 export class TriageHistory {
   private previous: { id: string; state: TriageState } | null = null
@@ -108,12 +109,16 @@ export class ResearchReader implements NativeScreen {
 
   select(item: DashboardItem | null, sessionId?: string, extra = ''): void {
     const changed = this.item?.id !== item?.id || this.sessionId !== sessionId
+    const sourceChanged =
+      !!item && !!this.item && hashAnalysisSource(item) !== hashAnalysisSource(this.item)
     this.item = item
     this.sessionId = sessionId
     this.extra = extra
-    if (!changed) return
-    this.expanded = false
-    this.metadataExpanded = false
+    if (!changed && !sourceChanged) return
+    if (changed) {
+      this.expanded = false
+      this.metadataExpanded = false
+    }
     this.artifact = item ? (this.analysisCache.get(item.id) ?? null) : null
     this.artifactFreshness = this.artifact ? 'checking' : 'unavailable'
     this.storedLoading = false
@@ -212,10 +217,19 @@ export class ResearchReader implements NativeScreen {
                 label(
                   `${prefix}-analysis-readiness`,
                   this.scope === 'discover' && item.kind !== 'paper'
-                    ? 'Save this record to analyze it from Saved.'
+                    ? saved
+                      ? 'Open Saved to analyze this record.'
+                      : 'Save this record to analyze it from Saved.'
                     : runnerUnavailableReason(this.context, this.runner),
                   { weight: 'secondary' }
                 ),
+                ...(this.scope === 'discover' && item.kind !== 'paper' && saved
+                  ? [
+                      b.button(`${prefix}-analysis-open-saved`, 'Open Saved', () =>
+                        this.context.navigate('saved')
+                      )
+                    ]
+                  : []),
                 ...(this.scope === 'saved' || item.kind === 'paper'
                   ? [
                       b.button(`${prefix}-analysis-configure-runner`, 'Open Settings', () =>
@@ -425,7 +439,13 @@ export class ResearchReader implements NativeScreen {
       const state = await this.context.api.getAnalysisArtifact(artifact.id)
       if (!this.disposed && version === this.version && this.artifact?.id === artifact.id)
         this.artifactFreshness =
-          state?.artifact.id === artifact.id ? state.freshness : 'unavailable'
+          state?.artifact.id === artifact.id
+            ? state.freshness === 'current' &&
+              this.item &&
+              hashAnalysisSource(this.item) !== artifact.sourceHash
+              ? 'stale'
+              : state.freshness
+            : 'unavailable'
     } catch {
       if (!this.disposed && version === this.version && this.artifact?.id === artifact.id)
         this.artifactFreshness = 'unavailable'

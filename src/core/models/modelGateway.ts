@@ -119,7 +119,10 @@ Analyze this discovery candidate for a research user. Use these headings:
 4. Evidence boundary and unknowns
 5. Recommended next action
 
-Evidence boundary: this input may contain only an abstract or repository metadata. Do not claim that methods, experiments, code quality, or results were verified from a full paper or source-code audit.`
+Evidence boundary: this input may contain only an abstract or repository metadata. Do not claim that methods, experiments, code quality, or results were verified from a full paper or source-code audit.
+- Published is the publication/creation date. An Updated recency reason describes a later update, not the original publication date.
+- GitHub stars, likes, downloads, and deterministic scores are discovery signals. They do not establish citations, independent validation, maturity, or code quality, whether their counts are high or low.
+- Base factual claims only on the supplied source. Attribute source claims; label any proposed mechanism or comparison as an unverified hypothesis. Facts not supplied are unknown and require a concrete next verifier. Unknown is not evidence of absence.`
 }
 
 function buildPaperL1AnalysisPrompt(item: DashboardItem): string {

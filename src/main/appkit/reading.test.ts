@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { DashboardItem } from '../../shared/api'
 import { ResearchReader, TriageHistory } from './reading'
 import { nativeHarness } from './testSupport'
+import { hashAnalysisSource } from '../../core/analysis/sourceSnapshot'
 
 const item: DashboardItem = {
   id: 'arxiv:1',
@@ -28,6 +29,63 @@ const artifact = {
 }
 
 describe('native reading and triage', () => {
+  it('rechecks same-ID source changes without collapsing the current reading content', async () => {
+    const original = { ...artifact, sourceHash: hashAnalysisSource(item) }
+    const h = nativeHarness({
+      getLatestAnalysis: vi.fn(async () => original),
+      getAnalysisArtifact: vi.fn(async () => ({
+        artifact: original,
+        freshness: 'current' as const,
+        currentSourceHash: original.sourceHash
+      }))
+    })
+    const reader = new ResearchReader(h.context, 'saved', new TriageHistory(h.context))
+    reader.select(item)
+    await vi.waitFor(() =>
+      expect(h.find(h.render(reader), 'saved-analysis-freshness')?.text).toContain('unchanged')
+    )
+    await h.act(reader, 'saved-expand')
+    reader.select({ ...item, triageState: 'saved' })
+    expect(h.api.getLatestAnalysis).toHaveBeenCalledTimes(1)
+    reader.select({ ...item, summary: 'A revised source. '.repeat(100) })
+    await vi.waitFor(() => expect(h.api.getLatestAnalysis).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() =>
+      expect(h.find(h.render(reader), 'saved-analysis-freshness')?.text).toContain('Source changed')
+    )
+    expect(h.find(h.render(reader), 'saved-summary')?.text).toBe('A revised source. '.repeat(100))
+    expect(h.find(h.render(reader), 'saved-analysis')?.text).toContain(original.content)
+  })
+  it('checks the displayed Discover snapshot even if the canonical Saved source still matches', async () => {
+    const original = { ...artifact, sourceHash: hashAnalysisSource(item) }
+    const h = nativeHarness({
+      getLatestAnalysis: vi.fn(async () => original),
+      getAnalysisArtifact: vi.fn(async () => ({
+        artifact: original,
+        freshness: 'current' as const,
+        currentSourceHash: original.sourceHash
+      }))
+    })
+    const reader = new ResearchReader(h.context, 'discover', new TriageHistory(h.context))
+    reader.select({ ...item, reasons: ['Updated today'] }, 'new-session')
+    await vi.waitFor(() =>
+      expect(h.find(h.render(reader), 'discover-analysis-freshness')?.text).toContain(
+        'Source changed'
+      )
+    )
+  })
+  it('offers an actionable Saved path for an already saved repository', async () => {
+    const h = nativeHarness()
+    const reader = new ResearchReader(h.context, 'discover', new TriageHistory(h.context))
+    reader.select(
+      { ...item, kind: 'repository', source: 'github', triageState: 'saved' },
+      'session'
+    )
+    expect(h.find(h.render(reader), 'discover-analysis-readiness')?.text).toBe(
+      'Open Saved to analyze this record.'
+    )
+    await h.act(reader, 'discover-analysis-open-saved')
+    expect(h.context.navigate).toHaveBeenCalledWith('saved')
+  })
   it('distinguishes a pending saved-analysis read from no analysis and exposes stale source evidence', async () => {
     let finish!: (value: typeof artifact) => void
     const h = nativeHarness({

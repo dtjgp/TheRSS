@@ -527,7 +527,8 @@ export class ResearchRepository {
     status: PersistedSourceHealth,
     completedAt = new Date().toISOString(),
     errorMessage: string | null = null,
-    resultCount: number | null = null
+    resultCount: number | null = null,
+    recordSearchEvent = true
   ): void {
     if (!isDiscoverySource(source)) throw new Error(`Unsupported discovery source: ${source}`)
     if (!SOURCE_HEALTH.has(status)) {
@@ -550,7 +551,7 @@ export class ResearchRepository {
         )
         .run(source, status, completedAt, errorMessage, resultCount)
 
-      if (status !== 'idle' && status !== 'refreshing') {
+      if (recordSearchEvent && status !== 'idle' && status !== 'refreshing') {
         this.#database
           .prepare(
             `INSERT INTO source_search_event(source, status, completed_at, result_count)

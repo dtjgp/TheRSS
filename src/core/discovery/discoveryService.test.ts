@@ -48,6 +48,58 @@ function setup() {
 }
 
 describe('DiscoveryService', () => {
+  it('retains daily results when every configured-source entry is rejected', async () => {
+    const repository = setup()
+    const item = { ...paper, id: 'folo:302:article:kept', source: 'folo:302' as const }
+    const fetchConfiguredSource = vi
+      .fn()
+      .mockResolvedValueOnce({ items: [item], rejectedCount: 0 })
+      .mockResolvedValueOnce({ items: [], rejectedCount: 20 })
+    const service = new DiscoveryService(repository, {
+      fetchArxiv: async () => [],
+      fetchGitHub: async () => [],
+      configuredDefinitions: [getConfiguredSourceDefinition('folo:302')],
+      fetchConfiguredSource
+    })
+    const now = new Date('2026-08-19T12:00:00Z')
+    await service.refresh({ now })
+    const after = await service.refresh({ now })
+    expect(after.sourceHealth['folo:302']).toBe('failed')
+    expect(after.items.some((entry) => entry.id === item.id)).toBe(true)
+    repository.close()
+  })
+
+  it('records source-only failures and preserves the last cached records', async () => {
+    const repository = setup()
+    const item = { ...paper, id: 'folo:302:article:cached', source: 'folo:302' as const }
+    const fetchConfiguredSource = vi
+      .fn()
+      .mockResolvedValueOnce({ items: [item], rejectedCount: 0 })
+      .mockResolvedValueOnce({ items: [], rejectedCount: 20 })
+      .mockRejectedValueOnce(new Error('upstream unavailable'))
+    const service = new DiscoveryService(repository, {
+      configuredDefinitions: [getConfiguredSourceDefinition('folo:302')],
+      fetchConfiguredSource
+    })
+    const now = new Date('2026-08-19T12:00:00Z')
+    await service.refreshSourceContent('folo:302', { now })
+    await expect(service.refreshSourceContent('folo:302', { now })).rejects.toThrow(/20.*rejected/i)
+    expect(repository.getDashboardSnapshot().sourceHealth['folo:302']).toBe('failed')
+    expect(
+      repository.getSourceContentSnapshot('folo:302', now).items.map((entry) => entry.id)
+    ).toContain(item.id)
+    await expect(service.refreshSourceContent('folo:302', { now })).rejects.toThrow(
+      'upstream unavailable'
+    )
+    expect(
+      repository.getDashboardSnapshot().sourceHealthDetails['folo:302']?.errorMessage
+    ).toContain('upstream unavailable')
+    expect(repository.getAnalyticsSnapshot().totals).toMatchObject({
+      searchResults: 0,
+      todayResults: 0
+    })
+    repository.close()
+  })
   it('refreshes independent sources, ranks results and persists the dashboard', async () => {
     const repository = setup()
     const fetchArxiv = vi.fn().mockResolvedValue([paper])

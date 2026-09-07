@@ -1,6 +1,6 @@
 {
   "version": "0.3.0",
-  "status": "local-acceptance-passed; signed-market-distribution-deferred-by-user",
+  "status": "non-release technical acceptance passed with source degradation; human acceptance pending; custom API, VoiceOver and formal distribution deferred by user",
   "baselineCommit": "f9bc6a2b55e203d17ef258cd2d2e56df436782ea",
   "branch": "codex/market-readiness",
   "environment": {
@@ -10,26 +10,26 @@
     "node": "26.7.0",
     "electron": "44.1.1"
   },
-  "buildInputsSha256": "91a7dd94447a5d9e649c35429a4f417399123439500e5afc044c6f30771b7862",
+  "buildInputsSha256": "2cd0f0a24cf4e078c98640ff0775602cb812de572564c895fd18ab76a31b67ea",
   "tests": {
     "main": {
-      "files": 91,
-      "passed": 603,
+      "files": 92,
+      "passed": 630,
       "coverage": {
-        "statements": 90.53,
-        "branches": 80.87,
-        "functions": 94.24,
-        "lines": 93.4
+        "statements": 90.81,
+        "branches": 81.65,
+        "functions": 94.35,
+        "lines": 93.55
       }
     },
     "appkit": {
       "files": 21,
-      "passed": 87,
+      "passed": 90,
       "coverage": {
-        "statements": 88.99,
-        "branches": 81.63,
-        "functions": 88.4,
-        "lines": 91.45
+        "statements": 89.01,
+        "branches": 81.96,
+        "functions": 88.42,
+        "lines": 91.46
       }
     },
     "compatibilityE2E": {
@@ -410,6 +410,48 @@
       "evidenceLog": "/private/tmp/therss-local-final-native-recheck.log",
       "logSha256": "02fb2f58de9d1352aa2bb871c21d2b6f0ff4b3a8b60233ca377139113aa736d2",
       "completedAt": "2026-09-07T06:14:15.440942+00:00"
+    },
+    {
+      "name": "full-check",
+      "exitCode": 0,
+      "logSha256": "ccd47d1ae37aeef225e01c9e1be926eeef2760832e6125bcc3226efd0010af45",
+      "completedAt": "2026-09-07T11:52:00.566900+00:00",
+      "localLog": "/private/tmp/therss-remaining-final-check.log"
+    },
+    {
+      "name": "desktop-e2e",
+      "exitCode": 0,
+      "logSha256": "909c8a52df0acdd6f234d621602a702bd450b8dcc838d729d5648c5b6a9948f1",
+      "completedAt": "2026-09-07T11:58:32.069313+00:00",
+      "localLog": "/private/tmp/therss-remaining-e2e.log"
+    },
+    {
+      "name": "package-smoke",
+      "exitCode": 0,
+      "logSha256": "a2d1fd49a13ddb63d2367e3c876fc77d5091e6ba23a792752c5e5e5cb95a821a",
+      "completedAt": "2026-09-07T12:01:06.461440+00:00",
+      "localLog": "/private/tmp/therss-remaining-package-smoke.log"
+    },
+    {
+      "name": "same-id-freshness-red",
+      "exitCode": 1,
+      "logSha256": "8759707694a67152dd0f98c5953cc0d7d61578f64eda3aab875ae9abeea42f8e",
+      "completedAt": "2026-09-07T11:06:39.637178+00:00",
+      "localLog": "/private/tmp/therss-same-id-freshness-red.log"
+    },
+    {
+      "name": "same-id-freshness-green",
+      "exitCode": 0,
+      "logSha256": "1f4e7642b8e04296956ef87ed6f849e577663a877a4d6e7e95398fdcd8523208",
+      "completedAt": "2026-09-07T11:06:46.829039+00:00",
+      "localLog": "/private/tmp/therss-same-id-freshness-green.log"
+    },
+    {
+      "name": "installed-package-smoke",
+      "exitCode": 0,
+      "localLog": "/private/tmp/therss-remaining-installed-smoke.log",
+      "logSha256": "b557939f9442920b1ace02b2588b5f91ed3f5f5fd0c863a03b7ca596ad726c62",
+      "completedAt": "2026-09-07T12:04:13.890391+00:00"
     }
   ],
   "releaseGates": {
@@ -417,9 +459,9 @@
     "R1": "passed",
     "R2": "passed: code/security checks and private vulnerability reporting enabled",
     "R3": "passed: installed app, preserved real data, normal quit/reopen and isolated upgrade/rollback",
-    "R4": "fixed-message Codex account connectivity passed; dated source failures and untested providers remain explicit",
+    "R4": "Codex and Claude real planning/analysis plus persistence passed; NBER failed and NCPSD partial remain dated; custom API deferred by user",
     "R5": "deferred by current user instruction; not a local acceptance gate",
-    "R6": "local instructions and bounded assistant-operated real UI acceptance passed; broader human/platform certification unclaimed",
+    "R6": "Technical keyboard and local workflow checks passed; independent human acceptance pending; VoiceOver deferred by user",
     "R7": "source branch pushed; draft PR #49 open; current head and CI results maintained in linked PR checks"
   },
   "userApplicationReplaced": true,
@@ -427,16 +469,17 @@
   "privateVulnerabilityReportingEnabled": true,
   "published": false,
   "limitations": [
-    "Native and Web compatibility runtime evidence is from macOS 27 only.",
-    "No human black-box or VoiceOver sign-off was performed.",
-    "Earlier fixture gates precede the last isolated child-process fix; the full check includes it.",
-    "Upgrade rehearsal proves unsigned data preservation, not signed automatic updates.",
-    "The OpenAI endpoint follow-up uses its own dated live check; other source health was not revalidated in that follow-up."
+    "Native and Web runtime evidence is from macOS 27 only.",
+    "Independent human acceptance is pending; VoiceOver and custom model API are deferred by the user.",
+    "NBER candidate publication-date enrichment failed; NCPSD content is partial. See separately dated source checks.",
+    "Immutable earlier analyses retain their original prompts and content; new generic analyses use v2.",
+    "One successful public-case review per CLI does not establish general model accuracy.",
+    "Unsigned upgrade preservation is not signed automatic-update evidence."
   ],
   "packageEvidence": "package-verification.json",
-  "sourceEvidence": "source-verification.json",
+  "sourceEvidence": "remaining-verification.json",
   "distributionEvidence": "distribution-verification.json",
-  "completedLocalVerificationAt": "2026-09-07T06:19:22.693873+00:00",
+  "completedLocalVerificationAt": "2026-09-07T12:03:23.833825+00:00",
   "localAcceptanceEvidence": "local-verification.json",
   "signedDistributionInCurrentScope": false,
   "priorBlockedRevalidation": {
@@ -467,5 +510,6 @@
       "quality": "success",
       "desktop": "success"
     }
-  }
+  },
+  "remainingAcceptanceEvidence": "remaining-verification.json"
 }

@@ -24,14 +24,16 @@ function recencyReason(item: DiscoveryItem, now: Date): MatchReason | null {
   }
 
   const roundedAgeDays = Math.floor(ageDays)
+  const dateKind =
+    item.updatedAt && timestamp !== Date.parse(item.publishedAt) ? 'Updated' : 'Published'
   return {
     kind: 'recency',
     value: `${roundedAgeDays}d`,
     weight,
     label:
       ageDays < 1
-        ? 'Published today'
-        : `Published ${roundedAgeDays} ${roundedAgeDays === 1 ? 'day' : 'days'} ago`
+        ? `${dateKind} today`
+        : `${dateKind} ${roundedAgeDays} ${roundedAgeDays === 1 ? 'day' : 'days'} ago`
   }
 }
 

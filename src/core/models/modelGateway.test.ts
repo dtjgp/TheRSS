@@ -87,6 +87,12 @@ describe('modelGateway', () => {
     })
 
     expect(prompt).toContain('Likely contribution')
+    expect(prompt).toContain('Published is the publication/creation date')
+    expect(prompt).toContain(
+      'stars, likes, downloads, and deterministic scores are discovery signals'
+    )
+    expect(prompt).toContain('citations, independent validation, maturity, or code quality')
+    expect(prompt).toContain('Unknown is not evidence of absence')
     expect(prompt).not.toContain('llm-wiki Paper_Note_L1')
     expect(prompt).not.toContain('## 快速决策卡')
     expect(
@@ -97,7 +103,7 @@ describe('modelGateway', () => {
         kind: 'repository',
         url: 'https://github.com/owner/repo'
       })
-    ).toBe('discovery-analysis-v1')
+    ).toBe('discovery-analysis-v2')
   })
 
   it('calls an OpenAI-compatible provider without leaking the key into the body', async () => {

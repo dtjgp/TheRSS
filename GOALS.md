@@ -1,12 +1,19 @@
 # TheRSS Goals
 
-## Completed current stage: Unsigned local acceptance
+## Current stage: Non-release technical acceptance complete; human acceptance pending
 
-On 2026-09-07 the user requested local software confirmation and deferred paid Apple distribution.
-The verified 0.3.0 app is installed with application/database backups; all 11 user-data tables match
-the original backup. Fixed-message Codex connectivity, actual UI navigation/local-search return,
-Command-Q process exit and reopen passed. Full checks pass 603 main and 87 AppKit tests; desktop
-E2E passes 8/8. See [local acceptance](docs/audits/2026-09-06-market-readiness/LOCAL_ACCEPTANCE.md).
+The user asked to finish the remaining non-release work, then explicitly deferred new paid model APIs
+and VoiceOver. Codex and Claude completed real public-data planning/analysis and persistence checks.
+Three news sources now use verified official lists; NBER failed and NCPSD partial results retain
+honest degradation and cached content. Date labels, generic analysis evidence rules and same-record
+source freshness were repaired with RED/GREEN regressions.
+
+Full checks pass 630 main and 90 AppKit tests; desktop E2E 8/8; exact packaged and installed native
+workflows 12/12. The updated 0.3.0 app is installed with backups, and all 11 real-data tables match
+the immediate backup. See [remaining acceptance](docs/audits/2026-09-06-market-readiness/REMAINING_ACCEPTANCE.md).
+The [independent human checklist](docs/audits/2026-09-06-market-readiness/HUMAN_ACCEPTANCE.md) awaits
+actual user feedback. Continue GitHub delivery through existing draft PR #49; do not merge or
+publish a software release without the relevant authorization.
 
 ## Deferred goal: Market-ready native research product
 

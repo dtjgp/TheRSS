@@ -3,10 +3,11 @@ import { CONFIGURED_SOURCE_DEFINITIONS } from '../src/core/sources/catalog/confi
 import { fetchConfiguredSourceBatch } from '../src/core/sources/catalog/configuredSourceAdapter'
 import type { InterestProfile } from '../src/core/interests/interestProfile'
 import { localDateKey } from '../src/shared/date'
+import { classifySourceBatch } from '../src/core/sources/catalog/sourceBatchStatus'
 
 interface SmokeResult {
   readonly sourceId: string
-  readonly status: 'fetched' | 'no_posts' | 'failed'
+  readonly status: 'fetched' | 'no_posts' | 'partial' | 'failed'
   readonly detail: string
 }
 
@@ -57,9 +58,10 @@ for (let offset = 0; offset < definitions.length; offset += 3) {
     const todayCount = result.value.items.filter(
       (item) => localDateKey(new Date(item.publishedAt)) === localDateKey(now)
     ).length
+    const status = classifySourceBatch(result.value)
     results.push({
       sourceId: source.id,
-      status: result.value.items.length > 0 ? 'fetched' : 'no_posts',
+      status: status === 'no_results' ? 'no_posts' : status,
       detail: `${result.value.items.length} normalized; ${todayCount} dated today; latest=${newest?.publishedAt ?? 'none'}; rejected=${result.value.rejectedCount}`
     })
   })

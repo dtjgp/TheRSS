@@ -24,15 +24,15 @@ const strictHttpSourceIds = [
 ] as const
 
 describe('CONFIGURED_SOURCE_DEFINITIONS', () => {
-  it('contains the 19 live-verified strict HTTP routes plus Hugging Face', () => {
+  it('contains the 19 fixed HTTP routes plus Hugging Face', () => {
     expect(CONFIGURED_SOURCE_DEFINITIONS).toHaveLength(20)
     expect(new Set(CONFIGURED_SOURCE_DEFINITIONS.map((source) => source.id)).size).toBe(20)
     expect(
       CONFIGURED_SOURCE_DEFINITIONS.filter((source) => source.transport === 'feed')
-    ).toHaveLength(15)
+    ).toHaveLength(12)
     expect(
       CONFIGURED_SOURCE_DEFINITIONS.filter((source) => source.transport === 'html')
-    ).toHaveLength(2)
+    ).toHaveLength(3)
     expect(
       CONFIGURED_SOURCE_DEFINITIONS.filter((source) => source.transport === 'dated_feed')
     ).toHaveLength(2)
@@ -46,15 +46,20 @@ describe('CONFIGURED_SOURCE_DEFINITIONS', () => {
 
   it('uses fixed HTTPS endpoints and preserves the audited route type', () => {
     for (const source of CONFIGURED_SOURCE_DEFINITIONS) {
-      if (source.transport === 'feed' || source.transport === 'html') {
+      if (source.transport !== 'huggingface') {
         expect(new URL(source.endpoint).protocol).toBe('https:')
-        expect(source.verifiedOn).toBe(source.id === 'folo:182' ? '2026-09-07' : '2026-08-19')
+        expect(source.verifiedOn).toBe(
+          ['folo:182', 'folo:302', 'folo:93', 'folo:67'].includes(source.id)
+            ? '2026-09-07'
+            : '2026-08-19'
+        )
       }
     }
 
     expect(getConfiguredSourceDefinition('folo:302')).toMatchObject({
-      transport: 'feed',
-      endpoint: 'https://rsshub.rssforever.com/baai/hub'
+      transport: 'json',
+      endpoint: 'https://hub-api.baai.ac.cn/api/v1/story/list?page=1&sort=new&tag_id=',
+      method: 'POST'
     })
     expect(getConfiguredSourceDefinition('folo:611')).toMatchObject({
       transport: 'html',

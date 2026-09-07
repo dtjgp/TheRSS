@@ -54,5 +54,6 @@
       "quality": "success",
       "desktop": "success"
     }
-  }
+  },
+  "currentFollowUp": "remaining-verification.json"
 }

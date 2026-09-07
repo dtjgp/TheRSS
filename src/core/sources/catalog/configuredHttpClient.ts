@@ -3,7 +3,7 @@ import { getConfiguredSourceDefinition } from './configuredSources'
 
 export interface ConfiguredHttpDocument {
   readonly sourceId: string
-  readonly transport: 'feed' | 'html'
+  readonly transport: 'feed' | 'html' | 'json'
   readonly endpoint: string
   readonly contentType: string
   readonly retrievedAt: string
@@ -20,7 +20,8 @@ interface FetchConfiguredHttpOptions {
 
 const ALLOWED_CONTENT_TYPES = {
   feed: new Set(['application/rss+xml', 'application/atom+xml', 'application/xml', 'text/xml']),
-  html: new Set(['text/html', 'application/xhtml+xml', 'application/json'])
+  html: new Set(['text/html', 'application/xhtml+xml', 'application/json']),
+  json: new Set(['application/json'])
 } as const
 
 function normalizedContentType(response: Response): string {
@@ -68,6 +69,7 @@ export async function fetchConfiguredHttpDocument(
   if (
     source.transport !== 'feed' &&
     source.transport !== 'html' &&
+    source.transport !== 'json' &&
     source.transport !== 'dated_feed'
   ) {
     throw new Error(`Configured source ${sourceId} does not use bounded HTTP document retrieval`)
@@ -91,11 +93,14 @@ export async function fetchConfiguredHttpDocument(
     for (let attempt = 1; attempt <= endpointAttempts; attempt += 1) {
       try {
         response = await fetchFixedOrigin(endpoint, sourceId, fetcher, {
+          method: 'method' in source ? source.method : 'GET',
           headers: {
             Accept:
               transport === 'feed'
                 ? 'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9'
-                : 'text/html, application/xhtml+xml, application/json;q=0.8',
+                : transport === 'json'
+                  ? 'application/json'
+                  : 'text/html, application/xhtml+xml, application/json;q=0.8',
             'User-Agent': 'TheRSS/0.2 (local research source client)'
           },
           signal: options.signal

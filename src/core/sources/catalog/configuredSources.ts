@@ -1,4 +1,4 @@
-type HttpTransport = 'feed' | 'html'
+type HttpTransport = 'feed' | 'html' | 'json'
 
 export interface HttpConfiguredSourceDefinition {
   readonly id: string
@@ -9,6 +9,7 @@ export interface HttpConfiguredSourceDefinition {
   readonly fallbackEndpoint?: string
   readonly retryAttempts?: number
   readonly encoding?: 'utf-8' | 'gb18030'
+  readonly method?: 'POST'
 }
 
 export interface DatedFeedConfiguredSourceDefinition {
@@ -42,9 +43,10 @@ const VERIFIED_ON = '2026-08-19'
 const definitions = [
   {
     id: 'folo:302',
-    transport: 'feed',
-    endpoint: 'https://rsshub.rssforever.com/baai/hub',
-    verifiedOn: VERIFIED_ON
+    transport: 'json',
+    endpoint: 'https://hub-api.baai.ac.cn/api/v1/story/list?page=1&sort=new&tag_id=',
+    method: 'POST',
+    verifiedOn: '2026-09-07'
   },
   {
     id: 'folo:611',
@@ -85,9 +87,9 @@ const definitions = [
   },
   {
     id: 'folo:93',
-    transport: 'feed',
-    endpoint: 'https://rsshub.rssforever.com/mittrchina/index',
-    verifiedOn: VERIFIED_ON
+    transport: 'json',
+    endpoint: 'https://apii.web.mittrchina.com/information/index?limit=10',
+    verifiedOn: '2026-09-07'
   },
   {
     id: 'folo:84',
@@ -97,9 +99,9 @@ const definitions = [
   },
   {
     id: 'folo:67',
-    transport: 'feed',
-    endpoint: 'https://rsshub.rssforever.com/aibase/news',
-    verifiedOn: VERIFIED_ON
+    transport: 'html',
+    endpoint: 'https://www.aibase.com/zh/news',
+    verifiedOn: '2026-09-07'
   },
   {
     id: 'folo:523',
@@ -196,6 +198,7 @@ function validateDefinitions(
     if (
       source.transport === 'feed' ||
       source.transport === 'html' ||
+      source.transport === 'json' ||
       source.transport === 'dated_feed'
     ) {
       assertHttpsEndpoint(source.endpoint, source.id)

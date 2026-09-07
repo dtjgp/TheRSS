@@ -2,6 +2,28 @@ import { describe, expect, it, vi } from 'vitest'
 import { fetchConfiguredHttpDocument } from './configuredHttpClient'
 
 describe('fetchConfiguredHttpDocument', () => {
+  it('uses only the fixed public read method and JSON content type for official news APIs', async () => {
+    for (const [id, method, endpoint] of [
+      ['folo:302', 'POST', 'https://hub-api.baai.ac.cn/api/v1/story/list?page=1&sort=new&tag_id='],
+      ['folo:93', 'GET', 'https://apii.web.mittrchina.com/information/index?limit=10']
+    ]) {
+      const fetcher = vi.fn<typeof fetch>(async (input, init) => {
+        expect(String(input)).toBe(endpoint)
+        expect(init?.method ?? 'GET').toBe(method)
+        expect(new Headers(init?.headers).get('Accept')).toBe('application/json')
+        expect(new Headers(init?.headers).has('Authorization')).toBe(false)
+        expect(init?.body).toBeUndefined()
+        return new Response('{}', { headers: { 'content-type': 'application/json' } })
+      })
+      expect((await fetchConfiguredHttpDocument(id!, { fetcher })).transport).toBe('json')
+      await expect(
+        fetchConfiguredHttpDocument(id!, {
+          fetcher: async () =>
+            new Response('<html>Blocked</html>', { headers: { 'content-type': 'text/html' } })
+        })
+      ).rejects.toThrow('unexpected content type')
+    }
+  })
   it('retrieves the existing OpenAI source directly from its official RSS origin', async () => {
     const fetcher = vi.fn<typeof fetch>(async (input, init) => {
       expect(String(input)).toBe('https://openai.com/news/rss.xml')

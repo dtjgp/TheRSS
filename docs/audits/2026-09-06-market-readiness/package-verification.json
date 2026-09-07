@@ -1,12 +1,12 @@
 {
+  "checkedAt": "2026-09-07T12:01:53.258Z",
   "version": "0.3.0",
-  "asarSha256": "e8ea57f2314a6a68d6680b09f6d47f1c18749543dc8f34b5004d124cad14ca2f",
-  "installedAsarSha256": "e8ea57f2314a6a68d6680b09f6d47f1c18749543dc8f34b5004d124cad14ca2f",
+  "asarSha256": "9bf1c34a1971ee2e24467167e33377635deb9110548dc2951f30f10b9e218555",
   "checks": [
     {
       "path": "out/main/index.js",
-      "buildSha256": "95e351048ef10ff1ac3ddaa78866b6e003440725d22e46359f23bfe996a95f17",
-      "packageSha256": "95e351048ef10ff1ac3ddaa78866b6e003440725d22e46359f23bfe996a95f17"
+      "buildSha256": "aae7e887d2fb51f7924a4efbc40b484abcb2ba6de8454088dd5874753149a2c8",
+      "packageSha256": "aae7e887d2fb51f7924a4efbc40b484abcb2ba6de8454088dd5874753149a2c8"
     },
     {
       "path": "out/preload/index.cjs",
@@ -15,8 +15,8 @@
     },
     {
       "path": "out/mcp/stdio.js",
-      "buildSha256": "d4db5151ff6d844f516e4172745bd0db5690bd2885312b5f547f7593611c4f49",
-      "packageSha256": "d4db5151ff6d844f516e4172745bd0db5690bd2885312b5f547f7593611c4f49"
+      "buildSha256": "e12fecac5aa38d74fec5a54bd6243d98b12a67c271c85685017545fbd1c395b8",
+      "packageSha256": "e12fecac5aa38d74fec5a54bd6243d98b12a67c271c85685017545fbd1c395b8"
     },
     {
       "path": "out/native-appkit/therss-ui.node",
@@ -30,5 +30,5 @@
     }
   ],
   "passed": true,
-  "checkedAt": "2026-09-07T06:13:46.557Z"
+  "installedAsarSha256": "9bf1c34a1971ee2e24467167e33377635deb9110548dc2951f30f10b9e218555"
 }

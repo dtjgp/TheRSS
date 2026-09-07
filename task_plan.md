@@ -17,18 +17,17 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Status
 
-**Current local acceptance complete; formal distribution deferred.** The user requested confirmation
-on this Mac without paid Apple enrollment. The 0.3.0 app is installed with verified backups and
-unchanged real data; fixed-message Codex connectivity and actual quit/reopen passed. Local UI
-inspection also verified five workspaces and exact local-search navigation. The Command-Q exit
-residue found during acceptance was reproduced and fixed with a meaningful native-key regression.
-Full checks pass 603 main tests and 87 AppKit tests; desktop E2E passes 8/8. Current evidence is in
-[LOCAL_ACCEPTANCE.md](docs/audits/2026-09-06-market-readiness/LOCAL_ACCEPTANCE.md) and the
-[overall report](docs/audits/2026-09-06-market-readiness/REPORT.md). Source failures remain dated
-and explicit. The latest independent user instruction authorized GitHub delivery: the branch
-is pushed, draft PR #49 is open, and private vulnerability reporting is enabled. The
-[delivery record](docs/audits/2026-09-06-market-readiness/GITHUB_DELIVERY.md) links live PR/CI state.
-Apple signing/notarization and formal release remain deferred at user request.
+**Non-release technical acceptance complete; independent human acceptance pending.** Codex and
+Claude real planning/analysis, immutable artifact persistence and ordinary keyboard workflows
+passed. Three failing news routes now use verified official lists; NBER remains failed and NCPSD
+partial, with cache and health state preserved. Real testing also fixed creation/update labeling,
+unsupported model inference from stars and stale source-freshness display for an unchanged record ID.
+Full checks pass 630 main and 90 AppKit tests, desktop E2E 8/8, package/installed native workflows
+12/12. The updated app is installed with backups and all 11 real-data tables unchanged from the
+immediate backup. See [remaining acceptance](docs/audits/2026-09-06-market-readiness/REMAINING_ACCEPTANCE.md)
+and its [human checklist](docs/audits/2026-09-06-market-readiness/HUMAN_ACCEPTANCE.md).
+The user deferred custom paid model APIs, VoiceOver and formal Apple distribution. GitHub delivery
+uses existing draft PR #49 and its authoritative checks; no merge or software release is included.
 
 **All 39 phases through 2026-08-24 are complete.** The current head on `main` is the personal
 beta (v0.2.0): Discover-centered retrieval over the 22 live-verified sources, confirmation-gated

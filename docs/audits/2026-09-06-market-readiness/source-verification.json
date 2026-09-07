@@ -118,7 +118,7 @@
     "Fetched does not prove complete parsing, current-day publication or source truth.",
     "folo:611 retained 3 records and rejected 7.",
     "Source timestamps are untrusted publisher metadata; they are not execution timestamps.",
-    "No real model account call was performed.",
+    "This historical source smoke itself made no model account call.",
     "The full 20-source snapshot above precedes the official OpenAI endpoint repair; only OpenAI was rechecked afterward. Do not combine different timestamps into a fresh all-source health claim."
   ],
   "followUps": {
@@ -161,5 +161,6 @@
       }
     ],
     "unresolvedMirrorSourceIds": ["folo:302", "folo:93", "folo:67", "folo:253"]
-  }
+  },
+  "currentFollowUp": "remaining-verification.json"
 }
