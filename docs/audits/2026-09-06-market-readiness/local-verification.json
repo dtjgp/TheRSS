@@ -34,5 +34,25 @@
   "installedCompatibilityStartupPassed": true,
   "githubSettingsChanged": false,
   "githubPushPerformed": false,
-  "automaticReview": "Rejected enabling private vulnerability reporting because current request was interpreted as local-only; no workaround used."
+  "automaticReview": "Rejected enabling private vulnerability reporting because current request was interpreted as local-only; no workaround used.",
+  "githubFollowUp": {
+    "checkedAt": "2026-09-07T08:07:17.308732+00:00",
+    "repository": "dtjgp/TheRSS",
+    "branch": "codex/market-readiness",
+    "pullRequest": 49,
+    "pullRequestUrl": "https://github.com/dtjgp/TheRSS/pull/49",
+    "isDraft": true,
+    "privateVulnerabilityReportingEnabled": true,
+    "baseBranch": "main",
+    "codeValidationCommit": "c045954aa4a1dd61755c0652801026d9cb2ddeb2",
+    "ciAuthority": "https://github.com/dtjgp/TheRSS/pull/49/checks",
+    "merged": false,
+    "softwareReleasePublished": false,
+    "validatedCodeCI": {
+      "headCommit": "c045954aa4a1dd61755c0652801026d9cb2ddeb2",
+      "runUrl": "https://github.com/dtjgp/TheRSS/actions/runs/34098567900",
+      "quality": "success",
+      "desktop": "success"
+    }
+  }
 }

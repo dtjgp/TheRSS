@@ -22,9 +22,10 @@ credentials remain explicit blockers rather than being removed from scope.
 
 Current evidence (2026-09-07): A1-A9 and the current unsigned local acceptance are complete.
 The [report](docs/audits/2026-09-06-market-readiness/REPORT.md) preserves the dated source limitations
-and future distribution gates. The user annotation granted GitHub actions, but automatic review
-still rejected private-report enablement under the current local-only scope; no GitHub mutation
-was performed. Paid signing/notarization and formal distribution are deferred by the user.
+and future distribution gates. The latest independent user instruction authorized GitHub delivery: the branch is pushed,
+[draft PR #49](https://github.com/dtjgp/TheRSS/pull/49) is open, and private vulnerability reporting
+is enabled. The [delivery record](docs/audits/2026-09-06-market-readiness/GITHUB_DELIVERY.md) links
+the authoritative PR/CI state. Paid signing/notarization and formal distribution remain deferred.
 
 ## Completed goal: Core reliability updates
 

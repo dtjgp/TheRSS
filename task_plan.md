@@ -25,8 +25,10 @@ residue found during acceptance was reproduced and fixed with a meaningful nativ
 Full checks pass 603 main tests and 87 AppKit tests; desktop E2E passes 8/8. Current evidence is in
 [LOCAL_ACCEPTANCE.md](docs/audits/2026-09-06-market-readiness/LOCAL_ACCEPTANCE.md) and the
 [overall report](docs/audits/2026-09-06-market-readiness/REPORT.md). Source failures remain dated
-and explicit. GitHub writes were not executed after automatic review interpreted the current
-request as local-only. Apple signing/notarization and formal release are deferred at user request.
+and explicit. The latest independent user instruction authorized GitHub delivery: the branch
+is pushed, draft PR #49 is open, and private vulnerability reporting is enabled. The
+[delivery record](docs/audits/2026-09-06-market-readiness/GITHUB_DELIVERY.md) links live PR/CI state.
+Apple signing/notarization and formal release remain deferred at user request.
 
 **All 39 phases through 2026-08-24 are complete.** The current head on `main` is the personal
 beta (v0.2.0): Discover-centered retrieval over the 22 live-verified sources, confirmation-gated

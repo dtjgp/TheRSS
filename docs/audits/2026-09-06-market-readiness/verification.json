@@ -415,16 +415,16 @@
   "releaseGates": {
     "A1-A9": "passed",
     "R1": "passed",
-    "R2": "code/security checks passed; GitHub private reporting mutation rejected under current local-only scope",
+    "R2": "passed: code/security checks and private vulnerability reporting enabled",
     "R3": "passed: installed app, preserved real data, normal quit/reopen and isolated upgrade/rollback",
     "R4": "fixed-message Codex account connectivity passed; dated source failures and untested providers remain explicit",
     "R5": "deferred by current user instruction; not a local acceptance gate",
     "R6": "local instructions and bounded assistant-operated real UI acceptance passed; broader human/platform certification unclaimed",
-    "R7": "local commits prepared; GitHub writes not performed after current-scope automatic rejection"
+    "R7": "source branch pushed; draft PR #49 open; current head and CI results maintained in linked PR checks"
   },
   "userApplicationReplaced": true,
   "realModelAccountInvoked": true,
-  "privateVulnerabilityReportingEnabled": false,
+  "privateVulnerabilityReportingEnabled": true,
   "published": false,
   "limitations": [
     "Native and Web compatibility runtime evidence is from macOS 27 only.",
@@ -447,5 +447,25 @@
     "notarizationProfileProvided": false,
     "newExternalAuthorizationReceived": false
   },
-  "distributionEvidenceStatus": "Historical unsigned check; paid signing/notarization deferred for current candidate per user instruction."
+  "distributionEvidenceStatus": "Historical unsigned check; paid signing/notarization deferred for current candidate per user instruction.",
+  "githubDelivery": {
+    "checkedAt": "2026-09-07T08:07:17.308732+00:00",
+    "repository": "dtjgp/TheRSS",
+    "branch": "codex/market-readiness",
+    "pullRequest": 49,
+    "pullRequestUrl": "https://github.com/dtjgp/TheRSS/pull/49",
+    "isDraft": true,
+    "privateVulnerabilityReportingEnabled": true,
+    "baseBranch": "main",
+    "codeValidationCommit": "c045954aa4a1dd61755c0652801026d9cb2ddeb2",
+    "ciAuthority": "https://github.com/dtjgp/TheRSS/pull/49/checks",
+    "merged": false,
+    "softwareReleasePublished": false,
+    "validatedCodeCI": {
+      "headCommit": "c045954aa4a1dd61755c0652801026d9cb2ddeb2",
+      "runUrl": "https://github.com/dtjgp/TheRSS/actions/runs/34098567900",
+      "quality": "success",
+      "desktop": "success"
+    }
+  }
 }
