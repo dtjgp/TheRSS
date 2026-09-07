@@ -1,6 +1,6 @@
 {
   "version": "0.3.0",
-  "status": "blocked-awaiting-release-prerequisites",
+  "status": "local-acceptance-passed; signed-market-distribution-deferred-by-user",
   "baselineCommit": "f9bc6a2b55e203d17ef258cd2d2e56df436782ea",
   "branch": "codex/market-readiness",
   "environment": {
@@ -10,7 +10,7 @@
     "node": "26.7.0",
     "electron": "44.1.1"
   },
-  "buildInputsSha256": "9c23b0f594b97a324d4fb580bffe55e1d46d523f300d5e1141a7a87e40c4d27a",
+  "buildInputsSha256": "91a7dd94447a5d9e649c35429a4f417399123439500e5afc044c6f30771b7862",
   "tests": {
     "main": {
       "files": 91,
@@ -33,7 +33,7 @@
       }
     },
     "compatibilityE2E": {
-      "passed": 6
+      "passed": 8
     }
   },
   "checks": [
@@ -362,20 +362,68 @@
       "evidenceLog": "/private/tmp/therss-market-openai-package-smoke.log",
       "logSha256": "24b8b23764c46039fa10d0cd0ec8694f833d57046429cbdc98fd4bf60bc9dc3d",
       "completedAt": "2026-09-07T02:11:44.822480+00:00"
+    },
+    {
+      "name": "local-complete-check",
+      "command": "npm run check",
+      "exitCode": 0,
+      "evidenceLog": "/private/tmp/therss-local-acceptance-check.log",
+      "logSha256": "40054c20f9057f97c9815953e04447597fbe9481bd3901de21a19e31e4be4a16",
+      "completedAt": "2026-09-07T06:04:37.426342+00:00"
+    },
+    {
+      "name": "local-complete-e2e",
+      "command": "playwright test",
+      "exitCode": 0,
+      "evidenceLog": "/private/tmp/therss-local-acceptance-e2e.log",
+      "logSha256": "63565fa6caed1c4a8abeae0e582e713c3222fea41ec4b46c45f576c34b558d94",
+      "completedAt": "2026-09-07T06:06:14.134630+00:00"
+    },
+    {
+      "name": "native-command-q-red",
+      "command": "playwright test e2e/quit.spec.ts",
+      "exitCode": 1,
+      "evidenceLog": "/private/tmp/therss-command-q-red.log",
+      "logSha256": "47da12d123a788cf2dd96406b2218fd708ba2daa06bf2b4319abbfa88eb43830",
+      "completedAt": "2026-09-07T06:01:10.412723+00:00"
+    },
+    {
+      "name": "native-command-q-green",
+      "command": "playwright test e2e/quit.spec.ts",
+      "exitCode": 0,
+      "evidenceLog": "/private/tmp/therss-command-q-green.log",
+      "logSha256": "3cfd9e0665fe72c59f244bc6208a16a0d09ef89661d3eaeda5800f5c47b86fe7",
+      "completedAt": "2026-09-07T06:02:54.890945+00:00"
+    },
+    {
+      "name": "initial-installed-package",
+      "command": "installed npm run smoke:package",
+      "exitCode": 1,
+      "evidenceLog": "/private/tmp/therss-local-final-installed-smoke.log",
+      "logSha256": "79f83472a8b1e550c830d2ddb46bd524464d27248654fb96e4254c082226736c",
+      "completedAt": "2026-09-07T06:10:30.877498+00:00"
+    },
+    {
+      "name": "installed-native-recheck",
+      "command": "installed native smoke with screenshots disabled",
+      "exitCode": 0,
+      "evidenceLog": "/private/tmp/therss-local-final-native-recheck.log",
+      "logSha256": "02fb2f58de9d1352aa2bb871c21d2b6f0ff4b3a8b60233ca377139113aa736d2",
+      "completedAt": "2026-09-07T06:14:15.440942+00:00"
     }
   ],
   "releaseGates": {
     "A1-A9": "passed",
     "R1": "passed",
-    "R2": "code-reviewed; private reporting authorization pending",
-    "R3": "unsigned fixture verification passed; real install authorization pending",
-    "R4": "partial: OpenAI official endpoint recovered; four shared mirror failures unresolved; real account validation pending",
-    "R5": "blocked: Developer ID and notarization prerequisites unavailable",
-    "R6": "documentation complete; human acceptance pending",
-    "R7": "reviewed local candidate; GitHub push/PR/CI pending authorization"
+    "R2": "code/security checks passed; GitHub private reporting mutation rejected under current local-only scope",
+    "R3": "passed: installed app, preserved real data, normal quit/reopen and isolated upgrade/rollback",
+    "R4": "fixed-message Codex account connectivity passed; dated source failures and untested providers remain explicit",
+    "R5": "deferred by current user instruction; not a local acceptance gate",
+    "R6": "local instructions and bounded assistant-operated real UI acceptance passed; broader human/platform certification unclaimed",
+    "R7": "local commits prepared; GitHub writes not performed after current-scope automatic rejection"
   },
-  "userApplicationReplaced": false,
-  "realModelAccountInvoked": false,
+  "userApplicationReplaced": true,
+  "realModelAccountInvoked": true,
   "privateVulnerabilityReportingEnabled": false,
   "published": false,
   "limitations": [
@@ -388,13 +436,16 @@
   "packageEvidence": "package-verification.json",
   "sourceEvidence": "source-verification.json",
   "distributionEvidence": "distribution-verification.json",
-  "completedLocalVerificationAt": "2026-09-07T02:12:42.092698+00:00",
-  "blockedRevalidation": {
+  "completedLocalVerificationAt": "2026-09-07T06:19:22.693873+00:00",
+  "localAcceptanceEvidence": "local-verification.json",
+  "signedDistributionInCurrentScope": false,
+  "priorBlockedRevalidation": {
     "checkedAt": "2026-09-07T02:15:18.467418+00:00",
     "sourceInputDrift": [],
     "candidateAsarMatches": true,
     "validDeveloperIdIdentities": 0,
     "notarizationProfileProvided": false,
     "newExternalAuthorizationReceived": false
-  }
+  },
+  "distributionEvidenceStatus": "Historical unsigned check; paid signing/notarization deferred for current candidate per user instruction."
 }

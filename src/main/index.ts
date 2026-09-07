@@ -431,7 +431,8 @@ app.whenReady().then(async () => {
       await promotionService.disposeAll()
       repository.close()
       shutdownCompleted = true
-      app.quit()
+      // Leave the prevented Cocoa key/menu quit before issuing the final quit.
+      setImmediate(() => app.quit())
     })()
   })
 

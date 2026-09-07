@@ -1,6 +1,14 @@
 # TheRSS Goals
 
-## Blocked goal: Market-ready native research product
+## Completed current stage: Unsigned local acceptance
+
+On 2026-09-07 the user requested local software confirmation and deferred paid Apple distribution.
+The verified 0.3.0 app is installed with application/database backups; all 11 user-data tables match
+the original backup. Fixed-message Codex connectivity, actual UI navigation/local-search return,
+Command-Q process exit and reopen passed. Full checks pass 603 main and 87 AppKit tests; desktop
+E2E passes 8/8. See [local acceptance](docs/audits/2026-09-06-market-readiness/LOCAL_ACCEPTANCE.md).
+
+## Deferred goal: Market-ready native research product
 
 The user authorized implementation of all findings in the current UI audit and the work required
 to reach market-release quality. The full scope, acceptance IDs and stop condition live in
@@ -12,15 +20,11 @@ installation/rollback, signed distribution/update, documentation and GitHub deli
 an unsigned beta market-ready. All requirements need current evidence; missing external release
 credentials remain explicit blockers rather than being removed from scope.
 
-Current evidence (2026-09-07): A1-A9 are implemented and verified. Main checks pass 603 tests,
-the AppKit coverage gate passes 87 tests, and compatibility E2E passes 6/6. Native workflows,
-controls, safeStorage, MCP and isolated unsigned upgrade/rollback have passed. The
-[current report](docs/audits/2026-09-06-market-readiness/REPORT.md) records partial release gates:
-live account verification, explicit installation/third-party authorization, signing/notarization,
-human acceptance and GitHub delivery remain open. The objective remains incomplete and is blocked
-pending those external inputs. Revalidation found no source drift, a matching verified candidate
-package, zero valid Developer ID identities and no supplied notarization profile. Resume the same
-full objective when the required authorization and signing prerequisites are available.
+Current evidence (2026-09-07): A1-A9 and the current unsigned local acceptance are complete.
+The [report](docs/audits/2026-09-06-market-readiness/REPORT.md) preserves the dated source limitations
+and future distribution gates. The user annotation granted GitHub actions, but automatic review
+still rejected private-report enablement under the current local-only scope; no GitHub mutation
+was performed. Paid signing/notarization and formal distribution are deferred by the user.
 
 ## Completed goal: Core reliability updates
 

@@ -1,0 +1,38 @@
+{
+  "checkedAt": "2026-09-07T06:10:28.056942+00:00",
+  "databaseIntegrity": "ok",
+  "allTablesEqualToPreviousBackup": true,
+  "allTablesEqualToOriginalUserBackup": true,
+  "tableCount": 11,
+  "installedBundleMatches": true,
+  "installedAsarSha256": "e8ea57f2314a6a68d6680b09f6d47f1c18749543dc8f34b5004d124cad14ca2f",
+  "backupExists": true,
+  "previousAppExists": true,
+  "scope": "User-authorized local unsigned acceptance; Apple paid distribution deferred",
+  "status": "passed",
+  "liveCli": {
+    "startedAt": "2026-09-07T05:39:45.485Z",
+    "completedAt": "2026-09-07T05:39:51.589Z",
+    "runner": "codex",
+    "scope": "CLI connectivity with a fixed public test message",
+    "passed": true,
+    "outputMatches": true
+  },
+  "normalQuit": {
+    "checkedAt": "2026-09-07T06:15:32.023556+00:00",
+    "command": "Command-Q via native UI",
+    "mainExited": true,
+    "remainingApplicationProcesses": 0
+  },
+  "reopenedActualInstalledApp": true,
+  "realDataUiInspectionPassed": true,
+  "installedNativeWorkflow": {
+    "passed": true,
+    "groups": 12,
+    "screenshots": false
+  },
+  "installedCompatibilityStartupPassed": true,
+  "githubSettingsChanged": false,
+  "githubPushPerformed": false,
+  "automaticReview": "Rejected enabling private vulnerability reporting because current request was interpreted as local-only; no workaround used."
+}

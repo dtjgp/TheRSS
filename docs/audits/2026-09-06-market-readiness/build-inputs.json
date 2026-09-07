@@ -1,6 +1,6 @@
 {
   "algorithm": "SHA256 of sorted UTF-8 path + NUL + file SHA256 hex + LF records",
-  "sha256": "9c23b0f594b97a324d4fb580bffe55e1d46d523f300d5e1141a7a87e40c4d27a",
+  "sha256": "91a7dd94447a5d9e649c35429a4f417399123439500e5afc044c6f30771b7862",
   "files": [
     {
       "path": ".prettierrc.json",
@@ -23,6 +23,10 @@
       "sha256": "f41fdbe773069202289b5e2800986b037f78a29104f66ee4a80e74aa633cdf04"
     },
     {
+      "path": "e2e/quit.spec.ts",
+      "sha256": "d5f4c46e4539eee04b66df72f3b41bd6c2e35df747c9c70c4d298b295a96b5ab"
+    },
+    {
       "path": "e2e/sidebar-resize.spec.ts",
       "sha256": "bc3ad653ed9bc26abb72f447a6fdbc7ce10903b164293af2e9bc8b1fc4c8f6b3"
     },
@@ -36,7 +40,7 @@
     },
     {
       "path": "native/appkit/bridge.mm",
-      "sha256": "5b2ac5fd7f2fa3a197fda5bdd2f4c22d50d985d4d5750828908b8a67c1ba5960"
+      "sha256": "b60531cb0d58a4c667b6284d78db2f870bd12486f06bbbffae8c33449f9e1e1d"
     },
     {
       "path": "native/appkit/chart.mm",
@@ -632,7 +636,7 @@
     },
     {
       "path": "src/main/index.ts",
-      "sha256": "5283409d1fa2ca7ab674268f4e0ad83c0b65923e270f7c0e7beea1d7588de028"
+      "sha256": "f1e2412a50176967bec63900386c28c215b27b87b164411abf23e92b65b2ea4d"
     },
     {
       "path": "src/main/llmWikiPromotionRuntime.test.ts",
