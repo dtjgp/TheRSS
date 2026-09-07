@@ -161,6 +161,11 @@ export function createApi(snapshot: DashboardSnapshot = emptyDashboard): TheRSSA
     saveInterestProfile: vi.fn().mockResolvedValue(snapshot),
     refresh: vi.fn().mockResolvedValue(snapshot),
     searchLocal: vi.fn().mockResolvedValue({ query: '', results: [] }),
+    getLocalResearch: vi.fn().mockResolvedValue(null),
+    getSavedSourceUpdate: vi.fn().mockResolvedValue(null),
+    applySavedSourceUpdate: vi
+      .fn()
+      .mockResolvedValue({ status: 'unchanged', item: null, dashboard: snapshot }),
     onDiscoverProgress: vi.fn().mockReturnValue(() => undefined),
     searchDiscover: vi.fn().mockResolvedValue(createDiscoverSnapshot()),
     retryDiscover: vi.fn().mockResolvedValue(createDiscoverSnapshot()),

@@ -3,6 +3,26 @@ import type { ConfiguredHttpDocument } from './configuredHttpClient'
 import { normalizeNcpssdDocument } from './ncpssdNormalizer'
 
 describe('normalizeNcpssdDocument', () => {
+  it('distinguishes a missing list from an explicitly empty list and rejects an impossible month', () => {
+    const document: ConfiguredHttpDocument = {
+      sourceId: 'folo:611',
+      transport: 'html',
+      endpoint: 'https://www.ncpssd.cn/',
+      contentType: 'text/html',
+      retrievedAt: '2026-09-07',
+      body: '<html>Unavailable</html>'
+    }
+    expect(() => normalizeNcpssdDocument(document)).toThrow(/list/i)
+    expect(normalizeNcpssdDocument({ ...document, body: '<ul class="latest-list"></ul>' })).toEqual(
+      { items: [], rejectedCount: 0 }
+    )
+    expect(
+      normalizeNcpssdDocument({
+        ...document,
+        body: '<ul class="latest-list"><li><a onclick="openDetail(\'/Literature/secure/articleinfo?params=test\')" title="Paper">Paper</a><span>《期刊》2026年13月</span></li></ul>'
+      })
+    ).toMatchObject({ items: [], rejectedCount: 1 })
+  })
   it('extracts the official latest-literature list without executing onclick JavaScript', () => {
     const document: ConfiguredHttpDocument = {
       sourceId: 'folo:611',

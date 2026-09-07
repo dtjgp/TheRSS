@@ -85,11 +85,11 @@ architectural change is worse.
 
 ## External UI skill integration
 
-- The globally installed `design-taste-frontend` skill is advisory and is not a second product or
-  engineering authority.
-- For any TheRSS UI audit, redesign, visual-polish, layout, motion, or accessibility-visible task
-  that uses that upstream skill, first read `skills/therss-ui-improvement/SKILL.md` and its routed
-  references.
+- External `design-taste-frontend` and `apple-design` guidance is advisory and is not a second
+  product or engineering authority.
+- For any TheRSS UI audit, interaction, feedback, redesign, visual-polish, layout, motion, or
+  accessibility-visible task, first read `skills/therss-ui-improvement/SKILL.md` and its routed
+  references. The project adaptation distinguishes native AppKit from the Web fallback.
 - Repository product/evidence/security contracts, the accepted change contract, tests, and current
   rendered behavior override upstream aesthetic defaults and hard bans.
 - Do not import an upstream design system, styling framework, animation library, font, icon family,

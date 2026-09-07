@@ -39,6 +39,13 @@
   outline: none;
 }
 
+.discover-draft-status {
+  margin: 0;
+  color: var(--secondary-label);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .discover-personalization-status {
   display: flex;
   gap: 9px;

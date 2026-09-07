@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { access, readdir } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { delimiter, dirname, isAbsolute, join } from 'node:path'
@@ -10,6 +10,19 @@ import { buildAnalysisPrompt, type ModelAnalysisResponse } from '../models/model
 const ANALYSIS_TIMEOUT_MS = 120_000
 const MAX_OUTPUT_BYTES = 2_000_000
 const RUNNERS: readonly LocalAgentRunner[] = ['codex', 'claude']
+const ownedProcesses = new Set<ChildProcess>()
+
+function stopOwnedProcess(child: ChildProcess, signal: NodeJS.Signals): void {
+  try {
+    if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, signal)
+    else child.kill(signal)
+  } catch {
+    /* The owned process group may already have exited. */
+  }
+}
+process.once('exit', () => {
+  for (const child of ownedProcesses) stopOwnedProcess(child, 'SIGKILL')
+})
 
 const RUNNER_METADATA = {
   codex: {
@@ -58,16 +71,20 @@ function finishErrorMessage(reason: 'timeout' | 'output' | 'failed', exitCode?: 
 }
 
 export function executeBoundedCommand(request: LocalAgentProcessRequest): Promise<string> {
+  if (request.signal?.aborted) return Promise.reject(new Error('Local agent analysis canceled'))
   return new Promise((resolve, reject) => {
     const child = spawn(request.executable, [...request.args], {
       cwd: request.cwd,
       env: request.environment,
       shell: false,
+      detached: process.platform !== 'win32',
       stdio: ['pipe', 'pipe', 'pipe']
     })
+    ownedProcesses.add(child)
     const stdout: Buffer[] = []
     let stdoutBytes = 0
     let settled = false
+    let stopping = false
 
     const finish = (error: Error | null, value = '') => {
       if (settled) return
@@ -78,7 +95,14 @@ export function executeBoundedCommand(request: LocalAgentProcessRequest): Promis
       else resolve(value)
     }
     const terminate = (error: Error) => {
-      child.kill('SIGTERM')
+      if (settled) return
+      stopping = true
+      stopOwnedProcess(child, 'SIGTERM')
+      const forceStop = setTimeout(() => {
+        stopOwnedProcess(child, 'SIGKILL')
+        ownedProcesses.delete(child)
+      }, 1000)
+      forceStop.unref()
       finish(error)
     }
     const abort = () => terminate(new Error('Local agent analysis canceled'))
@@ -90,6 +114,7 @@ export function executeBoundedCommand(request: LocalAgentProcessRequest): Promis
     else request.signal?.addEventListener('abort', abort, { once: true })
 
     child.stdout.on('data', (chunk: Buffer | string) => {
+      if (settled) return
       const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
       stdoutBytes += buffer.byteLength
       if (stdoutBytes > request.maxOutputBytes) {
@@ -103,13 +128,15 @@ export function executeBoundedCommand(request: LocalAgentProcessRequest): Promis
     })
     child.once('error', () => finish(new Error(finishErrorMessage('failed'))))
     child.once('close', (code) => {
+      // Closing the leader's pipes does not prove its whole process group exited.
+      if (!stopping) ownedProcesses.delete(child)
       if (code !== 0) {
         finish(new Error(finishErrorMessage('failed', code ?? undefined)))
         return
       }
       finish(null, Buffer.concat(stdout).toString('utf8'))
     })
-    child.stdin.once('error', () => finish(new Error(finishErrorMessage('failed'))))
+    child.stdin.once('error', () => terminate(new Error(finishErrorMessage('failed'))))
     child.stdin.end(request.stdin)
   })
 }

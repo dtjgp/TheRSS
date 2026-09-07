@@ -38,7 +38,7 @@ describe('App', () => {
       name: 'Application utilities'
     })
     expect(within(applicationUtilities).getByRole('button', { name: 'Settings' })).toBeVisible()
-    expect(applicationUtilities.querySelector('.sidebar__footer')).toBeVisible()
+    expect(applicationUtilities.querySelector('.sidebar__footer')).not.toBeInTheDocument()
     expect(within(navigation).queryByText('Today')).not.toBeInTheDocument()
     expect(within(navigation).queryByText('Interests')).not.toBeInTheDocument()
     await waitFor(() => expect(api.getDashboard).toHaveBeenCalledOnce())
@@ -67,7 +67,7 @@ describe('App', () => {
     await user.click(within(sourceGroup).getByRole('button', { name: 'Clear all sources' }))
     checkboxes.forEach((checkbox) => expect(checkbox).not.toBeChecked())
     expect(sourcePicker).toHaveAccessibleName('Choose sources, 0 of 22 selected')
-    expect(screen.getByRole('button', { name: 'Expand and search' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Search' })).toBeDisabled()
 
     await user.click(within(sourceGroup).getByRole('button', { name: 'Select all sources' }))
     checkboxes.forEach((checkbox) => expect(checkbox).toBeChecked())
@@ -83,7 +83,7 @@ describe('App', () => {
       'semantic communication pruning for edge deployment'
     )
     await user.selectOptions(screen.getByRole('combobox', { name: 'Search with' }), 'codex')
-    await user.click(screen.getByRole('button', { name: 'Expand and search' }))
+    await user.click(screen.getByRole('button', { name: 'Search' }))
 
     expect(api.searchDiscover).toHaveBeenCalledWith(
       {
@@ -143,7 +143,7 @@ describe('App', () => {
     render(<App api={api} />)
 
     await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
-    await user.click(screen.getByRole('button', { name: 'Expand and search' }))
+    await user.click(screen.getByRole('button', { name: 'Search' }))
 
     const runId = vi.mocked(api.searchDiscover).mock.calls[0]![1]
     await act(async () =>
@@ -220,7 +220,7 @@ describe('App', () => {
     render(<App api={api} />)
 
     await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
-    await user.click(screen.getByRole('button', { name: 'Expand and search' }))
+    await user.click(screen.getByRole('button', { name: 'Search' }))
 
     const resultList = await screen.findByRole('list', { name: 'Discover result list' })
     const resultRows = within(resultList).getAllByRole('button', { name: /Select result:/u })
@@ -299,7 +299,7 @@ describe('App', () => {
     render(<App api={api} />)
 
     await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
-    await user.click(screen.getByRole('button', { name: 'Expand and search' }))
+    await user.click(screen.getByRole('button', { name: 'Search' }))
     const filters = await screen.findByRole('group', { name: 'Filter Discover results' })
     const resultList = screen.getByRole('list', { name: 'Discover result list' })
     const selectedDetail = screen.getByRole('article', { name: 'Selected Discover result' })
@@ -352,7 +352,7 @@ describe('App', () => {
     render(<App api={api} />)
 
     await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
-    await user.click(screen.getByRole('button', { name: 'Expand and search' }))
+    await user.click(screen.getByRole('button', { name: 'Search' }))
     const resultList = await screen.findByRole('list', { name: 'Discover result list' })
     await user.click(
       within(resultList).getByRole('button', {
@@ -380,7 +380,7 @@ describe('App', () => {
     render(<App api={api} />)
 
     await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
-    await user.click(screen.getByRole('button', { name: 'Expand and search' }))
+    await user.click(screen.getByRole('button', { name: 'Search' }))
     const selectedDetail = await screen.findByRole('article', { name: 'Selected Discover result' })
     const saveButton = within(selectedDetail).getByRole('button', { name: 'Save result' })
 
@@ -411,7 +411,7 @@ describe('App', () => {
 
     await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
     await user.selectOptions(screen.getByRole('combobox', { name: 'Search with' }), 'codex')
-    await user.click(screen.getByRole('button', { name: 'Expand and search' }))
+    await user.click(screen.getByRole('button', { name: 'Search' }))
 
     const resultList = await screen.findByRole('list', { name: 'Discover result list' })
     const selectedDetail = screen.getByRole('article', { name: 'Selected Discover result' })
@@ -486,7 +486,7 @@ describe('App', () => {
     const user = userEvent.setup()
     render(<App api={api} />)
     await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
-    await user.click(screen.getByRole('button', { name: 'Expand and search' }))
+    await user.click(screen.getByRole('button', { name: 'Search' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Discover failed. Configure or check the selected model provider.'
     )
@@ -502,7 +502,7 @@ describe('Discover result context menu', () => {
     render(<App api={api} />)
 
     await user.type(screen.getByRole('textbox', { name: 'Research question' }), 'edge search')
-    await user.click(screen.getByRole('button', { name: 'Expand and search' }))
+    await user.click(screen.getByRole('button', { name: 'Search' }))
     const cards = await screen.findAllByTestId('discover-result')
     return { api, cards, snapshot }
   }

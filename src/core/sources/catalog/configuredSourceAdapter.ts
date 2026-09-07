@@ -11,6 +11,7 @@ import { fetchHuggingFaceSignals } from '../huggingface/huggingFaceClient'
 import { fetchDatedFeedSource } from './datedFeedAdapter'
 import { normalizeNcpssdDocument } from './ncpssdNormalizer'
 import { normalizeC114Document } from './c114Normalizer'
+import { normalizeOfficialNews } from './officialNewsNormalizer'
 
 export interface FetchConfiguredSourceOptions {
   readonly now: Date
@@ -54,11 +55,24 @@ export async function fetchConfiguredSourceBatch(
       ...(options.signal ? { signal: options.signal } : {})
     })
   }
-  if (definition.transport === 'feed' || definition.transport === 'html') {
+  if (
+    definition.transport === 'feed' ||
+    definition.transport === 'html' ||
+    definition.transport === 'json'
+  ) {
     const document = await fetchHttp(definition.id, {
       now: options.now,
       ...(options.signal ? { signal: options.signal } : {})
     })
+    if (['folo:302', 'folo:93', 'folo:67'].includes(definition.id))
+      return normalizeOfficialNews(document)
+    if (definition.id === 'folo:253') {
+      const batch = normalizeFeedDocument(document)
+      return {
+        ...batch,
+        items: batch.items.filter((item) => !item.url.startsWith('https://www.cnbc.com/select/'))
+      }
+    }
     return definition.transport === 'feed'
       ? normalizeFeedDocument(document)
       : definition.id === 'folo:611'

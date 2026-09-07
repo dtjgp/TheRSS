@@ -1,11 +1,13 @@
 import { z } from 'zod'
 import type { DiscoverySource } from './discovery'
+import type { LocalResearchTarget } from './localResearch'
 
 export const localSearchQuerySchema = z.string().trim().min(2).max(200)
 
 export type LocalSearchResultKind = 'saved' | 'discover' | 'analysis'
 
 export interface LocalSearchResult {
+  readonly target: LocalResearchTarget
   readonly id: string
   readonly kind: LocalSearchResultKind
   readonly itemId: string

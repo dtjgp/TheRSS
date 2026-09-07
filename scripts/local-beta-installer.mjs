@@ -1,8 +1,19 @@
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { createReadStream, existsSync } from 'node:fs'
-import { lstat, mkdir, open, readlink, rename, rm, unlink, writeFile } from 'node:fs/promises'
+import {
+  lstat,
+  mkdir,
+  open,
+  readdir,
+  readlink,
+  rename,
+  rm,
+  unlink,
+  writeFile
+} from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
+import { platform } from 'node:process'
 import Database from 'better-sqlite3'
 
 function asarPath(applicationPath) {
@@ -13,6 +24,31 @@ async function sha256File(path) {
   const hash = createHash('sha256')
   for await (const chunk of createReadStream(path)) hash.update(chunk)
   return hash.digest('hex')
+}
+
+async function bundleFingerprint(applicationPath) {
+  const hash = createHash('sha256')
+  const visit = async (relative) => {
+    const path = join(applicationPath, relative),
+      stat = await lstat(path)
+    hash.update(`${relative}\0${stat.mode & 0o777}\0`)
+    if (stat.isSymbolicLink()) hash.update(`link\0${await readlink(path)}\0`)
+    else if (stat.isDirectory()) {
+      hash.update('directory\0')
+      for (const name of (await readdir(path)).sort()) await visit(join(relative, name))
+    } else if (stat.isFile()) hash.update(`file\0${await sha256File(path)}\0`)
+    else throw new Error('The application bundle contains an unsupported filesystem entry')
+  }
+  await visit('')
+  return hash.digest('hex')
+}
+
+function defaultIsAppRunning(applicationPath) {
+  if (platform !== 'darwin') return false
+  const executable = join(applicationPath, 'Contents', 'MacOS', 'TheRSS')
+  // Inspect executable paths only, never another process's arguments or secrets.
+  const commands = execFileSync('/bin/ps', ['-wwaxo', 'comm='], { encoding: 'utf8', timeout: 5000 })
+  return commands.split('\n').some((command) => command.trim() === executable)
 }
 
 async function assertDirectoryApplication(path, label) {
@@ -111,6 +147,7 @@ export async function installLocalBeta({
   copyApp = defaultCopyApp,
   databasePath,
   force = false,
+  isAppRunning = defaultIsAppRunning,
   processId,
   sourceApp,
   timestamp
@@ -125,6 +162,8 @@ export async function installLocalBeta({
     throw new Error(`A previous temporary install remains: ${temporaryApp}`)
   }
   if (existsSync(targetApp)) await assertDirectoryApplication(targetApp, 'Installed application')
+  if (existsSync(targetApp) && isAppRunning(targetApp))
+    throw new Error('Quit TheRSS Dev before installing; the running application was not replaced')
 
   await mkdir(applicationsDirectory, { recursive: true })
   const supportDirectory = dirname(databasePath)
@@ -136,9 +175,10 @@ export async function installLocalBeta({
   let targetReplaced = false
   try {
     const sourceAsarSha256 = await sha256File(asarPath(sourceApp))
+    const sourceBundleSha256 = await bundleFingerprint(sourceApp)
     if (existsSync(targetApp)) {
-      const installedBeforeSha256 = await sha256File(asarPath(targetApp))
-      if (!force && sourceAsarSha256 === installedBeforeSha256) {
+      const installedBeforeSha256 = await bundleFingerprint(targetApp)
+      if (!force && sourceBundleSha256 === installedBeforeSha256) {
         throw new Error(
           'The installed TheRSS Dev.app already matches the packaged release; use --force to reinstall'
         )
@@ -152,9 +192,15 @@ export async function installLocalBeta({
     await copyApp(sourceApp, temporaryApp)
     await assertDirectoryApplication(temporaryApp, 'Copied application')
     await assertFrameworkIntegrity(temporaryApp)
+    if ((await bundleFingerprint(temporaryApp)) !== sourceBundleSha256)
+      throw new Error('Copied application bundle does not match the packaged release')
     assertDatabase(databasePath, databaseWasPresent)
 
     if (existsSync(targetApp)) {
+      if (isAppRunning(targetApp))
+        throw new Error(
+          'Quit TheRSS Dev before installing; the running application was not replaced'
+        )
       previousApp = join(applicationsDirectory, `TheRSS Dev.backup-${timestamp}.app`)
       if (existsSync(previousApp)) throw new Error(`App backup already exists: ${previousApp}`)
       await rename(targetApp, previousApp)
@@ -163,9 +209,12 @@ export async function installLocalBeta({
     await rename(temporaryApp, targetApp)
     targetReplaced = true
     const installedAsarSha256 = await sha256File(asarPath(targetApp))
+    const installedBundleSha256 = await bundleFingerprint(targetApp)
     if (installedAsarSha256 !== sourceAsarSha256) {
       throw new Error('Installed app.asar does not match the packaged release')
     }
+    if (installedBundleSha256 !== sourceBundleSha256)
+      throw new Error('Installed application bundle does not match the packaged release')
     assertDatabase(databasePath, databaseWasPresent)
 
     const receiptDirectory = join(supportDirectory, 'install-receipts')
@@ -183,6 +232,8 @@ export async function installLocalBeta({
       databasePreserved: databaseWasPresent,
       sourceAsarSha256,
       installedAsarSha256,
+      sourceBundleSha256,
+      installedBundleSha256,
       receiptPath
     }
     await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, { flag: 'wx' })

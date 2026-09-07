@@ -427,7 +427,7 @@ describe('App', () => {
     ).toBeVisible()
   })
 
-  it('keeps Saved triage actions before a collapsed long summary', async () => {
+  it('keeps Saved triage actions before the complete scrolling summary', async () => {
     const longSummary = 'Long abstract evidence. '.repeat(80)
     const savedItem: DashboardSnapshot['savedItems'][number] = {
       id: 'arxiv:long-summary',
@@ -457,24 +457,13 @@ describe('App', () => {
     expect(
       Boolean(saveAction.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING)
     ).toBe(true)
-    const summaryToggle = screen.getByRole('button', { name: 'Show full summary' })
-    expect(summaryToggle).toHaveAttribute('aria-expanded', 'false')
-    expect(summary).toHaveAttribute('data-expanded', 'false')
-
-    await user.click(summaryToggle)
-    expect(screen.getByRole('button', { name: 'Collapse summary' })).toHaveAttribute(
-      'aria-expanded',
-      'true'
-    )
-    expect(summary).toHaveAttribute('data-expanded', 'true')
-
+    expect(screen.queryByRole('button', { name: 'Show full summary' })).toBeNull()
+    expect(summary.textContent).toBe(longSummary)
+    expect(summary).not.toHaveAttribute('data-expanded', 'false')
     await user.click(
       screen.getByRole('button', { name: 'Select signal: Second long paper for Saved triage' })
     )
-    expect(screen.getByRole('button', { name: 'Show full summary' })).toHaveAttribute(
-      'aria-expanded',
-      'false'
-    )
+    expect(document.querySelector('.signal-detail__summary')?.textContent).toBe(longSummary)
   })
 
   it('restores the latest persisted analysis for the selected saved signal', async () => {
@@ -542,7 +531,7 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /Pending integrations/i })).not.toBeInTheDocument()
   })
 
-  it('opens the source directory filtered to the recorded attention set from the sidebar', async () => {
+  it('keeps failed source feedback in Sources without a global attention action', async () => {
     const user = userEvent.setup()
     render(
       <App
@@ -565,8 +554,12 @@ describe('App', () => {
       />
     )
 
-    await user.click(await screen.findByRole('button', { name: 'Source attention needed' }))
-    expect(screen.getByRole('button', { name: 'Show sources needing attention' })).toHaveAttribute(
+    expect(
+      screen.queryByRole('button', { name: 'Source attention needed' })
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '04 Sources' }))
+    await user.click(screen.getByRole('button', { name: 'Show failed or partial sources' }))
+    expect(screen.getByRole('button', { name: 'Show failed or partial sources' })).toHaveAttribute(
       'aria-pressed',
       'true'
     )

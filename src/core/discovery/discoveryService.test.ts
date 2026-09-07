@@ -48,6 +48,78 @@ function setup() {
 }
 
 describe('DiscoveryService', () => {
+  it('includes month-overlapping NCPSD records in the source window without claiming an exact publication day', async () => {
+    const repository = setup()
+    const monthly = {
+      ...paper,
+      id: 'folo:611:article:month',
+      source: 'folo:611' as const,
+      summary: '《研究期刊》2026年8月',
+      publishedAt: '2026-08-01T00:00:00.000Z',
+      updatedAt: '2026-08-01T00:00:00.000Z'
+    }
+    const service = new DiscoveryService(repository, {
+      configuredDefinitions: [getConfiguredSourceDefinition('folo:611')],
+      fetchConfiguredSource: vi.fn(async () => ({ items: [monthly], rejectedCount: 0 }))
+    })
+    const result = await service.refreshSourceContent('folo:611', {
+      now: new Date('2026-09-07T00:00:00Z')
+    })
+    expect(result.items.map((item) => item.id)).toContain(monthly.id)
+    repository.close()
+  })
+  it('retains daily results when every configured-source entry is rejected', async () => {
+    const repository = setup()
+    const item = { ...paper, id: 'folo:302:article:kept', source: 'folo:302' as const }
+    const fetchConfiguredSource = vi
+      .fn()
+      .mockResolvedValueOnce({ items: [item], rejectedCount: 0 })
+      .mockResolvedValueOnce({ items: [], rejectedCount: 20 })
+    const service = new DiscoveryService(repository, {
+      fetchArxiv: async () => [],
+      fetchGitHub: async () => [],
+      configuredDefinitions: [getConfiguredSourceDefinition('folo:302')],
+      fetchConfiguredSource
+    })
+    const now = new Date('2026-08-19T12:00:00Z')
+    await service.refresh({ now })
+    const after = await service.refresh({ now })
+    expect(after.sourceHealth['folo:302']).toBe('failed')
+    expect(after.items.some((entry) => entry.id === item.id)).toBe(true)
+    repository.close()
+  })
+
+  it('records source-only failures and preserves the last cached records', async () => {
+    const repository = setup()
+    const item = { ...paper, id: 'folo:302:article:cached', source: 'folo:302' as const }
+    const fetchConfiguredSource = vi
+      .fn()
+      .mockResolvedValueOnce({ items: [item], rejectedCount: 0 })
+      .mockResolvedValueOnce({ items: [], rejectedCount: 20 })
+      .mockRejectedValueOnce(new Error('upstream unavailable'))
+    const service = new DiscoveryService(repository, {
+      configuredDefinitions: [getConfiguredSourceDefinition('folo:302')],
+      fetchConfiguredSource
+    })
+    const now = new Date('2026-08-19T12:00:00Z')
+    await service.refreshSourceContent('folo:302', { now })
+    await expect(service.refreshSourceContent('folo:302', { now })).rejects.toThrow(/20.*rejected/i)
+    expect(repository.getDashboardSnapshot().sourceHealth['folo:302']).toBe('failed')
+    expect(
+      repository.getSourceContentSnapshot('folo:302', now).items.map((entry) => entry.id)
+    ).toContain(item.id)
+    await expect(service.refreshSourceContent('folo:302', { now })).rejects.toThrow(
+      'upstream unavailable'
+    )
+    expect(
+      repository.getDashboardSnapshot().sourceHealthDetails['folo:302']?.errorMessage
+    ).toContain('upstream unavailable')
+    expect(repository.getAnalyticsSnapshot().totals).toMatchObject({
+      searchResults: 0,
+      todayResults: 0
+    })
+    repository.close()
+  })
   it('refreshes independent sources, ranks results and persists the dashboard', async () => {
     const repository = setup()
     const fetchArxiv = vi.fn().mockResolvedValue([paper])

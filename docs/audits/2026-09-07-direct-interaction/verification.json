@@ -1,0 +1,89 @@
+{
+  "date": "2026-09-07",
+  "baseCommit": "3a33614793f7fa9c622b8dcaf823f471d0053ea2",
+  "node": "26.7.0",
+  "checks": {
+    "fullCheck": {
+      "exitCode": 0,
+      "mainTests": 680,
+      "nativeTests": 103,
+      "suitesOverlap": true,
+      "mainCoveragePercent": [91.07, 82.21, 94.7, 93.76],
+      "nativeCoveragePercent": [89.48, 82.36, 89.88, 92.13],
+      "coverageOrder": ["statements", "branches", "functions", "lines"]
+    },
+    "desktop": {
+      "passed": 8,
+      "initialPassed": 7,
+      "exactSelectorCorrectionRerunPassed": 1
+    },
+    "packagedStartup": "passed",
+    "nativeWorkflowGroups": 13,
+    "localNavigationRepeatedCycles": 15,
+    "unexpectedCloseEventsInRepeatedCycles": 0,
+    "installedStartup": "passed",
+    "installedNativeWorkflowGroups": 13,
+    "userDataTablesCompared": 11,
+    "allTablesMatchImmediateBackup": true,
+    "buildFilesMatchPackage": 16
+  },
+  "rendered": {
+    "fixturesOnly": true,
+    "light": true,
+    "dark": true,
+    "narrow": true,
+    "imeAndUnicode": true,
+    "sourceSummaryFinalSentenceVisible": true
+  },
+  "diagnosticBoundary": {
+    "unexpectedWindowCloseObserved": 1,
+    "cause": "unconfirmed",
+    "status": "not_reproduced_in_traced_full_suite_or_15_targeted_cycles_or_installed_suite",
+    "fixtureCloseTracingRetained": true
+  },
+  "liveSourceOrModelCallsTriggeredForThisUiVerification": 0,
+  "humanAcceptance": "provisionally_passed_by_user",
+  "externalDelivery": {
+    "branch": "codex/market-readiness",
+    "draftPullRequest": "https://github.com/dtjgp/TheRSS/pull/49",
+    "ciEvidence": "Current PR head checks are authoritative; no future result is prefilled."
+  },
+  "logEvidence": {
+    "fullCheck": {
+      "filename": "therss-direct-full-check.log",
+      "sha256": "d360df5ed98bf521345d15dcd4b11da638b1c13a8d1088a732c7db3b935e4d61"
+    },
+    "desktopInitial": {
+      "filename": "therss-direct-e2e.log",
+      "sha256": "9b944b47eab2c06dca12f7a526c648562d7342a8e9ac078489ce65a43506e347"
+    },
+    "desktopAffected": {
+      "filename": "therss-direct-e2e-affected.log",
+      "sha256": "f3ba57b4581409ca4ca02d9376b1bfc44dd6809009fe818a413ec2724ef647ff"
+    },
+    "nativeTracedPass": {
+      "filename": "therss-direct-native-close-probe.log",
+      "sha256": "ecebd2ad29fb5f0731fb1bc0bc1529b817a86b8083be9be09ba65006bf1fdab4"
+    },
+    "localNavigationStress": {
+      "filename": "therss-direct-local-stress.log",
+      "sha256": "c8f380461866dec08775d92962b29d04d1482af8b433d8ae69a329bca50c728d"
+    },
+    "installedSmoke": {
+      "filename": "therss-direct-installed-smoke.log",
+      "sha256": "a03215c8302df73c7e98a950572f877a2512d6520d31f6d46f20f24ec0ec959a"
+    },
+    "initialRed": {
+      "filename": "therss-direct-interaction-red.log",
+      "sha256": "79e2235d18129999f28b208a7e8f9591a0bf7ee907a113ff5bbb8d45baafe9cc"
+    }
+  },
+  "humanAcceptanceDecision": {
+    "date": "2026-09-07",
+    "decidedBy": "user",
+    "instruction": "人工测试暂时按照通过来进行,后续出现问题再来进行调整",
+    "scope": "manual UX acceptance",
+    "individualTestDetails": "not separately supplied",
+    "reopenAffectedItemsOnReportedIssues": true
+  }
+}

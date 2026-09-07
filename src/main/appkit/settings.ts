@@ -1,6 +1,11 @@
 import { validateProviderBaseUrl } from '../../core/security/providerUrl'
 import { discoverPersonalizationPromptSchema } from '../../shared/personalization'
-import type { ModelProtocol, ModelProviderInput, ModelProviderSummary } from '../../shared/models'
+import type {
+  ModelProtocol,
+  ModelProviderInput,
+  ModelProviderSummary,
+  ProviderConnectionResult
+} from '../../shared/models'
 import {
   Controls,
   column,
@@ -14,6 +19,8 @@ import {
 import type { NativeNode } from './presentation'
 
 type Draft = { name: string; protocol: ModelProtocol; baseUrl: string; model: string }
+type Field =
+  'provider-name' | 'provider-url' | 'provider-model' | 'provider-key' | 'personal-prompt'
 const fromProvider = (provider: ModelProviderSummary | null): Draft => ({
   name: provider?.name ?? '',
   protocol: provider?.protocol ?? 'openai-compatible',
@@ -35,6 +42,8 @@ export class SettingsScreen implements NativeScreen {
   private busy = false
   private disposed = false
   private message = ''
+  private errors: Partial<Record<Field, string>> = {}
+  private connection: ProviderConnectionResult | null = null
 
   constructor(private readonly context: NativeContext) {
     this.controls = new Controls(context)
@@ -73,6 +82,8 @@ export class SettingsScreen implements NativeScreen {
     this.clearRevision++
     this.promptRevision++
     this.message = ''
+    this.errors = {}
+    this.connection = null
     this.reportDirty()
     this.context.redraw()
   }
@@ -142,11 +153,18 @@ export class SettingsScreen implements NativeScreen {
           (value) => {
             if (this.busy || !this.loaded) return
             this.prompt = value
-            this.edited()
+            this.edited('personal-prompt')
           },
           4000,
-          { multiline: true, height: 240, enabled, clearRevision: this.promptRevision }
+          {
+            multiline: true,
+            height: 240,
+            enabled,
+            clearRevision: this.promptRevision,
+            help: this.errors['personal-prompt']
+          }
         ),
+        ...this.fieldError('personal-prompt'),
         label(
           'personal-count',
           `${this.prompt.length} / 4000 characters · ${this.savedPrompt ? 'Saved context active' : 'No saved context'}`,
@@ -177,7 +195,7 @@ export class SettingsScreen implements NativeScreen {
   private model(): NativeNode {
     const b = this.controls,
       enabled = this.loaded && !this.busy
-    const field = (key: 'name' | 'baseUrl' | 'model', id: string, title: string, max: number) =>
+    const field = (key: 'name' | 'baseUrl' | 'model', id: Field, title: string, max: number) =>
       column(`${id}-field`, [
         label(`${id}-label`, title),
         b.input(
@@ -187,18 +205,19 @@ export class SettingsScreen implements NativeScreen {
           (value) => {
             if (this.busy || !this.loaded) return
             this.draft = { ...this.draft, [key]: value }
-            this.edited()
+            this.edited(id)
           },
           max,
-          { enabled, clearRevision: this.clearRevision }
-        )
+          { enabled, clearRevision: this.clearRevision, help: this.errors[id] }
+        ),
+        ...this.fieldError(id)
       ])
     const secretAction = this.context.presentation.action(
       'provider-key',
       (value) => {
         if (enabled && !this.busy && this.loaded) {
           this.#secret = value as string
-          this.edited()
+          this.edited('provider-key')
         }
       },
       { type: 'secret', max: 20000 }
@@ -220,7 +239,7 @@ export class SettingsScreen implements NativeScreen {
           (value) => {
             if (this.busy || !this.loaded) return
             this.draft = { ...this.draft, protocol: value as ModelProtocol }
-            this.edited()
+            this.edited('provider-url')
           },
           { enabled }
         ),
@@ -237,8 +256,10 @@ export class SettingsScreen implements NativeScreen {
           action: secretAction,
           enabled,
           maxLength: 20000,
+          help: this.errors['provider-key'],
           clearRevision: this.clearRevision
         },
+        ...this.fieldError('provider-key'),
         label(
           'provider-key-state',
           this.#secret
@@ -249,18 +270,38 @@ export class SettingsScreen implements NativeScreen {
           { weight: 'secondary' }
         ),
         row('provider-actions', [
-          b.button('provider-save', 'Save provider', () => this.saveProvider(), enabled),
-          b.button('provider-test', 'Test connection', () => this.testProvider(), enabled),
-          b.button(
-            'provider-clear-key',
-            'Clear credential',
-            () => this.clearCredential(),
-            enabled && !!this.provider?.hasCredential
-          )
+          {
+            ...b.button('provider-save', 'Save provider', () => this.saveProvider(), enabled),
+            emphasis: 'primary'
+          },
+          b.button('provider-test', 'Test connection', () => this.testProvider(), enabled)
         ]),
         label('provider-test-note', 'Test uses the current draft without saving it.', {
           weight: 'secondary'
         }),
+        ...(this.connection
+          ? [
+              row('provider-connection-actions', [
+                b.button('provider-connection-details', 'Connection test details', () =>
+                  this.context.showDocument(
+                    'Connection test',
+                    `Status: ${this.connection!.status}\n\n${this.connection!.message}\n\nTested: ${this.connection!.testedAt}`
+                  )
+                )
+              ])
+            ]
+          : []),
+        row('provider-credential-actions', [
+          {
+            ...b.button(
+              'provider-clear-key',
+              'Clear credential',
+              () => this.clearCredential(),
+              enabled && !!this.provider?.hasCredential
+            ),
+            destructive: true
+          }
+        ]),
         heading('agents-heading', 'Local agents'),
         ...this.context.data.agents.map((agent) =>
           label(
@@ -273,9 +314,17 @@ export class SettingsScreen implements NativeScreen {
     )
   }
 
-  private edited(): void {
+  private fieldError(id: Field): NativeNode[] {
+    return this.errors[id]
+      ? [label(`${id}-error`, `Error: ${this.errors[id]}`, { weight: 'bold' })]
+      : []
+  }
+  private edited(field?: Field): void {
     if (!this.loaded || this.busy) return
     this.message = ''
+    this.connection = null
+    if (field) delete this.errors[field]
+    if (field === 'provider-url') delete this.errors['provider-key']
     this.reportDirty()
     this.context.redraw()
   }
@@ -287,16 +336,21 @@ export class SettingsScreen implements NativeScreen {
     )
   }
   private input(): ModelProviderInput | null {
-    if (!this.draft.name.trim() || !this.draft.model.trim()) {
-      this.message = 'Enter a provider name and exact model name.'
-      this.context.redraw()
-      return null
-    }
+    this.errors = {}
+    if (!this.draft.name.trim()) this.errors['provider-name'] = 'Enter a provider name.'
+    if (!this.draft.model.trim()) this.errors['provider-model'] = 'Enter the exact model name.'
     try {
       validateProviderBaseUrl(this.draft.baseUrl.trim())
     } catch {
-      this.message = 'Enter an HTTPS or loopback HTTP base URL without embedded credentials.'
-      this.context.redraw()
+      this.errors['provider-url'] =
+        'Enter an HTTPS or loopback HTTP base URL without embedded credentials.'
+    }
+    const first = (['provider-name', 'provider-url', 'provider-model'] as const).find(
+      (id) => this.errors[id]
+    )
+    if (first) {
+      this.message = 'Review the highlighted fields.'
+      this.context.focus(first)
       return null
     }
     return { ...this.draft, ...(this.#secret.trim() ? { apiKey: this.#secret } : {}) }
@@ -305,8 +359,10 @@ export class SettingsScreen implements NativeScreen {
   private async savePrompt(prompt: string): Promise<void> {
     if (this.busy || !this.loaded) return
     if (!discoverPersonalizationPromptSchema.safeParse(prompt).success) {
-      this.message = 'Personal context contains unsupported characters or exceeds 4000 characters.'
-      this.context.redraw()
+      this.errors['personal-prompt'] =
+        'Personal context contains unsupported characters or exceeds 4000 characters.'
+      this.message = 'Review your personal context.'
+      this.context.focus('personal-prompt')
       return
     }
     this.busy = true
@@ -339,9 +395,10 @@ export class SettingsScreen implements NativeScreen {
         this.provider.baseUrl !== input.baseUrl.trim()) &&
       !input.apiKey
     ) {
-      this.message =
+      this.errors['provider-key'] =
         'Enter a replacement credential or clear the protected credential before saving another protocol or endpoint.'
-      this.context.redraw()
+      this.message = 'Review the credential for the changed endpoint.'
+      this.context.focus('provider-key')
       return
     }
     this.busy = true
@@ -372,8 +429,30 @@ export class SettingsScreen implements NativeScreen {
     this.context.redraw()
     try {
       const result = await this.context.api.testModelProvider(input)
-      if (!this.disposed)
-        this.message = `${result.status}: ${result.message}\nTested: ${result.testedAt}`
+      if (!this.disposed) {
+        this.connection = result
+        if (result.status === 'connected')
+          this.message = 'Connection successful. Testing does not save changes.'
+        else {
+          const title = {
+            authentication_failed: 'Authentication rejected',
+            dns_failed: 'Host not found',
+            model_not_found: 'Model or route not found',
+            timeout: 'Connection timed out',
+            protocol_error: 'Unexpected provider response',
+            network_error: 'Connection failed'
+          }[result.status]
+          this.message = `${title}. Review the field below or open the test details.`
+          const field: Field =
+            result.status === 'authentication_failed'
+              ? 'provider-key'
+              : result.status === 'model_not_found'
+                ? 'provider-model'
+                : 'provider-url'
+          this.errors[field] = result.message
+          this.context.focus(field)
+        }
+      }
     } catch {
       this.message = 'The bounded connection test could not be started.'
     } finally {
@@ -394,6 +473,7 @@ export class SettingsScreen implements NativeScreen {
       this.context.presentation.clearSecure('provider-key')
       this.clearRevision++
       this.message = 'Protected credential cleared. Other unsaved fields are retained.'
+      delete this.errors['provider-key']
       this.reportDirty()
     } catch {
       this.message = 'The protected credential could not be cleared.'

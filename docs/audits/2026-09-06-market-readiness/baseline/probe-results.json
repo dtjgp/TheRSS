@@ -1,0 +1,93 @@
+{
+  "runtime": "AppKit; disposable profile; deterministic fixtures only",
+  "initialSearchEnabled": false,
+  "initialRunner": {
+    "id": "discover-runner",
+    "label": "Analysis runner",
+    "frame": "{{0, 0}, {190, 32}}",
+    "controlAppearance": "NSAppearanceNameAqua",
+    "title": "Model provider",
+    "enabled": true,
+    "appearance": "NSAppearanceNameAqua",
+    "children": [],
+    "kind": "select",
+    "class": "NSPopUpButton",
+    "checked": true,
+    "selected": "model-provider"
+  },
+  "before": {
+    "native-main": {
+      "frame": "{{225, 0}, {1135, 848}}",
+      "scrollOrigin": "{0, 0}"
+    },
+    "discover-page": {
+      "frame": "{{22, 72}, {1074, 754}}"
+    },
+    "discover-workspace": {
+      "frame": "{{0, 160}, {1074, 594}}"
+    },
+    "discover-reading-scroll": {
+      "frame": "{{321, 0}, {753, 594}}",
+      "scrollOrigin": "{0, 0}"
+    },
+    "discover-analysis-actions": {
+      "frame": "{{22, 644}, {709, 32}}"
+    },
+    "discover-analyze": {
+      "frame": "{{0, 0}, {80, 32}}",
+      "title": "Analyze"
+    },
+    "native-notice": null
+  },
+  "afterSave": {
+    "native-main": {
+      "frame": "{{225, 0}, {1135, 848}}",
+      "scrollOrigin": "{0, 0}"
+    },
+    "discover-page": {
+      "frame": "{{22, 110}, {1074, 716}}"
+    },
+    "discover-workspace": {
+      "frame": "{{0, 160}, {1074, 556}}"
+    },
+    "discover-reading-scroll": {
+      "frame": "{{321, 0}, {753, 556}}",
+      "scrollOrigin": "{0, 4}"
+    },
+    "discover-analysis-actions": {
+      "frame": "{{22, 644}, {692, 32}}"
+    },
+    "discover-analyze": {
+      "frame": "{{0, 0}, {80, 32}}",
+      "title": "Analyze"
+    },
+    "native-notice": {
+      "frame": "{{22, 72}, {1074, 20}}",
+      "text": "Saved: Semantic expansion search for edge intelligence"
+    }
+  },
+  "afterNoticeDismissed": {
+    "native-main": {
+      "frame": "{{225, 0}, {1135, 848}}",
+      "scrollOrigin": "{0, 0}"
+    },
+    "discover-page": {
+      "frame": "{{22, 72}, {1074, 754}}"
+    },
+    "discover-workspace": {
+      "frame": "{{0, 160}, {1074, 594}}"
+    },
+    "discover-reading-scroll": {
+      "frame": "{{321, 0}, {753, 594}}",
+      "scrollOrigin": "{0, 4}"
+    },
+    "discover-analysis-actions": {
+      "frame": "{{22, 644}, {692, 32}}"
+    },
+    "discover-analyze": {
+      "frame": "{{0, 0}, {80, 32}}",
+      "title": "Analyze"
+    },
+    "native-notice": null
+  }
+}

@@ -7,7 +7,6 @@ import {
 } from '../../shared/discover'
 import type { AnalysisRunner } from '../../shared/models'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
-import { SOURCE_GROUPS } from '../../shared/sourceGroups'
 import {
   column,
   Controls,
@@ -16,12 +15,15 @@ import {
   readableError,
   row,
   runnerAvailable,
-  scroll,
+  runnerUnavailableReason,
   type NativeContext,
   type NativeScreen
 } from './common'
 import type { NativeNode } from './presentation'
 import { ResearchReader, type TriageHistory } from './reading'
+import { researchMetadata, researchSubtitle } from './researchMetadata'
+import { ReadingWorkspace } from './readingWorkspace'
+import { discoverSources } from './discoverSources'
 
 type Filter = 'all' | 'paper' | 'repository' | 'other'
 
@@ -32,8 +34,8 @@ export class DiscoverScreen implements NativeScreen {
   private query = ''
   private runner: AnalysisRunner = 'model-provider'
   private sources = new Set<DiscoverSource>(DISCOVER_SOURCE_IDS)
-  private editorExpanded = true
   private picker = false
+  private sourceQuery = ''
   private snapshot: DiscoverSnapshot | null = null
   private filter: Filter = 'all'
   private visible = 24
@@ -46,6 +48,7 @@ export class DiscoverScreen implements NativeScreen {
   private loading = false
   private version = 0
   private disposed = false
+  private readonly workspace: ReadingWorkspace
 
   constructor(
     private readonly context: NativeContext,
@@ -53,6 +56,12 @@ export class DiscoverScreen implements NativeScreen {
   ) {
     this.controls = new Controls(context)
     this.reader = new ResearchReader(context, 'discover', triage)
+    this.workspace = new ReadingWorkspace(
+      context,
+      'discover',
+      'discover-results',
+      'discover-summary'
+    )
     this.unsubscribe = context.api.onDiscoverProgress((progress) => {
       if (progress.runId === this.activeRun) {
         this.progress = progress
@@ -69,8 +78,6 @@ export class DiscoverScreen implements NativeScreen {
       if (this.disposed || version !== this.version) return
       if (snapshot) {
         this.snapshot = snapshot
-        this.editorExpanded =
-          !snapshot.items.length || ['failed', 'canceled'].includes(snapshot.status)
         this.query = snapshot.intent
         this.runner = snapshot.runner
         const sources = DISCOVER_SOURCE_IDS.filter(
@@ -92,6 +99,49 @@ export class DiscoverScreen implements NativeScreen {
     this.unsubscribe()
     this.reader.dispose()
   }
+  get searching(): boolean {
+    return this.activeRun !== null
+  }
+  openLocal(snapshot: DiscoverSnapshot, itemId: string): () => void {
+    if (this.activeRun)
+      throw new Error('Wait for the active search before opening a historical session.')
+    const index = snapshot.items.findIndex((item) => item.id === itemId)
+    if (index < 0) throw new Error('This result is no longer in the stored search session.')
+    const previous = {
+      snapshot: this.snapshot,
+      query: this.query,
+      runner: this.runner,
+      sources: this.sources,
+      filter: this.filter,
+      visible: this.visible,
+      selected: this.selected,
+      picker: this.picker,
+      message: this.message,
+      progress: this.progress
+    }
+    const restoreWorkspace = this.workspace.checkpoint()
+    this.version++
+    this.snapshot = snapshot
+    this.query = snapshot.intent
+    this.runner = snapshot.runner
+    this.sources = new Set(
+      DISCOVER_SOURCE_IDS.filter(
+        (source) => snapshot.sourceOutcomes[source]?.status !== 'not_searched'
+      )
+    )
+    this.filter = 'all'
+    this.visible = Math.max(24, Math.ceil((index + 1) / 24) * 24)
+    this.selected = itemId
+    this.picker = false
+    this.message = ''
+    this.progress = null
+    this.workspace.open()
+    return () => {
+      this.version++
+      Object.assign(this, previous)
+      restoreWorkspace()
+    }
+  }
 
   render(): NativeNode {
     const b = this.controls,
@@ -112,17 +162,16 @@ export class DiscoverScreen implements NativeScreen {
     this.reader.select(
       selected ? { ...selected, triageState: selected.saved ? 'saved' : 'new' } : null,
       snapshot?.id,
-      selected
-        ? `## Source details\nAuthors: ${selected.authors.join(', ') || 'Not supplied'}\nCategories: ${selected.categories.join(', ') || 'None'}\nTopics: ${selected.topics.join(', ') || 'None'}\nLanguage: ${selected.language ?? 'Not supplied'}\nStars: ${selected.stars ?? 'Not supplied'}\nPublished: ${selected.publishedAt}\nUpdated: ${selected.updatedAt}`
-        : ''
+      selected ? researchMetadata(selected) : ''
     )
     const retryable = this.retryable()
     return column(
       'discover-page',
       [
-        heading('discover-title', 'Discover'),
-        this.composer(),
-        ...(this.picker ? [this.sourcePicker()] : []),
+        ...(!this.workspace.focused ? [heading('discover-title', 'Discover')] : []),
+        ...(!this.workspace.focused || busy
+          ? [this.composer(), ...this.readiness(), ...(this.picker ? [this.sourcePicker()] : [])]
+          : []),
         ...(this.progress
           ? [
               label(
@@ -139,7 +188,7 @@ export class DiscoverScreen implements NativeScreen {
         ...(!this.loaded && !this.loading
           ? [b.button('discover-load-retry', 'Retry loading session', () => this.load())]
           : []),
-        ...(snapshot
+        ...(snapshot && !this.workspace.focused
           ? [
               row('discover-results-toolbar', [
                 b.select(
@@ -185,47 +234,60 @@ export class DiscoverScreen implements NativeScreen {
               ])
             ]
           : []),
+        ...(visible.length ? this.workspace.navigation() : []),
         ...(visible.length
           ? [
-              b.split('discover-workspace', 'discover', [
-                column(
-                  'discover-list-pane',
-                  [
-                    b.table(
-                      'discover-results',
-                      'Discover results',
-                      visible.map((item) => ({
-                        id: item.id,
-                        title: item.title,
-                        subtitle: `${sourceDisplayName(item.source)} · ${item.kind} · ${item.score}${this.triage.state({ ...item, triageState: item.saved ? 'saved' : 'new' }) === 'saved' ? ' · Saved' : ''}`
-                      })),
-                      this.selected,
-                      (id) => this.select(id),
-                      {
-                        context: async (id) => {
-                          this.select(id)
-                          await this.reader.contextMenu()
+              this.workspace.apply(
+                b.split('discover-workspace', 'discover', [
+                  column(
+                    'discover-list-pane',
+                    [
+                      b.table(
+                        'discover-results',
+                        'Discover results',
+                        visible.map((item) => ({
+                          id: item.id,
+                          title: item.title,
+                          subtitle: researchSubtitle(
+                            item,
+                            this.triage.state({
+                              ...item,
+                              triageState: item.saved ? 'saved' : 'new'
+                            }) === 'saved'
+                          )
+                        })),
+                        this.selected,
+                        (id) => this.select(id),
+                        {
+                          activate: (id) => {
+                            this.select(id)
+                            this.workspace.open()
+                          },
+                          context: async (id) => {
+                            this.select(id)
+                            await this.reader.contextMenu()
+                          }
                         }
-                      }
-                    ),
-                    label(
-                      'discover-pagination',
-                      `${visible.length} of ${filtered.length} results`,
-                      { weight: 'secondary' }
-                    ),
-                    ...(visible.length < filtered.length
-                      ? [
-                          b.button('discover-more', 'Show 24 more', () => {
-                            this.visible += 24
-                            this.context.redraw()
-                          })
-                        ]
-                      : [])
-                  ],
-                  { flex: 1 }
-                ),
-                this.reader.render()
-              ])
+                      ),
+                      label(
+                        'discover-pagination',
+                        `${visible.length} of ${filtered.length} results`,
+                        { weight: 'secondary' }
+                      ),
+                      ...(visible.length < filtered.length
+                        ? [
+                            b.button('discover-more', 'Show 24 more', () => {
+                              this.visible += 24
+                              this.context.redraw()
+                            })
+                          ]
+                        : [])
+                    ],
+                    { flex: 1 }
+                  ),
+                  this.reader.render()
+                ])
+              )
             ]
           : [
               column(
@@ -235,7 +297,7 @@ export class DiscoverScreen implements NativeScreen {
                     'discover-empty-message',
                     snapshot
                       ? 'No results match this view. Source outcomes remain available in Search details.'
-                      : 'Enter a research question to search the selected sources.'
+                      : 'Search research sources and keep the results on this Mac.'
                   )
                 ],
                 { flex: 1 }
@@ -250,73 +312,21 @@ export class DiscoverScreen implements NativeScreen {
     const b = this.controls,
       busy = !!this.activeRun,
       snapshot = this.snapshot
-    if (!this.editorExpanded && snapshot) {
-      const previousSources = DISCOVER_SOURCE_IDS.filter(
-        (source) => snapshot.sourceOutcomes[source]?.status !== 'not_searched'
-      )
-      const changed =
-        this.query.trim() !== snapshot.intent ||
+    const previousSources = snapshot
+      ? DISCOVER_SOURCE_IDS.filter(
+          (source) => snapshot.sourceOutcomes[source]?.status !== 'not_searched'
+        )
+      : []
+    const changed =
+      snapshot &&
+      (this.query.trim() !== snapshot.intent ||
         this.runner !== snapshot.runner ||
         previousSources.length !== this.sources.size ||
-        previousSources.some((source) => !this.sources.has(source))
-      return column(
-        'discover-compact-search',
-        [
-          row('discover-compact-row', [
-            label('discover-query-summary', this.query, { flex: 1, maxLines: 2, weight: 'bold' }),
-            {
-              ...b.button(
-                'discover-edit-search',
-                'Edit search',
-                () => {
-                  this.editorExpanded = true
-                  this.context.focus('discover-query')
-                },
-                !busy
-              ),
-              emphasis: 'quiet'
-            },
-            {
-              ...b.button(
-                'discover-search',
-                busy ? 'Searching…' : 'Search again',
-                () => this.search(),
-                this.canSearch()
-              ),
-              emphasis: 'primary',
-              symbol: 'magnifyingglass'
-            },
-            ...(busy
-              ? [
-                  b.button(
-                    'discover-cancel',
-                    this.canceling ? 'Canceling…' : 'Cancel',
-                    () => this.cancel(),
-                    !this.canceling
-                  )
-                ]
-              : [])
-          ]),
-          label(
-            'discover-compact-context',
-            `${this.sources.size} sources · ${this.runner === 'codex' ? 'Codex CLI' : this.runner === 'claude' ? 'Claude Code' : (this.context.data.provider?.name ?? 'Model provider')}`,
-            { size: 11, weight: 'secondary' }
-          ),
-          ...(changed
-            ? [
-                label('discover-draft-status', `Draft not searched. Results: ${snapshot.intent}`, {
-                  size: 11,
-                  maxLines: 2
-                })
-              ]
-            : [])
-        ],
-        { surface: 'panel', padding: 10, gap: 4 }
-      )
-    }
+        previousSources.some((source) => !this.sources.has(source)))
     return column(
       'discover-composer',
       [
+        label('discover-query-label', 'Research question', { weight: 'bold', size: 12 }),
         b.input(
           'discover-query',
           'Research question',
@@ -339,7 +349,7 @@ export class DiscoverScreen implements NativeScreen {
               this.runner = runner
               this.context.redraw()
             },
-            busy
+            busy || this.loading
           ),
           b.button(
             'discover-source-picker',
@@ -348,7 +358,7 @@ export class DiscoverScreen implements NativeScreen {
               this.picker = !this.picker
               this.context.redraw()
             },
-            !busy
+            !busy && !this.loading
           ),
           {
             ...b.button(
@@ -360,23 +370,6 @@ export class DiscoverScreen implements NativeScreen {
             emphasis: 'primary',
             symbol: 'magnifyingglass'
           },
-          ...(snapshot?.items.length
-            ? [
-                {
-                  ...b.button(
-                    'discover-done-editing',
-                    'Done editing',
-                    () => {
-                      this.editorExpanded = false
-                      this.picker = false
-                      this.context.focus('discover-edit-search')
-                    },
-                    !busy
-                  ),
-                  emphasis: 'quiet' as const
-                }
-              ]
-            : []),
           ...(busy
             ? [
                 b.button(
@@ -388,99 +381,63 @@ export class DiscoverScreen implements NativeScreen {
               ]
             : [])
         ]),
+        ...(changed
+          ? [
+              label('discover-draft-status', `Draft not searched. Results: ${snapshot.intent}`, {
+                size: 11,
+                maxLines: 2
+              })
+            ]
+          : []),
         label(
           'discover-personalization',
           `${this.query.length}/2000 characters · ${this.context.data.personalPrompt.trim() ? 'Personal context active' : 'No personal context saved'}`,
-          { weight: 'secondary' }
+          { weight: 'secondary', size: 11 }
         )
       ],
-      { surface: 'panel', padding: 14, gap: 8 }
+      { surface: 'panel', padding: 12, gap: 6 }
     )
   }
 
-  private sourcePicker(): NativeNode {
+  private readiness(): NativeNode[] {
+    if (this.activeRun || this.loading) return []
+    const queryMissing = !this.query.trim()
+    const sourcesMissing = !this.sources.size
+    const runnerReason = runnerUnavailableReason(this.context, this.runner)
+    const reason = queryMissing
+      ? 'Enter a research question to start a search.'
+      : sourcesMissing
+        ? 'Select at least one source to search.'
+        : runnerReason
+    if (!reason) return []
     const b = this.controls
-    const groups = SOURCE_GROUPS.map((group) => {
-      const selected = group.sources.filter((source) => this.sources.has(source)).length
-      const all = selected === group.sources.length
-      const checks = group.sources.map((source) =>
-        b.check(
-          `discover-source-${source}`,
-          sourceDisplayName(source),
-          this.sources.has(source),
-          (checked) => {
-            if (checked) this.sources.add(source)
-            else this.sources.delete(source)
-            this.context.redraw()
-          },
-          !this.activeRun
-        )
-      )
-      return column(
-        `discover-group-${group.id}`,
-        [
-          row(`discover-group-${group.id}-header`, [
-            label(
-              `discover-group-${group.id}-title`,
-              `${group.title} · ${selected}/${group.sources.length}`,
-              { weight: 'bold', flex: 1 }
-            ),
-            {
-              ...b.button(
-                `discover-group-${group.id}-toggle`,
-                all ? 'Clear group' : 'Select group',
-                () => {
-                  group.sources.forEach((source) => {
-                    if (all) this.sources.delete(source)
-                    else this.sources.add(source)
-                  })
-                  this.context.redraw()
-                },
-                !this.activeRun
-              ),
-              emphasis: 'quiet'
-            }
-          ]),
-          ...Array.from({ length: Math.ceil(checks.length / 2) }, (_, index) =>
-            row(
-              `discover-group-${group.id}-row-${index}`,
-              checks.slice(index * 2, index * 2 + 2).map((check) => ({ ...check, flex: 1 }))
+    return [
+      label('discover-readiness', reason, { weight: 'secondary' }),
+      ...(!queryMissing && !sourcesMissing && runnerReason
+        ? [
+            b.button('discover-configure-runner', 'Open Settings', () =>
+              this.context.navigate('settings')
             )
-          )
-        ],
-        { gap: 4, padding: 8 }
-      )
+          ]
+        : [])
+    ]
+  }
+
+  private sourcePicker(): NativeNode {
+    return discoverSources(this.context, {
+      query: this.sourceQuery,
+      busy: !!this.activeRun,
+      selection: () => this.sources,
+      changeSelection: (next) => {
+        if (this.activeRun) return
+        this.sources = next
+        this.context.redraw()
+      },
+      changeQuery: (query) => {
+        this.sourceQuery = query
+        this.context.redraw()
+      }
     })
-    return column(
-      'discover-source-controls',
-      [
-        row('discover-source-actions', [
-          b.button(
-            'discover-all-sources',
-            'Select all',
-            () => {
-              this.sources = new Set(DISCOVER_SOURCE_IDS)
-              this.context.redraw()
-            },
-            !this.activeRun
-          ),
-          b.button(
-            'discover-clear-sources',
-            'Clear',
-            () => {
-              this.sources.clear()
-              this.context.redraw()
-            },
-            !this.activeRun
-          )
-        ]),
-        scroll('discover-source-scroll', column('discover-source-checks', groups, { gap: 8 }), {
-          height: 224,
-          flex: 0
-        })
-      ],
-      { gap: 4 }
-    )
   }
   private select(id: string): void {
     const item = this.snapshot?.items.find((item) => item.id === id)
@@ -538,9 +495,7 @@ export class DiscoverScreen implements NativeScreen {
           )
       if (this.disposed || this.activeRun !== runId) return
       this.snapshot = result
-      this.editorExpanded =
-        !result.items.length || !['completed', 'partial'].includes(result.status)
-      if (!this.editorExpanded) {
+      if (result.items.length && ['completed', 'partial'].includes(result.status)) {
         this.picker = false
         this.context.focus('discover-results')
       }
@@ -552,7 +507,6 @@ export class DiscoverScreen implements NativeScreen {
         this.message = 'Search canceled. Completed source results were preserved.'
       this.context.data.dashboard = await this.context.api.getDashboard()
     } catch (error) {
-      this.editorExpanded = true
       if (!this.disposed && this.activeRun === runId)
         this.message = this.canceling
           ? 'Search canceled.'

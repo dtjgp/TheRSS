@@ -261,14 +261,14 @@ describe('SourceCatalogView', () => {
 
     const summary = screen.getByRole('group', { name: 'Source catalog summary' })
     expect(within(summary).getByLabelText('Last recorded ready')).toHaveTextContent('1')
-    expect(within(summary).getByLabelText('Needs attention')).toHaveTextContent('2')
-    expect(within(summary).getByLabelText('Not checked')).toHaveTextContent('19')
+    expect(within(summary).getByLabelText('Failed or partial')).toHaveTextContent('2')
+    expect(within(summary).getByLabelText('Not recorded')).toHaveTextContent('19')
     expect(screen.getByText(/catalog membership is not a live-health claim/i)).toBeVisible()
 
     await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'arXiv')
     await user.click(screen.getByRole('option', { name: 'Browse arXiv recent content' }))
 
-    expect(await screen.findByText('Last recorded health')).toBeVisible()
+    expect(await screen.findByText('Last recorded · Time unavailable')).toBeVisible()
     expect(
       within(screen.getByRole('region', { name: 'arXiv source detail' })).getByText('Failed')
     ).toBeVisible()
@@ -278,7 +278,6 @@ describe('SourceCatalogView', () => {
   })
 
   it('shows observed-at evidence and the bounded recorded failure reason', async () => {
-    const user = userEvent.setup()
     const api = createSourceApi(sourceSnapshot('arxiv'))
     renderCatalog(
       api,
@@ -293,10 +292,8 @@ describe('SourceCatalogView', () => {
       }
     )
 
-    await user.type(screen.getByRole('searchbox', { name: 'Search source catalog' }), 'arXiv')
-    await user.click(screen.getByRole('option', { name: 'Browse arXiv recent content' }))
-
-    expect(await screen.findByText(/recorded Aug 24, 2026/i)).toBeVisible()
+    expect(api.getSourceContent).not.toHaveBeenCalled()
+    expect(await screen.findByText(/2026-08-24 08:30 UTC/i)).toBeVisible()
     expect(screen.getByText('Timed out after the bounded retry window')).toBeVisible()
   })
 
@@ -314,7 +311,7 @@ describe('SourceCatalogView', () => {
     expect(
       within(screen.getByRole('listbox', { name: 'Configured sources' })).getAllByRole('option')
     ).toHaveLength(2)
-    const filter = screen.getByRole('button', { name: 'Show sources needing attention' })
+    const filter = screen.getByRole('button', { name: 'Show failed or partial sources' })
     expect(filter).toHaveAttribute('aria-pressed', 'true')
     await user.click(filter)
     expect(onAttentionOnlyChange).toHaveBeenCalledWith(false)

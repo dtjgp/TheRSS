@@ -36,6 +36,17 @@ const baseItem: DiscoveryItem = {
 }
 
 describe('rankDiscoveryItem', () => {
+  it('does not turn a source publication month into a day-level recency claim', () => {
+    const monthly = {
+      ...baseItem,
+      source: 'folo:611' as const,
+      summary: '《研究期刊》2026年9月',
+      publishedAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-01T00:00:00.000Z'
+    }
+    const result = rankDiscoveryItem(monthly, profile, new Date('2026-09-01T12:00:00Z'))
+    expect(result.reasons.some((reason) => reason.kind === 'recency')).toBe(false)
+  })
   it('returns deterministic score and visible match reasons', () => {
     const result = rankDiscoveryItem(baseItem, profile, new Date('2026-08-15T00:00:00Z'))
 
@@ -118,9 +129,9 @@ describe('rankDiscoveryItem', () => {
   })
 
   it.each([
-    ['2026-08-15T00:00:00.000Z', 'Published today'],
-    ['2026-08-12T00:00:00.000Z', 'Published 3 days ago'],
-    ['2026-08-05T00:00:00.000Z', 'Published 10 days ago']
+    ['2026-08-15T00:00:00.000Z', 'Updated today'],
+    ['2026-08-12T00:00:00.000Z', 'Updated 3 days ago'],
+    ['2026-08-05T00:00:00.000Z', 'Updated 10 days ago']
   ])('explains the recency band for %s', (updatedAt, label) => {
     const result = rankDiscoveryItem(
       { ...baseItem, updatedAt },
@@ -129,6 +140,30 @@ describe('rankDiscoveryItem', () => {
     )
 
     expect(result.reasons).toContainEqual(expect.objectContaining({ kind: 'recency', label }))
+  })
+
+  it('distinguishes a repository update from publication without changing its recency weight', () => {
+    const now = new Date('2026-09-07T12:00:00Z')
+    const repository = {
+      ...baseItem,
+      source: 'github' as const,
+      publishedAt: '2026-08-24T10:00:00Z',
+      updatedAt: '2026-09-07T10:00:00Z'
+    }
+    expect(rankDiscoveryItem(repository, profile, now).reasons).toContainEqual({
+      kind: 'recency',
+      value: '0d',
+      weight: 14,
+      label: 'Updated today'
+    })
+    for (const updatedAt of ['', repository.publishedAt]) {
+      expect(rankDiscoveryItem({ ...repository, updatedAt }, profile, now).reasons).toContainEqual({
+        kind: 'recency',
+        value: '14d',
+        weight: 4,
+        label: 'Published 14 days ago'
+      })
+    }
   })
 
   it('handles invalid dates, zero popularity and summary-only matches without false signals', () => {

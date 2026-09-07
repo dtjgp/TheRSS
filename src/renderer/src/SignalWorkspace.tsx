@@ -1,13 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  sourcePublicationDate,
+  sourcePublicationLabel,
+  sourceMatchReasons
+} from '../../shared/sourceDate'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { ExternalLink, EyeOff, Sparkles } from 'lucide-react'
 import type { DashboardItem, TheRSSApi, TriageState } from '../../shared/api'
 import type { AnalysisArtifact } from '../../shared/models'
-import { isPaperAnalysisCandidate, PAPER_L1_ANALYSIS_PROMPT_VERSION } from '../../shared/analysis'
+import { isPaperAnalysisCandidate, isPaperL1PromptVersion } from '../../shared/analysis'
 import { AnalysisPanel } from './AppSections'
 import { SaveStar } from './SaveStar'
 import { sourceDisplayName, sourceStyleToken } from '../../shared/sourceIdentity'
 import { PaperPromotionAction } from './PaperPromotionAction'
 import { ResizableSplitPane } from './ResizableSplitPane'
+import { SavedSourceUpdate } from './SavedSourceUpdate'
+import type { SavedSourceUpdateResult } from '../../shared/savedSourceUpdate'
 
 interface SignalWorkspaceProps {
   readonly api: TheRSSApi
@@ -18,6 +25,7 @@ interface SignalWorkspaceProps {
   readonly onAnalyze: (id: string) => Promise<void>
   readonly onTriage: (id: string, state: TriageState) => Promise<void>
   readonly onSelectionChange: (id: string) => void
+  readonly onSourceUpdated: (result: SavedSourceUpdateResult) => void
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -68,7 +76,7 @@ function SignalListItem({
       >
         <span className="signal-row__meta">
           <SourceMark source={item.source} />
-          <time dateTime={item.publishedAt}>{new Date(item.publishedAt).toLocaleDateString()}</time>
+          <time dateTime={sourcePublicationDate(item)}>{sourcePublicationLabel(item, true)}</time>
           <span className="signal-row__score">{item.score}</span>
         </span>
         <strong>{item.title}</strong>
@@ -102,10 +110,10 @@ export function SignalWorkspace({
   selectedItemId,
   onAnalyze,
   onTriage,
-  onSelectionChange
+  onSelectionChange,
+  onSourceUpdated
 }: SignalWorkspaceProps) {
   const workspaceRef = useRef<HTMLDivElement>(null)
-  const [expandedSummaryId, setExpandedSummaryId] = useState<string | null>(null)
   const selectedIndex = useMemo(() => {
     const matchedIndex = items.findIndex((item) => item.id === selectedItemId)
     return matchedIndex >= 0 ? matchedIndex : 0
@@ -119,7 +127,6 @@ export function SignalWorkspace({
 
   const selectItem = useCallback(
     (item: DashboardItem, moveFocus: boolean) => {
-      setExpandedSummaryId(null)
       onSelectionChange(item.id)
       if (item.triageState === 'new') void onTriage(item.id, 'viewed')
       if (moveFocus) {
@@ -216,12 +223,9 @@ export function SignalWorkspace({
 
   const isSaved = selectedItem.triageState === 'saved'
   const isPaper = isPaperAnalysisCandidate(selectedItem)
-  const isSummaryExpanded = expandedSummaryId === selectedItem.id
-  const canCollapseSummary = selectedItem.summary.length > 420
-  const isFullSummaryVisible = !canCollapseSummary || isSummaryExpanded
   const selectedAnalysis = analysis?.itemId === selectedItem.id ? analysis : null
   const paperL1Analysis =
-    isPaper && selectedAnalysis?.promptVersion === PAPER_L1_ANALYSIS_PROMPT_VERSION
+    isPaper && selectedAnalysis && isPaperL1PromptVersion(selectedAnalysis.promptVersion)
       ? selectedAnalysis
       : null
   const promotionStatusTargetId = `promotion-status-${selectedItem.id.replaceAll(/[^A-Za-z0-9_-]/gu, '-')}`
@@ -269,8 +273,8 @@ export function SignalWorkspace({
           <header className="signal-detail__header">
             <div className="signal-detail__meta">
               <SourceMark source={selectedItem.source} />
-              <time dateTime={selectedItem.publishedAt}>
-                {new Date(selectedItem.publishedAt).toLocaleDateString()}
+              <time dateTime={sourcePublicationDate(selectedItem)}>
+                {sourcePublicationLabel(selectedItem, true)}
               </time>
               <span>signal {selectedItem.score}</span>
             </div>
@@ -335,23 +339,16 @@ export function SignalWorkspace({
             aria-live="polite"
           />
 
-          <p className="signal-detail__summary" data-expanded={String(isFullSummaryVisible)}>
-            {selectedItem.summary}
-          </p>
-          {canCollapseSummary && (
-            <button
-              type="button"
-              className="signal-detail__summary-toggle"
-              aria-expanded={isSummaryExpanded}
-              onClick={() =>
-                setExpandedSummaryId((current) =>
-                  current === selectedItem.id ? null : selectedItem.id
-                )
-              }
-            >
-              {isSummaryExpanded ? 'Collapse summary' : 'Show full summary'}
-            </button>
+          {isSaved && (
+            <SavedSourceUpdate
+              api={api}
+              item={selectedItem}
+              analysis={selectedAnalysis}
+              onUpdated={onSourceUpdated}
+            />
           )}
+
+          <p className="signal-detail__summary">{selectedItem.summary}</p>
 
           {isPaper && (
             <section className="paper-l1-analysis" aria-label="L1 paper analysis">
@@ -377,7 +374,7 @@ export function SignalWorkspace({
           <section className="signal-detail__reasons" aria-label="Match reasons">
             <span className="signal-detail__section-label">Why this matched</span>
             <ul>
-              {selectedItem.reasons.map((reason) => (
+              {sourceMatchReasons(selectedItem).map((reason) => (
                 <li key={reason}>{reason}</li>
               ))}
             </ul>

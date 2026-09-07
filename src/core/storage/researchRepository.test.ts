@@ -492,7 +492,8 @@ describe('ResearchRepository', () => {
     ).toEqual({
       status: 'failed',
       observedAt: '2026-08-24T08:30:00.000Z',
-      errorMessage: 'Timed out after the bounded retry window'
+      errorMessage: 'Timed out after the bounded retry window',
+      context: 'source'
     })
     repository.close()
   })

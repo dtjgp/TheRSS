@@ -103,7 +103,7 @@ await application.evaluate(({ Menu, shell, clipboard }) => {
 
 // ---- 3. Real secondary click on a Discover result -------------------------
 await page.getByRole('textbox', { name: 'Research question' }).fill('edge pruning')
-await page.getByRole('button', { name: 'Expand and search' }).click()
+await page.getByRole('button', { name: 'Search', exact: true }).click()
 await page.getByTestId('discover-result').first().waitFor({ timeout: 30000 })
 await page.getByTestId('discover-result').first().click({ button: 'right' })
 await page.waitForTimeout(1500)

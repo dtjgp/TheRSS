@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { savedSourceUpdateRequestSchema } from '../shared/savedSourceUpdate'
 import { interestProfileSchema } from '../core/interests/interestProfile'
 import type { ResearchRepository } from '../core/storage/researchRepository'
 import type { DiscoveryService } from '../core/discovery/discoveryService'
@@ -24,6 +25,7 @@ import {
 import type { DiscoverySource } from '../shared/discovery'
 import { isDiscoverySource } from '../shared/sourceIdentity'
 import { localSearchQuerySchema } from '../shared/localSearch'
+import { localResearchTargetSchema } from '../shared/localResearch'
 import { discoverPersonalizationPromptSchema } from '../shared/personalization'
 import {
   llmWikiPromotionConfirmRequestSchema,
@@ -105,6 +107,28 @@ export class WindowApplication {
       refresh: () => task(() => discovery.refresh(this.credentials())),
       searchLocal: (candidate) =>
         task(() => repository.searchLocal(localSearchQuerySchema.parse(candidate))),
+      getLocalResearch: (candidate) =>
+        task(async () => {
+          const target = localResearchTargetSchema.parse(candidate)
+          if (target.kind === 'saved') {
+            const item = repository.getDiscoveryItem(target.itemId)
+            return item?.triageState === 'saved' ? { kind: 'saved' as const, item } : null
+          }
+          if (target.kind === 'discover') {
+            const snapshot = repository.getDiscoverSnapshot(target.sessionId)
+            return snapshot?.items.some((item) => item.id === target.itemId)
+              ? { kind: 'discover' as const, snapshot, itemId: target.itemId }
+              : null
+          }
+          const state = await analysis.getAnalysisArtifact(target.analysisId)
+          return state
+            ? {
+                kind: 'analysis' as const,
+                state,
+                item: repository.getDiscoveryItem(state.artifact.itemId)
+              }
+            : null
+        }),
       searchDiscover: (candidate, id) =>
         task(() => {
           const request = discoverSearchRequestSchema.parse(candidate)
@@ -148,6 +172,17 @@ export class WindowApplication {
           const validated = triageInput.parse({ id, state })
           repository.setTriageState(validated.id, validated.state)
           return repository.getDashboardSnapshot()
+        }),
+      getSavedSourceUpdate: (id) => task(() => repository.getSavedSourceUpdate(itemId.parse(id))),
+      applySavedSourceUpdate: (candidate) =>
+        task(() => {
+          const input = savedSourceUpdateRequestSchema.parse(candidate)
+          const status = repository.applySavedSourceUpdate(input)
+          return {
+            status,
+            item: repository.getDiscoveryItem(input.itemId),
+            dashboard: repository.getDashboardSnapshot()
+          }
         }),
       getModelProvider: () => task(() => provider.getSummary()),
       saveModelProvider: (candidate) => task(() => provider.save(candidate)),

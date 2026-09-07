@@ -66,4 +66,6 @@
 
 ## Vulnerability reporting
 
-Until a public security channel exists, do not publish suspected credentials or exploit details in a public issue. Rotate any exposed credential immediately and document affected data, versions, remediation, and verification.
+Report suspected vulnerabilities through [GitHub private vulnerability reporting](https://github.com/dtjgp/TheRSS/security/advisories/new). This private reporting channel is enabled for TheRSS.
+
+Do not publish credentials or exploit details in a public issue. Include affected versions, reproduction steps, impact and any verified mitigation in the private report. If a credential has been exposed, rotate it and record the remediation without sharing the credential value.

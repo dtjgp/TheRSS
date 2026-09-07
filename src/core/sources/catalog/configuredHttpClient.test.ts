@@ -2,6 +2,85 @@ import { describe, expect, it, vi } from 'vitest'
 import { fetchConfiguredHttpDocument } from './configuredHttpClient'
 
 describe('fetchConfiguredHttpDocument', () => {
+  it('reads CNBC directly from the confirmed official Top News RSS endpoint', async () => {
+    const fetcher = vi.fn<typeof fetch>(
+      async () =>
+        new Response('<rss><channel/></rss>', { headers: { 'content-type': 'application/xml' } })
+    )
+    await fetchConfiguredHttpDocument('folo:253', { fetcher })
+    expect(fetcher.mock.calls[0]?.[0]).toBe(
+      'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114'
+    )
+  })
+  it('uses only the fixed public read method and JSON content type for official news APIs', async () => {
+    for (const [id, method, endpoint] of [
+      ['folo:302', 'POST', 'https://hub-api.baai.ac.cn/api/v1/story/list?page=1&sort=new&tag_id='],
+      ['folo:93', 'GET', 'https://apii.web.mittrchina.com/information/index?limit=10']
+    ]) {
+      const fetcher = vi.fn<typeof fetch>(async (input, init) => {
+        expect(String(input)).toBe(endpoint)
+        expect(init?.method ?? 'GET').toBe(method)
+        expect(new Headers(init?.headers).get('Accept')).toBe('application/json')
+        expect(new Headers(init?.headers).has('Authorization')).toBe(false)
+        expect(init?.body).toBeUndefined()
+        return new Response('{}', { headers: { 'content-type': 'application/json' } })
+      })
+      expect((await fetchConfiguredHttpDocument(id!, { fetcher })).transport).toBe('json')
+      await expect(
+        fetchConfiguredHttpDocument(id!, {
+          fetcher: async () =>
+            new Response('<html>Blocked</html>', { headers: { 'content-type': 'text/html' } })
+        })
+      ).rejects.toThrow('unexpected content type')
+    }
+  })
+  it('retrieves the existing OpenAI source directly from its official RSS origin', async () => {
+    const fetcher = vi.fn<typeof fetch>(async (input, init) => {
+      expect(String(input)).toBe('https://openai.com/news/rss.xml')
+      expect(new Headers(init?.headers).has('Authorization')).toBe(false)
+      return new Response('<rss><channel><title>OpenAI News</title></channel></rss>', {
+        headers: { 'Content-Type': 'text/xml; charset=utf-8' }
+      })
+    })
+    await expect(fetchConfiguredHttpDocument('folo:182', { fetcher })).resolves.toMatchObject({
+      sourceId: 'folo:182',
+      endpoint: 'https://openai.com/news/rss.xml',
+      transport: 'feed',
+      contentType: 'text/xml'
+    })
+    expect(fetcher).toHaveBeenCalledOnce()
+  })
+  it('rejects a cross-origin redirect before requesting the destination', async () => {
+    const fetcher = vi.fn<typeof fetch>(async (_url, options) => {
+      expect(options?.redirect).toBe('manual')
+      return new Response(null, {
+        status: 302,
+        headers: { location: 'https://untrusted.invalid/private' }
+      })
+    })
+    await expect(fetchConfiguredHttpDocument('folo:44', { fetcher })).rejects.toThrow(
+      /fixed HTTPS origin/
+    )
+    expect(fetcher).toHaveBeenCalledOnce()
+  })
+  it('follows a bounded same-origin redirect with the original request deadline', async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(null, { status: 301, headers: { location: '/new-feed' } })
+      )
+      .mockResolvedValueOnce(
+        new Response('<rss><channel/></rss>', {
+          headers: { 'content-type': 'application/rss+xml' }
+        })
+      )
+    await fetchConfiguredHttpDocument('folo:44', { fetcher })
+    expect(fetcher.mock.calls.map(([url]) => String(url))).toEqual([
+      'https://news.ycombinator.com/rss',
+      'https://news.ycombinator.com/new-feed'
+    ])
+    expect(fetcher.mock.calls[0]![1]!.signal).toBe(fetcher.mock.calls[1]![1]!.signal)
+  })
   it('retrieves a configured feed through the bounded credential-free client', async () => {
     const fetcher = vi.fn<typeof fetch>(async (input, init) => {
       expect(String(input)).toBe('https://news.ycombinator.com/rss')

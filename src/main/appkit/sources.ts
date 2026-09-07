@@ -1,4 +1,10 @@
-import type { SourceContentSnapshot } from '../../shared/api'
+import {
+  sourcePublicationLabel,
+  sourcePublicationEvidence,
+  hasPublicationMonthOnly
+} from '../../shared/sourceDate'
+import { sourceHealthLabel, sourceObservationLabel } from '../../shared/sourceHealth'
+import type { SourceContentSnapshot, SourceHealth } from '../../shared/api'
 import {
   SOURCE_CATALOG,
   SOURCE_PRIORITIES,
@@ -20,6 +26,7 @@ import {
   type NativeScreen
 } from './common'
 import type { NativeNode } from './presentation'
+import { ReadingWorkspace } from './readingWorkspace'
 
 export class SourcesScreen implements NativeScreen {
   attention = false
@@ -37,8 +44,15 @@ export class SourcesScreen implements NativeScreen {
   private error = ''
   private version = 0
   private disposed = false
+  private readonly workspace: ReadingWorkspace
   constructor(private readonly context: NativeContext) {
     this.controls = new Controls(context)
+    this.workspace = new ReadingWorkspace(
+      context,
+      'sources',
+      'sources-list',
+      'source-detail-description'
+    )
   }
   dispose(): void {
     this.disposed = true
@@ -59,79 +73,99 @@ export class SourcesScreen implements NativeScreen {
       this.version++
     }
     const entry = sources.find((entry) => entry.id === this.selected)
-    const attentionCount = SOURCE_CATALOG.filter((entry) => this.needsAttention(entry)).length
+    const failedCount = SOURCE_CATALOG.filter((entry) => this.health(entry) === 'failed').length
+    const partialCount = SOURCE_CATALOG.filter((entry) => this.health(entry) === 'partial').length
     return column(
       'sources-page',
       [
-        heading('sources-title', 'Sources'),
-        label(
-          'sources-summary',
-          `22 retained sources · ${attentionCount} need attention · ${sources.length} match current filters`,
-          { weight: 'secondary' }
-        ),
-        b.input(
-          'sources-query',
-          'Search sources',
-          this.query,
-          (query) => {
-            this.query = query
-            this.context.redraw()
-          },
-          200,
-          { placeholder: 'Search source name, research role, origin or access notes' }
-        ),
-        row('sources-filters', [
-          b.select(
-            'sources-group',
-            'Source group',
-            this.group,
-            [
-              { id: 'all', title: 'All source groups' },
-              ...SOURCE_GROUPS.map((group) => ({
-                id: group.id,
-                title: `${group.title} (${group.sources.length})`
-              }))
-            ],
-            (value) => {
-              this.group = value
-              this.context.redraw()
-            },
-            { width: 240 }
-          ),
-          b.select(
-            'sources-priority',
-            'Source priority',
-            this.priority,
-            [
-              { id: 'all', title: 'All priorities' },
-              ...SOURCE_PRIORITIES.map((id) => ({ id, title: `Priority ${id}` }))
-            ],
-            (value) => {
-              this.priority = value
-              this.context.redraw()
-            },
-            { width: 160 }
-          ),
-          b.select(
-            'sources-axis',
-            'Research axis',
-            this.axis,
-            [
-              { id: 'all', title: 'All research axes' },
-              ...RESEARCH_AXES.map((id) => ({ id, title: RESEARCH_AXIS_LABELS[id] }))
-            ],
-            (value) => {
-              this.axis = value
-              this.context.redraw()
-            },
-            { width: 260 }
-          ),
-          b.check('sources-attention', 'Needs attention', this.attention, (value) => {
-            this.attention = value
-            this.context.redraw()
-          })
-        ]),
-        {
+        ...(!this.workspace.focused ? [heading('sources-title', 'Sources')] : []),
+        ...(!this.workspace.focused
+          ? [
+              label(
+                'sources-summary',
+                `22 retained sources · ${failedCount} failed · ${partialCount} partial · ${sources.length} match current filters`,
+                { weight: 'secondary' }
+              ),
+              b.input(
+                'sources-query',
+                'Search sources',
+                this.query,
+                (query) => {
+                  this.query = query
+                  this.context.redraw()
+                },
+                200,
+                { placeholder: 'Search source name, research role, origin or access notes' }
+              ),
+              row('sources-filters', [
+                b.select(
+                  'sources-group',
+                  'Source group',
+                  this.group,
+                  [
+                    { id: 'all', title: 'All source groups' },
+                    ...SOURCE_GROUPS.map((group) => ({
+                      id: group.id,
+                      title: `${group.title} (${group.sources.length})`
+                    }))
+                  ],
+                  (value) => {
+                    this.group = value
+                    this.context.redraw()
+                  },
+                  { width: 240 }
+                ),
+                b.select(
+                  'sources-priority',
+                  'Source priority',
+                  this.priority,
+                  [
+                    { id: 'all', title: 'All priorities' },
+                    ...SOURCE_PRIORITIES.map((id) => ({ id, title: `Priority ${id}` }))
+                  ],
+                  (value) => {
+                    this.priority = value
+                    this.context.redraw()
+                  },
+                  { width: 160 }
+                ),
+                b.select(
+                  'sources-axis',
+                  'Research axis',
+                  this.axis,
+                  [
+                    { id: 'all', title: 'All research axes' },
+                    ...RESEARCH_AXES.map((id) => ({ id, title: RESEARCH_AXIS_LABELS[id] }))
+                  ],
+                  (value) => {
+                    this.axis = value
+                    this.context.redraw()
+                  },
+                  { width: 260 }
+                ),
+                b.check('sources-attention', 'Failed or partial', this.attention, (value) => {
+                  this.attention = value
+                  this.context.redraw()
+                })
+              ])
+            ]
+          : []),
+        ...(sources.length
+          ? this.workspace.navigation('Back to sources')
+          : [
+              row('sources-empty-recovery', [
+                label('sources-filter-empty', 'No sources match these filters.', { flex: 1 }),
+                b.button('sources-reset-filters', 'Clear filters', () => {
+                  this.query = ''
+                  this.group = 'all'
+                  this.priority = 'all'
+                  this.axis = 'all'
+                  this.attention = false
+                  this.workspace.back()
+                })
+              ])
+            ]),
+        this.workspace.apply({
           id: 'sources-workspace',
           kind: 'split',
           flex: 1,
@@ -146,7 +180,7 @@ export class SourcesScreen implements NativeScreen {
               sources.map((source) => ({
                 id: source.id,
                 title: source.name,
-                subtitle: `${source.priority} · ${source.researchAxes.join(', ')} · ${this.health(source)}`
+                subtitle: `${sourceGroup(discoverySourceFromCatalogId(source.id))?.title ?? source.role} · ${sourceHealthLabel(this.health(source), this.healthDetail(source)?.context)}`
               })),
               this.focused,
               (id) => {
@@ -163,7 +197,7 @@ export class SourcesScreen implements NativeScreen {
                   { flex: 1 }
                 )
           ]
-        }
+        })
       ],
       { flex: 1 }
     )
@@ -177,6 +211,7 @@ export class SourcesScreen implements NativeScreen {
     this.selected = catalogId
     this.focused = catalogId
     this.activated = true
+    this.workspace.open()
     if (changed) {
       this.snapshot = null
       this.selectedItem = ''
@@ -198,19 +233,30 @@ export class SourcesScreen implements NativeScreen {
         if (this.disposed || version !== this.version) return
         this.snapshot = snapshot
       }
-      this.context.data.dashboard = await this.context.api.getDashboard()
     } catch (error) {
       if (!this.disposed && version === this.version) this.error = readableError(error)
     } finally {
+      if (!this.disposed && version === this.version) {
+        try {
+          const dashboard = await this.context.api.getDashboard()
+          if (!this.disposed && version === this.version) this.context.data.dashboard = dashboard
+        } catch {
+          /* Keep the original retrieval error and cached content if the local status read fails. */
+        }
+      }
       if (version === this.version) {
         this.busy = false
         this.context.redraw()
       }
     }
   }
-  private health(entry: SourceCatalogEntry): string {
+  private health(entry: SourceCatalogEntry): SourceHealth {
     const source = discoverySourceFromCatalogId(entry.id)
     return source ? (this.context.data.dashboard?.sourceHealth[source] ?? 'idle') : 'idle'
+  }
+  private healthDetail(entry: SourceCatalogEntry) {
+    const source = discoverySourceFromCatalogId(entry.id)
+    return source ? this.context.data.dashboard?.sourceHealthDetails[source] : undefined
   }
   private needsAttention(entry: SourceCatalogEntry): boolean {
     return ['failed', 'partial'].includes(this.health(entry))
@@ -244,7 +290,7 @@ export class SourcesScreen implements NativeScreen {
     const b = this.controls,
       source = discoverySourceFromCatalogId(entry.id),
       snapshot = this.snapshot
-    const health = source ? this.context.data.dashboard?.sourceHealthDetails[source] : null
+    const health = this.healthDetail(entry)
     const item = snapshot?.items.find((item) => item.id === this.selectedItem) ?? snapshot?.items[0]
     const status = snapshot
       ? {
@@ -262,12 +308,18 @@ export class SourcesScreen implements NativeScreen {
           heading('source-detail-title', entry.name),
           label(
             'source-detail-health',
-            `Priority ${entry.priority} · ${this.health(entry)}${health?.observedAt ? ` · ${health.observedAt}` : ''}`,
+            `${sourceHealthLabel(this.health(entry), health?.context)} · ${sourceObservationLabel(health)}`,
+            { weight: 'secondary' }
+          ),
+          ...(health?.errorMessage ? [label('source-health-error', health.errorMessage)] : []),
+          label(
+            'source-observation-boundary',
+            'Last recorded outcome; cached content below is separate from this observation.',
             { weight: 'secondary' }
           ),
           b.rich(
             'source-detail-description',
-            `${entry.role}\n\n${entry.reason}\n\nResearch axes: ${entry.researchAxes.map((axis) => RESEARCH_AXIS_LABELS[axis]).join(', ')}\n\nOrigin: ${entry.origin}\n\nAccess: ${entry.accessNote}`
+            `${entry.role}\n\n${entry.reason}\n\nPriority: ${entry.priority}\n\nResearch axes: ${entry.researchAxes.map((axis) => RESEARCH_AXIS_LABELS[axis]).join(', ')}\n\nOrigin: ${entry.origin}\n\nAccess: ${entry.accessNote}`
           ),
           row('source-detail-actions', [
             b.button(
@@ -276,13 +328,6 @@ export class SourcesScreen implements NativeScreen {
               () => this.context.openExternal(entry.url),
               true,
               `source:${entry.id}:open`
-            ),
-            b.button(
-              'sources-load',
-              this.busy ? 'Loading…' : 'Open cached content',
-              () => this.activate(entry.id),
-              !this.busy,
-              `source:${entry.id}:load`
             ),
             b.button(
               'sources-refresh',
@@ -298,7 +343,9 @@ export class SourcesScreen implements NativeScreen {
               ? 'Use Discover for query-based GitHub retrieval. This source view is read-only.'
               : source === 'arxiv'
                 ? 'arXiv content covers the latest source day.'
-                : 'Source content covers a rolling 30-day window.',
+                : entry.id === 'folo:611'
+                  ? 'Publication months overlapping the 30-day window are included; exact days may be unavailable.'
+                  : 'Source content covers a rolling 30-day window.',
             { weight: 'secondary' }
           ),
           ...(!this.activated
@@ -309,7 +356,6 @@ export class SourcesScreen implements NativeScreen {
                 )
               ]
             : []),
-          ...(health?.errorMessage ? [label('source-health-error', health.errorMessage)] : []),
           ...(this.error ? [label('source-content-error', this.error)] : []),
           ...(snapshot
             ? [
@@ -328,7 +374,7 @@ export class SourcesScreen implements NativeScreen {
                           snapshot.items.map((item) => ({
                             id: item.id,
                             title: item.title,
-                            subtitle: `${item.publishedAt.slice(0, 10)} · ${item.kind ?? 'item'}`
+                            subtitle: `${sourcePublicationLabel(item)} · ${item.kind ?? 'item'}`
                           })),
                           item?.id ?? '',
                           (id) => {
@@ -351,7 +397,7 @@ export class SourcesScreen implements NativeScreen {
                             ),
                             b.rich(
                               'source-content-summary',
-                              `${item.summary}\n\nPublished: ${item.publishedAt}\nUpdated: ${item.updatedAt}\n\nSource metadata only.`
+                              `${item.summary}\n\nPublished: ${sourcePublicationEvidence(item)}\nUpdated: ${hasPublicationMonthOnly(item) ? 'Not supplied separately' : item.updatedAt}\n\nSource metadata only.`
                             )
                           ]
                         : [])

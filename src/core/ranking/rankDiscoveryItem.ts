@@ -1,5 +1,6 @@
 import type { InterestProfile } from '../interests/interestProfile'
 import type { DiscoveryItem, MatchReason, RankedDiscoveryItem } from '../../shared/discovery'
+import { hasPublicationMonthOnly } from '../../shared/sourceDate'
 
 const TITLE_KEYWORD_WEIGHT = 30
 const SUMMARY_KEYWORD_WEIGHT = 12
@@ -12,6 +13,7 @@ function includesText(value: string, query: string): boolean {
 }
 
 function recencyReason(item: DiscoveryItem, now: Date): MatchReason | null {
+  if (hasPublicationMonthOnly(item)) return null
   const timestamp = Date.parse(item.updatedAt || item.publishedAt)
   if (!Number.isFinite(timestamp)) {
     return null
@@ -24,14 +26,16 @@ function recencyReason(item: DiscoveryItem, now: Date): MatchReason | null {
   }
 
   const roundedAgeDays = Math.floor(ageDays)
+  const dateKind =
+    item.updatedAt && timestamp !== Date.parse(item.publishedAt) ? 'Updated' : 'Published'
   return {
     kind: 'recency',
     value: `${roundedAgeDays}d`,
     weight,
     label:
       ageDays < 1
-        ? 'Published today'
-        : `Published ${roundedAgeDays} ${roundedAgeDays === 1 ? 'day' : 'days'} ago`
+        ? `${dateKind} today`
+        : `${dateKind} ${roundedAgeDays} ${roundedAgeDays === 1 ? 'day' : 'days'} ago`
   }
 }
 

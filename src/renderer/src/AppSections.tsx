@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { AnalysisArtifact } from '../../shared/models'
-import { PAPER_L1_ANALYSIS_PROMPT_VERSION } from '../../shared/analysis'
+import { isPaperL1PromptVersion } from '../../shared/analysis'
 
 function tableCells(line: string): readonly string[] {
   return line
@@ -130,7 +130,7 @@ export function Onboarding({ onConfigure }: { readonly onConfigure: () => void }
 }
 
 export function AnalysisPanel({ artifact }: { readonly artifact: AnalysisArtifact }) {
-  const isPaperL1 = artifact.promptVersion === PAPER_L1_ANALYSIS_PROMPT_VERSION
+  const isPaperL1 = isPaperL1PromptVersion(artifact.promptVersion)
   return (
     <aside
       className={`analysis-panel ${isPaperL1 ? 'analysis-panel--paper-l1' : ''}`}

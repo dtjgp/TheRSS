@@ -19,19 +19,39 @@ const profile: InterestProfile = {
 const now = new Date('2026-08-19T09:00:00.000Z')
 
 describe('fetchConfiguredSourceBatch', () => {
-  it('routes fixed RSS and HTML responses through their safe normalizers', async () => {
-    const feed = await fetchConfiguredSourceBatch(
-      getConfiguredSourceDefinition('folo:302'),
+  it('preserves CNBC numeric GUIDs and the existing Select exclusion on official RSS', async () => {
+    const batch = await fetchConfiguredSourceBatch(
+      getConfiguredSourceDefinition('folo:253'),
       profile,
       { now },
       {
         fetchHttp: vi.fn().mockResolvedValue({
-          sourceId: 'folo:302',
+          sourceId: 'folo:253',
           transport: 'feed',
-          endpoint: 'https://rsshub.rssforever.com/baai/hub',
+          contentType: 'application/xml',
+          endpoint:
+            'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114',
+          retrievedAt: now.toISOString(),
+          body: '<rss><channel><item><guid>123456</guid><title>Industry news</title><link>https://www.cnbc.com/2026/09/07/industry.html</link><pubDate>2026-09-07T00:00:00Z</pubDate></item><item><guid>123457</guid><title>Select offer</title><link>https://www.cnbc.com/select/offer/</link><pubDate>2026-09-07T00:00:00Z</pubDate></item></channel></rss>'
+        })
+      }
+    )
+    expect(batch.items).toHaveLength(1)
+    expect(batch.items[0]).toMatchObject({ id: 'folo:253:article:123456', externalId: '123456' })
+  })
+  it('routes fixed RSS and HTML responses through their safe normalizers', async () => {
+    const feed = await fetchConfiguredSourceBatch(
+      getConfiguredSourceDefinition('folo:44'),
+      profile,
+      { now },
+      {
+        fetchHttp: vi.fn().mockResolvedValue({
+          sourceId: 'folo:44',
+          transport: 'feed',
+          endpoint: 'https://news.ycombinator.com/rss',
           contentType: 'application/rss+xml',
           retrievedAt: now.toISOString(),
-          body: '<rss><channel><item><guid>1</guid><title>Edge AI</title><link>https://www.baai.ac.cn/1</link><pubDate>2026-08-19T08:00:00Z</pubDate></item></channel></rss>'
+          body: '<rss><channel><item><guid>1</guid><title>Edge AI</title><link>https://example.org/research</link><pubDate>2026-08-19T08:00:00Z</pubDate></item></channel></rss>'
         })
       }
     )
@@ -55,7 +75,7 @@ describe('fetchConfiguredSourceBatch', () => {
       }
     )
 
-    expect(feed.items[0]).toMatchObject({ source: 'folo:302', kind: 'article' })
+    expect(feed.items[0]).toMatchObject({ source: 'folo:44', kind: 'article' })
     expect(html.items[0]).toMatchObject({ source: 'folo:611', kind: 'paper' })
   })
 

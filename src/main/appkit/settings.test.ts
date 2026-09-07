@@ -14,6 +14,28 @@ const provider = {
 }
 
 describe('AppKit Settings', () => {
+  it('reports invalid fields beside their inputs, focuses the first error and clears only edited errors', async () => {
+    const save = vi.fn()
+    const h = nativeHarness({ saveModelProvider: save })
+    const screen = new SettingsScreen(h.context)
+    await screen.load()
+    await h.act(screen, 'settings-tab', 'provider')
+    await h.act(screen, 'provider-url', 'file:///not-a-provider')
+    await h.act(screen, 'provider-save')
+    expect(save).not.toHaveBeenCalled()
+    expect(h.find(h.render(screen), 'provider-name-error')?.text).toContain('name')
+    expect(h.find(h.render(screen), 'provider-url-error')?.text).toContain('HTTPS')
+    expect(h.find(h.render(screen), 'provider-model-error')?.text).toContain('model')
+    expect(h.context.focus).toHaveBeenLastCalledWith('provider-name')
+    await h.act(screen, 'provider-name', 'My model provider')
+    expect(h.find(h.render(screen), 'provider-name-error')).toBeUndefined()
+    expect(h.find(h.render(screen), 'provider-url-error')).toBeDefined()
+    expect(h.find(h.render(screen), 'provider-save')?.emphasis).toBe('primary')
+    expect(h.find(h.render(screen), 'provider-actions')?.children?.map((node) => node.id)).toEqual([
+      'provider-save',
+      'provider-test'
+    ])
+  })
   it('retains both drafts and preserves dirty state after saving one section', async () => {
     const h = nativeHarness({
       getModelProvider: vi.fn(async () => provider),

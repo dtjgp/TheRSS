@@ -7,6 +7,7 @@ import type {
   AnalysisArtifact
 } from '../../shared/models'
 import type { NativeNode, NativeOption, NativePresentation, NativeRow } from './presentation'
+import type { LocalResearchTarget } from '../../shared/localResearch'
 
 export type Route = 'discover' | 'saved' | 'analytics' | 'sources' | 'settings'
 export const recordViewId = (prefix: string, id: string): string =>
@@ -23,7 +24,10 @@ export interface NativeContext {
   readonly data: NativeData
   redraw(): void
   focus(id: string): void
-  notify(message: string): void
+  notify(message: string, kind?: 'success' | 'error'): void
+  navigate(route: Route): Promise<void>
+  compact(): boolean
+  openLocal(target: LocalResearchTarget, isCurrent: () => boolean): Promise<string | null>
   openExternal(url: string): void
   showDocument(title: string, content: string): void
   promote(itemId: string, sessionId?: string): Promise<void>
@@ -265,8 +269,14 @@ export function runnerAvailable(context: NativeContext, runner: AnalysisRunner):
     ? context.data.provider !== null
     : context.data.agents.some((agent) => agent.runner === runner && agent.available)
 }
+export function runnerUnavailableReason(context: NativeContext, runner: AnalysisRunner): string {
+  if (runnerAvailable(context, runner)) return ''
+  return runner === 'model-provider'
+    ? 'Model provider is not configured. Choose an available runner or open Settings.'
+    : `${runner === 'codex' ? 'Codex CLI' : 'Claude Code'} is not available. Choose another runner or check Settings.`
+}
 export function analysisText(artifact: AnalysisArtifact): string {
-  return `${artifact.content}\n\n## Analysis provenance\nProvider: ${artifact.providerName}\nModel: ${artifact.model}\nPrompt: ${artifact.promptVersion}\nSource hash: ${artifact.sourceHash}\nCreated: ${artifact.createdAt}\n\nDiscovery metadata analysis; verify the full paper before citing results.`
+  return `${artifact.content}\n\n## Analysis provenance\nArtifact: ${artifact.id}\nProvider: ${artifact.providerName}\nModel: ${artifact.model}\nPrompt: ${artifact.promptVersion}\nSource hash: ${artifact.sourceHash}\nCreated: ${artifact.createdAt}\n\nDiscovery metadata analysis; verify the full paper before citing results.`
 }
 export function readableError(
   error: unknown,

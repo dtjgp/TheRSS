@@ -63,6 +63,16 @@ describe('AppKit analytics', () => {
     expect(h.find(h.render(screen), 'analytics-daily')?.rows?.[0]?.subtitle).toContain(
       'Discover 10'
     )
+    expect(h.find(h.render(screen), 'analytics-daily')?.rows?.[0]?.cells).toEqual({
+      date: '2026-09-06',
+      returned: '12',
+      discover: '10',
+      legacy: '2',
+      analyses: '3'
+    })
+    expect(
+      h.find(h.render(screen), 'analytics-daily')?.columns?.map((column) => column.title)
+    ).toEqual(['Date', 'Returned', 'Discover', 'Legacy', 'Analyses'])
     await h.act(screen, 'analytics-toggle-values')
     expect(h.find(h.render(screen), 'analytics-daily')).toBeUndefined()
   })

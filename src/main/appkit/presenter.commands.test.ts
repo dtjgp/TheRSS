@@ -104,7 +104,13 @@ describe('native shell commands and failures', () => {
       await presenter.flushPreferences()
       expect(scene).toContain('preferences could not be saved')
       await vi.advanceTimersByTimeAsync(6001)
-      expect(scene).not.toContain('preferences could not be saved')
+      expect(h.find(JSON.parse(scene).root, 'native-notice')?.text).toContain(
+        'preferences could not be saved'
+      )
+      const dismiss = h.find(JSON.parse(scene).root, 'dismiss-notice')!
+      await presenter.presentation.dispatch(JSON.stringify({ action: dismiss.action }))
+      await Promise.resolve()
+      expect(h.find(JSON.parse(scene).root, 'native-notice')?.text).toBe('')
       presenter.dispose()
       await presenter.start()
     } finally {

@@ -1,4 +1,5 @@
 import type { AnalysisRunner } from '../../shared/models'
+import type { DashboardItem } from '../../shared/api'
 import { ACTIVE_TODAY_SOURCE_IDS, sourceDisplayName } from '../../shared/sourceIdentity'
 import {
   column,
@@ -11,6 +12,9 @@ import {
 } from './common'
 import type { NativeNode } from './presentation'
 import { ResearchReader, type TriageHistory } from './reading'
+import { researchSubtitle } from './researchMetadata'
+import { ReadingWorkspace } from './readingWorkspace'
+import { SavedSourceUpdateControls } from './savedSourceUpdate'
 
 export class SavedScreen implements NativeScreen {
   readonly reader: ResearchReader
@@ -18,75 +22,116 @@ export class SavedScreen implements NativeScreen {
   private filter = 'all'
   private selected = ''
   private runner: AnalysisRunner = 'model-provider'
+  private readonly workspace: ReadingWorkspace
+  private localItem: DashboardItem | null = null
+  private readonly sourceUpdate: SavedSourceUpdateControls
   constructor(
     private readonly context: NativeContext,
     private readonly triage: TriageHistory
   ) {
     this.controls = new Controls(context)
     this.reader = new ResearchReader(context, 'saved', triage)
+    this.workspace = new ReadingWorkspace(context, 'saved', 'saved-items', 'saved-summary')
+    this.sourceUpdate = new SavedSourceUpdateControls(context, (item, id) => {
+      if (this.localItem?.id === id) this.localItem = item?.triageState === 'saved' ? item : null
+    })
   }
   dispose(): void {
     this.reader.dispose()
+    this.sourceUpdate.dispose()
+  }
+  openLocal(item: DashboardItem): () => void {
+    const previous = { selected: this.selected, filter: this.filter, localItem: this.localItem }
+    const restoreWorkspace = this.workspace.checkpoint()
+    this.localItem = item
+    this.selected = item.id
+    this.filter = 'all'
+    this.workspace.open()
+    return () => {
+      Object.assign(this, previous)
+      restoreWorkspace()
+    }
+  }
+  private items(): readonly DashboardItem[] {
+    const items = this.context.data.dashboard?.savedItems ?? []
+    return this.localItem &&
+      !items.some((item) => item.id === this.localItem!.id) &&
+      this.triage.state(this.localItem) === 'saved'
+      ? [this.localItem, ...items]
+      : items
   }
 
   render(): NativeNode {
     const b = this.controls
-    const all = this.context.data.dashboard?.savedItems ?? []
+    const all = this.items()
     const items = all.filter((item) => this.filter === 'all' || item.source === this.filter)
     const selected = items.find((item) => item.id === this.selected) ?? items[0] ?? null
     this.selected = selected?.id ?? ''
     this.reader.runner = this.runner
     this.reader.select(selected)
+    this.sourceUpdate.select(selected)
     return column(
       'saved-page',
       [
-        heading('saved-title', 'Saved'),
+        ...(!this.workspace.focused ? [heading('saved-title', 'Saved')] : []),
         row('saved-toolbar', [
-          b.select(
-            'saved-source-filter',
-            'Filter saved sources',
-            this.filter,
-            [
-              { id: 'all', title: `All sources (${all.length})` },
-              ...ACTIVE_TODAY_SOURCE_IDS.map((source) => ({
-                id: source,
-                title: `${sourceDisplayName(source)} (${all.filter((item) => item.source === source).length})`
-              }))
-            ],
-            (value) => {
-              this.filter = value
-              this.selected = ''
-              this.context.redraw()
-            },
-            { width: 250 }
-          ),
+          ...(!this.workspace.focused
+            ? [
+                b.select(
+                  'saved-source-filter',
+                  'Filter saved sources',
+                  this.filter,
+                  [
+                    { id: 'all', title: `All sources (${all.length})` },
+                    ...ACTIVE_TODAY_SOURCE_IDS.map((source) => ({
+                      id: source,
+                      title: `${sourceDisplayName(source)} (${all.filter((item) => item.source === source).length})`
+                    }))
+                  ],
+                  (value) => {
+                    this.filter = value
+                    this.selected = ''
+                    this.context.redraw()
+                  },
+                  { width: 250 }
+                )
+              ]
+            : []),
           b.runner('saved-runner', this.runner, (value) => {
             this.runner = value
             this.context.redraw()
           })
         ]),
+        ...(items.length ? this.workspace.navigation('Back to Saved') : []),
+        ...(selected ? [this.sourceUpdate.render()] : []),
         ...(items.length
           ? [
-              b.split('saved-workspace', 'saved', [
-                b.table(
-                  'saved-items',
-                  'Saved research',
-                  items.map((item) => ({
-                    id: item.id,
-                    title: item.title,
-                    subtitle: `${sourceDisplayName(item.source)} · ${item.publishedAt.slice(0, 10)} · ${item.kind ?? 'item'}`
-                  })),
-                  this.selected,
-                  (id) => this.select(id),
-                  {
-                    context: async (id) => {
-                      this.select(id)
-                      await this.reader.contextMenu()
+              this.workspace.apply(
+                b.split('saved-workspace', 'saved', [
+                  b.table(
+                    'saved-items',
+                    'Saved research',
+                    items.map((item) => ({
+                      id: item.id,
+                      title: item.title,
+                      subtitle: researchSubtitle(item, true)
+                    })),
+                    this.selected,
+                    (id) => this.select(id),
+                    {
+                      activate: (id) => {
+                        this.select(id)
+                        this.workspace.open()
+                      },
+                      context: async (id) => {
+                        this.select(id)
+                        await this.reader.contextMenu()
+                      }
                     }
-                  }
-                ),
-                this.reader.render()
-              ])
+                  ),
+                  this.reader.render()
+                ])
+              )
             ]
           : [
               column(
@@ -97,7 +142,17 @@ export class SavedScreen implements NativeScreen {
                     all.length
                       ? 'No saved items from this source.'
                       : 'Save papers and repositories from Discover to build your local reading list.'
-                  )
+                  ),
+                  row('saved-empty-actions', [
+                    all.length
+                      ? b.button('saved-reset-filter', 'Show all Saved', () => {
+                          this.filter = 'all'
+                          this.workspace.back()
+                        })
+                      : b.button('saved-open-discover', 'Open Discover', () =>
+                          this.context.navigate('discover')
+                        )
+                  ])
                 ],
                 { flex: 1 }
               )
@@ -107,7 +162,7 @@ export class SavedScreen implements NativeScreen {
     )
   }
   private select(id: string): void {
-    const item = this.context.data.dashboard?.savedItems.find((item) => item.id === id)
+    const item = this.items().find((item) => item.id === id)
     if (!item) return
     this.selected = id
     this.reader.select(item)

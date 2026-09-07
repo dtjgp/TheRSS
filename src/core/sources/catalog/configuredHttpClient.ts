@@ -3,7 +3,7 @@ import { getConfiguredSourceDefinition } from './configuredSources'
 
 export interface ConfiguredHttpDocument {
   readonly sourceId: string
-  readonly transport: 'feed' | 'html'
+  readonly transport: 'feed' | 'html' | 'json'
   readonly endpoint: string
   readonly contentType: string
   readonly retrievedAt: string
@@ -20,7 +20,8 @@ interface FetchConfiguredHttpOptions {
 
 const ALLOWED_CONTENT_TYPES = {
   feed: new Set(['application/rss+xml', 'application/atom+xml', 'application/xml', 'text/xml']),
-  html: new Set(['text/html', 'application/xhtml+xml', 'application/json'])
+  html: new Set(['text/html', 'application/xhtml+xml', 'application/json']),
+  json: new Set(['application/json'])
 } as const
 
 function normalizedContentType(response: Response): string {
@@ -36,14 +37,39 @@ function assertFinalOrigin(response: Response, endpoint: string, sourceId: strin
   }
 }
 
+export async function fetchFixedOrigin(
+  endpoint: string,
+  sourceId: string,
+  fetcher: typeof fetch,
+  init: RequestInit
+): Promise<Response> {
+  let current = endpoint
+  const origin = new URL(endpoint).origin
+  for (let hop = 0; hop <= 3; hop++) {
+    const response = await fetcher(current, { ...init, redirect: 'manual' })
+    if (![301, 302, 303, 307, 308].includes(response.status)) return response
+    const location = response.headers.get('location')
+    await response.body?.cancel()
+    if (!location || hop === 3)
+      throw new Error(`Configured source ${sourceId} exceeded its bounded redirect policy`)
+    const next = new URL(location, current)
+    if (next.protocol !== 'https:' || next.origin !== origin || next.username || next.password)
+      throw new Error(`Configured source ${sourceId} redirected outside its fixed HTTPS origin`)
+    current = next.href
+  }
+  throw new Error(`Configured source ${sourceId} exceeded its bounded redirect policy`)
+}
+
 export async function fetchConfiguredHttpDocument(
   sourceId: string,
   options: FetchConfiguredHttpOptions = {}
 ): Promise<ConfiguredHttpDocument> {
   const source = getConfiguredSourceDefinition(sourceId)
+  options.signal?.throwIfAborted()
   if (
     source.transport !== 'feed' &&
     source.transport !== 'html' &&
+    source.transport !== 'json' &&
     source.transport !== 'dated_feed'
   ) {
     throw new Error(`Configured source ${sourceId} does not use bounded HTTP document retrieval`)
@@ -66,15 +92,17 @@ export async function fetchConfiguredHttpDocument(
     const endpointAttempts = endpointIndex === 0 ? attempts : 1
     for (let attempt = 1; attempt <= endpointAttempts; attempt += 1) {
       try {
-        response = await fetcher(endpoint, {
+        response = await fetchFixedOrigin(endpoint, sourceId, fetcher, {
+          method: 'method' in source ? source.method : 'GET',
           headers: {
             Accept:
               transport === 'feed'
                 ? 'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9'
-                : 'text/html, application/xhtml+xml, application/json;q=0.8',
+                : transport === 'json'
+                  ? 'application/json'
+                  : 'text/html, application/xhtml+xml, application/json;q=0.8',
             'User-Agent': 'TheRSS/0.2 (local research source client)'
           },
-          redirect: 'follow',
           signal: options.signal
             ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)])
             : AbortSignal.timeout(30_000)
@@ -85,6 +113,7 @@ export async function fetchConfiguredHttpDocument(
         )
         if (response.status < 500 && response.status !== 429) throw lastError
       } catch (error) {
+        if (options.signal?.aborted) throw error
         lastError = error
       }
       response = undefined

@@ -24,6 +24,12 @@ import type { ContextMenuOutcome, ContextMenuTarget } from './contextMenu'
 import type { DiscoveryItemKind, DiscoverySource } from './discovery'
 import type { LlmWikiPromotionPreview, LlmWikiPromotionReceipt } from './llmWikiPromotion'
 import type { LocalSearchResponse } from './localSearch'
+import type { LocalResearchRecord, LocalResearchTarget } from './localResearch'
+import type {
+  SavedSourceUpdateCandidate,
+  SavedSourceUpdateRequest,
+  SavedSourceUpdateResult
+} from './savedSourceUpdate'
 
 export type SourceHealth = 'idle' | 'refreshing' | 'healthy' | 'no_results' | 'partial' | 'failed'
 export type TriageState = 'new' | 'viewed' | 'saved' | 'dismissed'
@@ -32,6 +38,7 @@ export interface SourceHealthDetail {
   readonly status: SourceHealth
   readonly observedAt: string | null
   readonly errorMessage: string | null
+  readonly context?: 'discover' | 'source'
 }
 
 export interface DashboardItem {
@@ -101,6 +108,7 @@ export interface TheRSSApi {
   saveInterestProfile(profile: InterestProfile): Promise<DashboardSnapshot>
   refresh(): Promise<DashboardSnapshot>
   searchLocal(query: string): Promise<LocalSearchResponse>
+  getLocalResearch(target: LocalResearchTarget): Promise<LocalResearchRecord | null>
   onDiscoverProgress(listener: (progress: DiscoverRunProgress) => void): () => void
   searchDiscover(request: DiscoverSearchRequest, runId: string): Promise<DiscoverSnapshot>
   retryDiscover(
@@ -113,6 +121,8 @@ export interface TheRSSApi {
   getAnalytics(): Promise<AnalyticsSnapshot>
   saveDiscoverResult(sessionId: string, itemId: string): Promise<DashboardSnapshot>
   setTriageState(id: string, state: TriageState): Promise<DashboardSnapshot>
+  getSavedSourceUpdate(id: string): Promise<SavedSourceUpdateCandidate | null>
+  applySavedSourceUpdate(request: SavedSourceUpdateRequest): Promise<SavedSourceUpdateResult>
   getModelProvider(): Promise<ModelProviderSummary | null>
   saveModelProvider(input: ModelProviderInput): Promise<ModelProviderSummary>
   testModelProvider(input: ModelProviderInput): Promise<ProviderConnectionResult>

@@ -1,6 +1,6 @@
 {
   "name": "therss",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A local-first semantic research discovery desk for 22 verified sources.",
   "type": "module",
   "main": "out/main/index.js",
@@ -23,12 +23,15 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "npm run build && playwright test",
-    "smoke:credentials": "electron scripts/smoke-safe-storage.mjs",
+    "smoke:credentials": "node scripts/smoke-safe-storage.mjs",
     "smoke:mcp": "npm run build:mcp --silent && node scripts/smoke-mcp.mjs",
     "smoke:package": "node scripts/smoke-packaged-app.mjs",
+    "release:preflight": "node scripts/verify-mac-release.mjs --preflight",
+    "release:verify": "node scripts/verify-mac-release.mjs",
     "smoke:native": "npm run build --silent && node scripts/smoke-native-surfaces.mjs",
     "smoke:sources": "tsx scripts/smoke-sources.ts",
     "smoke:configured-sources": "tsx scripts/smoke-configured-sources.ts",
+    "evaluate:discovery": "node --import tsx scripts/evaluate-discovery.ts",
     "mcp:serve": "node out/mcp/stdio.js",
     "check": "npm run check:architecture && npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run test:appkit && npm run build",
     "package:mac": "npm run build && electron-builder --mac dir",
@@ -84,6 +87,7 @@
     },
     "files": [
       "out/**/*",
+      "!out/native-glass-spike/**/*",
       "package.json"
     ],
     "mac": {

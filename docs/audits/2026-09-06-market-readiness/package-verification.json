@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-09-07T12:01:53.258Z",
+  "version": "0.3.0",
+  "asarSha256": "9bf1c34a1971ee2e24467167e33377635deb9110548dc2951f30f10b9e218555",
+  "checks": [
+    {
+      "path": "out/main/index.js",
+      "buildSha256": "aae7e887d2fb51f7924a4efbc40b484abcb2ba6de8454088dd5874753149a2c8",
+      "packageSha256": "aae7e887d2fb51f7924a4efbc40b484abcb2ba6de8454088dd5874753149a2c8"
+    },
+    {
+      "path": "out/preload/index.cjs",
+      "buildSha256": "66ffe63eb8fe050a97be713ac770377e978b73953276e29687f80d0250ba9865",
+      "packageSha256": "66ffe63eb8fe050a97be713ac770377e978b73953276e29687f80d0250ba9865"
+    },
+    {
+      "path": "out/mcp/stdio.js",
+      "buildSha256": "e12fecac5aa38d74fec5a54bd6243d98b12a67c271c85685017545fbd1c395b8",
+      "packageSha256": "e12fecac5aa38d74fec5a54bd6243d98b12a67c271c85685017545fbd1c395b8"
+    },
+    {
+      "path": "out/native-appkit/therss-ui.node",
+      "buildSha256": "65584214e94ad75834bcf16eee16ff6c81daf48029af0423a04febee3d7423f4",
+      "packageSha256": "65584214e94ad75834bcf16eee16ff6c81daf48029af0423a04febee3d7423f4"
+    },
+    {
+      "path": "out/native-glass/therss-glass.node",
+      "buildSha256": "8003e91a11049a1c6f63aac4f01db4fd78dec136d9e224cff2043be0ec1d8177",
+      "packageSha256": "8003e91a11049a1c6f63aac4f01db4fd78dec136d9e224cff2043be0ec1d8177"
+    }
+  ],
+  "passed": true,
+  "installedAsarSha256": "9bf1c34a1971ee2e24467167e33377635deb9110548dc2951f30f10b9e218555"
+}

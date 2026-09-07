@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { DashboardItem } from '../../shared/api'
@@ -187,6 +188,123 @@ describe('resolveLocalAgentExecutable', () => {
 })
 
 describe('executeBoundedCommand', () => {
+  it.skipIf(process.platform === 'win32')(
+    'cleans up a detached descendant after its leader closes',
+    async () => {
+      const root = await mkdtemp(join(TEST_WORKING_DIRECTORY, 'cancel-descendant-'))
+      const file = join(root, 'pid')
+      const leaf = `process.on('SIGTERM',()=>{}); require('node:fs').writeFileSync(${JSON.stringify(file)},String(process.pid)); setInterval(()=>{},1000)`
+      const controller = new AbortController()
+      let pid = 0
+      const pending = executeBoundedCommand({
+        executable: process.execPath,
+        args: [
+          '-e',
+          `require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(leaf)}],{stdio:'ignore'}); setInterval(()=>{},1000)`
+        ],
+        stdin: '',
+        cwd: root,
+        timeoutMs: 5000,
+        maxOutputBytes: 100,
+        environment: {},
+        signal: controller.signal
+      }).catch((error: Error) => error)
+      try {
+        await vi.waitFor(async () => {
+          pid = Number(await readFile(file, 'utf8'))
+          expect(pid).toBeGreaterThan(0)
+        })
+        controller.abort()
+        expect(await pending).toMatchObject({ message: 'Local agent analysis canceled' })
+        await vi.waitFor(
+          () => {
+            let exited = false
+            try {
+              process.kill(pid, 0)
+            } catch (error) {
+              exited = (error as NodeJS.ErrnoException).code === 'ESRCH'
+            }
+            // Linux init may defer reaping the terminated orphan; a zombie cannot execute.
+            if (!exited) {
+              try {
+                exited = execFileSync('ps', ['-o', 'stat=', '-p', String(pid)], {
+                  encoding: 'utf8'
+                })
+                  .trim()
+                  .startsWith('Z')
+              } catch {
+                /* Retry the exit probe. */
+              }
+            }
+            expect(exited).toBe(true)
+          },
+          { timeout: 2500, interval: 50 }
+        )
+      } finally {
+        controller.abort()
+        if (pid) {
+          try {
+            process.kill(pid, 'SIGKILL')
+          } catch {
+            /* Fixture exited. */
+          }
+        }
+        await pending
+        await rm(root, { recursive: true, force: true })
+      }
+    }
+  )
+  it('does not leave an owned process alive when it ignores graceful cancellation', async () => {
+    const { mkdtemp, readFile, rm } = await import('node:fs/promises')
+    const { join } = await import('node:path')
+    const root = await mkdtemp(join(TEST_WORKING_DIRECTORY, 'cancel-process-'))
+    const file = join(root, 'pid')
+    let pid = 0
+    const controller = new AbortController()
+    const pending = executeBoundedCommand({
+      executable: process.execPath,
+      args: [
+        '-e',
+        `process.on('SIGTERM',()=>{}); require('node:fs').writeFileSync(${JSON.stringify(file)},String(process.pid)); setInterval(()=>{},1000)`
+      ],
+      stdin: '',
+      cwd: root,
+      timeoutMs: 5000,
+      maxOutputBytes: 100,
+      environment: {},
+      signal: controller.signal
+    }).catch((error: Error) => error)
+    try {
+      await vi.waitFor(async () => {
+        pid = Number(await readFile(file, 'utf8'))
+        expect(pid).toBeGreaterThan(0)
+      })
+      expect(() => process.kill(pid, 0)).not.toThrow()
+      controller.abort()
+      expect(await pending).toMatchObject({ message: 'Local agent analysis canceled' })
+      await vi.waitFor(
+        () => {
+          let code = ''
+          try {
+            process.kill(pid, 0)
+          } catch (error) {
+            code = (error as NodeJS.ErrnoException).code ?? ''
+          }
+          expect(code).toBe('ESRCH')
+        },
+        { timeout: 2500, interval: 50 }
+      )
+    } finally {
+      if (pid) {
+        try {
+          process.kill(pid, 'SIGKILL')
+        } catch {
+          /* Fixture already exited. */
+        }
+      }
+      await rm(root, { recursive: true, force: true })
+    }
+  })
   it('returns bounded stdout from an argument-array process invocation', async () => {
     await expect(
       executeBoundedCommand({

@@ -1,0 +1,16 @@
+{
+  "scope": "Signed baseline distribution checks",
+  "app": "release/mac-arm64/TheRSS.app",
+  "previous": null,
+  "version": "0.3.0",
+  "checkedAt": "2026-09-07T02:11:10.330Z",
+  "ready": false,
+  "blockers": [
+    "A valid Developer ID Application signature is required.",
+    "A matching signed TheRSS application identifier is required.",
+    "Hardened runtime without a development debugging entitlement is required.",
+    "A valid stapled notarization ticket is required.",
+    "Gatekeeper must accept the artifact under the current system policy."
+  ],
+  "team": null
+}

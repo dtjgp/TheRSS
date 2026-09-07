@@ -37,7 +37,7 @@ describe('AppKit application shell', () => {
     })
     presenter.dispose()
   })
-  it('redraws the attention filter when the Sources route is already open', async () => {
+  it('keeps source failures on Sources without a global attention action', async () => {
     const h = nativeHarness({ getLocalAgentStatuses: vi.fn(async () => []) })
     h.context.data.dashboard = { ...h.dashboard, sourceHealth: { arxiv: 'failed', github: 'idle' } }
     vi.mocked(h.api.getDashboard).mockResolvedValue(h.context.data.dashboard)
@@ -52,11 +52,11 @@ describe('AppKit application shell', () => {
     })
     await presenter.start()
     await presenter.navigate('sources')
-    const button = h.find(JSON.parse(scene).root, 'source-health-attention')!
-    presenter.receive(JSON.stringify({ action: button.action }))
-    await Promise.resolve()
-    await Promise.resolve()
-    expect(h.find(JSON.parse(scene).root, 'sources-attention')?.checked).toBe(true)
+    expect(h.find(JSON.parse(scene).root, 'source-health-attention')).toBeUndefined()
+    expect(h.find(JSON.parse(scene).root, 'sources-attention')).toMatchObject({
+      title: 'Failed or partial',
+      checked: false
+    })
     presenter.dispose()
   })
   it('guards settings navigation and keeps the original route when edits are retained', async () => {

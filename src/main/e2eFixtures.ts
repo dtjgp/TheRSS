@@ -55,7 +55,9 @@ export const e2eDiscoverPaper: DiscoveryItem = {
   id: 'arxiv:2608.99999',
   externalId: '2608.99999',
   title: 'Semantic expansion search for edge intelligence',
-  summary: 'A Discover-only fixture matching semantic communication and structured pruning.',
+  summary:
+    'A Discover-only fixture matching semantic communication and structured pruning. '.repeat(12) +
+    'Full fixture summary ends here.',
   url: 'https://arxiv.org/abs/2608.99999'
 }
 

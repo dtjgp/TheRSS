@@ -32,13 +32,15 @@ export function normalizeNcpssdDocument(document: ConfiguredHttpDocument): Norma
     throw new Error('Expected the NCPSD source document')
   }
 
-  const latestList = document.body.match(
+  const listMatch = document.body.match(
     /<ul\b[^>]*class=["'][^"']*\blatest-list\b[^"']*["'][^>]*>([\s\S]*?)<\/ul>/iu
-  )?.[1]
-  if (!latestList) return { items: [], rejectedCount: 0 }
+  )
+  if (!listMatch) throw new Error('NCPSD document has no latest-literature list')
+  const latestList = listMatch[1] ?? ''
   const items = []
   let rejectedCount = 0
   let entryCount = 0
+  let missingMonthCount = 0
   for (const match of latestList.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/giu)) {
     if (entryCount >= 100) break
     entryCount += 1
@@ -55,7 +57,10 @@ export function normalizeNcpssdDocument(document: ConfiguredHttpDocument): Norma
         1_000
       )
       const month = summary.match(/(\d{4})年(\d{1,2})月/u)
+      if (!month) missingMonthCount++
       if (!title || !month) throw new Error('NCPSD entry is missing title or publication month')
+      if (Number(month[2]) < 1 || Number(month[2]) > 12 || Number(month[1]) < 1000)
+        throw new Error('NCPSD entry has an invalid publication month')
       const url = new URL(decodeHtml(path), document.endpoint)
       if (url.protocol !== 'https:' || url.origin !== new URL(document.endpoint).origin) {
         throw new Error('NCPSD detail route is outside the fixed official origin')
@@ -82,5 +87,13 @@ export function normalizeNcpssdDocument(document: ConfiguredHttpDocument): Norma
       rejectedCount += 1
     }
   }
-  return { items, rejectedCount }
+  return {
+    items,
+    rejectedCount,
+    ...(missingMonthCount
+      ? {
+          rejectionReason: `${missingMonthCount} entries lack a publication month; issue numbers were not converted to dates`
+        }
+      : {})
+  }
 }

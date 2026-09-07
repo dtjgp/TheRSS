@@ -7,7 +7,7 @@ question in natural language, ask a configured model, Codex, or Claude Code to e
 into an inspectable plan, and search exactly 22 retained research sources that passed the dated
 deployment-verification gate through one Discover
 workflow. arXiv and GitHub execute bounded
-source-specific queries; the 19 fixed RSS/HTML routes and Hugging Face return bounded recent
+source-specific queries; the 19 fixed RSS/HTML/JSON routes and Hugging Face return bounded recent
 records that TheRSS filters and ranks locally against the same transient plan. Every result retains
 typed provenance and an independent source outcome. Deeper item analysis retains model/tool
 provenance without copying secrets.
@@ -43,10 +43,19 @@ provenance without copying secrets.
 
 ## Current initial surfaces
 
+The market-readiness native refinement adds stable non-shifting feedback, explicit runner recovery,
+top-level reading actions, inspectable source metadata, single-pane reading with a retained list on
+narrow windows, local search that reopens exact local records, inline provider-field errors and safe
+empty-filter recovery. Source lookup inside the picker never changes the research question. Native
+daily-value tables preserve every displayed count. Stored analyses distinguish loading and source
+freshness from a verified empty result. Public signing and distribution remain separate release gates.
+
 1. **Discover** — the primary semantic expansion search through the configured model provider,
    Codex CLI, or Claude Code. The user can search any subset of all 22 deployed sources, inspect the
    executed plan and each source outcome, and filter the persisted result session by record type
-   without rerunning the model or adapters. Source selection is summarized until requested; after a
+   without rerunning the model or adapters. The research question remains directly editable after
+   a search, with unsubmitted changes distinguished from the current result session. Source selection
+   is summarized until requested; after a
    run, ranked records occupy a resizable list-detail workspace with compact scan rows, roving
    keyboard selection, independently scrollable list/detail panes, and a collapsed
    plan/provenance/source-outcome inspector below it. Every selected result has a reversible
@@ -59,6 +68,9 @@ provenance without copying secrets.
    the persisted plan without invoking the planner again.
 2. **Saved** — one persisted shelf for explicitly retained research signals from every active
    source. A selected saved arXiv paper can enter the same llm-wiki preview/confirmation workflow.
+   An explicit update can adopt a newer local Discover snapshot for the same record, preserving
+   Saved time and immutable analysis history. It performs no network or model call; changed
+   source content makes prior analysis stale.
 3. **Settings** — two focused panes for Personal Prompt and one model provider profile, plus local
    Codex/Claude availability. Provider drafts can be tested explicitly before saving; connection
    results are classified without returning credentials, and a saved credential can be replaced or
@@ -68,11 +80,14 @@ provenance without copying secrets.
    Historical artifacts can be reopened by ID as bounded plain text; their stored source hash is
    compared with the current local record and labeled current, stale, source-missing, or legacy.
 5. **Sources** — a secondary searchable directory containing only the 22 retained sources, with
-   priority, full research-area labels, dated registry provenance, per-source recorded health time,
-   and an actionable attention filter. Selecting a source opens an in-app rolling 30-day view;
+   full research-area labels, dated registry provenance, and the latest locally recorded source or
+   Discover outcome with its time, context and bounded reason. Failed and partial observations are
+   distinct and have an explicit filter; global navigation does not show a persistent attention badge.
+   No query matches is a normal outcome, and recorded status is separate from cached content. Selecting a source opens an in-app rolling 30-day view;
    arXiv opens the newest available official daily batch. The larger raw catalog remains dormant
    versioned metadata and is not exposed or scheduled.
-6. **Find Local Research** — a Command-F overlay that searches bounded fields across Saved items,
+6. **Find Local Research** — a Command-F overlay that filters as the user types, with a short
+   debounce and no separate submit step. It searches bounded fields across Saved items,
    persisted Discover sessions, and analysis content in local SQLite. It uses no model, embedding,
    telemetry, or network request.
 

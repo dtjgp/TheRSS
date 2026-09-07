@@ -148,7 +148,6 @@ test('native glass pilot preserves navigation, modal, focus, appearance and wind
       'analytics',
       'sources',
       'settings',
-      'source-status',
       'sidebar-toggle'
     ])
     expect(await native(application, 'hit', 'sidebar-toggle')).toBe(true)
@@ -392,7 +391,7 @@ test('full native actions preserve Discover, Saved, promotion, Undo and keyboard
       .getByRole('textbox', { name: 'Research question' })
       .fill('structured pruning edge deployment')
     await page.getByRole('combobox', { name: 'Search with' }).selectOption('codex')
-    await page.getByRole('button', { name: 'Expand and search' }).click()
+    await page.getByRole('button', { name: 'Search', exact: true }).click()
     await expect(page.getByLabel('Selected Discover result')).toBeVisible()
     // Only visible controls are projected. A short CI display requires the same
     // scroll a user would perform before interacting with this floating strip.
@@ -408,7 +407,7 @@ test('full native actions preserve Discover, Saved, promotion, Undo and keyboard
     await expect(save).toHaveAttribute('aria-pressed', 'true')
     await expect(save).toHaveAttribute('data-native-control', 'true')
     await native(application, 'press', 'analyze-item')
-    await expect(page.getByLabel('L1 paper analysis result')).toContainText('llm-wiki-paper-l1-v1')
+    await expect(page.getByLabel('L1 paper analysis result')).toContainText('llm-wiki-paper-l1-v3')
     await native(application, 'press', 'promote-item')
     await expect(page.getByRole('dialog', { name: 'Promote paper to llm-wiki' })).toBeVisible()
     await expect.poll(async () => (await inspect(application)).modal).toBe(true)

@@ -115,7 +115,7 @@
     "researchAxes": ["MC", "AB"],
     "role": "研究机构",
     "acquisition": "active",
-    "accessNote": "已配置：公开RSSHub路由（2026-08-19当日验证）",
+    "accessNote": "已配置：官方公开列表 API，文章摘要与链接（2026-09-07验证）",
     "reason": "大模型、基础模型与人工智能研究",
     "origin": "Folo 1543目录"
   },
@@ -175,7 +175,7 @@
     "researchAxes": ["MC", "AB"],
     "role": "官方研究",
     "acquisition": "active",
-    "accessNote": "已配置：公开RSSHub路由（2026-08-19当日验证）",
+    "accessNote": "已配置：OpenAI官方News RSS（2026-09-07验证）",
     "reason": "LLM、智能体与模型能力/安全研究",
     "origin": "Folo 1543目录"
   },
@@ -235,7 +235,7 @@
     "researchAxes": ["MC", "C6", "GA", "AB"],
     "role": "科技媒体",
     "acquisition": "active",
-    "accessNote": "已配置：公开RSSHub路由（2026-08-19当日验证）",
+    "accessNote": "已配置：官方公开列表 API，文章摘要与链接（2026-09-07验证）",
     "reason": "前沿 AI、芯片、能源与社会影响趋势",
     "origin": "Folo 1543目录"
   },
@@ -259,7 +259,7 @@
     "researchAxes": ["MC", "AB"],
     "role": "AI 产业媒体",
     "acquisition": "active",
-    "accessNote": "已配置：公开RSSHub路由（2026-08-19当日验证）",
+    "accessNote": "已配置：官方新闻页列表，文章摘要与链接（2026-09-07验证）",
     "reason": "模型发布和产业趋势，需回到官方来源",
     "origin": "Folo 1543目录"
   },
@@ -283,7 +283,7 @@
     "researchAxes": ["GA", "SG", "AB"],
     "role": "市场新闻",
     "acquisition": "active",
-    "accessNote": "已配置：公开RSSHub路由（2026-08-19当日验证）",
+    "accessNote": "已配置：官方 Top News RSS，摘要与链接（2026-09-07验证）",
     "reason": "能源、宏观和企业事件背景",
     "origin": "Folo 1543目录"
   },

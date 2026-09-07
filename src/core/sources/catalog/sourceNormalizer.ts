@@ -1,4 +1,4 @@
-import { XMLParser } from 'fast-xml-parser'
+import { parseSourceFeed } from './sourceFeedDocument'
 import { createHash } from 'node:crypto'
 import type { DiscoveryItem, DiscoverySource } from '../../../shared/discovery'
 import { isDiscoverySource } from '../../../shared/sourceIdentity'
@@ -8,6 +8,7 @@ import type { ConfiguredSourceItem } from './configuredSourceItem'
 export interface NormalizedSourceBatch {
   readonly items: readonly DiscoveryItem[]
   readonly rejectedCount: number
+  readonly rejectionReason?: string
 }
 
 const MAX_ENTRIES = 100
@@ -161,14 +162,7 @@ function feedAuthors(value: unknown): string[] {
 
 export function normalizeFeedDocument(document: ConfiguredHttpDocument): NormalizedSourceBatch {
   if (document.transport !== 'feed') throw new Error('Expected a configured feed document')
-  const parser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: '@_',
-    removeNSPrefix: true,
-    parseTagValue: false,
-    trimValues: true
-  })
-  const parsed = parser.parse(document.body) as Record<string, unknown>
+  const parsed = parseSourceFeed(document.body)
   const items: DiscoveryItem[] = []
   let rejectedCount = 0
   for (const entry of feedEntries(parsed)) {

@@ -1,0 +1,35 @@
+{
+  "frontmatter": "passed",
+  "relativeReferences": "passed",
+  "pinnedReferenceSha256": "11840b24a11d7f94f39c6aaab074750ae4e4de4ef54ee4b1dd97e16ebd485e61",
+  "pinnedReferenceBytes": 22715,
+  "scope": "project skill and authored reference only",
+  "globalOrManagedPluginChanges": false,
+  "instructionValidationDoesNotProveUiQuality": true,
+  "files": [
+    {
+      "path": "skills/therss-ui-improvement/SKILL.md",
+      "sha256": "c9f8d174a2f16416d842fa3b84b1417f7ddc1fc75f00960803d68d16f61a7c58"
+    },
+    {
+      "path": "skills/therss-ui-improvement/references/apple-design.md",
+      "sha256": "c21cda3c30d943f9447d268646f10d1934a0f4b76fe14ffe5f540fc8e33af730"
+    },
+    {
+      "path": "skills/therss-ui-improvement/references/decision-gates.md",
+      "sha256": "af2189e590cfa0329969f226a75ddfa1f82cb082df5cc4abe6ba403b65cfe7e2"
+    },
+    {
+      "path": "skills/therss-ui-improvement/references/project-authority.md",
+      "sha256": "760d33a5c1746fd4c4eb28da1cac7331ee6cc49ff9d7ca5e917d0071f93c5bc9"
+    },
+    {
+      "path": "skills/therss-ui-improvement/references/taste-profile.md",
+      "sha256": "80c58a452ec8e864f3b4f4fbdb97354042c961d9203b27981ea5d3f9d763c02f"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "2abb7a1ed9b5b0f6967bddd22303d45d574e92e0cccb97e12dc82784be84a367"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "scope": "Signing prerequisites only",
+  "ready": false,
+  "identityCount": 0,
+  "team": null,
+  "blockers": [
+    "Configure or select a valid Developer ID Application identity in the local keychain.",
+    "Provide an existing notarytool keychain profile with --notary-profile or THERSS_NOTARY_PROFILE."
+  ]
+}

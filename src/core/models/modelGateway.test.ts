@@ -40,6 +40,29 @@ function provider(overrides: Partial<ModelExecutionProfile> = {}): ModelExecutio
 }
 
 describe('modelGateway', () => {
+  it('prevents the observed abstract-only analysis from inventing locators or strengthening novelty', () => {
+    const prompt = buildAnalysisPrompt({
+      ...item,
+      summary: 'Only few studies examine this setting.'
+    })
+    expect(prompt).toContain('Do not invent section, page, figure, or table numbers')
+    expect(prompt).toContain('few studies does not mean first')
+    expect(prompt).toContain('not supplied does not mean unpublished or unavailable')
+    expect(analysisPromptVersionFor(item)).toBe('llm-wiki-paper-l1-v3')
+  })
+  it('reports an NCPSD publication month without inventing its first day', () => {
+    const monthly = {
+      ...item,
+      source: 'folo:611' as const,
+      summary: '《研究期刊》2026年8月',
+      publishedAt: '2026-08-01T00:00:00.000Z'
+    }
+    expect(buildAnalysisPrompt(monthly)).toContain(
+      'Published: 2026-08 (publication month only; exact day unavailable)'
+    )
+    expect(buildAnalysisPrompt(monthly)).not.toContain('Published: 2026-08-01')
+    expect(analysisPromptVersionFor(monthly)).toBe('llm-wiki-paper-l1-v3')
+  })
   it('routes every typed paper through the evidence-bounded llm-wiki L1 template', () => {
     const typedSourcePaper: DashboardItem = {
       ...item,
@@ -57,7 +80,7 @@ describe('modelGateway', () => {
     expect(prompt).toContain('## 审稿人式评估')
     expect(prompt).toContain('abstract-only')
     expect(prompt).toContain('[TBD]')
-    expect(analysisPromptVersionFor(typedSourcePaper)).toBe('llm-wiki-paper-l1-v1')
+    expect(analysisPromptVersionFor(typedSourcePaper)).toBe('llm-wiki-paper-l1-v3')
   })
 
   it('keeps legacy arXiv records without a kind on the paper L1 path', () => {
@@ -73,7 +96,7 @@ describe('modelGateway', () => {
       reasons: item.reasons
     }
 
-    expect(analysisPromptVersionFor(legacyArxivPaper)).toBe('llm-wiki-paper-l1-v1')
+    expect(analysisPromptVersionFor(legacyArxivPaper)).toBe('llm-wiki-paper-l1-v3')
     expect(buildAnalysisPrompt(legacyArxivPaper)).toContain('llm-wiki Paper_Note_L1')
   })
 
@@ -87,6 +110,12 @@ describe('modelGateway', () => {
     })
 
     expect(prompt).toContain('Likely contribution')
+    expect(prompt).toContain('Published is the publication/creation date')
+    expect(prompt).toContain(
+      'stars, likes, downloads, and deterministic scores are discovery signals'
+    )
+    expect(prompt).toContain('citations, independent validation, maturity, or code quality')
+    expect(prompt).toContain('Unknown is not evidence of absence')
     expect(prompt).not.toContain('llm-wiki Paper_Note_L1')
     expect(prompt).not.toContain('## 快速决策卡')
     expect(
@@ -97,7 +126,7 @@ describe('modelGateway', () => {
         kind: 'repository',
         url: 'https://github.com/owner/repo'
       })
-    ).toBe('discovery-analysis-v1')
+    ).toBe('discovery-analysis-v2')
   })
 
   it('calls an OpenAI-compatible provider without leaking the key into the body', async () => {

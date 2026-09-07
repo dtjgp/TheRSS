@@ -8,6 +8,7 @@ import {
   PAPER_L1_ANALYSIS_PROMPT_VERSION
 } from '../../shared/analysis'
 import type { ModelExecutionProfile } from './providerService'
+import { sourcePublicationEvidence, sourceMatchReasons } from '../../shared/sourceDate'
 
 const MAX_RESPONSE_BYTES = 2_000_000
 const MAX_PROMPT_CHARACTERS = 30_000
@@ -98,10 +99,12 @@ function sourceMetadata(item: DashboardItem, descriptionLabel: string): string {
 Source: ${item.source}
 Title: ${item.title}
 URL: ${item.url}
-Published: ${item.publishedAt}
+Published: ${sourcePublicationEvidence(item)}
 Deterministic signal score: ${item.score}
 Why it matched:
-${item.reasons.map((reason) => `- ${reason}`).join('\n')}
+${sourceMatchReasons(item)
+  .map((reason) => `- ${reason}`)
+  .join('\n')}
 
 ${descriptionLabel}:
 --- BEGIN UNTRUSTED CONTENT ---
@@ -119,7 +122,10 @@ Analyze this discovery candidate for a research user. Use these headings:
 4. Evidence boundary and unknowns
 5. Recommended next action
 
-Evidence boundary: this input may contain only an abstract or repository metadata. Do not claim that methods, experiments, code quality, or results were verified from a full paper or source-code audit.`
+Evidence boundary: this input may contain only an abstract or repository metadata. Do not claim that methods, experiments, code quality, or results were verified from a full paper or source-code audit.
+- Published is the publication/creation date. An Updated recency reason describes a later update, not the original publication date.
+- GitHub stars, likes, downloads, and deterministic scores are discovery signals. They do not establish citations, independent validation, maturity, or code quality, whether their counts are high or low.
+- Base factual claims only on the supplied source. Attribute source claims; label any proposed mechanism or comparison as an unverified hypothesis. Facts not supplied are unknown and require a concrete next verifier. Unknown is not evidence of absence.`
 }
 
 function buildPaperL1AnalysisPrompt(item: DashboardItem): string {
@@ -131,6 +137,8 @@ Evidence state for this run: abstract-only / provisional. You have discovery met
 - Write primarily in Chinese while retaining precise English technical terms when useful.
 - Separate author-reported claims, analyst inference, and reproduced evidence. There is no reproduced evidence in this input.
 - Mark every unavailable or unverified fact, number, source locator, comparison detail, or implementation detail as [TBD]. Never fill gaps by guessing.
+- Do not invent section, page, figure, or table numbers, even in a next-step recommendation or followed by [TBD]. Refer to the methods or experiments by topic until their actual locations are supplied.
+- Preserve claim strength: few studies does not mean first, an approximate result is not an exact benchmark, and not supplied does not mean unpublished or unavailable. Do not turn inferred mechanisms into author-reported contributions.
 - Do not call this a verified L1 deep read. It is a provisional L1-formatted triage analysis that identifies the next verifier.
 - FLOPs alone are not latency or energy evidence. Do not claim novelty, fairness, reproducibility, code quality, or full-paper results from the abstract.
 - Keep tables compact but retain every required section below.

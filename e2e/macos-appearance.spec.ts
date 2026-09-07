@@ -99,7 +99,7 @@ test('macOS 27 keeps edge navigation, readable toolbar and accessible materials'
       else delete document.documentElement.dataset.systemAccent
     }, originalAccent)
     await emulateAppearance('light')
-    await page.getByRole('button', { name: 'Expand and search' }).click()
+    await page.getByRole('button', { name: 'Search', exact: true }).click()
     const results = page.getByRole('region', { name: 'Discover results' })
     await expect(results).toBeVisible()
     await expect(page.locator('.signal-detail__title')).toHaveCSS('font-size', '28px')

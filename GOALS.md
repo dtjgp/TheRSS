@@ -1,5 +1,55 @@
 # TheRSS Goals
 
+## Current stage: 0.3.0 unsigned GitHub pre-release delivery
+
+The user authorized merging PR #49 and publishing a GitHub Release. The release contract is
+[here](docs/audits/2026-09-07-public-prerelease/CHANGE_CONTRACT.md); it retains the earlier
+Apple signing/notarization deferral and defines `v0.3.0` as an unsigned arm64/macOS 26+ pre-release.
+[Release notes](docs/audits/2026-09-07-public-prerelease/RELEASE_NOTES.md) describe artifacts,
+verification and remaining limits. The Release page and matching PR/main CI are authoritative for
+publication and remote status; a pre-release does not complete the market-ready goal below.
+
+The Apple design reference is adapted in the project UI skill for native AppKit and the Web
+fallback. Sources now reads the latest valid local source/Discover observation, distinguishes
+failed/partial/no-match outcomes, and shows context, time and reason near the source title.
+Global attention prompts are removed. No schema, dependency or global skill changes were needed.
+See the [current report](docs/audits/2026-09-07-apple-design-status/REPORT.md).
+
+Current checks pass 687 main and 104 AppKit tests (overlapping suites), eight desktop cases,
+and 14 workflow groups for both the new package and exact installed app. All 11 user-data tables
+match the immediate installation backup; the previous app is retained. The app is reopened.
+The user explicitly authorized GitHub delivery on 2026-09-07. Implementation commits `199be74`
+and `541cbdb` are pushed to `codex/market-readiness`, and PR #49 has the updated scope
+and validation narrative. Current CI is authoritative only for its matching PR head; see the
+[delivery record](docs/audits/2026-09-06-market-readiness/GITHUB_DELIVERY.md).
+
+The prior [direct-interaction changes](docs/audits/2026-09-07-direct-interaction/REPORT.md) remain
+in place. [Human UX acceptance](docs/audits/2026-09-06-market-readiness/HUMAN_ACCEPTANCE.md) is
+provisionally passed by the user's 2026-09-07 decision; reopen affected items if issues arise.
+The [quality baseline](docs/audits/2026-09-07-source-quality/REPORT.md) remains limited; UI checks
+do not establish retrieval or analysis accuracy. Custom paid model APIs, VoiceOver and formal
+Apple distribution remain deferred. The earlier unreproduced test-window-close event retains
+its diagnostic boundary; this iteration observed no new occurrence.
+
+## Deferred goal: Market-ready native research product
+
+The user authorized implementation of all findings in the current UI audit and the work required
+to reach market-release quality. The full scope, acceptance IDs and stop condition live in
+[`docs/audits/2026-09-06-market-readiness/CHANGE_CONTRACT.md`](docs/audits/2026-09-06-market-readiness/CHANGE_CONTRACT.md).
+
+Complete the native reading, feedback, narrow-window, local-navigation, settings and empty-state
+improvements; verify reliability, evidence/security boundaries, accessibility, supported packaging,
+installation/rollback, signed distribution/update, documentation and GitHub delivery. Do not call
+an unsigned beta market-ready. All requirements need current evidence; missing external release
+credentials remain explicit blockers rather than being removed from scope.
+
+Current evidence (2026-09-07): A1-A9 and the current unsigned local acceptance are complete.
+The [report](docs/audits/2026-09-06-market-readiness/REPORT.md) preserves the dated source limitations
+and future distribution gates. The earlier authorized delivery through `3a33614` was pushed,
+[draft PR #49](https://github.com/dtjgp/TheRSS/pull/49) is open, and private vulnerability reporting
+is enabled. The [delivery record](docs/audits/2026-09-06-market-readiness/GITHUB_DELIVERY.md) links
+the authoritative PR/CI state. Paid signing/notarization and formal distribution remain deferred.
+
 ## Completed goal: Core reliability updates
 
 ### Objective

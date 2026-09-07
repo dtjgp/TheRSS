@@ -107,6 +107,9 @@ NSAttributedString *TRResearchText(NSString *source, NSFont *base) {
     if (bullet) line = [@"• " stringByAppendingString:[line substringFromIndex:2]];
     NSFont *font = code ? [NSFont monospacedSystemFontOfSize:base.pointSize-1 weight:NSFontWeightRegular] : heading ? [NSFont boldSystemFontOfSize:base.pointSize+MAX(1,5-(NSInteger)heading)] : base;
     NSMutableParagraphStyle *style = [NSMutableParagraphStyle new]; style.lineSpacing = 3; style.paragraphSpacing = heading ? 7 : 3;
+    // Preserve paragraph separators for selection/copy, with a smaller visual
+    // gap than an entire body line plus heading paragraph spacing.
+    if (!code && !line.length) { style.lineSpacing = 0; style.paragraphSpacing = 0; style.minimumLineHeight = base.pointSize*0.45; style.maximumLineHeight = base.pointSize*0.45; }
     if (bullet) style.headIndent = 16;
     [result appendAttributedString:TRInline(line,font,code,style)];
     [result appendAttributedString:[[NSAttributedString alloc] initWithString:@"\n" attributes:@{NSFontAttributeName:font,NSParagraphStyleAttributeName:style}]];

@@ -108,7 +108,6 @@ describe('native workflow branches', () => {
     const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
     await screen.load()
     await screen.load()
-    await h.act(screen, 'discover-edit-search')
     await h.act(screen, 'discover-source-picker')
     await h.act(screen, 'discover-clear-sources')
     expect(h.find(h.render(screen), 'discover-search')?.enabled).toBe(false)
@@ -191,6 +190,7 @@ describe('native workflow branches', () => {
             id: 'result-1',
             itemId: item.id,
             kind: 'analysis',
+            target: { kind: 'analysis', analysisId: 'result-1' },
             title: 'Stored analysis',
             detail: 'Longer local context',
             url: item.url,
@@ -207,10 +207,14 @@ describe('native workflow branches', () => {
     await h.act(screen, 'modal-close')
     modal.openSearch()
     await h.act(screen, 'local-search-query', 'edge')
-    await h.act(screen, 'local-search-submit')
+    await h.context.presentation.dispatch(
+      JSON.stringify({ action: h.find(h.render(screen), 'local-search-query')!.activate })
+    )
     expect(h.find(h.render(screen), 'modal-message')?.text).toContain('Index unavailable')
-    await h.act(screen, 'local-search-submit')
-    await h.act(screen, 'local-search-results', 'result-1')
+    await h.context.presentation.dispatch(
+      JSON.stringify({ action: h.find(h.render(screen), 'local-search-query')!.activate })
+    )
+    await h.act(screen, 'local-search-results', 'analysis:result-1')
     await h.act(screen, 'local-search-open')
     expect(h.context.openExternal).toHaveBeenCalledWith(item.url)
     await h.act(screen, 'modal-close')

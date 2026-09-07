@@ -243,6 +243,149 @@ try {
       `-l${state.windowNumber}`,
       join(output, 'native-controls.png')
     ])
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.scene.root = {
+      id: 'large-table-root',
+      kind: 'column',
+      padding: 20,
+      children: [
+        {
+          id: 'large-native-table',
+          kind: 'table',
+          flex: 1,
+          selected: 'record-999',
+          columns: [
+            { id: 'date', title: 'Date', width: 120 },
+            { id: 'records', title: 'Records', width: 100, alignment: 'right' }
+          ],
+          rows: Array.from({ length: 1000 }, (_, i) => ({
+            id: `record-${i}`,
+            title: `Fixture day ${i}`,
+            cells: { date: `Fixture ${i}`, records: String(i) }
+          }))
+        }
+      ]
+    }
+    f.window.setBounds({ width: 1000, height: 760 })
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  })
+  await delay(100)
+  state = await inspect()
+  const largeTable = find(state.root, 'large-native-table')
+  assert.equal(largeTable.rows.length, 1000)
+  assert.equal(largeTable.rowHeight, 26)
+  assert.equal(largeTable.selected, 'record-999')
+  assert.notEqual(
+    largeTable.scrollOrigin,
+    '{0, 0}',
+    'A programmatically opened distant record must be scrolled into view'
+  )
+  assert.equal(largeTable.rows.at(-1).cells.records, '999')
+  assert(
+    frameNumbers(largeTable.documentFrame)[2] <= frameNumbers(largeTable.viewportSize)[0] + 1,
+    'Columns that fit must not be pushed beyond the viewport by research-list insets'
+  )
+  for (const cell of largeTable.selectedCells) {
+    const text = frameNumbers(cell.textFrame),
+      frame = frameNumbers(cell.cellFrame)
+    assert(
+      text[0] >= 0 && text[0] + text[2] <= frame[2] + 1,
+      `${cell.column} text must fit inside its visible cell`
+    )
+    assert(cell.text.length > 0)
+  }
+  assert.deepEqual(
+    largeTable.columns.map((column) => column.title),
+    ['Date', 'Records']
+  )
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.scene.root.children[0].rows = f.scene.root.children[0].rows.map((row) => ({
+      ...row,
+      title: row.title + ' refreshed'
+    }))
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  })
+  const refreshedTable = find((await inspect()).root, 'large-native-table')
+  assert.equal(
+    refreshedTable.scrollOrigin,
+    largeTable.scrollOrigin,
+    'Refreshing row content must retain the existing scroll position'
+  )
+  if (process.env.THERSS_NATIVE_SCREENSHOTS !== '0')
+    execFileSync('/usr/sbin/screencapture', [
+      '-x',
+      `-l${state.windowNumber}`,
+      join(output, 'native-data-table.png')
+    ])
+  checks.push(
+    'Native numeric columns retain 1000 exact rows, reveal the selected record and preserve scroll on refresh'
+  )
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.scene.root = {
+      id: 'retained-workspace',
+      kind: 'split',
+      compactPane: 'list',
+      width: 320,
+      children: [
+        {
+          id: 'retained-list',
+          kind: 'table',
+          selected: 'paper-900',
+          rows: Array.from({ length: 1000 }, (_, i) => ({
+            id: `paper-${i}`,
+            title: `Research fixture ${i}`,
+            subtitle: 'Deterministic long-list fixture'
+          }))
+        },
+        {
+          id: 'retained-reader',
+          kind: 'scroll',
+          children: [
+            {
+              id: 'retained-text',
+              kind: 'text',
+              text: 'A complete retained reading paragraph.\n\n'.repeat(200)
+            }
+          ]
+        }
+      ]
+    }
+    f.scene.focus = 'retained-list'
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  })
+  const listBefore = find((await inspect()).root, 'retained-list')
+  assert.notEqual(listBefore.scrollOrigin, '{0, 0}')
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.scene.root.compactPane = 'detail'
+    f.scene.focus = 'retained-text'
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  })
+  await act('retained-reader', 'scroll', 400)
+  const readingBefore = find((await inspect()).root, 'retained-reader').scrollOrigin
+  assert.notEqual(readingBefore, '{0, 0}')
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.scene.root.compactPane = 'list'
+    f.scene.focus = 'retained-list'
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  })
+  const listAfter = find((await inspect()).root, 'retained-list')
+  assert.equal(listAfter.scrollOrigin, listBefore.scrollOrigin)
+  assert.equal(listAfter.selected, 'paper-900')
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.scene.root.compactPane = 'detail'
+    f.scene.focus = 'retained-text'
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  })
+  assert.equal(find((await inspect()).root, 'retained-reader').scrollOrigin, readingBefore)
+  checks.push(
+    'Compact research navigation preserves a thousand-row list position and independent long-reading position'
+  )
   await writeFile(
     join(output, 'result.json'),
     JSON.stringify(

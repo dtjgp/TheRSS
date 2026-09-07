@@ -19,7 +19,10 @@ function harness() {
     repository: {
       getDashboardSnapshot: vi.fn(() => ({ date: 'fixture' })),
       setTriageState: vi.fn(),
-      getLatestDiscoverSnapshot: vi.fn(() => null)
+      getLatestDiscoverSnapshot: vi.fn(() => null),
+      getSavedSourceUpdate: vi.fn(() => null),
+      applySavedSourceUpdate: vi.fn(() => 'unchanged'),
+      getDiscoveryItem: vi.fn(() => null)
     },
     discover: { search: vi.fn(), retry: vi.fn() },
     promotion: {
@@ -41,6 +44,32 @@ describe('window-bound application service', () => {
     await application.api.setTriageState('paper-1', 'saved')
     expect(services.repository.setTriageState).toHaveBeenCalledWith('paper-1', 'saved')
     await expect(application.api.getSourceContent('unknown' as 'arxiv')).rejects.toThrow()
+  })
+
+  it('validates Saved snapshot update identities and hashes before any mutation', async () => {
+    const { application, services } = harness()
+    await expect(application.api.getSavedSourceUpdate('')).rejects.toThrow()
+    await expect(
+      application.api.applySavedSourceUpdate({
+        itemId: 'item-1',
+        sessionId: 'new',
+        expectedSourceHash: 'invalid',
+        sourceHash: 'b'.repeat(64)
+      })
+    ).rejects.toThrow()
+    expect(services.repository.applySavedSourceUpdate).not.toHaveBeenCalled()
+    const request = {
+      itemId: 'item-1',
+      sessionId: 'new',
+      expectedSourceHash: 'a'.repeat(64),
+      sourceHash: 'b'.repeat(64)
+    }
+    expect(await application.api.applySavedSourceUpdate(request)).toEqual({
+      status: 'unchanged',
+      item: null,
+      dashboard: { date: 'fixture' }
+    })
+    expect(services.repository.applySavedSourceUpdate).toHaveBeenCalledWith(request)
   })
 
   it('binds promotions to the calling window and respects final cancellation', async () => {

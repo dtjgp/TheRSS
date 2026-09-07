@@ -18,6 +18,8 @@ function fixture() {
     getInterestProfile: vi.fn(() => null),
     saveInterestProfile: vi.fn(),
     searchLocal: vi.fn(() => ({ results: [] })),
+    getDiscoveryItem: vi.fn(),
+    getDiscoverSnapshot: vi.fn(),
     getLatestDiscoverSnapshot: vi.fn(() => snapshot),
     getAnalyticsSnapshot: vi.fn(() => ({ totals: {} })),
     saveDiscoverResult: vi.fn(),
@@ -91,6 +93,39 @@ function fixture() {
 }
 
 describe('shared application contract parity', () => {
+  it('resolves exact local targets read-only, rejects foreign fields and preserves missing outcomes', async () => {
+    const f = fixture()
+    f.repository.getDiscoveryItem.mockReturnValue({ id: f.item, triageState: 'saved' })
+    expect(await f.api.getLocalResearch({ kind: 'saved', itemId: f.item })).toEqual({
+      kind: 'saved',
+      item: { id: f.item, triageState: 'saved' }
+    })
+    f.repository.getDiscoveryItem.mockReturnValue({ id: f.item, triageState: 'viewed' })
+    expect(await f.api.getLocalResearch({ kind: 'saved', itemId: f.item })).toBeNull()
+    const historical = { id: 'older-session', items: [{ id: f.item }] }
+    f.repository.getDiscoverSnapshot.mockReturnValue(historical)
+    expect(
+      await f.api.getLocalResearch({ kind: 'discover', sessionId: 'older-session', itemId: f.item })
+    ).toEqual({ kind: 'discover', snapshot: historical, itemId: f.item })
+    expect(f.repository.getDiscoverSnapshot).toHaveBeenCalledWith('older-session')
+    expect(
+      await f.api.getLocalResearch({
+        kind: 'discover',
+        sessionId: 'older-session',
+        itemId: 'missing'
+      })
+    ).toBeNull()
+    await expect(
+      f.api.getLocalResearch({
+        kind: 'saved',
+        itemId: '',
+        url: 'https://untrusted.invalid'
+      } as never)
+    ).rejects.toThrow()
+    expect(f.repository.setTriageState).not.toHaveBeenCalled()
+    expect(f.discover.search).not.toHaveBeenCalled()
+    await f.app.shutdown()
+  })
   it('uses the same repository and credentials for source reads, refresh, interests and local search', async () => {
     const f = fixture(),
       api = f.api

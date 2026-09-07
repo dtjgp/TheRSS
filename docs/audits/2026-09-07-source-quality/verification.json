@@ -1,0 +1,99 @@
+{
+  "date": "2026-09-07",
+  "baseCommit": "01db2b4d87e8afa91b8a20bdb5ded3b7d1fb7e4d",
+  "node": "26.7.0",
+  "checks": {
+    "npmRunCheck": {
+      "exitCode": 0,
+      "mainTests": 669,
+      "appkitTests": 96,
+      "mainCoveragePercent": [91.07, 82.21, 94.7, 93.76],
+      "appkitCoveragePercent": [89.1, 81.56, 88.71, 91.64],
+      "coverageOrder": ["statements", "branches", "functions", "lines"],
+      "countsOverlap": true
+    },
+    "desktop": {
+      "passed": 8,
+      "initialHostPassed": 6,
+      "versionAssertionCorrections": 2,
+      "affectedRerunPassed": 2
+    },
+    "nativePackage": {
+      "workflowGroupsPassed": 13,
+      "keyboardSavedUpdate": "Space",
+      "monthPrecisionDisplay": "verified",
+      "dataAndAnalysisHistoryPreserved": true
+    },
+    "installedApplication": {
+      "startupPassed": true,
+      "nativeWorkflowGroupsPassed": 13,
+      "normalProfileReopened": true,
+      "all11TablesMatchImmediateBackup": true
+    },
+    "bundle": {
+      "allBuildOutputsMatchPackage": 16,
+      "receiptVerifiesFullBundle": true
+    },
+    "independentReview": {
+      "kind": "separate_main_session_diff_review",
+      "human": false,
+      "unresolvedHighSeverityCodeFindings": 0
+    }
+  },
+  "quality": {
+    "planningCalls": 6,
+    "analysisAttempts": 4,
+    "completedAnalyses": 3,
+    "sampleReviewPass": 2,
+    "sampleReviewFail": 1,
+    "timeouts": 1,
+    "returnedAcrossRuns": 469,
+    "assistantTopKLabels": 60,
+    "humanLabels": 0,
+    "recallMeasured": false,
+    "paperV3LiveVerification": "not_run_budget_exhausted"
+  },
+  "sourceBoundaries": [
+    "NBER failed",
+    "NCPSD partial",
+    "CNBC targeted recovery is separate from the 20-source full batch"
+  ],
+  "externalDelivery": {
+    "branch": "codex/market-readiness",
+    "pullRequest": "https://github.com/dtjgp/TheRSS/pull/49",
+    "draft": true,
+    "ciEvidence": "Use the current PR head checks; no future result is prefilled."
+  },
+  "logEvidence": {
+    "fullCheck": {
+      "fileName": "therss-source-quality-final-check.log",
+      "sha256": "a36db7bbf6844323fdfe010c35be6692ce490b173a4e9a02ccd074eeaffc983f"
+    },
+    "desktopInitialHost": {
+      "fileName": "therss-source-quality-e2e-host.log",
+      "sha256": "32a8c92363ce1e4cd6a87ef721b3063750b3889251d6fafb49308df33f3fe74f"
+    },
+    "desktopAffected": {
+      "fileName": "therss-source-quality-e2e-affected.log",
+      "sha256": "9a53ba83b07c8d0e1575d0827158ca4fe950ff88bc41e337091f24a952c12f16"
+    },
+    "nativePackage": {
+      "fileName": "therss-source-quality-native-final.log",
+      "sha256": "3c6e814a160b58fba184c86d2465ad84106d99ffcf156742934efe65b9fc0cde"
+    },
+    "installedSmoke": {
+      "fileName": "therss-source-quality-installed-smoke.log",
+      "sha256": "a03215c8302df73c7e98a950572f877a2512d6520d31f6d46f20f24ec0ec959a"
+    },
+    "targetedGreen": {
+      "fileName": "therss-quality-targeted-green.log",
+      "sha256": "d180011415c590a694dbdfdaa41fa5b0c970d466a5452e9fd33e3b431c5294c9"
+    },
+    "promptRed": {
+      "fileName": "therss-quality-prompt-red.log",
+      "sha256": "1b0fec2fd646b35ed42add0235afb34c226428b030784bbcf12c939c627088ba"
+    }
+  },
+  "deferredByUser": ["VoiceOver", "new paid model API", "formal Apple release"],
+  "pendingIndependentHumanAcceptance": true
+}

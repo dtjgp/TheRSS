@@ -16,6 +16,40 @@ const cached = (source: 'arxiv' | 'github'): SourceContentSnapshot => ({
 })
 
 describe('AppKit Sources', () => {
+  it('shows recorded search status and reason before source metadata without fetching', () => {
+    const h = nativeHarness({ getSourceContent: vi.fn() })
+    h.context.data.dashboard = {
+      ...h.dashboard,
+      sourceHealth: { arxiv: 'partial', github: 'no_results' },
+      sourceHealthDetails: {
+        arxiv: {
+          status: 'partial',
+          observedAt: '2026-09-07T14:35:34.199Z',
+          errorMessage: 'Seven entries lacked a publication month.',
+          context: 'discover'
+        },
+        github: {
+          status: 'no_results',
+          observedAt: '2026-09-07T14:35:34.199Z',
+          errorMessage: null,
+          context: 'discover'
+        }
+      }
+    }
+    const screen = new SourcesScreen(h.context)
+    const root = h.render(screen)
+    expect(h.find(root, 'sources-summary')?.text).toContain('0 failed · 1 partial')
+    expect(h.find(root, 'source-detail-health')?.text).toBe(
+      'Partial · Latest search · 2026-09-07 14:35 UTC'
+    )
+    expect(h.find(root, 'source-health-error')?.text).toContain('publication month')
+    const text = JSON.stringify(root)
+    expect(text.indexOf('source-health-error')).toBeLessThan(
+      text.indexOf('source-detail-description')
+    )
+    expect(h.api.getSourceContent).not.toHaveBeenCalled()
+    screen.dispose()
+  })
   it('filters the directory using the same presentation groups without fetching', async () => {
     const h = nativeHarness()
     const screen = new SourcesScreen(h.context)
@@ -58,9 +92,14 @@ describe('AppKit Sources', () => {
     })
     const screen = new SourcesScreen(h.context)
     await screen.activate('official:arxiv')
+    vi.mocked(h.api.getDashboard).mockResolvedValue({
+      ...h.dashboard,
+      sourceHealth: { arxiv: 'failed', github: 'idle' }
+    })
     await screen.activate('official:arxiv', true)
     expect(h.find(h.render(screen), 'source-content-title')?.text).toBe('Readable cached paper')
     expect(h.find(h.render(screen), 'source-content-error')?.text).toContain('Refresh failed')
+    expect(h.find(h.render(screen), 'source-detail-health')?.text).toContain('Failed')
   })
   it('shows an empty state and removes old source actions when filters match nothing', async () => {
     const h = nativeHarness(),

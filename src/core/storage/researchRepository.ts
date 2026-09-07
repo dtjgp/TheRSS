@@ -22,6 +22,8 @@ import {
   type DiscoverPersonalizationSettings
 } from '../../shared/personalization'
 import { localDateKey } from '../../shared/date'
+import { publicationIntervalEnd } from '../../shared/sourceDate'
+import { readSourceHealthDetails, type SourceRunRow } from './sourceHealthStore'
 import { buildAnalyticsSnapshot } from './analyticsRepository'
 import { migrateResearchDatabase } from './researchSchema'
 import {
@@ -42,7 +44,13 @@ import { parseStringList } from './rowParsers'
 import { searchLocal as searchPersistedLocal } from './localSearchStore'
 import type { LocalSearchResponse } from '../../shared/localSearch'
 import {
+  savedSourceUpdateRequestSchema,
+  type SavedSourceUpdateRequest
+} from '../../shared/savedSourceUpdate'
+import { getSavedSourceUpdate, applySavedSourceUpdate } from './savedSourceUpdateStore'
+import {
   getLatestDiscoverSnapshot as readLatestDiscoverSnapshot,
+  getDiscoverSnapshot as readDiscoverSnapshot,
   materializeDiscoverResultForAnalysis as materializeResultForAnalysis,
   materializeDiscoverResultForLlmWikiPromotion as materializeResultForLlmWikiPromotion,
   saveDiscoverResult as savePersistedDiscoverResult,
@@ -64,15 +72,6 @@ const SOURCE_HEALTH = new Set<PersistedSourceHealth>([
   'failed'
 ])
 
-function boundedSourceError(value: string): string {
-  return value
-    .replaceAll(/\b(?:hf|ghp|github_pat)_[A-Za-z0-9_-]+\b/gu, '[redacted credential]')
-    .replaceAll(/\/(?:Users|home)\/[^\s:]+/gu, '[local path]')
-    .replaceAll(/\s+/gu, ' ')
-    .trim()
-    .slice(0, 300)
-}
-
 interface DashboardRow {
   id: string
   source: DiscoverySource
@@ -88,14 +87,6 @@ interface DashboardRow {
 
 interface SourceContentRow extends DashboardRow {
   updated_at: string
-}
-
-interface SourceRunRow {
-  source: DiscoverySource
-  status: PersistedSourceHealth
-  completed_at: string
-  error_message: string | null
-  result_count: number | null
 }
 
 interface DiscoveryRecordRow {
@@ -361,6 +352,10 @@ export class ResearchRepository {
       start.setUTCHours(0, 0, 0, 0)
     } else start.setTime(now.getTime() - windowDays * 24 * 60 * 60 * 1_000)
     const windowStart = start.toISOString()
+    const candidateStart =
+      source === 'folo:611'
+        ? new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1)).toISOString()
+        : windowStart
     const arxivWindowEnd = new Date(start)
     arxivWindowEnd.setUTCDate(arxivWindowEnd.getUTCDate() + 1)
     const datePredicate =
@@ -379,8 +374,8 @@ export class ResearchRepository {
       )
       .all(
         source,
-        windowStart,
-        source === 'arxiv' ? arxivWindowEnd.toISOString() : windowStart
+        candidateStart,
+        source === 'arxiv' ? arxivWindowEnd.toISOString() : candidateStart
       ) as SourceContentRow[]
     const indexRow = this.#database
       .prepare('SELECT MAX(last_seen_at) AS last_indexed_at FROM discovery_item WHERE source = ?')
@@ -395,19 +390,30 @@ export class ResearchRepository {
       lastIndexedAt: indexRow.last_indexed_at,
       returnedCount: 0,
       rejectedCount: 0,
-      items: rows.map((row) => ({
-        id: row.id,
-        source: row.source,
-        kind: row.item_kind,
-        title: row.title,
-        summary: row.summary,
-        url: row.url,
-        publishedAt: row.published_at,
-        updatedAt: row.updated_at,
-        score: row.score,
-        triageState: row.triage_state,
-        reasons: parseStringList(row.reasons_json)
-      }))
+      items: rows
+        .filter(
+          (row) =>
+            source !== 'folo:611' ||
+            Date.parse(row.updated_at) >= start.getTime() ||
+            publicationIntervalEnd({
+              source: row.source,
+              summary: row.summary,
+              publishedAt: row.published_at
+            }) >= start.getTime()
+        )
+        .map((row) => ({
+          id: row.id,
+          source: row.source,
+          kind: row.item_kind,
+          title: row.title,
+          summary: row.summary,
+          url: row.url,
+          publishedAt: row.published_at,
+          updatedAt: row.updated_at,
+          score: row.score,
+          triageState: row.triage_state,
+          reasons: parseStringList(row.reasons_json)
+        }))
     }
   }
 
@@ -447,6 +453,18 @@ export class ResearchRepository {
           reasons: parseStringList(row.reasons_json)
         }
       : null
+  }
+
+  getSavedSourceUpdate(id: string) {
+    return getSavedSourceUpdate(this.#database, id)
+  }
+
+  applySavedSourceUpdate(request: SavedSourceUpdateRequest, updatedAt = new Date().toISOString()) {
+    return applySavedSourceUpdate(
+      this.#database,
+      savedSourceUpdateRequestSchema.parse(request),
+      updatedAt
+    )
   }
 
   getDiscoveryRecord(id: string): DiscoveryItem | null {
@@ -489,6 +507,9 @@ export class ResearchRepository {
   getLatestDiscoverSnapshot(): DiscoverSnapshot | null {
     return readLatestDiscoverSnapshot(this.#database)
   }
+  getDiscoverSnapshot(id: string): DiscoverSnapshot | null {
+    return readDiscoverSnapshot(this.#database, id)
+  }
 
   searchLocal(query: string): LocalSearchResponse {
     return searchPersistedLocal(this.#database, query)
@@ -523,7 +544,8 @@ export class ResearchRepository {
     status: PersistedSourceHealth,
     completedAt = new Date().toISOString(),
     errorMessage: string | null = null,
-    resultCount: number | null = null
+    resultCount: number | null = null,
+    recordSearchEvent = true
   ): void {
     if (!isDiscoverySource(source)) throw new Error(`Unsupported discovery source: ${source}`)
     if (!SOURCE_HEALTH.has(status)) {
@@ -546,7 +568,7 @@ export class ResearchRepository {
         )
         .run(source, status, completedAt, errorMessage, resultCount)
 
-      if (status !== 'idle' && status !== 'refreshing') {
+      if (recordSearchEvent && status !== 'idle' && status !== 'refreshing') {
         this.#database
           .prepare(
             `INSERT INTO source_search_event(source, status, completed_at, result_count)
@@ -614,27 +636,10 @@ export class ResearchRepository {
     const sourceRuns = this.#database
       .prepare('SELECT source, status, completed_at, error_message, result_count FROM source_run')
       .all() as SourceRunRow[]
-    const healthFor = (source: DiscoverySource): SourceHealth => {
-      const run = sourceRuns.find((candidate) => candidate.source === source)
-      if (!run) return 'idle'
-      return run.status === 'healthy' && run.result_count === 0 ? 'no_results' : run.status
-    }
+    const sourceHealthDetails = readSourceHealthDetails(this.#database, sourceRuns)
     const sourceHealth = Object.fromEntries(
-      ACTIVE_TODAY_SOURCE_IDS.map((source) => [source, healthFor(source)])
+      ACTIVE_TODAY_SOURCE_IDS.map((source) => [source, sourceHealthDetails[source]!.status])
     ) as DashboardSnapshot['sourceHealth']
-    const sourceHealthDetails = Object.fromEntries(
-      ACTIVE_TODAY_SOURCE_IDS.map((source) => {
-        const run = sourceRuns.find((candidate) => candidate.source === source)
-        return [
-          source,
-          {
-            status: healthFor(source),
-            observedAt: run?.completed_at ?? null,
-            errorMessage: run?.error_message ? boundedSourceError(run.error_message) : null
-          }
-        ]
-      })
-    ) as DashboardSnapshot['sourceHealthDetails']
     const configuredSources = new Set<DiscoverySource>(
       ACTIVE_TODAY_SOURCE_IDS.filter((source) => source !== 'arxiv' && source !== 'github')
     )

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { TheRSSApi } from '../../shared/api'
 import type { LocalSearchResult } from '../../shared/localSearch'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
@@ -32,6 +32,50 @@ export function LocalSearchPanel({ api, onClose }: LocalSearchPanelProps) {
   const [hasSearched, setHasSearched] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const requestVersion = useRef(0)
+  const pendingQuery = useRef<string | null>(null)
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const invalidateRequests = useCallback(() => {
+    requestVersion.current++
+    pendingQuery.current = null
+  }, [])
+
+  const search = useCallback(
+    async (value: string) => {
+      if (searchTimer.current !== undefined) clearTimeout(searchTimer.current)
+      const trimmed = value.trim()
+      if (trimmed.length < 2 || trimmed.length > 200 || pendingQuery.current === trimmed) return
+      const version = ++requestVersion.current
+      pendingQuery.current = trimmed
+      setIsSearching(true)
+      setError(null)
+      try {
+        const response = await api.searchLocal(trimmed)
+        if (version !== requestVersion.current) return
+        setResults(response.results)
+        setHasSearched(true)
+      } catch {
+        if (version !== requestVersion.current) return
+        setResults([])
+        setHasSearched(false)
+        setError('The local research index could not be searched.')
+      } finally {
+        if (version === requestVersion.current) {
+          pendingQuery.current = null
+          setIsSearching(false)
+        }
+      }
+    },
+    [api]
+  )
+
+  useEffect(() => {
+    if (query.trim().length >= 2) searchTimer.current = setTimeout(() => void search(query), 250)
+    return () => {
+      if (searchTimer.current !== undefined) clearTimeout(searchTimer.current)
+      invalidateRequests()
+    }
+  }, [query, search, invalidateRequests])
 
   useEffect(() => {
     const previousFocus = document.activeElement
@@ -67,22 +111,13 @@ export function LocalSearchPanel({ api, onClose }: LocalSearchPanelProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  const search = async (event: FormEvent) => {
-    event.preventDefault()
-    if (query.trim().length < 2) return
-    setIsSearching(true)
+  const changeQuery = (value: string) => {
+    invalidateRequests()
+    setQuery(value)
+    setResults([])
+    setHasSearched(false)
+    setIsSearching(false)
     setError(null)
-    try {
-      const response = await api.searchLocal(query)
-      setResults(response.results)
-      setHasSearched(true)
-    } catch {
-      setResults([])
-      setHasSearched(false)
-      setError('The local research index could not be searched.')
-    } finally {
-      setIsSearching(false)
-    }
   }
 
   return (
@@ -117,7 +152,13 @@ export function LocalSearchPanel({ api, onClose }: LocalSearchPanelProps) {
             Close
           </button>
         </header>
-        <form role="search" onSubmit={(event) => void search(event)}>
+        <form
+          role="search"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void search(query)
+          }}
+        >
           <input
             ref={inputRef}
             type="search"
@@ -126,19 +167,13 @@ export function LocalSearchPanel({ api, onClose }: LocalSearchPanelProps) {
             minLength={2}
             maxLength={200}
             placeholder="Saved items, Discover sessions, analysis content"
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => changeQuery(event.target.value)}
           />
-          <button
-            type="submit"
-            className="primary-button"
-            disabled={query.trim().length < 2 || isSearching}
-          >
-            {isSearching ? 'Searching…' : 'Search'}
-          </button>
         </form>
         <p className="local-search-boundary">
           Searches bounded fields in the local SQLite index. No model or network request is used.
         </p>
+        {isSearching && <p role="status">Searching local records…</p>}
         {error && <p role="alert">{error}</p>}
         {hasSearched && results.length === 0 && (
           <p role="status">No local records matched this query.</p>

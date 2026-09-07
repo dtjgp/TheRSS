@@ -117,6 +117,13 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
   napi_value args[2]; size_t count = 2; napi_get_cb_info(env,info,&count,args,nullptr,nullptr); if (count != 2) return fail(env,"Invalid fixture action");
   TRHost *host = hostFor(env,args[0]); if (!host) return nullptr; if (!host.fixture) return fail(env,"Native fixture actions require an explicit fixture process");
   NSDictionary *input = jsonFor(env,args[1],100000); if (!input) return nullptr;
+  if ([input[@"action"] isEqual:@"quit"]) {
+    // Post to this fixture application's event loop, matching Command-Q dispatch.
+    [host.window makeKeyAndOrderFront:nil]; [NSApp activateIgnoringOtherApps:YES];
+    NSEvent *event = [NSEvent keyEventWithType:NSEventTypeKeyDown location:NSZeroPoint modifierFlags:NSEventModifierFlagCommand timestamp:0 windowNumber:host.window.windowNumber context:nil characters:@"q" charactersIgnoringModifiers:@"q" isARepeat:NO keyCode:12];
+    [NSApp postEvent:event atStart:NO];
+    return nothing(env);
+  }
   if ([input[@"action"] isEqual:@"alert"]) {
     if (![input[@"value"] isKindOfClass:NSString.class] || !TRActivateFixtureAlert(host,input[@"value"])) return fail(env,"Fixture alert button is unavailable");
     return nothing(env);
@@ -157,11 +164,11 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     if (value < [node.spec[@"minWidth"] doubleValue] || value > [node.spec[@"maxWidth"] doubleValue]) return fail(env,"Invalid fixture divider position");
     [(NSSplitView *)node.control setPosition:value ofDividerAtIndex:0];
   } else if ([action isEqual:@"key"]) {
-    NSDictionary *codes = @{@"left":@123,@"right":@124,@"down":@125,@"up":@126,@"home":@115,@"end":@119,@"escape":@53,@"enter":@36,@"tab":@48};
+    NSDictionary *codes = @{@"left":@123,@"right":@124,@"down":@125,@"up":@126,@"home":@115,@"end":@119,@"escape":@53,@"enter":@36,@"tab":@48,@"space":@49};
     NSNumber *code = codes[input[@"value"]]; if (!code) return fail(env,"Unsupported fixture key");
     NSView *control = node.control ?: node; if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
     [control.window makeFirstResponder:control];
-    NSDictionary *characters = @{@"left":@"\uF702",@"right":@"\uF703",@"up":@"\uF700",@"down":@"\uF701",@"home":@"\uF729",@"end":@"\uF72B",@"escape":@"\x1b",@"enter":@"\r",@"tab":@"\t"};
+    NSDictionary *characters = @{@"left":@"\uF702",@"right":@"\uF703",@"up":@"\uF700",@"down":@"\uF701",@"home":@"\uF729",@"end":@"\uF72B",@"escape":@"\x1b",@"enter":@"\r",@"tab":@"\t",@"space":@" "};
     NSEvent *event = [NSEvent keyEventWithType:NSEventTypeKeyDown location:NSZeroPoint modifierFlags:[input[@"shift"] boolValue] ? NSEventModifierFlagShift : 0 timestamp:0 windowNumber:control.window.windowNumber context:nil characters:characters[input[@"value"]] charactersIgnoringModifiers:characters[input[@"value"]] isARepeat:NO keyCode:code.unsignedShortValue];
     [(control.window.firstResponder ?: control) keyDown:event];
   } else if ([action isEqual:@"appearance"]) {

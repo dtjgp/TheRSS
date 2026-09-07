@@ -16,6 +16,7 @@ const f = vi.hoisted(() => {
     dispose: vi.fn(),
     flushPreferences: vi.fn(async () => undefined),
     zoom: vi.fn(),
+    layoutChanged: vi.fn(),
     command: vi.fn(async () => undefined)
   }
   return {
@@ -71,15 +72,21 @@ import {
 
 function windowFixture() {
   let closed: (() => void) | undefined
+  let resize: (() => void) | undefined
   const window = {
     getNativeWindowHandle: () => Buffer.alloc(8),
+    getContentBounds: () => ({ width: 820, height: 568 }),
+    on: vi.fn((event: string, handler: () => void) => {
+      if (event === 'resize') resize = handler
+    }),
+    removeListener: vi.fn(),
     isDestroyed: vi.fn(() => false),
     webContents: { executeJavaScript: vi.fn(async () => ({ sidebar: '245' })) },
     once: vi.fn((_event: string, handler: () => void) => {
       closed = handler
     })
   } as unknown as BrowserWindow
-  return { window, close: () => closed?.() }
+  return { window, close: () => closed?.(), resize: () => resize?.() }
 }
 
 describe('AppKit runtime wiring', () => {
@@ -103,10 +110,14 @@ describe('AppKit runtime wiring', () => {
       ['{"action":"fixture-secret"}', true]
     ])
     const options = f.presenterOptions[0] as {
+      contentSize(): { width: number; height: number }
       present(scene: string): void
       persist(value: unknown): Promise<void>
       openExternal(url: string): void
     }
+    expect(options.contentSize()).toEqual({ width: 820, height: 568 })
+    w.resize()
+    expect(f.presenter.layoutChanged).toHaveBeenCalledOnce()
     options.present('scene')
     expect(f.bridge.present).toHaveBeenCalledWith(handle, 'scene')
     options.openExternal('file:///private/tmp/no')
