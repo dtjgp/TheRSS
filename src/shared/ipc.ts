@@ -3,6 +3,8 @@ export const APP_COMMANDS = [
   'open-local-search',
   'show-saved',
   'show-discover',
+  'show-analytics',
+  'show-sources',
   'toggle-sidebar',
   'save-selected',
   'dismiss-selected',

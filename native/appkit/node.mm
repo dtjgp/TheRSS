@@ -510,8 +510,18 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       if (!row && ![child.spec[@"kind"] isEqual:@"split"]) {
         if (child.spec[@"width"]) childWidth = MIN(childWidth,[child.spec[@"width"] doubleValue]*self.host.zoom);
         if (child.spec[@"maxWidth"]) childWidth = MIN(childWidth,[child.spec[@"maxWidth"] doubleValue]*self.host.zoom);
+        // AppKit push buttons in a vertical stack keep their intrinsic width and
+        // align leading; only sidebar navigation rows span the column.
+        if ([child.spec[@"kind"] isEqual:@"button"] && ![child.spec[@"emphasis"] isEqual:@"navigation"]) childWidth = MIN(childWidth,child.preferredWidth);
       }
-      child.frame = row ? NSMakeRect(position,padding,extent,MAX(0,height-2*padding)) : NSMakeRect(padding,position,childWidth,extent);
+      CGFloat rowHeight = MAX(0,height-2*padding), rowY = padding;
+      if (row && [child.spec[@"kind"] isEqual:@"label"]) {
+        // Labels draw from the top of their frame; a text-height frame centered in
+        // the row shares the vertical center of adjacent bezeled controls.
+        CGFloat textHeight = MIN(rowHeight,[child heightForWidth:extent]);
+        rowY = padding + floor((rowHeight-textHeight)/2); rowHeight = textHeight;
+      }
+      child.frame = row ? NSMakeRect(position,rowY,extent,rowHeight) : NSMakeRect(padding,position,childWidth,extent);
       position += extent + gap;
     }
   } else if ([kind isEqual:@"table"]) {
@@ -564,7 +574,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   TRResearchCell *cell = [TRResearchCell new]; cell.zoom = self.host.zoom;
   NSTextField *label = [NSTextField wrappingLabelWithString:item[@"title"]];
   label.font = [NSFont systemFontOfSize:self.font.pointSize weight:NSFontWeightMedium]; label.maximumNumberOfLines = 2; label.lineBreakMode = NSLineBreakByWordWrapping;
-  label.cell.wraps = YES; label.cell.usesSingleLineMode = NO;
+  label.cell.wraps = YES; label.cell.usesSingleLineMode = NO; label.cell.truncatesLastVisibleLine = YES;
   label.preferredMaxLayoutWidth = MAX(30,column.width-24*self.host.zoom);
   [cell addSubview:label]; cell.textField = label;
   NSTextField *detail = [NSTextField labelWithString:TRString(item[@"subtitle"])]; detail.font = [NSFont systemFontOfSize:12*self.host.zoom]; detail.textColor = self.host.increaseContrast ? NSColor.labelColor : NSColor.secondaryLabelColor;
@@ -711,6 +721,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     if (table.numberOfRows) {
       TRResearchCell *cell = (TRResearchCell *)[table viewAtColumn:0 row:0 makeIfNecessary:YES];
       result[@"titleLines"] = @(cell.textField.maximumNumberOfLines);
+      result[@"titleTruncates"] = @(cell.textField.cell.truncatesLastVisibleLine);
       result[@"titleFrame"] = NSStringFromRect(cell.textField.frame);
       NSFont *font = cell.textField.font;
       result[@"titleLineHeight"] = @(ceil(font.ascender-font.descender+font.leading));

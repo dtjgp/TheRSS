@@ -173,6 +173,8 @@ export class NativePresenter {
     if (command === 'open-settings') await this.navigate('settings')
     else if (command === 'show-saved') await this.navigate('saved')
     else if (command === 'show-discover') await this.navigate('discover')
+    else if (command === 'show-analytics') await this.navigate('analytics')
+    else if (command === 'show-sources') await this.navigate('sources')
     else if (command === 'toggle-sidebar') {
       this.preferences = { ...this.preferences, collapsed: !this.preferences.collapsed }
       this.persistSoon()

@@ -1,0 +1,94 @@
+# Apple-native UX audit (2026-09-23)
+
+Scope: how closely the native AppKit route matches first-party macOS applications in ergonomics
+and UI/UX. Authority: [project UI skill](../../../skills/therss-ui-improvement/SKILL.md) with its
+Apple-design adaptation and accepted `3 / 2 / 7` profile. Base commit `0194f4f`.
+
+## Evidence and limits
+
+- Installed app `dev.dtjgp.therss` screenshots on 2026-09-23: Discover, Saved and Settings (light,
+  1306 px window). The window was on a full-screen Space, so background clicks were refused;
+  Data Analytics, Sources and sheets were reviewed from source only.
+- Source review: `native/appkit/*.mm`, `src/main/appkit/*.ts`, `src/main/index.ts`,
+  `src/main/applicationMenu.ts`.
+- Not assessed: dark-mode screenshots, VoiceOver speech, narrow-window screenshots, the Web fallback.
+
+## Summary
+
+Controls are genuine AppKit (NSTableView, NSSplitView, NSGlassEffectView, secure input, IME,
+contrast/transparency preferences, VoiceOver announcements). The gap to first-party apps is the
+**window structure and interaction patterns**. Root cause: the presentation bridge exposes 13 node
+kinds and 12 SF Symbols ([presentation.ts](../../../src/main/appkit/presentation.ts)); layout is
+hand-computed frames in [node.mm](../../../native/appkit/node.mm). A search of `native/` and
+`src/main/` found no use of NSToolbar, NSSearchField, NSSegmentedControl, NSProgressIndicator,
+NSOutlineView/source-list style, NSPopover, `keyEquivalent`, NSSplitViewController,
+NSSharingService or drag registration.
+
+## Findings
+
+### P0: window structure
+
+| ID  | Finding                                                                                                                                                           | Evidence                                     | Native pattern                                                                                                 |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| F1  | No toolbar; an empty ~32 pt strip sits under the traffic lights; the sidebar glass starts below it. Find and Undo are text buttons in a content row.              | Screenshots; `presenter.ts` `native-toolbar` | Unified NSToolbar with window title/subtitle, sidebar toggle and search field; sidebar reaches the window top. |
+| F2  | Sidebar is a column of buttons: AX role `AXButton`, no arrow-key movement, 23 pt brand plus "YOUR RESEARCH DESK", collapsed state is 84 pt of text without icons. | AX summary; `presenter.ts` `native-sidebar`  | NSSplitViewController sidebar item with a source-list NSOutlineView; collapse hides it with animation.         |
+| F3  | Page-level scroll around independently scrolling panes; "Show 24 more" pagination.                                                                                | `adaptiveScroll` on `native-main`; Discover  | Fixed panes filling the window; NSTableView handles all rows lazily.                                           |
+| F4  | Local search is an 820×680 modal sheet that blocks the window.                                                                                                    | `modals.ts`                                  | NSSearchToolbarItem filtering in place with scopes (Mail, Notes).                                              |
+
+### P1: interaction and ergonomics
+
+| ID  | Finding                                                                                                                               | Status        |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| F5  | No default buttons or `keyEquivalent`; no Command-Return submit; triage undo is a separate button instead of NSUndoManager/Command-Z. | Open (S2)     |
+| F6  | Discover progress is text only, although PRODUCT.md describes native source progress.                                                 | Open (S3)     |
+| F7  | Two-line result titles clipped without an ellipsis.                                                                                   | **Fixed S0**  |
+| F8  | Row labels drawn ~8 px above adjacent controls; single buttons stretched to column width (Saved "Open Settings").                     | **Fixed S0**  |
+| F9  | Result status showed the raw enum (`partial`).                                                                                        | **Fixed S0**  |
+| F10 | View menu shortcuts only for Discover and Saved.                                                                                      | **Fixed S0**  |
+| F11 | Result-kind filter is a pop-up (segmented control or scope bar is native); the 22-source picker expands inline (popover is native).   | Open (S3)     |
+| F12 | Settings is an in-window route with a pop-up section switcher and duplicate headings; native apps open a separate Settings window.    | Decision (D5) |
+| F13 | Ad hoc font sizes (23/14/12/11/10) instead of system text styles; in-content large titles; empty states are a single label.           | Open (S1)     |
+| F14 | No kind glyph or Saved star in result rows; ISO dates throughout (localized display is a product decision).                           | Open/decision |
+
+### P2: platform integration
+
+Share submenu (NSSharingServicePicker), dragging rows out as URL/citation to Zotero, Obsidian or
+Mail, opening a record in its own window, and animated NSSplitViewController transitions within
+`MOTION_INTENSITY 2`. Quick Look of remote URLs is rejected because it renders remote HTML.
+
+### Keep
+
+Inset NSTableView lists, keyboard-resizable dividers, IME draft guards, contrast and
+transparency fallbacks, glass foreground contrast handling, accessibility announcements, grouped
+context menus, standard menu roles and the dedicated secure-input path.
+
+## Roadmap
+
+| Slice | Content                                                                                         | Gate                          |
+| ----- | ----------------------------------------------------------------------------------------------- | ----------------------------- |
+| S0    | F7-F10 quick fixes                                                                              | **Done**, see below           |
+| S1    | Typed `toolbar` and `sidebar` (source list) node kinds; remove title strip and sidebar branding | Change contract; no IA change |
+| S2    | Default buttons, Command-Return, NSUndoManager triage undo                                      | Change contract               |
+| S3    | Toolbar search replacing the sheet; `progress`, `segmented`, `popover` node kinds               | Change contract               |
+| S4    | Separate Settings window                                                                        | Decision gate D5 first        |
+
+Every new node kind keeps zod validation at the presentation boundary, AppKit smoke coverage and
+the 800-line limit.
+
+## S0 outcome
+
+[Change contract](CHANGE_CONTRACT.md) and [verification summary](verification.json).
+
+- Titles: `truncatesLastVisibleLine` on research-row titles; inspected as `titleTruncates`.
+- Rows: labels in non-wrapped rows get a text-height frame centered on the row.
+- Columns: non-navigation buttons keep intrinsic width, leading-aligned.
+- Status: `Partial results · 20 of 22 sources complete · 2026-09-07`, derived only from
+  persisted source outcomes (`healthy` and `no_results` count as complete; `not_searched` excluded).
+- Menu: View → Data Analytics (Command-3), Sources (Command-4), native and Web fallback.
+
+Verification: `npm run check` exit 0 (690 main, 105 AppKit tests; coverage ≥ 80% on all axes);
+AppKit controls smoke 9/9 groups. The workflow smoke stopped at the Sources step on a
+pre-existing aged fixture (item dated 2026-08-14, outside the 2026-08-24..2026-09-23 window);
+with only that step disabled in a disposable copy, 13/13 groups passed. Fixing that fixture is a
+separate task. Window screenshots were unavailable (full-screen Space); package/install and
+VoiceOver were not run.

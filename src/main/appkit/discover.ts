@@ -27,6 +27,26 @@ import { discoverSources } from './discoverSources'
 
 type Filter = 'all' | 'paper' | 'repository' | 'other'
 
+const statusTitles: Record<DiscoverSnapshot['status'], string> = {
+  completed: 'Complete',
+  partial: 'Partial results',
+  no_results: 'No results',
+  failed: 'Search failed',
+  canceled: 'Canceled'
+}
+
+/** Plain-language session outcome derived only from persisted per-source outcomes. */
+function resultStatus(snapshot: DiscoverSnapshot): string {
+  const searched = DISCOVER_SOURCE_IDS.map((source) => snapshot.sourceOutcomes[source]).filter(
+    (outcome): outcome is DiscoverSnapshot['sourceOutcomes'][DiscoverSource] =>
+      !!outcome && outcome.status !== 'not_searched'
+  )
+  const complete = searched.filter(
+    (outcome) => outcome.status === 'healthy' || outcome.status === 'no_results'
+  ).length
+  return `${statusTitles[snapshot.status]} · ${complete} of ${searched.length} sources complete · ${snapshot.createdAt.slice(0, 10)}`
+}
+
 export class DiscoverScreen implements NativeScreen {
   readonly reader: ResearchReader
   private readonly controls: Controls
@@ -215,11 +235,7 @@ export class DiscoverScreen implements NativeScreen {
                   },
                   { width: 210 }
                 ),
-                label(
-                  'discover-result-status',
-                  `${snapshot.status} · ${snapshot.createdAt.slice(0, 10)}`,
-                  { flex: 1 }
-                ),
+                label('discover-result-status', resultStatus(snapshot), { flex: 1 }),
                 b.button('discover-details', 'Search details', () => this.details()),
                 ...(retryable.length
                   ? [

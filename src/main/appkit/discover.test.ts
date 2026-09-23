@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { DiscoverSnapshot } from '../../shared/discover'
+import { DISCOVER_SOURCE_IDS, type DiscoverSnapshot } from '../../shared/discover'
 import { DiscoverScreen } from './discover'
 import { TriageHistory } from './reading'
 import { nativeHarness, nativeDiscoverFixture } from './testSupport'
@@ -15,6 +15,23 @@ describe('AppKit Discover', () => {
     await screen.load()
     expect(h.find(h.render(screen), 'discover-results')?.rows?.[0]?.subtitle).toContain(' · Saved')
   })
+  it('summarizes the persisted session outcome in plain language with source counts', async () => {
+    const [empty, skipped] = DISCOVER_SOURCE_IDS.filter((source) => source !== 'arxiv')
+    const outcomes = {
+      ...nativeDiscoverFixture.sourceOutcomes,
+      [empty!]: { status: 'no_results', resultCount: 0, error: null },
+      [skipped!]: { status: 'not_searched', resultCount: 0, error: null }
+    } as DiscoverSnapshot['sourceOutcomes']
+    const h = nativeHarness({
+      getLatestDiscover: vi.fn(async () => ({ ...nativeDiscoverFixture, sourceOutcomes: outcomes }))
+    })
+    const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
+    await screen.load()
+    expect(h.find(h.render(screen), 'discover-result-status')?.text).toBe(
+      'Partial results · 20 of 21 sources complete · 2026-09-06'
+    )
+  })
+
   it('restores the persisted session, pages 24 items and opens all source/provenance details', async () => {
     const h = nativeHarness({ getLatestDiscover: vi.fn(async () => nativeDiscoverFixture) })
     const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))

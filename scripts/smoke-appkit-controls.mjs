@@ -246,6 +246,91 @@ try {
   await application.evaluate(() => {
     const f = globalThis.__controls
     f.scene.root = {
+      id: 'layout-root',
+      kind: 'column',
+      padding: 20,
+      children: [
+        {
+          id: 'layout-status-row',
+          kind: 'row',
+          children: [
+            {
+              id: 'layout-kind',
+              kind: 'select',
+              title: 'Result kind',
+              selected: 'all',
+              options: [{ id: 'all', title: 'All (100)' }],
+              width: 210
+            },
+            { id: 'layout-status', kind: 'label', text: 'Partial results', flex: 1 },
+            { id: 'layout-details', kind: 'button', title: 'Search details' }
+          ]
+        },
+        {
+          id: 'layout-actions',
+          kind: 'column',
+          children: [
+            { id: 'layout-standard', kind: 'button', title: 'Open Settings' },
+            {
+              id: 'layout-navigation',
+              kind: 'button',
+              title: 'Discover',
+              emphasis: 'navigation',
+              checked: true
+            }
+          ]
+        },
+        {
+          id: 'layout-research-list',
+          kind: 'table',
+          title: 'Research list',
+          width: 300,
+          minHeight: 160,
+          rows: [
+            {
+              id: 'long',
+              title:
+                'Energy-Aware Compression-Computation Co-Adaptation for Latency Minimization in Multi-User Semantic Communication',
+              subtitle: 'arXiv · 2026-08-13'
+            }
+          ]
+        }
+      ]
+    }
+    f.window.setBounds({ width: 1000, height: 760 })
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  })
+  await delay(100)
+  state = await inspect()
+  const center = (node) => {
+    const [, y, , height] = frameNumbers(node.frame)
+    return y + height / 2
+  }
+  // A label draws from the top of its frame, so centering requires a text-height frame.
+  assert(
+    frameNumbers(find(state.root, 'layout-status').frame)[3] <
+      frameNumbers(find(state.root, 'layout-kind').frame)[3],
+    'A row label frame must fit its text rather than fill the row'
+  )
+  assert(
+    Math.abs(center(find(state.root, 'layout-status')) - center(find(state.root, 'layout-kind'))) <=
+      1,
+    'A row label must share the vertical center of its adjacent controls'
+  )
+  const columnWidth = frameNumbers(find(state.root, 'layout-actions').frame)[2]
+  const standardWidth = frameNumbers(find(state.root, 'layout-standard').frame)[2]
+  assert(standardWidth < columnWidth / 2, 'A column push button keeps its intrinsic width')
+  assert.equal(frameNumbers(find(state.root, 'layout-standard').frame)[0], 0)
+  assert.equal(frameNumbers(find(state.root, 'layout-navigation').frame)[2], columnWidth)
+  const researchList = find(state.root, 'layout-research-list')
+  assert.equal(researchList.titleLines, 2)
+  assert.equal(researchList.titleTruncates, true, 'A clipped research title ends with an ellipsis')
+  checks.push(
+    'Native rows center labels, column buttons keep intrinsic width and clipped titles show an ellipsis'
+  )
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.scene.root = {
       id: 'large-table-root',
       kind: 'column',
       padding: 20,

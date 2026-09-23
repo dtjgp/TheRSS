@@ -285,7 +285,10 @@ try {
       /Full fixture summary ends here\.$/
     )
     assert(!find(result.root, 'discover-expand'))
-    assert.match(find(result.root, 'discover-result-status').text, /completed/)
+    assert.match(
+      find(result.root, 'discover-result-status').text,
+      /^Complete · \d+ of \d+ sources complete · \d{4}-\d{2}-\d{2}$/u
+    )
     const nav = find(result.root, 'navigate-discover')
     assert.equal(nav.emphasis, 'navigation')
     assert.equal(nav.hasSymbol, true)
