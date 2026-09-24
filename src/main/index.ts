@@ -38,7 +38,7 @@ import { createApplicationMenuTemplate } from './applicationMenu'
 import {
   createE2eDiscoverFetchers,
   e2eAnalysis,
-  e2eConfiguredArticle,
+  e2eRecentConfiguredArticle,
   e2ePaper,
   e2eRepository,
   waitForE2eDiscoverStage
@@ -195,7 +195,7 @@ app.whenReady().then(async () => {
           fetchArxiv: async () => [e2ePaper],
           fetchGitHub: async () => [e2eRepository],
           fetchConfiguredSource: async (definition) => ({
-            items: definition.id === 'folo:302' ? [e2eConfiguredArticle] : [],
+            items: definition.id === 'folo:302' ? [e2eRecentConfiguredArticle()] : [],
             rejectedCount: 0
           })
         }

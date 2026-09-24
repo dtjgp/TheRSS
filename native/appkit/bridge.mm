@@ -128,6 +128,12 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     if (![input[@"value"] isKindOfClass:NSString.class] || !TRActivateFixtureAlert(host,input[@"value"])) return fail(env,"Fixture alert button is unavailable");
     return nothing(env);
   }
+  if ([input[@"action"] isEqual:@"blur"]) {
+    // Screenshot captures activate the fixture window; park keyboard focus so no text control
+    // can receive real keystrokes from the shared desktop while it is key.
+    [(host.sheet ?: host.window) makeFirstResponder:nil];
+    return nothing(env);
+  }
   TRNode *node = [host find:input[@"id"]];
   if (!node && [input[@"action"] isEqual:@"click"] && host.chrome) {
     // Toolbar items are window chrome, not scene nodes; activate them like a click.
@@ -151,7 +157,12 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     [editor.window makeFirstResponder:editor];
     if ([action isEqual:@"mark"]) { [editor setMarkedText:input[@"value"] selectedRange:NSMakeRange([input[@"value"] length],0) replacementRange:NSMakeRange(NSNotFound,0)]; [node editChanged]; }
     else [editor insertText:input[@"value"] replacementRange:NSMakeRange(NSNotFound,0)];
-  } else if ([action isEqual:@"click"] && [node.control isKindOfClass:NSButton.class]) [(NSButton *)node.control performClick:nil];
+  } else if ([action isEqual:@"click"] && [node.control isKindOfClass:NSButton.class]) {
+    // A disabled control ignores input; report it so a test cannot mistake an ignored press
+    // for an action that ran without effect.
+    if (!((NSButton *)node.control).enabled) return fail(env,"Fixture control is disabled");
+    [(NSButton *)node.control performClick:nil];
+  }
   else if ([action isEqual:@"choose"] && [node.control isKindOfClass:NSPopUpButton.class]) {
     NSPopUpButton *select = (NSPopUpButton *)node.control;
     for (NSMenuItem *item in select.itemArray) if ([item.representedObject isEqual:input[@"value"]] && item.enabled) { [select selectItem:item]; [node trigger:select]; break; }
@@ -173,7 +184,17 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     NSDictionary *codes = @{@"left":@123,@"right":@124,@"down":@125,@"up":@126,@"home":@115,@"end":@119,@"escape":@53,@"enter":@36,@"tab":@48,@"space":@49};
     NSNumber *code = codes[input[@"value"]]; if (!code) return fail(env,"Unsupported fixture key");
     NSView *control = node.control ?: node; if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
-    [control.window makeFirstResponder:control];
+    if ([control isKindOfClass:NSControl.class] && !((NSControl *)control).enabled) return fail(env,"Fixture control is disabled");
+    BOOL focused = [control.window makeFirstResponder:control];
+    NSResponder *responder = control.window.firstResponder;
+    // A focused NSTextField hands first responder to its field editor.
+    BOOL owns = responder == control || ([control isKindOfClass:NSTextField.class] && responder == ((NSTextField *)control).currentEditor);
+    if (!focused || !owns) {
+      // Report why a key would otherwise go to another responder and be dropped silently.
+      NSString *reason = [NSString stringWithFormat:@"Fixture control did not take keyboard focus (acceptsFirstResponder=%d canBecomeKeyView=%d windowKey=%d appActive=%d fullKeyboardAccess=%d)",
+        control.acceptsFirstResponder,control.canBecomeKeyView,control.window.isKeyWindow,NSApp.isActive,NSApp.isFullKeyboardAccessEnabled];
+      return fail(env,reason.UTF8String);
+    }
     NSDictionary *characters = @{@"left":@"\uF702",@"right":@"\uF703",@"up":@"\uF700",@"down":@"\uF701",@"home":@"\uF729",@"end":@"\uF72B",@"escape":@"\x1b",@"enter":@"\r",@"tab":@"\t",@"space":@" "};
     NSEvent *event = [NSEvent keyEventWithType:NSEventTypeKeyDown location:NSZeroPoint modifierFlags:[input[@"shift"] boolValue] ? NSEventModifierFlagShift : 0 timestamp:0 windowNumber:control.window.windowNumber context:nil characters:characters[input[@"value"]] charactersIgnoringModifiers:characters[input[@"value"]] isARepeat:NO keyCode:code.unsignedShortValue];
     [(control.window.firstResponder ?: control) keyDown:event];

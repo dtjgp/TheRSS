@@ -91,9 +91,23 @@ async function go(route) {
   await wait('native-navigation', (node) => !!node && node.enabled !== false)
   await act('native-navigation', 'select', route)
 }
+// Asynchronous reloads can disable a control between observing it enabled and pressing it.
+// The fixture bridge reports a press on a disabled control, so retry only that precondition.
+async function press(id, action, value) {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    await wait(id, (node) => !!node && node.enabled !== false)
+    try {
+      await act(id, action, value)
+      return
+    } catch (error) {
+      if (!String(error).includes('Fixture control is disabled')) throw error
+      await delay(100)
+    }
+  }
+  throw new Error(`Native control stayed disabled: ${id}`)
+}
 async function click(id) {
-  await wait(id, (node) => !!node && node.enabled !== false)
-  await act(id, 'click')
+  await press(id, 'click')
 }
 async function alert(title) {
   for (let count = 0; count < 100; count++) {
@@ -141,24 +155,39 @@ async function capture(name) {
     await writeFile(join(output, `${name}.json`), JSON.stringify(state, null, 2))
     return state
   }
-  await application.evaluate(({ app }) => {
-    app.focus({ steal: true })
-    globalThis.__nativeWindow.show()
-    globalThis.__nativeWindow.focus()
-  })
-  const bounds = await application.evaluate(() => globalThis.__nativeWindow.getBounds())
-  let state
-  for (let attempt = 0; attempt < 60; attempt++) {
-    state = await inspect()
-    const placement = state.ownedWindowServerEntries?.find(
-      (entry) => entry.kCGWindowNumber === state.windowNumber
-    )?.kCGWindowBounds
-    if (placement && Math.abs(placement.X - bounds.x) < 1 && Math.abs(placement.Y - bounds.y) < 1)
-      break
-    await delay(50)
+  // macOS 14+ cooperative activation means a test cannot reliably take activation from the
+  // app the user is working in, and an activated fixture would receive this desktop's real
+  // keystrokes. Bring the window on-screen without activating it, park keyboard focus while
+  // capturing, restore the previous owner, and fail explicitly if the focused field changed.
+  // Each capture JSON records `keyWindow`/`appActive`: inactive chrome is expected there.
+  const before = await inspect()
+  const owner = before.firstResponderId
+  const inputValue = (state, id) => {
+    const node = find(state.root, id) || find(state.modal, id)
+    return node?.kind === 'input' ? node.value : undefined
   }
+  const present = async () => {
+    await application.evaluate(() => {
+      globalThis.__nativeWindow.showInactive()
+      globalThis.__nativeWindow.moveTop()
+    })
+    const bounds = await application.evaluate(() => globalThis.__nativeWindow.getBounds())
+    for (let attempt = 0; attempt < 60; attempt++) {
+      const current = await inspect()
+      const placement = current.ownedWindowServerEntries?.find(
+        (entry) => entry.kCGWindowNumber === current.windowNumber
+      )?.kCGWindowBounds
+      if (placement && Math.abs(placement.X - bounds.x) < 1 && Math.abs(placement.Y - bounds.y) < 1)
+        break
+      await delay(50)
+    }
+    const current = await inspect()
+    await act('', 'blur')
+    return current.keyWindow ? current.firstResponderId : ''
+  }
+  const exposed = new Set([owner, await present()].filter(Boolean))
   await delay(80)
-  state = await inspect()
+  let state = await inspect()
   await writeFile(join(output, `${name}.json`), JSON.stringify(state, null, 2))
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
@@ -172,17 +201,21 @@ async function capture(name) {
       if (attempt === 3)
         captureFailures.push({ name, windowNumber: state.windowNumber, error: String(error) })
       else {
-        await application.evaluate(({ app }) => {
-          app.focus({ steal: true })
-          globalThis.__nativeWindow.show()
-          globalThis.__nativeWindow.focus()
-        })
         await delay(500)
+        exposed.add(await present())
         state = await inspect()
       }
     }
   }
-  return state
+  if (owner) await act(owner, 'focus')
+  const after = await inspect()
+  for (const id of exposed) {
+    if (inputValue(before, id) !== inputValue(after, id))
+      throw new Error(
+        `Text input ${id} changed during capture ${name}; external keyboard input may have reached the fixture window`
+      )
+  }
+  return after
 }
 async function step(name, run) {
   const started = Date.now()
@@ -813,7 +846,7 @@ try {
     'Dirty marked-text close guard and native window recreation preserve data/preferences',
     async () => {
       await go('settings')
-      await wait('personal-prompt')
+      await wait('personal-prompt', (node) => node?.enabled)
       await act('personal-prompt', 'fill', '')
       await act('personal-prompt', 'mark', '尚未保存')
       await application.evaluate(() => globalThis.__nativeWindow.close())
@@ -850,7 +883,8 @@ try {
       assert.match(find(reopened.root, 'native-sidebar').frame, /248,/)
       assert(find(reopened.root, 'discover-results').rows.length > 0)
       await go('settings')
-      const settings = await wait('personal-prompt')
+      // A recreated window has a fresh Settings screen: wait for its load, not only the node.
+      const settings = await wait('personal-prompt', (node) => node?.enabled)
       assert.equal(find(settings.root, 'personal-prompt').value, '资源高效 AI 与边缘智能')
       await go('discover')
     }
@@ -869,7 +903,7 @@ try {
       await delay(100)
       await capture('saved-update-ready-narrow')
       await act('saved-update-source', 'focus')
-      await act('saved-update-source', 'key', 'space')
+      await press('saved-update-source', 'key', 'space')
       await wait('saved-source-update-status', (node) =>
         /No newer local snapshot/.test(node?.text || '')
       )

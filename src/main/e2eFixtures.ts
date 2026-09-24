@@ -50,6 +50,15 @@ export const e2eConfiguredArticle: DiscoveryItem = {
   topics: ['edge-ai']
 }
 
+/**
+ * The Sources view keeps a rolling 30-day window from the real clock, so a fixed fixture date
+ * ages out. The refreshed configured-source item is dated three days before the run instead.
+ */
+export function e2eRecentConfiguredArticle(now = new Date()): DiscoveryItem {
+  const published = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
+  return { ...e2eConfiguredArticle, publishedAt: published, updatedAt: published }
+}
+
 export const e2eDiscoverPaper: DiscoveryItem = {
   ...e2ePaper,
   id: 'arxiv:2608.99999',
