@@ -87,6 +87,27 @@ describe('native presentation boundary', () => {
       } as unknown as NativeNode)
     ).toThrow()
   })
+  it('bounds native progress to integer completed-of-total values on progress nodes', () => {
+    const view = new NativePresentation()
+    const node: NativeNode = {
+      id: 'run',
+      kind: 'progress',
+      title: 'Discover run progress',
+      completed: 3,
+      total: 22
+    }
+    expect(JSON.parse(view.finish(node)).root).toMatchObject(node)
+    const indeterminate = { id: 'run', kind: 'progress', title: 'Planning' } as NativeNode
+    expect(JSON.parse(view.finish(indeterminate)).root.total).toBeUndefined()
+    for (const invalid of [
+      { ...node, completed: 23 },
+      { ...node, completed: 1.5 },
+      { ...node, completed: 0, total: 0 },
+      { ...node, total: undefined },
+      { id: 'label', kind: 'label', completed: 1, total: 2 }
+    ])
+      expect(() => view.finish(invalid as NativeNode)).toThrow()
+  })
   it('rejects queued input and selection changes after controls become disabled', async () => {
     const h = nativeHarness(),
       controls = new Controls(h.context),

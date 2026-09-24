@@ -65,6 +65,7 @@ export type NativeKind =
   | 'table'
   | 'chart'
   | 'sidebar'
+  | 'progress'
 export interface NativeNode {
   readonly compactPane?: 'list' | 'detail' | undefined
   readonly wrap?: boolean | undefined
@@ -110,6 +111,9 @@ export interface NativeNode {
   readonly collapseAt?: number | undefined
   /** Starts content below the window toolbar while the column background reaches the top. */
   readonly safeArea?: boolean | undefined
+  /** Determinate progress (progress nodes only); omit both for indeterminate progress. */
+  readonly completed?: number | undefined
+  readonly total?: number | undefined
 }
 
 const short = z.string().max(4096)
@@ -132,7 +136,8 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
         'check',
         'table',
         'chart',
-        'sidebar'
+        'sidebar',
+        'progress'
       ]),
       compactPane: z.enum(['list', 'detail']).optional(),
       wrap: z.boolean().optional(),
@@ -213,7 +218,9 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
       minContentWidth: positive.optional(),
       maxWidth: positive.optional(),
       collapseAt: positive.optional(),
-      safeArea: z.boolean().optional()
+      safeArea: z.boolean().optional(),
+      completed: z.number().int().min(0).max(100000).optional(),
+      total: z.number().int().min(1).max(100000).optional()
     })
     .strict()
     .superRefine((node, context) => {
@@ -234,6 +241,17 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
             message: 'Native table cells must match the unique declared columns'
           })
       }
+      if (
+        (node.completed !== undefined || node.total !== undefined) &&
+        (node.kind !== 'progress' ||
+          node.completed === undefined ||
+          node.total === undefined ||
+          node.completed > node.total)
+      )
+        context.addIssue({
+          code: 'custom',
+          message: 'Native progress needs completed <= total on a progress node'
+        })
       if (node.kind === 'secure' && (node.value !== undefined || node.text !== undefined))
         context.addIssue({
           code: 'custom',

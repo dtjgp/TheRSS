@@ -270,6 +270,10 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     self.control = button;
   } else if ([kind isEqual:@"select"]) {
     NSPopUpButton *select = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO]; select.target = self; select.action = @selector(trigger:); self.control = select;
+  } else if ([kind isEqual:@"progress"]) {
+    NSProgressIndicator *progress = [NSProgressIndicator new];
+    progress.style = NSProgressIndicatorStyleBar; progress.displayedWhenStopped = YES; progress.minValue = 0;
+    self.control = progress;
   } else if ([kind isEqual:@"sidebar"]) {
     NSScrollView *scroll = [NSScrollView new]; scroll.hasVerticalScroller = YES; scroll.autohidesScrollers = YES; scroll.drawsBackground = NO;
     scroll.automaticallyAdjustsContentInsets = NO;
@@ -353,6 +357,20 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       select.autoenablesItems = NO;
     }
     for (NSMenuItem *item in select.itemArray) if ([item.representedObject isEqual:spec[@"selected"]]) [select selectItem:item];
+  } else if ([kind isEqual:@"progress"]) {
+    NSProgressIndicator *progress = (NSProgressIndicator *)self.control;
+    BOOL determinate = spec[@"completed"] && spec[@"total"];
+    progress.indeterminate = !determinate;
+    if (determinate) {
+      progress.maxValue = [spec[@"total"] doubleValue]; progress.doubleValue = [spec[@"completed"] doubleValue];
+      progress.accessibilityValueDescription = [NSString stringWithFormat:@"%@ of %@",spec[@"completed"],spec[@"total"]];
+      [progress stopAnimation:nil];
+    } else {
+      progress.accessibilityValueDescription = nil;
+      // Honour Reduce Motion: an indeterminate bar stays static instead of animating.
+      if (NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion) [progress stopAnimation:nil];
+      else [progress startAnimation:nil];
+    }
   } else if ([kind isEqual:@"sidebar"]) {
     NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
     table.accessibilityLabel = spec[@"title"];
@@ -465,6 +483,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   }
   if ([kind isEqual:@"split"]) return TRNumber(self.spec,@"minHeight",!self.spec[@"compactPane"] && self.spec[@"collapseAt"] && width < [self.spec[@"collapseAt"] doubleValue] ? 340 : 200) * zoom;
   if ([kind isEqual:@"scroll"] || [kind isEqual:@"table"] || [kind isEqual:@"sidebar"]) return TRNumber(self.spec,@"minHeight",200) * zoom;
+  if ([kind isEqual:@"progress"]) return 16 * zoom;
   if ([kind isEqual:@"input"] && [self.spec[@"multiline"] boolValue]) return 120 * zoom;
   return 32 * zoom;
 }
@@ -729,6 +748,11 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   if ([self.spec[@"kind"] isEqual:@"input"]) {
     NSTextView *input = [self.control isKindOfClass:NSScrollView.class] ? (NSTextView *)((NSScrollView *)self.control).documentView : (NSTextView *)((NSTextField *)self.control).currentEditor;
     if (input) { result[@"enabled"] = @(input.editable); result[@"selection"] = NSStringFromRange(input.selectedRange); result[@"marked"] = @(input.hasMarkedText); }
+  }
+  if ([self.spec[@"kind"] isEqual:@"progress"]) {
+    NSProgressIndicator *progress = (NSProgressIndicator *)self.control;
+    result[@"indeterminate"] = @(progress.indeterminate); result[@"progressValue"] = @(progress.doubleValue);
+    result[@"progressMaximum"] = @(progress.maxValue); result[@"accessibleValue"] = progress.accessibilityValueDescription ?: @"";
   }
   if ([self.spec[@"kind"] isEqual:@"sidebar"]) {
     NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;

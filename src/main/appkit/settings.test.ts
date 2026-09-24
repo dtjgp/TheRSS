@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
 import { SettingsScreen } from './settings'
 import { nativeHarness } from './testSupport'
+import type { NativeNode } from './presentation'
 
 const provider = {
   id: 'default',
@@ -14,6 +15,27 @@ const provider = {
 }
 
 describe('AppKit Settings', () => {
+  it('names the selected section once, in the section pop-up, not again as a heading', async () => {
+    const h = nativeHarness()
+    const screen = new SettingsScreen(h.context)
+    await screen.load()
+    const headings = (node: NativeNode): string[] => [
+      ...(node.kind === 'label' && node.weight === 'title' ? [node.text ?? ''] : []),
+      ...(node.children ?? []).flatMap(headings)
+    ]
+    for (const [section, title] of [
+      ['personal', 'Personal context'],
+      ['provider', 'Model provider']
+    ] as const) {
+      await h.act(screen, 'settings-tab', section)
+      const scene = h.render(screen)
+      expect(
+        h.find(scene, 'settings-tab')?.options?.find((option) => option.id === section)?.title
+      ).toBe(title)
+      expect(headings(scene)).not.toContain(title)
+    }
+    expect(headings(h.render(screen))).toContain('Local agents')
+  })
   it('reports invalid fields beside their inputs, focuses the first error and clears only edited errors', async () => {
     const save = vi.fn()
     const h = nativeHarness({ saveModelProvider: save })

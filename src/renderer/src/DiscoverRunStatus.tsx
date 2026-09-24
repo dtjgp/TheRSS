@@ -1,33 +1,11 @@
-import type {
-  DiscoverRunProgress,
-  DiscoverSnapshot,
-  DiscoverSourceStatus
-} from '../../shared/discover'
-import { sourceDisplayName } from '../../shared/sourceIdentity'
+import type { DiscoverRunProgress, DiscoverSnapshot } from '../../shared/discover'
+import { describeDiscoverRun, latestDiscoverSourceLabel } from '../../shared/discoverRunProgress'
 
 type RunStageState = 'waiting' | 'current' | 'complete' | 'attention' | 'stopped'
 
 interface DiscoverRunStatusProps {
   readonly progress: DiscoverRunProgress
   readonly onCancel: () => void
-}
-
-function resultCountLabel(count: number): string {
-  return `${count} ${count === 1 ? 'result' : 'results'}`
-}
-
-function outcomeLabel(status: DiscoverSourceStatus): string {
-  if (status === 'healthy') return 'complete'
-  if (status === 'no_results') return 'no results'
-  if (status === 'not_searched') return 'not searched'
-  return status.replace('_', ' ')
-}
-
-function latestSourceLabel(progress: DiscoverRunProgress): string {
-  if (!progress.source || !progress.outcome) {
-    return `${progress.totalSources} sources are queued independently`
-  }
-  return `${sourceDisplayName(progress.source)} ${outcomeLabel(progress.outcome.status)} · ${resultCountLabel(progress.outcome.resultCount)}`
 }
 
 function stageMarker(state: RunStageState, index: number): string {
@@ -85,21 +63,14 @@ export function DiscoverRunStatus({ progress, onCancel }: DiscoverRunStatusProps
         ? 'complete'
         : 'current'
   const assembleState: RunStageState = allSourcesFinished ? 'current' : 'waiting'
-  const headline = isCancelRequested
-    ? 'Canceling Discover search'
-    : isPlanning
-      ? 'Expanding research intent'
-      : allSourcesFinished
-        ? 'Assembling the Discover session'
-        : 'Searching selected sources'
+  const run = describeDiscoverRun(progress)
+  const headline = run.headline
   const supportingCopy = isPlanning
     ? 'No source request starts before plan validation.'
     : isCancelRequested
       ? 'Completed source outcomes remain retained while the run stops.'
       : 'Completed source outcomes are retained independently.'
-  const sourceDescription = isCancelRequested
-    ? `${progress.completedSources} of ${progress.totalSources} sources finished before the stop request`
-    : latestSourceLabel(progress)
+  const sourceDescription = isCancelRequested ? run.detail : latestDiscoverSourceLabel(progress)
 
   return (
     <section className="discover-run-card" aria-label="Discover run pipeline">

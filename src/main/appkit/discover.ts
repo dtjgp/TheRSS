@@ -23,6 +23,7 @@ import { ResearchReader, type TriageHistory } from './reading'
 import { researchMetadata, researchSubtitle } from './researchMetadata'
 import { ReadingWorkspace } from './readingWorkspace'
 import { discoverSources } from './discoverSources'
+import { describeDiscoverRun } from '../../shared/discoverRunProgress'
 
 type Filter = 'all' | 'paper' | 'repository' | 'other'
 
@@ -190,18 +191,7 @@ export class DiscoverScreen implements NativeScreen {
         ...(!this.workspace.focused || busy
           ? [this.composer(), ...this.readiness(), ...(this.picker ? [this.sourcePicker()] : [])]
           : []),
-        ...(this.progress
-          ? [
-              label(
-                'discover-progress',
-                this.canceling
-                  ? 'Cancellation requested; waiting for the run to settle.'
-                  : this.progress.phase === 'planning'
-                    ? 'Planning the search…'
-                    : `Searching sources: ${this.progress.completedSources}/${this.progress.totalSources}${this.progress.source ? ` · ${sourceDisplayName(this.progress.source)}` : ''}`
-              )
-            ]
-          : []),
+        ...(this.progress ? [this.runStatus(this.progress)] : []),
         ...(this.message ? [label('discover-message', this.message)] : []),
         ...(!this.loaded && !this.loading
           ? [b.button('discover-load-retry', 'Retry loading session', () => this.load())]
@@ -319,6 +309,28 @@ export class DiscoverScreen implements NativeScreen {
             ])
       ],
       { flex: 1, gap: 8 }
+    )
+  }
+
+  /** PRODUCT.md three-stage run: stage, native progress and the latest completed source. */
+  private runStatus(progress: DiscoverRunProgress): NativeNode {
+    const run = describeDiscoverRun(
+      this.canceling ? { ...progress, phase: 'cancel_requested' } : progress
+    )
+    return column(
+      'discover-run',
+      [
+        label('discover-run-headline', run.headline, { weight: 'bold' }),
+        label('discover-run-stage', run.stageLine, { weight: 'secondary', size: 12 }),
+        {
+          id: 'discover-run-progress',
+          kind: 'progress',
+          title: 'Discover run progress',
+          ...(run.determinate ?? {})
+        },
+        label('discover-progress', run.detail, { weight: 'secondary' })
+      ],
+      { surface: 'inset', padding: 12, gap: 6 }
     )
   }
 

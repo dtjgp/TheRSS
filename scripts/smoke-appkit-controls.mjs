@@ -331,6 +331,38 @@ try {
   await application.evaluate(() => {
     const f = globalThis.__controls
     f.scene.root = {
+      id: 'progress-root',
+      kind: 'column',
+      padding: 20,
+      children: [
+        {
+          id: 'progress-determinate',
+          kind: 'progress',
+          title: 'Source search progress',
+          completed: 3,
+          total: 22
+        },
+        { id: 'progress-indeterminate', kind: 'progress', title: 'Planning progress' }
+      ]
+    }
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  })
+  state = await inspect()
+  const determinate = find(state.root, 'progress-determinate')
+  assert.equal(determinate.class, 'NSProgressIndicator')
+  assert.equal(determinate.indeterminate, false)
+  assert.equal(determinate.progressValue, 3)
+  assert.equal(determinate.progressMaximum, 22)
+  assert.equal(determinate.accessibleValue, '3 of 22')
+  assert.equal(determinate.label, 'Source search progress')
+  const indeterminate = find(state.root, 'progress-indeterminate')
+  assert.equal(indeterminate.class, 'NSProgressIndicator')
+  assert.equal(indeterminate.indeterminate, true)
+  assert(frameNumbers(indeterminate.frame)[3] <= 24, 'A progress bar keeps a compact height')
+  checks.push('Native progress renders as determinate and indeterminate NSProgressIndicator bars')
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.scene.root = {
       id: 'large-table-root',
       kind: 'column',
       padding: 20,

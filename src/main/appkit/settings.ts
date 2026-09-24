@@ -140,7 +140,6 @@ export class SettingsScreen implements NativeScreen {
     return column(
       'personal-form',
       [
-        heading('personal-title', 'Personal context'),
         label(
           'personal-description',
           'Describe your research interests and constraints. This saved context informs future Discover search plans.'
@@ -224,7 +223,6 @@ export class SettingsScreen implements NativeScreen {
     return column(
       'provider-form',
       [
-        heading('provider-title', 'Model provider'),
         field('name', 'provider-name', 'Provider name', 80),
         label('provider-protocol-label', 'Protocol'),
         b.select(
