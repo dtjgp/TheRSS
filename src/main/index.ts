@@ -90,7 +90,10 @@ async function createWindow(
     minHeight: 600,
     title: 'TheRSS',
     backgroundColor: isMac ? '#00000000' : '#f5f5f7',
-    ...(isMac
+    // The AppKit route keeps a standard frame: the native host adds a unified toolbar and a
+    // full-size content view, and AppKit (not Electron's frameless button proxy) places the
+    // window controls. The Web fallback keeps its inset frameless title bar.
+    ...(isMac && !nativeUi
       ? {
           titleBarStyle: 'hiddenInset' as const,
           vibrancy: 'sidebar' as const,

@@ -215,6 +215,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
     table.backgroundColor = NSColor.textBackgroundColor;
   }
+  if ([self.spec[@"kind"] isEqual:@"sidebar"]) ((NSTableView *)((NSScrollView *)self.control).documentView).backgroundColor = NSColor.clearColor;
   [self updateControlAppearance];
   self.needsDisplay = YES;
 }
@@ -232,6 +233,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   if ([kind isEqual:@"column"] || [kind isEqual:@"row"]) {
     if ([self.spec[@"adaptiveScroll"] boolValue]) {
       NSScrollView *scroll = [NSScrollView new]; scroll.hasVerticalScroller = YES; scroll.drawsBackground = NO; scroll.autohidesScrollers = YES;
+      scroll.automaticallyAdjustsContentInsets = NO;
       self.container = [TRCanvas new]; scroll.documentView = self.container; self.control = scroll;
     } else [self updateMaterial];
   } else if ([kind isEqual:@"split"]) {
@@ -268,6 +270,15 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     self.control = button;
   } else if ([kind isEqual:@"select"]) {
     NSPopUpButton *select = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO]; select.target = self; select.action = @selector(trigger:); self.control = select;
+  } else if ([kind isEqual:@"sidebar"]) {
+    NSScrollView *scroll = [NSScrollView new]; scroll.hasVerticalScroller = YES; scroll.autohidesScrollers = YES; scroll.drawsBackground = NO;
+    scroll.automaticallyAdjustsContentInsets = NO;
+    TRTable *table = [TRTable new]; table.node = self; table.delegate = self; table.dataSource = self;
+    table.headerView = nil; table.style = NSTableViewStyleSourceList; table.backgroundColor = NSColor.clearColor;
+    table.allowsEmptySelection = NO; table.rowSizeStyle = NSTableViewRowSizeStyleCustom;
+    NSTableColumn *column = [[NSTableColumn alloc] initWithIdentifier:@"workspace"]; [table addTableColumn:column];
+    table.columnAutoresizingStyle = NSTableViewLastColumnOnlyAutoresizingStyle;
+    scroll.documentView = table; self.control = scroll;
   } else if ([kind isEqual:@"table"]) {
     NSScrollView *scroll = [NSScrollView new]; scroll.hasVerticalScroller = YES; scroll.autohidesScrollers = YES; scroll.drawsBackground = NO;
     TRTable *table = [TRTable new]; table.node = self; table.delegate = self; table.dataSource = self;
@@ -342,6 +353,15 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       select.autoenablesItems = NO;
     }
     for (NSMenuItem *item in select.itemArray) if ([item.representedObject isEqual:spec[@"selected"]]) [select selectItem:item];
+  } else if ([kind isEqual:@"sidebar"]) {
+    NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
+    table.accessibilityLabel = spec[@"title"];
+    table.enabled = spec[@"enabled"] ? [spec[@"enabled"] boolValue] : YES;
+    CGFloat rowHeight = 30*self.host.zoom;
+    if (table.rowHeight != rowHeight || ![old[@"rows"] isEqual:spec[@"rows"]]) { table.rowHeight = rowHeight; [table reloadData]; }
+    NSInteger selected = -1, row = 0;
+    for (NSDictionary *item in spec[@"rows"]) { if ([item[@"id"] isEqual:spec[@"selected"]]) selected = row; row++; }
+    if (selected >= 0 && table.selectedRow != selected) [table selectRowIndexes:[NSIndexSet indexSetWithIndex:selected] byExtendingSelection:NO];
   } else if ([kind isEqual:@"table"]) {
     NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
     NSArray *columns = spec[@"columns"];
@@ -394,6 +414,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   [self updateControlAppearance];
   self.applying = NO; self.needsLayout = YES;
 }
+- (CGFloat)safeInset { return [self.spec[@"safeArea"] boolValue] ? [self.host safeTop] : 0; }
 - (CGFloat)preferredWidth {
   if (self.spec[@"width"]) return [self.spec[@"width"] doubleValue] * self.host.zoom;
   if ([self.control isKindOfClass:NSControl.class]) return MAX(60, self.control.intrinsicContentSize.width + 8);
@@ -422,7 +443,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   if (self.spec[@"height"]) return [self.spec[@"height"] doubleValue] * zoom;
   NSString *kind = self.spec[@"kind"];
   if ([kind isEqual:@"column"]) {
-    CGFloat height = 2 * padding + MAX(0, (NSInteger)self.nodes.count - 1) * gap;
+    CGFloat height = 2 * padding + [self safeInset] + MAX(0, (NSInteger)self.nodes.count - 1) * gap;
     for (TRNode *child in self.nodes) height += [child heightForWidth:MAX(20,width-2*padding)];
     return MAX(height, TRNumber(self.spec,@"minHeight",0) * zoom);
   }
@@ -443,7 +464,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     return ceil(rect.size.height) + 2*text.textContainerInset.height;
   }
   if ([kind isEqual:@"split"]) return TRNumber(self.spec,@"minHeight",!self.spec[@"compactPane"] && self.spec[@"collapseAt"] && width < [self.spec[@"collapseAt"] doubleValue] ? 340 : 200) * zoom;
-  if ([kind isEqual:@"scroll"] || [kind isEqual:@"table"]) return TRNumber(self.spec,@"minHeight",200) * zoom;
+  if ([kind isEqual:@"scroll"] || [kind isEqual:@"table"] || [kind isEqual:@"sidebar"]) return TRNumber(self.spec,@"minHeight",200) * zoom;
   if ([kind isEqual:@"input"] && [self.spec[@"multiline"] boolValue]) return 120 * zoom;
   return 32 * zoom;
 }
@@ -503,7 +524,8 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     }
     CGFloat total = MAX(0,(NSInteger)self.nodes.count-1) * gap, flex = 0;
     for (TRNode *child in self.nodes) { if ([child.spec[@"flex"] doubleValue] > 0) flex += [child.spec[@"flex"] doubleValue]; else total += row ? child.preferredWidth : [child heightForWidth:MAX(20,width-2*padding)]; }
-    CGFloat available = MAX(0, (row ? width : height) - 2*padding - total), position = padding;
+    CGFloat safe = row ? 0 : [self safeInset];
+    CGFloat available = MAX(0, (row ? width : height) - 2*padding - safe - total), position = padding + safe;
     for (TRNode *child in self.nodes) {
       CGFloat extent = [child.spec[@"flex"] doubleValue] > 0 && flex ? available * [child.spec[@"flex"] doubleValue] / flex : (row ? child.preferredWidth : [child heightForWidth:MAX(20,width-2*padding)]);
       CGFloat childWidth = MAX(0,width-2*padding);
@@ -524,6 +546,9 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       child.frame = row ? NSMakeRect(position,rowY,extent,rowHeight) : NSMakeRect(padding,position,childWidth,extent);
       position += extent + gap;
     }
+  } else if ([kind isEqual:@"sidebar"]) {
+    NSScrollView *scroll = (NSScrollView *)self.control; NSTableView *table = (NSTableView *)scroll.documentView;
+    [scroll tile]; table.tableColumns.firstObject.width = MAX(60,scroll.contentView.bounds.size.width-2*MAX(0,[table rectOfColumn:0].origin.x));
   } else if ([kind isEqual:@"table"]) {
     NSScrollView *scroll = (NSScrollView *)self.control;
     NSTableView *table = (NSTableView *)scroll.documentView;
@@ -560,6 +585,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
 - (NSView *)tableView:(NSTableView *)table viewForTableColumn:(NSTableColumn *)column row:(NSInteger)row {
   NSArray *rows = self.spec[@"rows"]; if (row < 0 || row >= (NSInteger)rows.count) return nil;
   NSDictionary *item = rows[row];
+  if ([self.spec[@"kind"] isEqual:@"sidebar"]) return TRSidebarCellView(item,self.host.zoom);
   if (self.spec[@"columns"]) {
     NSDictionary *definition = nil; for (NSDictionary *entry in self.spec[@"columns"]) if ([entry[@"id"] isEqual:column.identifier]) definition = entry;
     TRDataCell *cell = [TRDataCell new]; cell.zoom = self.host.zoom;
@@ -703,6 +729,12 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   if ([self.spec[@"kind"] isEqual:@"input"]) {
     NSTextView *input = [self.control isKindOfClass:NSScrollView.class] ? (NSTextView *)((NSScrollView *)self.control).documentView : (NSTextView *)((NSTextField *)self.control).currentEditor;
     if (input) { result[@"enabled"] = @(input.editable); result[@"selection"] = NSStringFromRange(input.selectedRange); result[@"marked"] = @(input.hasMarkedText); }
+  }
+  if ([self.spec[@"kind"] isEqual:@"sidebar"]) {
+    NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
+    result[@"selected"] = [self selectedRowId] ?: @""; result[@"rows"] = self.spec[@"rows"] ?: @[];
+    result[@"rowHeight"] = @(table.rowHeight); result[@"tableStyle"] = @(table.style); result[@"sourceList"] = @(table.style == NSTableViewStyleSourceList);
+    result[@"enabled"] = @(table.enabled); result[@"accessibilityRole"] = table.accessibilityRole ?: @"";
   }
   if ([self.spec[@"kind"] isEqual:@"table"]) {
     if (self.spec[@"columns"]) result[@"columns"] = self.spec[@"columns"];

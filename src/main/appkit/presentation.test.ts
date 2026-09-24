@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { NativePresentation, type NativeNode } from './presentation'
+import { NativePresentation, type NativeNode, type NativeToolbar } from './presentation'
 import { Controls } from './common'
 import { nativeHarness } from './testSupport'
 
@@ -38,6 +38,53 @@ describe('native presentation boundary', () => {
     ).toThrow()
     expect(() =>
       view.finish({ ...node, surface: 'arbitrary-css' } as unknown as NativeNode)
+    ).toThrow()
+  })
+  it('validates the window toolbar and source-list sidebar and binds only their live actions', async () => {
+    const view = new NativePresentation(),
+      toggled = vi.fn(),
+      chosen = vi.fn()
+    view.begin()
+    const toolbar: NativeToolbar = {
+      title: 'Discover',
+      items: [
+        {
+          id: 'sidebar-toggle',
+          title: 'Hide Sidebar',
+          symbol: 'sidebar.left',
+          action: view.action('toggle', toggled)
+        }
+      ]
+    }
+    const sidebar: NativeNode = {
+      id: 'native-navigation',
+      kind: 'sidebar',
+      title: 'Workspaces',
+      selected: 'discover',
+      rows: [
+        { id: 'discover', title: 'Discover', symbol: 'sparkle.magnifyingglass' },
+        { id: 'saved', title: 'Saved', symbol: 'star' }
+      ],
+      action: view.action('navigate', chosen, { type: 'choice', values: ['discover', 'saved'] })
+    }
+    const scene = JSON.parse(view.finish(sidebar, undefined, undefined, 1, undefined, toolbar))
+    expect(scene.toolbar).toEqual(toolbar)
+    expect(scene.root.rows[1].symbol).toBe('star')
+    await view.dispatch(JSON.stringify({ action: toolbar.items[0]!.action }))
+    await view.dispatch(JSON.stringify({ action: sidebar.action, value: 'saved' }))
+    expect(toggled).toHaveBeenCalledOnce()
+    expect(chosen).toHaveBeenCalledWith('saved')
+    expect(() =>
+      view.finish(sidebar, undefined, undefined, 1, undefined, {
+        ...toolbar,
+        items: [{ ...toolbar.items[0]!, symbol: 'file:///icon' }]
+      } as unknown as NativeToolbar)
+    ).toThrow()
+    expect(() =>
+      view.finish({
+        ...sidebar,
+        rows: [{ id: 'x', title: 'X', symbol: 'https://example.com/icon' }]
+      } as unknown as NativeNode)
     ).toThrow()
   })
   it('rejects queued input and selection changes after controls become disabled', async () => {

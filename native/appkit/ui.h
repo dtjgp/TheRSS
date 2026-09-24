@@ -19,6 +19,15 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 - (NSArray<NSDictionary *> *)geometry;
 @end
 
+@interface TRChrome : NSObject <NSToolbarDelegate>
+- (instancetype)initWithHost:(TRHost *)host;
+- (void)apply:(NSDictionary *)spec;
+- (void)uninstall;
+- (void)fitContentView;
+- (BOOL)activateFixture:(NSString *)identifier;
+- (NSDictionary *)inspect;
+@end
+
 @interface TRHost : NSObject <NSWindowDelegate> {
 @public
   std::deque<std::shared_ptr<TREvent>> pending;
@@ -30,8 +39,10 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 @property(nonatomic, strong) NSMutableDictionary<NSString *, TRNode *> *secureFields;
 @property(nonatomic, strong) NSPanel *sheet;
 @property(nonatomic, strong) TRNode *modal;
+@property(nonatomic, strong) TRChrome *chrome;
 @property(nonatomic, weak) NSResponder *previousResponder;
 @property(nonatomic, strong) id closeObserver;
+@property(nonatomic, strong) id frameObserver;
 @property(nonatomic, strong) id focusObserver;
 @property(nonatomic, strong) id accessibilityObserver;
 @property(nonatomic, strong) NSNumber *fixtureTransparency;
@@ -52,6 +63,7 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 - (void)flush;
 - (void)ensureNativeFocus;
 - (BOOL)reduceTransparency;
+- (CGFloat)safeTop;
 - (BOOL)increaseContrast;
 - (void)updateMaterials;
 - (void)dispose;
@@ -86,5 +98,6 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 
 void TRDeliver(napi_env env, napi_value callback, const std::shared_ptr<TREvent>& event);
 NSAttributedString *TRResearchText(NSString *source, NSFont *base);
+NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom);
 NSArray<NSDictionary *> *TRFixtureAlerts(TRHost *host);
 BOOL TRActivateFixtureAlert(TRHost *host, NSString *title);

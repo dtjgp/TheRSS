@@ -11,7 +11,7 @@ import {
   type Route
 } from './common'
 import { NativePresentation } from './presentation'
-import type { NativeAnnouncement, NativeNode } from './presentation'
+import type { NativeAnnouncement, NativeNode, NativeToolbar } from './presentation'
 import { DiscoverScreen } from './discover'
 import { SavedScreen } from './saved'
 import { SettingsScreen } from './settings'
@@ -29,14 +29,13 @@ export interface NativePresenterPort {
   openExternal(url: string): void
   contentSize?(): { readonly width: number; readonly height: number }
 }
-const routes: readonly { id: Route; title: string; short: string; symbol: NativeNode['symbol'] }[] =
-  [
-    { id: 'discover', title: 'Discover', short: 'Find', symbol: 'sparkle.magnifyingglass' },
-    { id: 'saved', title: 'Saved', short: 'Saved', symbol: 'star' },
-    { id: 'analytics', title: 'Data Analytics', short: 'Stats', symbol: 'chart.bar' },
-    { id: 'sources', title: 'Sources', short: 'Sources', symbol: 'square.stack' },
-    { id: 'settings', title: 'Settings', short: 'Settings', symbol: 'gearshape' }
-  ]
+const routes: readonly { id: Route; title: string; symbol: NativeNode['symbol'] }[] = [
+  { id: 'discover', title: 'Discover', symbol: 'sparkle.magnifyingglass' },
+  { id: 'saved', title: 'Saved', symbol: 'star' },
+  { id: 'analytics', title: 'Data Analytics', symbol: 'chart.bar' },
+  { id: 'sources', title: 'Sources', symbol: 'square.stack' },
+  { id: 'settings', title: 'Settings', symbol: 'gearshape' }
+]
 
 export class NativePresenter {
   readonly presentation = new NativePresentation()
@@ -82,7 +81,7 @@ export class NativePresenter {
       compact: () => {
         const width = this.port.contentSize?.().width ?? 1360
         const sidebar = this.preferences.collapsed
-          ? 84
+          ? 0
           : Math.min(this.preferences.sidebar, Math.max(184, width - 637))
         return (width - sidebar - 18 - 44 * this.preferences.zoom) / this.preferences.zoom < 700
       },
@@ -336,74 +335,75 @@ export class NativePresenter {
     const root = {
       id: 'native-workspace',
       kind: 'split' as const,
-      width: collapsed ? 84 : this.preferences.sidebar,
-      minWidth: collapsed ? 84 : 184,
+      width: this.preferences.sidebar,
+      minWidth: 184,
       minContentWidth: 636,
-      maxWidth: collapsed ? 84 : 360,
+      maxWidth: 360,
+      // A hidden sidebar leaves the content pane alone, as NSSplitView collapse does.
+      ...(collapsed ? { compactPane: 'detail' as const } : {}),
       action: this.presentation.action(
         'sidebar-width',
         (width) => {
           if (!collapsed) this.context.setWidth('sidebar', width as number)
         },
-        { type: 'number', min: collapsed ? 84 : 184, max: collapsed ? 84 : 360 }
+        { type: 'number', min: 184, max: 360 }
       ),
       children: [
         column(
           'native-sidebar',
           [
-            heading('native-brand', collapsed ? 'RSS' : 'TheRSS'),
-            ...(!collapsed
-              ? [
-                  label('native-sidebar-caption', 'YOUR RESEARCH DESK', {
-                    size: 10,
-                    weight: 'secondary'
-                  })
-                ]
-              : []),
-            ...routes.map((route) => ({
-              ...b.button(
-                `navigate-${route.id}`,
-                collapsed ? route.short : route.title,
-                () => this.navigate(route.id),
-                this.ready
-              ),
-              checked: route.id === this.route,
-              emphasis: 'navigation' as const,
-              symbol: collapsed ? undefined : route.symbol,
-              height: 38
-            })),
-            label('native-sidebar-space', '', { flex: 1 }),
             {
-              ...b.button('sidebar-toggle', collapsed ? 'Expand' : 'Collapse sidebar', () =>
-                this.command('toggle-sidebar')
-              ),
-              emphasis: 'quiet',
-              symbol: collapsed ? undefined : 'sidebar.left'
+              id: 'native-navigation',
+              kind: 'sidebar' as const,
+              title: 'Workspaces',
+              selected: this.route,
+              enabled: this.ready,
+              flex: 1,
+              rows: routes.map((route) => ({
+                id: route.id,
+                title: route.title,
+                symbol: route.symbol
+              })),
+              action: this.presentation.action(
+                'navigate',
+                async (value) => {
+                  await this.navigate(value as Route)
+                  // A refused or ignored navigation restores the current selection.
+                  this.redraw()
+                },
+                { type: 'choice', values: routes.map((route) => route.id) }
+              )
             }
           ],
-          { padding: collapsed ? 8 : 18, gap: 8, glass: true }
+          { padding: 10, gap: 0, glass: true, safeArea: true }
         ),
         column(
           'native-main',
           [
+            ...(this.ready
+              ? [this.screens[this.route].render()]
+              : [
+                  column(
+                    'native-loading',
+                    [
+                      heading(
+                        'native-loading-title',
+                        this.loading ? 'Opening your research desk…' : 'Workspace unavailable'
+                      ),
+                      ...(!this.loading
+                        ? [b.button('native-load-retry', 'Retry', () => this.start())]
+                        : [])
+                    ],
+                    { flex: 1 }
+                  )
+                ]),
+            // A fixed status bar keeps feedback from shifting the reading layout.
             row(
-              'native-toolbar',
+              'native-status',
               [
-                ...(this.localReturn
-                  ? [
-                      {
-                        ...b.button(
-                          'return-local-search',
-                          compact ? 'Search results' : 'Back to search results',
-                          () => this.returnToSearch(true),
-                          !(this.screens.discover as DiscoverScreen).searching
-                        ),
-                        emphasis: 'quiet' as const
-                      }
-                    ]
-                  : []),
                 label('native-notice', this.notice, {
                   weight: this.noticeKind === 'error' ? 'bold' : 'secondary',
+                  size: 12,
                   maxLines: 1,
                   flex: 1
                 }),
@@ -421,51 +421,12 @@ export class NativePresenter {
                         emphasis: 'quiet' as const
                       }
                     ]
-                  : []),
-                {
-                  ...b.button(
-                    'open-local-search',
-                    compact ? 'Find' : 'Find local research',
-                    () => this.command('open-local-search'),
-                    this.ready
-                  ),
-                  emphasis: 'quiet',
-                  help: 'Find local research (Command-F)',
-                  symbol: 'magnifyingglass'
-                },
-                {
-                  ...b.button(
-                    'undo-triage',
-                    compact ? 'Undo' : 'Undo triage',
-                    () => this.triage.undo(),
-                    this.triage.canUndo
-                  ),
-                  emphasis: 'quiet',
-                  help: 'Undo the last Save, Unsave or Dismiss action',
-                  symbol: 'arrow.uturn.backward'
-                }
+                  : [])
               ],
-              { wrap: false }
-            ),
-            ...(this.ready
-              ? [this.screens[this.route].render()]
-              : [
-                  column(
-                    'native-loading',
-                    [
-                      heading(
-                        'native-loading-title',
-                        this.loading ? 'Opening your research desk…' : 'Workspace unavailable'
-                      ),
-                      ...(!this.loading
-                        ? [b.button('native-load-retry', 'Retry', () => this.start())]
-                        : [])
-                    ],
-                    { flex: 1 }
-                  )
-                ])
+              { wrap: false, height: 24 }
+            )
           ],
-          { padding: 22, gap: 18, adaptiveScroll: true }
+          { padding: 22, gap: 18, adaptiveScroll: true, safeArea: true }
         )
       ]
     }
@@ -474,7 +435,60 @@ export class NativePresenter {
     this.pendingFocus = undefined
     this.modals.focus = undefined
     this.port.present(
-      this.presentation.finish(root, modal, focus, this.preferences.zoom, this.announcement)
+      this.presentation.finish(
+        root,
+        modal,
+        focus,
+        this.preferences.zoom,
+        this.announcement,
+        this.toolbar(collapsed)
+      )
     )
+  }
+  private toolbar(collapsed: boolean): NativeToolbar {
+    const action = (key: string, receive: () => void | Promise<void>, enabled: boolean) =>
+      this.presentation.action(key, enabled ? receive : () => undefined)
+    const searching = (this.screens.discover as DiscoverScreen).searching
+    return {
+      title: this.ready ? routes.find((route) => route.id === this.route)!.title : 'TheRSS',
+      items: [
+        {
+          id: 'sidebar-toggle',
+          title: collapsed ? 'Show Sidebar' : 'Hide Sidebar',
+          symbol: 'sidebar.left',
+          help: 'Show or hide the sidebar (Control-Command-S)',
+          placement: 'sidebar',
+          action: action('toolbar:sidebar', () => this.command('toggle-sidebar'), true)
+        },
+        ...(this.localReturn
+          ? [
+              {
+                id: 'return-local-search',
+                title: 'Back to search results',
+                symbol: 'chevron.backward' as const,
+                help: 'Return to the local search results',
+                enabled: !searching,
+                action: action('toolbar:return', () => this.returnToSearch(true), !searching)
+              }
+            ]
+          : []),
+        {
+          id: 'open-local-search',
+          title: 'Find local research',
+          symbol: 'magnifyingglass',
+          help: 'Find local research (Command-F)',
+          enabled: this.ready,
+          action: action('toolbar:find', () => this.command('open-local-search'), this.ready)
+        },
+        {
+          id: 'undo-triage',
+          title: 'Undo triage',
+          symbol: 'arrow.uturn.backward',
+          help: 'Undo the last Save, Unsave or Dismiss action',
+          enabled: this.triage.canUndo,
+          action: action('toolbar:undo', () => this.triage.undo(), this.triage.canUndo)
+        }
+      ]
+    }
   }
 }

@@ -70,7 +70,7 @@ describe('native shell commands and failures', () => {
     await presenter.command('show-discover')
     commandListener('toggle-sidebar')
     await Promise.resolve()
-    expect(JSON.parse(scene).root.width).toBe(84)
+    expect(JSON.parse(scene).root.compactPane).toBe('detail')
     presenter.zoom('out')
     presenter.zoom('reset')
     await Promise.resolve()

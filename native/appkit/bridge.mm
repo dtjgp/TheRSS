@@ -128,7 +128,13 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     if (![input[@"value"] isKindOfClass:NSString.class] || !TRActivateFixtureAlert(host,input[@"value"])) return fail(env,"Fixture alert button is unavailable");
     return nothing(env);
   }
-  TRNode *node = [host find:input[@"id"]]; if (!node) return fail(env,"Fixture control is unavailable");
+  TRNode *node = [host find:input[@"id"]];
+  if (!node && [input[@"action"] isEqual:@"click"] && host.chrome) {
+    // Toolbar items are window chrome, not scene nodes; activate them like a click.
+    if (![host.chrome activateFixture:input[@"id"]]) return fail(env,"Fixture toolbar item is unavailable or disabled");
+    [host flush]; return nothing(env);
+  }
+  if (!node) return fail(env,"Fixture control is unavailable");
   NSString *action = input[@"action"];
   if ([action isEqual:@"fill"] && ([node.spec[@"kind"] isEqual:@"input"] || [node.spec[@"kind"] isEqual:@"secure"])) {
     if ([node.control isKindOfClass:NSControl.class] && !((NSControl *)node.control).enabled) return fail(env,"Fixture input is disabled");
@@ -149,7 +155,7 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
   else if ([action isEqual:@"choose"] && [node.control isKindOfClass:NSPopUpButton.class]) {
     NSPopUpButton *select = (NSPopUpButton *)node.control;
     for (NSMenuItem *item in select.itemArray) if ([item.representedObject isEqual:input[@"value"]] && item.enabled) { [select selectItem:item]; [node trigger:select]; break; }
-  } else if ([action isEqual:@"select"] && [node.spec[@"kind"] isEqual:@"table"]) {
+  } else if ([action isEqual:@"select"] && ([node.spec[@"kind"] isEqual:@"table"] || [node.spec[@"kind"] isEqual:@"sidebar"])) {
     NSTableView *table = (NSTableView *)((NSScrollView *)node.control).documentView;
     NSInteger row = 0; for (NSDictionary *item in node.spec[@"rows"]) { if ([item[@"id"] isEqual:input[@"value"]]) { [table selectRowIndexes:[NSIndexSet indexSetWithIndex:row] byExtendingSelection:NO]; if ([input[@"activate"] boolValue]) [node activateRow]; break; } row++; }
   } else if ([action isEqual:@"scroll"] && [node.control isKindOfClass:NSScrollView.class]) {

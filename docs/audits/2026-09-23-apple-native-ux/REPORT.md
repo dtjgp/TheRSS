@@ -64,13 +64,13 @@ context menus, standard menu roles and the dedicated secure-input path.
 
 ## Roadmap
 
-| Slice | Content                                                                                         | Gate                          |
-| ----- | ----------------------------------------------------------------------------------------------- | ----------------------------- |
-| S0    | F7-F10 quick fixes                                                                              | **Done**, see below           |
-| S1    | Typed `toolbar` and `sidebar` (source list) node kinds; remove title strip and sidebar branding | Change contract; no IA change |
-| S2    | Default buttons, Command-Return, NSUndoManager triage undo                                      | Change contract               |
-| S3    | Toolbar search replacing the sheet; `progress`, `segmented`, `popover` node kinds               | Change contract               |
-| S4    | Separate Settings window                                                                        | Decision gate D5 first        |
+| Slice | Content                                                                                         | Gate                                        |
+| ----- | ----------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| S0    | F7-F10 quick fixes                                                                              | **Done**, see below                         |
+| S1    | Typed `toolbar` and `sidebar` (source list) node kinds; remove title strip and sidebar branding | **Done**, [contract](S1_CHANGE_CONTRACT.md) |
+| S2    | Default buttons, Command-Return, NSUndoManager triage undo                                      | Change contract                             |
+| S3    | Toolbar search replacing the sheet; `progress`, `segmented`, `popover` node kinds               | Change contract                             |
+| S4    | Separate Settings window                                                                        | Decision gate D5 first                      |
 
 Every new node kind keeps zod validation at the presentation boundary, AppKit smoke coverage and
 the 800-line limit.
@@ -92,3 +92,18 @@ pre-existing aged fixture (item dated 2026-08-14, outside the 2026-08-24..2026-0
 with only that step disabled in a disposable copy, 13/13 groups passed. Fixing that fixture is a
 separate task. Window screenshots were unavailable (full-screen Space); package/install and
 VoiceOver were not run.
+
+## S1 outcome
+
+[S1 contract](S1_CHANGE_CONTRACT.md) and [verification summary](verification-s1.json).
+
+- The native route uses a standard-frame window with full-size content, a unified NSToolbar and a
+  visible workspace title; AppKit places the traffic lights. The empty title strip is gone.
+- Toolbar: sidebar toggle (navigational, before the title), Back to search results when
+  available, Find local research, Undo triage.
+- Sidebar: AppKit source list with SF Symbol rows, arrow-key navigation and table accessibility
+  roles; branding removed; collapse hides it entirely.
+- Notices moved to a fixed status row at the bottom of the content column.
+- Findings F1 and F2 are closed. The title sits over the sidebar column because
+  `NSTrackingSeparatorToolbarItem` needs an NSSplitViewController (future S-slice).
+- Open: one intermittent workflow-smoke failure (trailing space in the query field) in 5 runs.

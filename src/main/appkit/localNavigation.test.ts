@@ -39,7 +39,9 @@ function setup(resolve: () => Promise<LocalResearchRecord | null>) {
   const scene = () => JSON.parse(json)
   const act = async (id: string, value?: string, activate = false) => {
     const s = scene(),
-      node = h.find(s.modal ?? s.root, id)!
+      node =
+        h.find(s.modal ?? s.root, id) ??
+        (s.modal ? undefined : s.toolbar?.items.find((item: { id: string }) => item.id === id))
     const action = activate ? node?.activate : node?.action
     if (!action) throw new Error(`Missing ${id}`)
     await presenter.presentation.dispatch(
@@ -53,7 +55,9 @@ function setup(resolve: () => Promise<LocalResearchRecord | null>) {
     await act('local-search-query', 'edge')
     await act('local-search-query', undefined, true)
   }
-  return { h, presenter, scene, act, search }
+  const toolbarItem = (id: string) =>
+    scene().toolbar?.items.find((item: { id: string; enabled?: boolean }) => item.id === id)
+  return { h, presenter, scene, act, search, toolbarItem }
 }
 
 describe('in-app local research navigation', () => {
@@ -73,14 +77,14 @@ describe('in-app local research navigation', () => {
       await f.act('local-search-results', 'discover:historical:arxiv:29', true)
       const work = f.act('discover-search')
       await Promise.resolve()
-      expect(f.h.find(f.scene().root, 'return-local-search')?.enabled).toBe(false)
+      expect(f.toolbarItem('return-local-search')?.enabled).toBe(false)
       await f.presenter.command('open-local-search')
       await Promise.resolve()
       expect(f.scene().modal).toBeUndefined()
       expect(f.h.find(f.scene().root, 'discover-query')?.value).toBe('Historical question')
       finish(historical)
       await work
-      expect(f.h.find(f.scene().root, 'return-local-search')?.enabled).toBe(true)
+      expect(f.toolbarItem('return-local-search')?.enabled).toBe(true)
       await f.act('return-local-search')
       expect(f.scene().modal).toBeDefined()
     } finally {

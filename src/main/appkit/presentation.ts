@@ -12,14 +12,32 @@ const nativeSymbols = [
   'sidebar.left',
   'arrow.up.right',
   'exclamationmark.circle',
-  'sparkles'
+  'sparkles',
+  'chevron.backward'
 ] as const
+type NativeSymbol = (typeof nativeSymbols)[number]
 
 export interface NativeRow {
   readonly id: string
   readonly title: string
   readonly subtitle?: string | undefined
+  readonly symbol?: NativeSymbol | undefined
   readonly cells?: Readonly<Record<string, string>> | undefined
+}
+/** Window-level commands shown in the AppKit toolbar; never part of the content tree. */
+export interface NativeToolbarItem {
+  readonly id: string
+  readonly title: string
+  readonly symbol: NativeSymbol
+  readonly help?: string | undefined
+  readonly enabled?: boolean | undefined
+  readonly action?: string | undefined
+  /** Items placed in the sidebar section, before the toolbar's sidebar tracking separator. */
+  readonly placement?: 'sidebar' | undefined
+}
+export interface NativeToolbar {
+  readonly title: string
+  readonly items: readonly NativeToolbarItem[]
 }
 export interface NativeColumn {
   readonly id: string
@@ -46,6 +64,7 @@ export type NativeKind =
   | 'check'
   | 'table'
   | 'chart'
+  | 'sidebar'
 export interface NativeNode {
   readonly compactPane?: 'list' | 'detail' | undefined
   readonly wrap?: boolean | undefined
@@ -56,7 +75,7 @@ export interface NativeNode {
   readonly maxLines?: number | undefined
   readonly points?: readonly { readonly date: string; readonly value: number }[] | undefined
   readonly emphasis?: 'primary' | 'navigation' | 'quiet' | undefined
-  readonly symbol?: (typeof nativeSymbols)[number] | undefined
+  readonly symbol?: NativeSymbol | undefined
   readonly surface?: 'panel' | 'inset' | 'reading' | undefined
   readonly title?: string | undefined
   readonly text?: string | undefined
@@ -89,6 +108,8 @@ export interface NativeNode {
   readonly minContentWidth?: number | undefined
   readonly maxWidth?: number | undefined
   readonly collapseAt?: number | undefined
+  /** Starts content below the window toolbar while the column background reaches the top. */
+  readonly safeArea?: boolean | undefined
 }
 
 const short = z.string().max(4096)
@@ -110,7 +131,8 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
         'select',
         'check',
         'table',
-        'chart'
+        'chart',
+        'sidebar'
       ]),
       compactPane: z.enum(['list', 'detail']).optional(),
       wrap: z.boolean().optional(),
@@ -148,6 +170,7 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
               id: short,
               title: short,
               subtitle: short.optional(),
+              symbol: z.enum(nativeSymbols).optional(),
               cells: z.record(z.string().min(1).max(40), z.string().max(300)).optional()
             })
             .strict()
@@ -189,7 +212,8 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
       minWidth: positive.optional(),
       minContentWidth: positive.optional(),
       maxWidth: positive.optional(),
-      collapseAt: positive.optional()
+      collapseAt: positive.optional(),
+      safeArea: z.boolean().optional()
     })
     .strict()
     .superRefine((node, context) => {
@@ -217,6 +241,30 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
         })
     })
 )
+
+const toolbarSchema: z.ZodType<NativeToolbar> = z
+  .object({
+    title: z.string().min(1).max(200),
+    items: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1).max(100),
+            title: z.string().min(1).max(200),
+            symbol: z.enum(nativeSymbols),
+            help: short.optional(),
+            enabled: z.boolean().optional(),
+            action: short.optional(),
+            placement: z.literal('sidebar').optional()
+          })
+          .strict()
+      )
+      .max(8)
+      .refine((items) => new Set(items.map((item) => item.id)).size === items.length, {
+        message: 'Toolbar item identities must be unique'
+      })
+  })
+  .strict()
 
 type Value = string | boolean | number | undefined
 type Rule =
@@ -274,7 +322,8 @@ export class NativePresentation {
     modal?: NativeNode,
     focus?: string,
     zoom = 1,
-    announcement?: NativeAnnouncement
+    announcement?: NativeAnnouncement,
+    toolbar?: NativeToolbar
   ): string {
     const ids = new Set<string>()
     const check = (node: NativeNode, depth: number) => {
@@ -290,6 +339,7 @@ export class NativePresentation {
       revision: ++this.revision,
       root: nodeSchema.parse(root),
       ...(modal ? { modal: nodeSchema.parse(modal) } : {}),
+      ...(toolbar ? { toolbar: toolbarSchema.parse(toolbar) } : {}),
       ...(focus ? { focus } : {}),
       zoom: z.number().min(0.8).max(1.5).parse(zoom),
       ...(announcement
@@ -312,6 +362,8 @@ export class NativePresentation {
       node.children?.forEach(visit)
     }
     visit(modal ?? root)
+    // A sheet is window-modal: toolbar commands stay inert until it closes.
+    if (!modal) toolbar?.items.forEach((item) => item.action && liveActions.add(item.action))
     this.active = new Map([...this.next].filter(([, binding]) => liveActions.has(binding.id)))
     this.secureResets.clear()
     return json

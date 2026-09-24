@@ -60,11 +60,19 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
   [self.original removeFromSuperview]; self.original.hidden = YES; [self.canvas addSubview:self.original];
   self.window.contentView = self.canvas;
   __weak TRHost *weakSelf = self;
+  self.canvas.postsFrameChangedNotifications = YES;
+  self.frameObserver = [NSNotificationCenter.defaultCenter addObserverForName:NSViewFrameDidChangeNotification object:self.canvas queue:nil usingBlock:^(NSNotification *notification) { [weakSelf.chrome fitContentView]; }];
   self.closeObserver = [NSNotificationCenter.defaultCenter addObserverForName:NSWindowWillCloseNotification object:self.window queue:nil usingBlock:^(NSNotification *notification) { [weakSelf dispose]; }];
   self.focusObserver = [NSNotificationCenter.defaultCenter addObserverForName:NSWindowDidBecomeKeyNotification object:self.window queue:nil usingBlock:^(NSNotification *notification) { [weakSelf ensureNativeFocus]; }];
   self.accessibilityObserver = [NSWorkspace.sharedWorkspace.notificationCenter addObserverForName:NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification object:nil queue:nil usingBlock:^(NSNotification *notification) { [weakSelf updateMaterials]; }];
 }
 - (BOOL)increaseContrast { return self.fixtureContrast ? self.fixtureContrast.boolValue : NSWorkspace.sharedWorkspace.accessibilityDisplayShouldIncreaseContrast; }
+- (CGFloat)safeTop {
+  // Height of the title bar and toolbar over the full-size content view, in points.
+  NSWindow *window = self.window;
+  if (!window || !(window.styleMask & NSWindowStyleMaskFullSizeContentView)) return 0;
+  return MAX(0,NSHeight(window.contentView.frame) - NSMaxY(window.contentLayoutRect));
+}
 - (BOOL)reduceTransparency { return [self increaseContrast] || (self.fixtureTransparency ? !self.fixtureTransparency.boolValue : NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency); }
 - (void)updateMaterials {
   NSMutableArray<TRNode *> *queue = [NSMutableArray array]; if (self.root) [queue addObject:self.root]; if (self.modal) [queue addObject:self.modal];
@@ -84,7 +92,13 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
     [self.root removeFromSuperview]; self.root = [[TRNode alloc] initWithHost:self spec:spec];
     self.root.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable; [self.canvas addSubview:self.root];
   } else [self.root update:spec];
-  self.root.frame = self.canvas.bounds;
+  // Apply the toolbar after the root exists so its separator can track the sidebar split, and
+  // before layout so safe-area columns start below the resulting title bar height.
+  if ([scene[@"toolbar"] isKindOfClass:NSDictionary.class]) {
+    if (!self.chrome) self.chrome = [[TRChrome alloc] initWithHost:self];
+    [self.chrome apply:scene[@"toolbar"]];
+  }
+  self.root.frame = self.canvas.bounds; self.root.needsLayout = YES;
   [self.root layoutSubtreeIfNeeded];
   NSDictionary *modal = scene[@"modal"];
   if (modal) {
@@ -171,8 +185,10 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
   for (const auto& event : pending) { event->delivered = true; event->json.clear(); } pending.clear();
   if (self.closeObserver) [NSNotificationCenter.defaultCenter removeObserver:self.closeObserver]; self.closeObserver = nil;
   if (self.focusObserver) [NSNotificationCenter.defaultCenter removeObserver:self.focusObserver]; self.focusObserver = nil;
+  if (self.frameObserver) [NSNotificationCenter.defaultCenter removeObserver:self.frameObserver]; self.frameObserver = nil;
   if (self.accessibilityObserver) [NSWorkspace.sharedWorkspace.notificationCenter removeObserver:self.accessibilityObserver]; self.accessibilityObserver = nil;
   if (self.sheet) { [self.window endSheet:self.sheet]; [self.sheet orderOut:nil]; self.sheet = nil; self.modal = nil; }
+  [self.chrome uninstall]; self.chrome = nil;
   if (self.window.contentView == self.canvas) { [self.original removeFromSuperview]; self.original.hidden = NO; self.window.contentView = self.original; }
   self.root = nil;
   for (TRNode *node in self.secureFields.allValues) ((NSSecureTextField *)node.control).stringValue = @"";
@@ -188,6 +204,6 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
   NSMutableArray *ownedWindows = [NSMutableArray array];
   NSArray *windows = CFBridgingRelease(CGWindowListCopyWindowInfo(kCGWindowListOptionAll,kCGNullWindowID));
   for (NSDictionary *window in windows) if ([window[(id)kCGWindowOwnerPID] intValue] == NSProcessInfo.processInfo.processIdentifier) [ownedWindows addObject:window];
-  return @{@"announcementCount":@(self.announcementCount),@"announcementId":@(self.announcementId),@"alerts":TRFixtureAlerts(self),@"firstResponderId":TRFocusOwner(self.modal ?: self.root,(self.sheet ?: self.window).firstResponder) ?: @"",@"windowAppearance":self.window.appearance.name ?: @"automatic",@"windowEffectiveAppearance":self.window.effectiveAppearance.name,@"nativeRoot":NSStringFromClass(self.window.contentView.class),@"webHidden":@(self.original.hidden),@"windowNumber":@(self.window.windowNumber),@"visible":@(self.window.visible),@"onActiveSpace":@(self.window.onActiveSpace),@"miniaturized":@(self.window.miniaturized),@"zoom":@(self.zoom),@"root":[self.root inspect] ?: @{},@"modal":self.modal ? [self.modal inspect] : NSNull.null,@"firstResponder":NSStringFromClass((self.sheet ?: self.window).firstResponder.class),@"disposed":@(self.disposed),@"secureDrafts":secure,@"ownedWindowServerEntries":ownedWindows};
+  return @{@"announcementCount":@(self.announcementCount),@"announcementId":@(self.announcementId),@"alerts":TRFixtureAlerts(self),@"firstResponderId":TRFocusOwner(self.modal ?: self.root,(self.sheet ?: self.window).firstResponder) ?: @"",@"windowAppearance":self.window.appearance.name ?: @"automatic",@"windowEffectiveAppearance":self.window.effectiveAppearance.name,@"nativeRoot":NSStringFromClass(self.window.contentView.class),@"webHidden":@(self.original.hidden),@"windowNumber":@(self.window.windowNumber),@"visible":@(self.window.visible),@"onActiveSpace":@(self.window.onActiveSpace),@"miniaturized":@(self.window.miniaturized),@"zoom":@(self.zoom),@"root":[self.root inspect] ?: @{},@"modal":self.modal ? [self.modal inspect] : NSNull.null,@"toolbar":self.chrome ? [self.chrome inspect] : NSNull.null,@"firstResponder":NSStringFromClass((self.sheet ?: self.window).firstResponder.class),@"disposed":@(self.disposed),@"secureDrafts":secure,@"ownedWindowServerEntries":ownedWindows};
 }
 @end

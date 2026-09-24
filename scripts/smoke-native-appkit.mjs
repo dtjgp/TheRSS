@@ -76,11 +76,20 @@ async function wait(id, predicate = (node) => !!node) {
       await delay(100)
       continue
     }
-    const node = find(state.root, id) || find(state.modal, id)
+    // Toolbar items are window chrome, reported beside the content tree.
+    const node =
+      find(state.root, id) ||
+      find(state.modal, id) ||
+      state.toolbar?.items?.find((item) => item.id === id) ||
+      null
     if (predicate(node)) return state
     await delay(100)
   }
   throw new Error(`Native control did not reach its expected state: ${id}`)
+}
+async function go(route) {
+  await wait('native-navigation', (node) => !!node && node.enabled !== false)
+  await act('native-navigation', 'select', route)
 }
 async function click(id) {
   await wait(id, (node) => !!node && node.enabled !== false)
@@ -289,11 +298,38 @@ try {
       find(result.root, 'discover-result-status').text,
       /^Complete · \d+ of \d+ sources complete · \d{4}-\d{2}-\d{2}$/u
     )
-    const nav = find(result.root, 'navigate-discover')
-    assert.equal(nav.emphasis, 'navigation')
-    assert.equal(nav.hasSymbol, true)
-    assert.equal(nav.bordered, false)
-    assert.equal(nav.checked, true)
+    const nav = find(result.root, 'native-navigation')
+    assert.equal(nav.sourceList, true, 'Workspaces use an AppKit source list')
+    assert.equal(nav.selected, 'discover')
+    assert.deepEqual(
+      nav.rows.map((row) => row.id),
+      ['discover', 'saved', 'analytics', 'sources', 'settings']
+    )
+    assert(!find(result.root, 'native-brand'), 'The sidebar carries no in-window branding')
+    const chrome = result.toolbar
+    assert.equal(chrome.style, 'unified')
+    assert.equal(chrome.titleVisible, true)
+    assert.equal(chrome.title, 'Discover')
+    assert.equal(chrome.fullSizeContent, true)
+    assert.deepEqual(
+      chrome.items.map((item) => item.id),
+      ['sidebar-toggle', 'NSToolbarFlexibleSpaceItem', 'open-local-search', 'undo-triage']
+    )
+    const top = (node) => Number(node.frame.match(/-?\d+(?:\.\d+)?/gu)[1])
+    assert(chrome.safeTop >= 28, 'The full-size window reports its toolbar safe area')
+    assert(
+      top(find(result.root, 'native-main').children[0]) >= chrome.safeTop,
+      'Content starts below the toolbar'
+    )
+    assert.equal(top(find(result.root, 'native-sidebar')), 0, 'The sidebar reaches the window top')
+    await click('sidebar-toggle')
+    const hidden = await wait('native-workspace', (node) => node?.compactPane === 'detail')
+    assert.equal(
+      hidden.toolbar.items.find((item) => item.id === 'sidebar-toggle').label,
+      'Show Sidebar'
+    )
+    await click('sidebar-toggle')
+    await wait('native-workspace', (node) => !!node && !node.compactPane)
     assert.equal(find(result.root, 'discover-search').emphasis, 'primary')
     assert.equal(find(result.root, 'discover-search').hasSymbol, true)
     assert.equal(find(result.root, 'discover-composer').surface, 'panel')
@@ -390,7 +426,7 @@ try {
     await wait('discover-save')
     await click('discover-save')
     await wait('discover-save', (node) => node?.title === 'Unsave')
-    await click('navigate-saved')
+    await go('saved')
     await wait('saved-items')
     await act('saved-source-filter', 'choose', 'github')
     await act('saved-runner', 'choose', 'codex')
@@ -401,7 +437,7 @@ try {
     await capture('saved-repository')
   })
   await step('Secure key then immediate Save uses the real ordered callback queue', async () => {
-    await click('navigate-settings')
+    await go('settings')
     await wait('personal-prompt', (node) => node?.enabled)
     await act('personal-prompt', 'fill', '资源高效 AI 与边缘智能')
     await click('personal-save')
@@ -462,7 +498,7 @@ try {
     }
   )
   await step('Persisted Analytics metrics and complete analysis artifact', async () => {
-    await click('navigate-analytics')
+    await go('analytics')
     await wait('analytics-analyses')
     const trend = find((await inspect()).root, 'analytics-trend')
     assert.equal(trend.class, 'TRChart')
@@ -526,7 +562,7 @@ try {
     }
   })
   await step('Source focus is separate from activation; content stays read-only', async () => {
-    await click('navigate-sources')
+    await go('sources')
     await wait('sources-list')
     await act('sources-group', 'choose', 'code')
     assert.equal(find((await inspect()).root, 'sources-list').rows.length, 2)
@@ -603,7 +639,7 @@ try {
   await step(
     'Promotion preview includes verified facts and produces a fixture receipt only after confirmation',
     async () => {
-      await click('navigate-discover')
+      await go('discover')
       await wait('discover-results')
       const rows = find((await inspect()).root, 'discover-results').rows
       await act('discover-results', 'select', rows.find((row) => row.id.startsWith('arxiv:')).id)
@@ -738,7 +774,7 @@ try {
     await application.evaluate(() =>
       globalThis.__nativeWindow.setBounds({ width: 820, height: 720 })
     )
-    await click('navigate-sources')
+    await go('sources')
     if (find((await inspect()).root, 'sources-back-to-results'))
       await click('sources-back-to-results')
     await wait('sources-filters')
@@ -750,7 +786,7 @@ try {
       const [x, , w] = numbers(child.frame)
       assert(x + w <= width + 1, `${child.id} overflows the narrow native toolbar`)
     }
-    await click('navigate-discover')
+    await go('discover')
     await wait('discover-workspace')
     await application.evaluate(() =>
       globalThis.__nativeWindow.setBounds({ width: 1360, height: 880 })
@@ -765,7 +801,7 @@ try {
     await act('native-workspace', 'appearance', 'contrast-dark')
     const contrast = await capture('discover-contrast-dark')
     assert.equal(find(contrast.root, 'native-sidebar').material, 'opaque')
-    assert.equal(find(contrast.root, 'navigate-discover').checked, true)
+    assert.equal(find(contrast.root, 'native-navigation').selected, 'discover')
     await act('native-workspace', 'appearance', 'contrast-light')
     await capture('discover-contrast-light')
     await act('native-workspace', 'appearance', 'light')
@@ -776,7 +812,7 @@ try {
   await step(
     'Dirty marked-text close guard and native window recreation preserve data/preferences',
     async () => {
-      await click('navigate-settings')
+      await go('settings')
       await wait('personal-prompt')
       await act('personal-prompt', 'fill', '')
       await act('personal-prompt', 'mark', '尚未保存')
@@ -813,17 +849,17 @@ try {
       assert.equal(reopened.nativeRoot, 'TRCanvas')
       assert.match(find(reopened.root, 'native-sidebar').frame, /248,/)
       assert(find(reopened.root, 'discover-results').rows.length > 0)
-      await click('navigate-settings')
+      await go('settings')
       const settings = await wait('personal-prompt')
       assert.equal(find(settings.root, 'personal-prompt').value, '资源高效 AI 与边缘智能')
-      await click('navigate-discover')
+      await go('discover')
     }
   )
   await step(
     'Explicit Saved snapshot update preserves SQLite history and refreshes native reading',
     async () => {
       const before = await savedSourceUpdateFixture(application, profile, true)
-      await click('navigate-saved')
+      await go('saved')
       await wait('saved-items')
       await act('saved-source-filter', 'choose', 'github')
       await wait('saved-update-source', (node) => node?.enabled)
@@ -853,7 +889,7 @@ try {
       await application.evaluate(() =>
         globalThis.__nativeWindow.setBounds({ width: 1280, height: 900 })
       )
-      await click('navigate-sources')
+      await go('sources')
       await wait('sources-list')
       await act('sources-list', 'select', 'folo:611', { activate: true })
       const month = await wait('source-content-summary', (node) =>
@@ -874,7 +910,7 @@ try {
       await application.evaluate(() =>
         globalThis.__nativeWindow.setBounds({ width: 1360, height: 880 })
       )
-      await click('navigate-sources')
+      await go('sources')
       await act('sources-list', 'select', 'folo:10', { activate: true })
       await wait('source-detail-health', (node) => /Latest search/.test(node?.text || ''))
       assert(!find((await inspect()).root, 'source-health-attention'))

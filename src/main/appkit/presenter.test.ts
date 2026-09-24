@@ -4,7 +4,7 @@ import { defaultNativePreferences } from './preferences'
 import { nativeHarness } from './testSupport'
 
 describe('AppKit application shell', () => {
-  it('keeps navigation labeled and selected while separating it from ordinary actions', async () => {
+  it('renders workspaces as a source list and window commands in the toolbar', async () => {
     const h = nativeHarness({ getLocalAgentStatuses: vi.fn(async () => []) })
     let scene = ''
     const presenter = new NativePresenter(h.api, {
@@ -16,25 +16,37 @@ describe('AppKit application shell', () => {
       openExternal: vi.fn()
     })
     await presenter.start()
-    const discover = h.find(JSON.parse(scene).root, 'navigate-discover')!
-    expect(discover).toMatchObject({
-      title: 'Discover',
-      checked: true,
-      emphasis: 'navigation',
-      symbol: 'sparkle.magnifyingglass'
-    })
-    await presenter.navigate('saved')
-    const root = JSON.parse(scene).root
-    expect(h.find(root, 'navigate-saved')).toMatchObject({
-      title: 'Saved',
-      checked: true,
-      emphasis: 'navigation'
-    })
-    expect(h.find(root, 'navigate-discover')?.checked).toBe(false)
-    expect(h.find(root, 'open-local-search')).toMatchObject({
+    let parsed = JSON.parse(scene)
+    expect(h.find(parsed.root, 'native-brand')).toBeUndefined()
+    expect(h.find(parsed.root, 'native-sidebar-caption')).toBeUndefined()
+    expect(h.find(parsed.root, 'navigate-discover')).toBeUndefined()
+    const navigation = h.find(parsed.root, 'native-navigation')!
+    expect(navigation).toMatchObject({ kind: 'sidebar', title: 'Workspaces', selected: 'discover' })
+    expect(navigation.rows!.map((row) => [row.id, row.title, row.symbol])).toEqual([
+      ['discover', 'Discover', 'sparkle.magnifyingglass'],
+      ['saved', 'Saved', 'star'],
+      ['analytics', 'Data Analytics', 'chart.bar'],
+      ['sources', 'Sources', 'square.stack'],
+      ['settings', 'Settings', 'gearshape']
+    ])
+    expect(parsed.toolbar.title).toBe('Discover')
+    expect(parsed.toolbar.items.map((item: { id: string }) => item.id)).toEqual([
+      'sidebar-toggle',
+      'open-local-search',
+      'undo-triage'
+    ])
+    expect(parsed.toolbar.items[1]).toMatchObject({
       title: 'Find local research',
-      emphasis: 'quiet'
+      symbol: 'magnifyingglass',
+      enabled: true
     })
+    await presenter.presentation.dispatch(
+      JSON.stringify({ action: navigation.action, value: 'saved' })
+    )
+    parsed = JSON.parse(scene)
+    expect(parsed.toolbar.title).toBe('Saved')
+    expect(h.find(parsed.root, 'native-navigation')?.selected).toBe('saved')
+    expect(scene).toContain('saved-page')
     presenter.dispose()
   })
   it('keeps source failures on Sources without a global attention action', async () => {
@@ -98,7 +110,8 @@ describe('AppKit application shell', () => {
     await Promise.resolve()
     const scene = JSON.parse(present.mock.calls.at(-1)![0])
     expect(scene.zoom).toBe(1.1)
-    expect(scene.root.width).toBe(84)
+    expect(scene.root.compactPane).toBe('detail')
+    expect(scene.toolbar.items[0]).toMatchObject({ id: 'sidebar-toggle', title: 'Show Sidebar' })
     await presenter.flushPreferences()
     expect(persist).toHaveBeenLastCalledWith(
       expect.objectContaining({ zoom: 1.1, collapsed: true })
