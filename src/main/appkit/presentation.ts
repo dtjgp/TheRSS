@@ -114,6 +114,8 @@ export interface NativeNode {
   /** Determinate progress (progress nodes only); omit both for indeterminate progress. */
   readonly completed?: number | undefined
   readonly total?: number | undefined
+  /** Button key equivalent: Return (default button) or Command-Return. */
+  readonly shortcut?: 'return' | 'command-return' | undefined
 }
 
 const short = z.string().max(4096)
@@ -220,7 +222,8 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
       collapseAt: positive.optional(),
       safeArea: z.boolean().optional(),
       completed: z.number().int().min(0).max(100000).optional(),
-      total: z.number().int().min(1).max(100000).optional()
+      total: z.number().int().min(1).max(100000).optional(),
+      shortcut: z.enum(['return', 'command-return']).optional()
     })
     .strict()
     .superRefine((node, context) => {
@@ -252,6 +255,8 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
           code: 'custom',
           message: 'Native progress needs completed <= total on a progress node'
         })
+      if (node.shortcut !== undefined && node.kind !== 'button')
+        context.addIssue({ code: 'custom', message: 'Only native buttons carry a shortcut' })
       if (node.kind === 'secure' && (node.value !== undefined || node.text !== undefined))
         context.addIssue({
           code: 'custom',

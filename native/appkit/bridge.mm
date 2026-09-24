@@ -110,6 +110,10 @@ static napi_value edit(napi_env env, napi_callback_info info) {
     if (!std::strcmp(command,"undo") && manager.canUndo) [manager undo];
     if (!std::strcmp(command,"redo") && manager.canRedo) [manager redo];
     handled = YES;
+  } else if (!std::strcmp(command,"undo") || !std::strcmp(command,"redo")) {
+    // Outside a text view there is no native undo stack: NSWindow would accept undo: and do
+    // nothing, hiding the application's triage undo. Report it as not handled instead.
+    handled = NO;
   } else handled = [responder tryToPerform:selector with:nil];
   napi_value result; napi_get_boolean(env,handled,&result); return result;
 }
@@ -127,6 +131,16 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
   if ([input[@"action"] isEqual:@"alert"]) {
     if (![input[@"value"] isKindOfClass:NSString.class] || !TRActivateFixtureAlert(host,input[@"value"])) return fail(env,"Fixture alert button is unavailable");
     return nothing(env);
+  }
+  if ([input[@"action"] isEqual:@"shortcut"]) {
+    // AppKit offers key equivalents to the key window's view hierarchy before first-responder
+    // keyDown; exercise that same path for Return and Command-Return.
+    BOOL command = [input[@"value"] isEqual:@"command-return"];
+    if (!command && ![input[@"value"] isEqual:@"return"]) return fail(env,"Unsupported fixture shortcut");
+    NSWindow *target = host.sheet ?: host.window;
+    NSEvent *event = [NSEvent keyEventWithType:NSEventTypeKeyDown location:NSZeroPoint modifierFlags:command ? NSEventModifierFlagCommand : 0 timestamp:0 windowNumber:target.windowNumber context:nil characters:@"\r" charactersIgnoringModifiers:@"\r" isARepeat:NO keyCode:36];
+    if (![target performKeyEquivalent:event]) return fail(env,"No control handled the fixture shortcut");
+    [host flush]; return nothing(env);
   }
   if ([input[@"action"] isEqual:@"blur"]) {
     // Screenshot captures activate the fixture window; park keyboard focus so no text control

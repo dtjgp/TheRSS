@@ -95,6 +95,24 @@ describe('native modal workflows', () => {
     expect(modal.render()).toBeUndefined()
   })
 
+  it('makes Return close only read-only document sheets', async () => {
+    const h = nativeHarness({
+      getLatestLlmWikiPromotion: vi.fn(async () => null),
+      previewLlmWikiPromotion: vi.fn(async () => preview),
+      cancelLlmWikiPromotion: vi.fn(async () => receipt)
+    })
+    const modal = new NativeModals(h.context)
+    const screen = { render: () => modal.render()! }
+    modal.openDocument('TheRSS Help', '# Help')
+    expect(h.find(h.render(screen), 'modal-close')?.shortcut).toBe('return')
+    await modal.close()
+    modal.openSearch()
+    expect(h.find(h.render(screen), 'modal-close')?.shortcut).toBeUndefined()
+    await modal.close()
+    await modal.openPromotion('arxiv:1')
+    expect(h.find(h.render(screen), 'modal-close')?.shortcut).toBeUndefined()
+    expect(h.find(h.render(screen), 'promotion-confirm')?.shortcut).toBeUndefined()
+  })
   it('renders all intended paths and requires confirmation before writing', async () => {
     const confirm = vi.fn(async () => receipt)
     const h = nativeHarness({

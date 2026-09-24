@@ -161,15 +161,20 @@ export class NativeModals {
                 )
               ]),
         row('modal-footer', [
-          b.button(
-            'modal-close',
-            this.kind === 'promotion' && this.preview?.previewId && !this.consumed
-              ? 'Cancel preview'
-              : 'Close',
-            () => this.close(),
-            !this.blocksNavigation,
-            `modal-close:${this.kind}:${this.version}`
-          )
+          {
+            ...b.button(
+              'modal-close',
+              this.kind === 'promotion' && this.preview?.previewId && !this.consumed
+                ? 'Cancel preview'
+                : 'Close',
+              () => this.close(),
+              !this.blocksNavigation,
+              `modal-close:${this.kind}:${this.version}`
+            ),
+            // Return closes read-only documents only: the search field keeps Return, and the
+            // promotion sheet guards a vault write.
+            ...(this.kind === 'document' ? { shortcut: 'return' as const } : {})
+          }
         ])
       ],
       { title, padding: 22, flex: 1, context: closeAction }

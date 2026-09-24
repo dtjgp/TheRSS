@@ -746,6 +746,13 @@ try {
     await menu('Undo')
     await wait('discover-query', (node) => node?.value === '')
     await act('discover-query', 'fill', '边缘计算 structured pruning')
+    // Outside a text field, Edit > Undo (Command-Z) must reach the triage history.
+    const saveTitle = find((await inspect()).root, 'discover-save').title
+    await click('discover-save')
+    await wait('discover-save', (node) => !!node && node.title !== saveTitle)
+    await act('discover-results', 'focus')
+    await menu('Undo')
+    await wait('discover-save', (node) => node?.title === saveTitle)
     await menu('Zoom In')
     await delay(80)
     assert.equal((await inspect()).zoom, 1.1)

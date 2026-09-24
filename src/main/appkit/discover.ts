@@ -394,7 +394,10 @@ export class DiscoverScreen implements NativeScreen {
               this.canSearch()
             ),
             emphasis: 'primary',
-            symbol: 'magnifyingglass'
+            symbol: 'magnifyingglass',
+            // Return stays a newline in the multiline question; Command-Return submits.
+            shortcut: 'command-return',
+            help: 'Search selected sources (Command-Return)'
           },
           ...(busy
             ? [

@@ -124,6 +124,16 @@ describe('AppKit Discover', () => {
     await running
     expect(h.find(h.render(screen), 'discover-run')).toBeUndefined()
   })
+  it('submits Discover with Command-Return without taking plain Return from the question', async () => {
+    const h = nativeHarness({ getLatestDiscover: vi.fn(async () => nativeDiscoverFixture) })
+    const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
+    await screen.load()
+    expect(h.find(h.render(screen), 'discover-search')).toMatchObject({
+      shortcut: 'command-return',
+      help: expect.stringContaining('Command-Return')
+    })
+    expect(h.find(h.render(screen), 'discover-query')?.multiline).toBe(true)
+  })
   it('cancels only its run and keeps Canceling until the actual search settles', async () => {
     let finish!: (snapshot: DiscoverSnapshot) => void
     const search = vi.fn<import('../../shared/api').TheRSSApi['searchDiscover']>(

@@ -53,6 +53,9 @@ describe('native shell commands and failures', () => {
     await presenter.command('open-help')
     await Promise.resolve()
     expect(JSON.parse(scene).modal).toBeDefined()
+    const help = h.find(JSON.parse(scene).modal, 'document-modal-content')?.text ?? ''
+    expect(help).toContain('Command+Return: Search Discover')
+    expect(help).toContain('Command+Z: Undo text edits, or the last Save, Unsave or Dismiss')
     const close = h.find(JSON.parse(scene).modal, 'modal-close')!
     await presenter.presentation.dispatch(JSON.stringify({ action: close.action }))
     await Promise.resolve()

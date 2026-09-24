@@ -363,6 +363,72 @@ try {
   await application.evaluate(() => {
     const f = globalThis.__controls
     f.scene.root = {
+      id: 'keyboard-root',
+      kind: 'column',
+      padding: 20,
+      children: [
+        {
+          id: 'keyboard-question',
+          kind: 'input',
+          title: 'Research question',
+          multiline: true,
+          value: '',
+          action: 'keyboard-question-edit'
+        },
+        {
+          id: 'keyboard-search',
+          kind: 'button',
+          title: 'Search',
+          shortcut: 'command-return',
+          action: 'keyboard-search-action'
+        },
+        {
+          id: 'keyboard-list',
+          kind: 'table',
+          title: 'Keyboard list',
+          minHeight: 120,
+          rows: [{ id: 'one', title: 'One', subtitle: 'Fixture' }]
+        }
+      ]
+    }
+    f.events.length = 0
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  })
+  await act('keyboard-list', 'focus')
+  assert.equal(
+    await application.evaluate(() =>
+      globalThis.__controls.bridge.edit(globalThis.__controls.handle, 'undo')
+    ),
+    false,
+    'Undo outside a text view is left to the application (triage undo)'
+  )
+  state = await inspect()
+  assert.equal(find(state.root, 'keyboard-search').keyEquivalent, '\r')
+  assert.equal(find(state.root, 'keyboard-search').keyModifiers, 'command')
+  const searches = async () =>
+    (await application.evaluate(() => globalThis.__controls.events)).filter(
+      (event) => event.action === 'keyboard-search-action'
+    ).length
+  await act('keyboard-question', 'focus')
+  await act('keyboard-question', 'key', 'enter')
+  assert.equal(await searches(), 0, 'A plain Return in the question must not submit')
+  assert.equal(find((await inspect()).root, 'keyboard-question').value, '\n')
+  await act('keyboard-question', 'shortcut', 'command-return')
+  assert.equal(await searches(), 1, 'Command-Return submits while the question is focused')
+  await act('keyboard-question', 'focus')
+  assert.equal(
+    await application.evaluate(() =>
+      globalThis.__controls.bridge.edit(globalThis.__controls.handle, 'undo')
+    ),
+    true,
+    'Undo inside a text view stays with the text view'
+  )
+  checks.push(
+    'Command-Return reaches its button from a focused text view; Undo outside text is not swallowed'
+  )
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.scene.root = {
       id: 'large-table-root',
       kind: 'column',
       padding: 20,

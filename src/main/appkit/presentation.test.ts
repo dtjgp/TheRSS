@@ -108,6 +108,22 @@ describe('native presentation boundary', () => {
     ])
       expect(() => view.finish(invalid as NativeNode)).toThrow()
   })
+  it('accepts keyboard shortcuts on buttons only', () => {
+    const view = new NativePresentation()
+    const button = {
+      id: 'go',
+      kind: 'button',
+      title: 'Search',
+      shortcut: 'command-return'
+    } as NativeNode
+    expect(JSON.parse(view.finish(button)).root.shortcut).toBe('command-return')
+    expect(() =>
+      view.finish({ ...button, shortcut: 'command-q' } as unknown as NativeNode)
+    ).toThrow()
+    expect(() =>
+      view.finish({ id: 'text', kind: 'label', text: 'x', shortcut: 'return' } as NativeNode)
+    ).toThrow()
+  })
   it('rejects queued input and selection changes after controls become disabled', async () => {
     const h = nativeHarness(),
       controls = new Controls(h.context),

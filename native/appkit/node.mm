@@ -347,6 +347,13 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   } else if ([kind isEqual:@"button"] || [kind isEqual:@"check"]) {
     TRButton *button = (TRButton *)self.control; button.title = TRString(spec[@"title"]);
     if ([kind isEqual:@"button"] && spec[@"checked"]) [button setButtonType:NSButtonTypePushOnPushOff];
+    if ([kind isEqual:@"button"]) {
+      // Return makes a default button; Command-Return submits without taking plain Return
+      // from multiline text.
+      NSString *shortcut = spec[@"shortcut"];
+      button.keyEquivalent = shortcut ? @"\r" : @"";
+      button.keyEquivalentModifierMask = [shortcut isEqual:@"command-return"] ? NSEventModifierFlagCommand : 0;
+    }
     button.state = [spec[@"checked"] boolValue] ? NSControlStateValueOn : NSControlStateValueOff;
     button.needsDisplay = YES;
   } else if ([kind isEqual:@"select"]) {
@@ -741,6 +748,11 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     [self.control.effectiveAppearance performAsCurrentDrawingAppearance:^{
       result[@"graphicContrast"] = @(TRContrast(((TRChart *)self.control).accent,NSColor.textBackgroundColor));
     }];
+  }
+  if ([self.spec[@"kind"] isEqual:@"button"]) {
+    NSButton *button = (NSButton *)self.control;
+    result[@"keyEquivalent"] = button.keyEquivalent ?: @"";
+    result[@"keyModifiers"] = (button.keyEquivalentModifierMask & NSEventModifierFlagCommand) ? @"command" : @"";
   }
   if ([self.control isKindOfClass:NSButton.class]) { result[@"title"] = ((NSButton *)self.control).title; result[@"checked"] = @(((NSButton *)self.control).state == NSControlStateValueOn); }
   if ([self.control isKindOfClass:NSPopUpButton.class]) result[@"selected"] = ((NSPopUpButton *)self.control).selectedItem.representedObject ?: @"";
