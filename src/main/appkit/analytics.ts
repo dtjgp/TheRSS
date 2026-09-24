@@ -115,7 +115,6 @@ export class AnalyticsScreen implements NativeScreen {
     return column(
       'analytics-page',
       [
-        ...(!this.workspace.focused ? [heading('analytics-title', 'Data Analytics')] : []),
         ...(!this.workspace.focused
           ? [
               row('analytics-header', [

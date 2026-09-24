@@ -107,3 +107,17 @@ VoiceOver were not run.
 - Findings F1 and F2 are closed. The title sits over the sidebar column because
   `NSTrackingSeparatorToolbarItem` needs an NSSplitViewController (future S-slice).
 - Open: one intermittent workflow-smoke failure (trailing space in the query field) in 5 runs.
+
+## F13 (partial) outcome: duplicated page titles
+
+Requested 2026-09-24. The window title already names the workspace, so the in-content 23 pt
+headings `discover-title`, `saved-title`, `analytics-title`, `sources-title` and `settings-title`
+were removed; content now starts directly below the toolbar.
+
+- RED/GREEN: `presenter.test.ts` "names each workspace once" failed before and passes after.
+  No existing assertion changed.
+- `npm run check`: exit 0 (692 main, 107 AppKit tests). AppKit controls smoke 9/9. Workflow smoke
+  (aged Sources step disabled as before): 13/13 in 2 of 3 runs; one screenshot-enabled run failed
+  in window recreation (personal prompt read empty), not reproduced in two reruns.
+- Still open in F13: Settings pane headings ("Personal context", "Model provider") repeat the
+  section pop-up value; ad hoc font sizes; single-label empty states.

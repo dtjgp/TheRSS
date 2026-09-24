@@ -98,7 +98,6 @@ export class SettingsScreen implements NativeScreen {
     return column(
       'settings-page',
       [
-        heading('settings-title', 'Settings'),
         label(
           'settings-description',
           'Local research context, model access, and bounded agent availability.',

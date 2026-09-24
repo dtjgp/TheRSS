@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { NativePresenter } from './presenter'
 import { defaultNativePreferences } from './preferences'
 import { nativeHarness } from './testSupport'
+import type { NativeNode } from './presentation'
 
 describe('AppKit application shell', () => {
   it('renders workspaces as a source list and window commands in the toolbar', async () => {
@@ -47,6 +48,32 @@ describe('AppKit application shell', () => {
     expect(parsed.toolbar.title).toBe('Saved')
     expect(h.find(parsed.root, 'native-navigation')?.selected).toBe('saved')
     expect(scene).toContain('saved-page')
+    presenter.dispose()
+  })
+  it('names each workspace once, in the window title, not again as a content heading', async () => {
+    const h = nativeHarness({
+      getLocalAgentStatuses: vi.fn(async () => []),
+      confirmDiscardSettings: vi.fn(async () => true)
+    })
+    let scene = ''
+    const presenter = new NativePresenter(h.api, {
+      preferences: { ...defaultNativePreferences },
+      present: (next) => {
+        scene = next
+      },
+      persist: vi.fn(async () => undefined),
+      openExternal: vi.fn()
+    })
+    await presenter.start()
+    const headings = (node: NativeNode): string[] => [
+      ...(node.kind === 'label' && node.weight === 'title' ? [node.text ?? ''] : []),
+      ...(node.children ?? []).flatMap(headings)
+    ]
+    for (const route of ['discover', 'saved', 'analytics', 'sources', 'settings'] as const) {
+      await presenter.navigate(route)
+      const parsed = JSON.parse(scene)
+      expect(headings(h.find(parsed.root, 'native-main')!)).not.toContain(parsed.toolbar.title)
+    }
     presenter.dispose()
   })
   it('keeps source failures on Sources without a global attention action', async () => {

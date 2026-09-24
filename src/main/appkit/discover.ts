@@ -10,7 +10,6 @@ import { sourceDisplayName } from '../../shared/sourceIdentity'
 import {
   column,
   Controls,
-  heading,
   label,
   readableError,
   row,
@@ -188,7 +187,6 @@ export class DiscoverScreen implements NativeScreen {
     return column(
       'discover-page',
       [
-        ...(!this.workspace.focused ? [heading('discover-title', 'Discover')] : []),
         ...(!this.workspace.focused || busy
           ? [this.composer(), ...this.readiness(), ...(this.picker ? [this.sourcePicker()] : [])]
           : []),

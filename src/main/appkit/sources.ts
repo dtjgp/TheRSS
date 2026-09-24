@@ -78,7 +78,6 @@ export class SourcesScreen implements NativeScreen {
     return column(
       'sources-page',
       [
-        ...(!this.workspace.focused ? [heading('sources-title', 'Sources')] : []),
         ...(!this.workspace.focused
           ? [
               label(

@@ -1,15 +1,7 @@
 import type { AnalysisRunner } from '../../shared/models'
 import type { DashboardItem } from '../../shared/api'
 import { ACTIVE_TODAY_SOURCE_IDS, sourceDisplayName } from '../../shared/sourceIdentity'
-import {
-  column,
-  Controls,
-  heading,
-  label,
-  row,
-  type NativeContext,
-  type NativeScreen
-} from './common'
+import { column, Controls, label, row, type NativeContext, type NativeScreen } from './common'
 import type { NativeNode } from './presentation'
 import { ResearchReader, type TriageHistory } from './reading'
 import { researchSubtitle } from './researchMetadata'
@@ -73,7 +65,6 @@ export class SavedScreen implements NativeScreen {
     return column(
       'saved-page',
       [
-        ...(!this.workspace.focused ? [heading('saved-title', 'Saved')] : []),
         row('saved-toolbar', [
           ...(!this.workspace.focused
             ? [
