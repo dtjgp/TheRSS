@@ -58,7 +58,6 @@ export class DiscoverScreen implements NativeScreen {
   private sourceQuery = ''
   private snapshot: DiscoverSnapshot | null = null
   private filter: Filter = 'all'
-  private visible = 24
   private selected = ''
   private activeRun: string | null = null
   private canceling = false
@@ -133,7 +132,6 @@ export class DiscoverScreen implements NativeScreen {
       runner: this.runner,
       sources: this.sources,
       filter: this.filter,
-      visible: this.visible,
       selected: this.selected,
       picker: this.picker,
       message: this.message,
@@ -150,7 +148,6 @@ export class DiscoverScreen implements NativeScreen {
       )
     )
     this.filter = 'all'
-    this.visible = Math.max(24, Math.ceil((index + 1) / 24) * 24)
     this.selected = itemId
     this.picker = false
     this.message = ''
@@ -175,7 +172,8 @@ export class DiscoverScreen implements NativeScreen {
             ? item.kind !== 'paper' && item.kind !== 'repository'
             : item.kind === this.filter)
       ) ?? []
-    const visible = filtered.slice(0, this.visible)
+    // NSTableView creates row views lazily, so every filtered result is listed.
+    const visible = filtered
     const selected = visible.find((item) => item.id === this.selected) ?? visible[0] ?? null
     this.selected = selected?.id ?? ''
     this.reader.runner = this.runner
@@ -217,7 +215,6 @@ export class DiscoverScreen implements NativeScreen {
                   ],
                   (filter) => {
                     this.filter = filter as Filter
-                    this.visible = 24
                     this.selected = ''
                     this.context.redraw()
                   },
@@ -275,17 +272,9 @@ export class DiscoverScreen implements NativeScreen {
                       ),
                       label(
                         'discover-pagination',
-                        `${visible.length} of ${filtered.length} results`,
+                        `${visible.length} ${visible.length === 1 ? 'result' : 'results'}`,
                         { weight: 'secondary' }
-                      ),
-                      ...(visible.length < filtered.length
-                        ? [
-                            b.button('discover-more', 'Show 24 more', () => {
-                              this.visible += 24
-                              this.context.redraw()
-                            })
-                          ]
-                        : [])
+                      )
                     ],
                     { flex: 1 }
                   ),
@@ -530,7 +519,6 @@ export class DiscoverScreen implements NativeScreen {
       }
       this.loaded = true
       this.filter = 'all'
-      this.visible = 24
       this.selected = ''
       if (result.status === 'canceled')
         this.message = 'Search canceled. Completed source results were preserved.'

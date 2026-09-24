@@ -52,7 +52,9 @@ describe('direct native interaction', () => {
     expect(h.find(h.render(screen), 'discover-done-editing')).toBeUndefined()
     await h.act(screen, 'discover-query', 'A changed question')
     expect(h.api.searchDiscover).not.toHaveBeenCalled()
-    expect(h.find(h.render(screen), 'discover-results')?.rows).toHaveLength(24)
+    expect(h.find(h.render(screen), 'discover-results')?.rows).toHaveLength(
+      nativeDiscoverFixture.items.length
+    )
     expect(h.find(h.render(screen), 'discover-draft-status')?.text).toContain(
       nativeDiscoverFixture.intent
     )

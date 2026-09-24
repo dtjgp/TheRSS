@@ -60,6 +60,12 @@ describe('AppKit analytics', () => {
     expect(h.find(h.render(screen), 'analytics-trend')?.points?.[0]?.value).toBe(3)
     expect(h.find(h.render(screen), 'analytics-daily')).toBeUndefined()
     await h.act(screen, 'analytics-toggle-values')
+    // Exact values replace the chart in the same panel so the page keeps its window height.
+    const values = h.render(screen)
+    expect(h.find(values, 'analytics-trend')).toBeUndefined()
+    expect(h.find(values, 'analytics-trend-kind')).toBeUndefined()
+    expect(h.find(values, 'analytics-toggle-values')?.title).toBe('Show chart')
+    expect(h.find(h.find(values, 'analytics-trend-panel')!, 'analytics-daily')).toBeDefined()
     expect(h.find(h.render(screen), 'analytics-daily')?.rows?.[0]?.subtitle).toContain(
       'Discover 10'
     )
@@ -75,6 +81,7 @@ describe('AppKit analytics', () => {
     ).toEqual(['Date', 'Returned', 'Discover', 'Legacy', 'Analyses'])
     await h.act(screen, 'analytics-toggle-values')
     expect(h.find(h.render(screen), 'analytics-daily')).toBeUndefined()
+    expect(h.find(h.render(screen), 'analytics-trend')).toBeDefined()
   })
 
   it('shows no recorded activity without inventing a trend', async () => {

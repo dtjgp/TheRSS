@@ -149,10 +149,24 @@ async function menu(label) {
       throw new Error('Missing native menu item: ' + wanted)
   }, label)
 }
+// At ordinary window heights every workspace must fit: lists, tables and readers scroll, the
+// page does not. The adaptive outer scroll remains a fallback for small windows and high zoom.
+function assertFitsWindow(state, name) {
+  const main = find(state.root, 'native-main')
+  if (!main?.documentFrame) return
+  const numbers = (frame) => frame.match(/-?\d+(?:\.\d+)?/gu).map(Number)
+  const content = numbers(main.documentFrame)[3],
+    viewport = numbers(main.viewportSize)[1]
+  if (viewport >= 800 && content > viewport + 1)
+    throw new Error(
+      `Workspace ${name} needs an outer page scroll: ${content} pt of content in a ${viewport} pt window`
+    )
+}
 async function capture(name) {
   if (!screenshots) {
     const state = await inspect()
     await writeFile(join(output, `${name}.json`), JSON.stringify(state, null, 2))
+    assertFitsWindow(state, name)
     return state
   }
   // macOS 14+ cooperative activation means a test cannot reliably take activation from the
@@ -207,6 +221,7 @@ async function capture(name) {
       }
     }
   }
+  assertFitsWindow(state, name)
   if (owner) await act(owner, 'focus')
   const after = await inspect()
   for (const id of exposed) {

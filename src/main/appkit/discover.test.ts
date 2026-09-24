@@ -32,13 +32,13 @@ describe('AppKit Discover', () => {
     )
   })
 
-  it('restores the persisted session, pages 24 items and opens all source/provenance details', async () => {
+  it('restores the persisted session, lists every result and opens all source/provenance details', async () => {
     const h = nativeHarness({ getLatestDiscover: vi.fn(async () => nativeDiscoverFixture) })
     const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
     await screen.load()
-    expect(h.find(h.render(screen), 'discover-results')?.rows).toHaveLength(24)
-    await h.act(screen, 'discover-more')
     expect(h.find(h.render(screen), 'discover-results')?.rows).toHaveLength(30)
+    expect(h.find(h.render(screen), 'discover-more')).toBeUndefined()
+    expect(h.find(h.render(screen), 'discover-pagination')?.text).toBe('30 results')
     await h.act(screen, 'discover-details')
     expect(h.context.showDocument).toHaveBeenCalledWith(
       'Search details',

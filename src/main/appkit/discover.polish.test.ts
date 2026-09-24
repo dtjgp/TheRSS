@@ -31,7 +31,9 @@ describe('native search workspace hierarchy', () => {
     expect(h.find(h.render(screen), 'discover-draft-status')?.text).toContain(
       nativeDiscoverFixture.intent
     )
-    expect(h.find(h.render(screen), 'discover-results')?.rows).toHaveLength(24)
+    expect(h.find(h.render(screen), 'discover-results')?.rows).toHaveLength(
+      nativeDiscoverFixture.items.length
+    )
     expect(h.find(h.render(screen), 'discover-edit-search')).toBeUndefined()
     await h.act(screen, 'discover-query', nativeDiscoverFixture.intent)
     h.context.data.agents = [
