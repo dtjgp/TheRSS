@@ -423,6 +423,151 @@ try {
   segmentEvents = await application.evaluate(() => globalThis.__controls.events)
   assert.equal(segmentEvents.length, emitted, 'A scene update does not emit a choice')
   checks.push('Native segmented control shows every choice, emits clicks and skips scene updates')
+  const popoverScene = (checked, focus) =>
+    application.evaluate(
+      (_, data) => {
+        const f = globalThis.__controls
+        f.scene.root = {
+          id: 'popover-root',
+          kind: 'column',
+          padding: 20,
+          children: [
+            {
+              id: 'popover-row',
+              kind: 'row',
+              children: [
+                { id: 'pop-anchor', kind: 'button', title: 'Sources (3/22)', action: 'pop-toggle' }
+              ]
+            },
+            { id: 'pop-below', kind: 'label', text: 'Content below the anchor stays in place' }
+          ]
+        }
+        const popover = {
+          anchor: 'pop-anchor',
+          close: 'pop-close',
+          root: {
+            id: 'pop-content',
+            kind: 'column',
+            padding: 14,
+            children: [
+              {
+                id: 'pop-find',
+                kind: 'input',
+                title: 'Find sources',
+                value: '',
+                action: 'pop-find-edit'
+              },
+              {
+                id: 'pop-check',
+                kind: 'check',
+                title: 'arXiv',
+                checked: data.checked,
+                action: 'pop-check'
+              }
+            ]
+          }
+        }
+        f.bridge.present(
+          f.handle,
+          JSON.stringify({
+            ...f.scene,
+            ...(data.checked === null ? {} : { popover }),
+            ...(data.focus ? { focus: data.focus } : {})
+          })
+        )
+      },
+      { checked, focus }
+    )
+  const popoverEvents = () => application.evaluate(() => globalThis.__controls.events)
+  await application.evaluate(() => {
+    globalThis.__controls.events.length = 0
+  })
+  await popoverScene(false, 'pop-find')
+  state = await inspect()
+  assert(state.popover, 'The popover is shown')
+  assert.equal(state.popover.anchor, 'pop-anchor')
+  assert.equal(state.popover.behavior, 2, 'The popover is semi-transient')
+  assert.equal(state.popover.below, true, 'The popover opens below its anchor')
+  assert(find(state.root, 'pop-below'), 'Root content stays in the window, not the popover')
+  assert(!find(state.root, 'pop-check'))
+  assert.equal(state.popover.keyWindow, true, 'Scene focus makes the popover key')
+  await act('pop-find', 'type', 'arx')
+  assert.deepEqual((await popoverEvents()).at(-1), { action: 'pop-find-edit', value: 'arx' })
+  await act('pop-check', 'click')
+  assert.deepEqual((await popoverEvents()).at(-1), { action: 'pop-check', value: true })
+  await popoverScene(true)
+  state = await inspect()
+  assert.equal(
+    find(state.popover.root, 'pop-check').checked,
+    true,
+    'Scene updates reach the popover'
+  )
+  await popoverScene(null)
+  state = await inspect()
+  assert.equal(state.popover, null, 'A scene without a popover closes it')
+  assert(
+    !(await popoverEvents()).some((event) => event.action === 'pop-close'),
+    'Programmatic closing emits nothing'
+  )
+  await popoverScene(false)
+  await act('popover', 'dismiss-popover', 'anchor')
+  assert.deepEqual((await popoverEvents()).at(-1), { action: 'pop-close' })
+  assert.equal((await inspect()).popover, null)
+  const beforeAnchor = (await popoverEvents()).length
+  await act('pop-anchor', 'click')
+  assert.equal(
+    (await popoverEvents()).length,
+    beforeAnchor,
+    'The anchor click that dismissed the popover does not reopen it'
+  )
+  await act('pop-anchor', 'click')
+  assert.deepEqual(
+    (await popoverEvents()).at(-1),
+    { action: 'pop-toggle' },
+    'Only the dismissing click is ignored'
+  )
+  await popoverScene(false, 'pop-find')
+  await act('pop-find', 'key', 'escape')
+  assert.deepEqual((await popoverEvents()).at(-1), { action: 'pop-close' }, 'Escape dismisses')
+  await act('pop-anchor', 'click')
+  assert.deepEqual(
+    (await popoverEvents()).at(-1),
+    { action: 'pop-toggle' },
+    'A quick click after Escape opens the popover again'
+  )
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    const checks = Array.from({ length: 40 }, (_, index) => ({
+      id: `pop-tall-${index}`,
+      kind: 'check',
+      title: `Source ${index}`,
+      checked: false,
+      action: 'pop-tall'
+    }))
+    f.bridge.present(
+      f.handle,
+      JSON.stringify({
+        ...f.scene,
+        popover: {
+          anchor: 'pop-anchor',
+          close: 'pop-close',
+          root: { id: 'pop-tall', kind: 'column', padding: 14, children: checks }
+        }
+      })
+    )
+  })
+  const tall = (await inspect()).popover
+  assert(tall.documentHeight > tall.visibleHeight, 'Tall popover content scrolls')
+  const windowHeight = await application.evaluate(
+    ({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getBounds().height
+  )
+  assert(tall.visibleHeight <= windowHeight - 120, 'The popover stays within the window cap')
+  await act('pop-tall-39', 'click')
+  assert.deepEqual((await popoverEvents()).at(-1), { action: 'pop-tall', value: true })
+  await popoverScene(null)
+  checks.push(
+    'Native popover anchors below its button, takes focus and reports only user dismissal'
+  )
   await application.evaluate(() => {
     const f = globalThis.__controls
     f.scene.root = {

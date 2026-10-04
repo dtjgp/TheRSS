@@ -146,7 +146,13 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     // Screenshot captures activate the fixture window; park keyboard focus so no text control
     // can receive real keystrokes from the shared desktop while it is key.
     [(host.sheet ?: host.window) makeFirstResponder:nil];
+    [host.popover.popover.contentViewController.view.window makeFirstResponder:nil];
     return nothing(env);
+  }
+  if ([input[@"action"] isEqual:@"dismiss-popover"]) {
+    // Same path as an outside click or Escape: the popover reports its own dismissal.
+    if (![host.popover dismissFixture:[input[@"value"] isEqual:@"anchor"]]) return fail(env,"Fixture popover is not shown");
+    if (![input[@"deferFlush"] boolValue]) [host flush]; return nothing(env);
   }
   TRNode *node = [host find:input[@"id"]];
   NSSearchField *search = node ? nil : [host.chrome searchField:input[@"id"]];

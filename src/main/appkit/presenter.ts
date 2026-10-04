@@ -167,6 +167,7 @@ export class NativePresenter {
         ;(this.screens.settings as SettingsScreen).discard()
       }
       await this.modals.close()
+      this.screens[this.route].closePopover?.()
       this.route = route
       this.renderNow()
       await this.screens[route].load?.()
@@ -450,6 +451,10 @@ export class NativePresenter {
     }
     const modal = this.modals.render(),
       focus = this.modals.focus ?? (modal ? undefined : this.pendingFocus)
+    // A popover belongs to the visible workspace; a sheet or the search page closes it.
+    if (modal || this.localSearch.showing || !this.ready)
+      Object.values(this.screens).forEach((screen) => screen.closePopover?.())
+    const popover = this.screens[this.route].popover?.()
     this.pendingFocus = undefined
     this.modals.focus = undefined
     this.port.present(
@@ -459,7 +464,8 @@ export class NativePresenter {
         focus,
         this.preferences.zoom,
         this.announcement,
-        this.toolbar(collapsed)
+        this.toolbar(collapsed),
+        popover
       )
     )
   }

@@ -45,7 +45,7 @@ NSSharingService or drag registration.
 | F8  | Row labels drawn ~8 px above adjacent controls; single buttons stretched to column width (Saved "Open Settings").                     | **Fixed S0**  |
 | F9  | Result status showed the raw enum (`partial`).                                                                                        | **Fixed S0**  |
 | F10 | View menu shortcuts only for Discover and Saved.                                                                                      | **Fixed S0**  |
-| F11 | Result-kind filter is a pop-up (segmented control or scope bar is native); the 22-source picker expands inline (popover is native).   | Open (S3)     |
+| F11 | Result-kind filter is a pop-up (segmented control or scope bar is native); the 22-source picker expands inline (popover is native).   | **Fixed S3**  |
 | F12 | Settings is an in-window route with a pop-up section switcher and duplicate headings; native apps open a separate Settings window.    | Decision (D5) |
 | F13 | Ad hoc font sizes (23/14/12/11/10) instead of system text styles; in-content large titles; empty states are a single label.           | Open (S1)     |
 | F14 | No kind glyph or Saved star in result rows; ISO dates throughout (localized display is a product decision).                           | Open/decision |
@@ -69,7 +69,7 @@ context menus, standard menu roles and the dedicated secure-input path.
 | S0    | F7-F10 quick fixes                                                                              | **Done**, see below                         |
 | S1    | Typed `toolbar` and `sidebar` (source list) node kinds; remove title strip and sidebar branding | **Done**, [contract](S1_CHANGE_CONTRACT.md) |
 | S2    | Default buttons, Command-Return, NSUndoManager triage undo                                      | **Done**, see S2/S3 progress                |
-| S3    | Toolbar search replacing the sheet; `progress`, `segmented`, `popover` node kinds               | Search and progress done; F11 open          |
+| S3    | Toolbar search replacing the sheet; `progress`, `segmented`, `popover` node kinds               | **Done**, see S2/S3 progress                |
 | S4    | Separate Settings window                                                                        | Decision gate D5 first                      |
 
 Every new node kind keeps zod validation at the presentation boundary, AppKit smoke coverage and
@@ -134,7 +134,8 @@ Each slice has its own change contract and verification record.
 | F3             | Discover lists every result in the lazy table (no "Show 24 more"); workspaces fit the window; page scroll is only a small-window fallback.     | [page-scroll](../2026-09-24-page-scroll/CHANGE_CONTRACT.md)                           |
 | F4             | `NSSearchToolbarItem` replaces the search sheet; results fill the content area; clearing or Escape restores the workspace.                     | [toolbar-search](../2026-09-24-toolbar-search/CHANGE_CONTRACT.md)                     |
 | F11 (filter)   | Native `segmented` node (NSSegmentedControl); the Discover result-kind filter shows every kind with its count.                                 | [segmented-filter](../2026-10-04-segmented-filter/CHANGE_CONTRACT.md)                 |
+| F11 (popover)  | Discover sources open in a semi-transient NSPopover under "Sources (n/22)" instead of pushing the results down.                                | [source-popover](../2026-10-04-source-popover/CHANGE_CONTRACT.md)                     |
 
-Still open: F11 (source-picker popover), F12/S4 (decision D5),
+Still open: F12/S4 (decision D5),
 F13 (system text styles, richer empty states), F14 (row glyphs; date display is a product
 decision), the NSSplitViewController/tracking-separator title placement, and P2 integration.

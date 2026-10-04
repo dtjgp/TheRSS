@@ -51,6 +51,36 @@ describe('AppKit application shell', () => {
     expect(scene).toContain('saved-page')
     presenter.dispose()
   })
+  it('shows the workspace popover in the scene and closes it on navigation', async () => {
+    const h = nativeHarness({ getLocalAgentStatuses: vi.fn(async () => []) })
+    let scene = ''
+    const presenter = new NativePresenter(h.api, {
+      preferences: { ...defaultNativePreferences },
+      present: (next) => {
+        scene = next
+      },
+      persist: vi.fn(async () => undefined),
+      openExternal: vi.fn()
+    })
+    await presenter.start()
+    let parsed = JSON.parse(scene)
+    expect(parsed.popover).toBeUndefined()
+    const picker = h.find(parsed.root, 'discover-source-picker')!
+    await presenter.presentation.dispatch(JSON.stringify({ action: picker.action }))
+    parsed = JSON.parse(scene)
+    expect(parsed.popover).toMatchObject({ anchor: 'discover-source-picker' })
+    expect(h.find(parsed.popover.root, 'discover-source-controls')).toBeDefined()
+    const navigation = h.find(parsed.root, 'native-navigation')!
+    await presenter.presentation.dispatch(
+      JSON.stringify({ action: navigation.action, value: 'saved' })
+    )
+    expect(JSON.parse(scene).popover).toBeUndefined()
+    await presenter.presentation.dispatch(
+      JSON.stringify({ action: navigation.action, value: 'discover' })
+    )
+    expect(JSON.parse(scene).popover, 'Returning to Discover keeps it closed').toBeUndefined()
+    presenter.dispose()
+  })
   it('names each workspace once, in the window title, not again as a content heading', async () => {
     const h = nativeHarness({
       getLocalAgentStatuses: vi.fn(async () => []),

@@ -39,6 +39,58 @@ describe('AppKit Discover', () => {
     )
     screen.dispose()
   })
+  it('chooses sources in a popover anchored to the Sources button', async () => {
+    // An empty result does not close the picker on completion, so only the run start can.
+    const h = nativeHarness({
+      searchDiscover: vi.fn(async () => ({
+        ...nativeDiscoverFixture,
+        status: 'no_results' as const,
+        items: []
+      }))
+    })
+    const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
+    await screen.load()
+    expect(h.popover(screen)).toBeUndefined()
+    await h.act(screen, 'discover-source-picker')
+    const popover = h.popover(screen)
+    expect(popover).toMatchObject({ anchor: 'discover-source-picker' })
+    expect(h.find(popover!.root, 'discover-source-controls')).toBeDefined()
+    expect(h.find(screen.render(), 'discover-source-controls')).toBeUndefined()
+    await h.act(screen, 'discover-clear-sources')
+    expect(h.find(h.render(screen), 'discover-source-picker')?.title).toBe('Sources (0/22)')
+    await h.act(screen, 'discover-all-sources')
+    await h.context.presentation.dispatch(JSON.stringify({ action: popover!.close }))
+    expect(h.popover(screen)).toBeUndefined()
+    await h.act(screen, 'discover-source-picker')
+    expect(h.popover(screen)).toBeDefined()
+    await h.act(screen, 'discover-runner', 'codex')
+    await h.act(screen, 'discover-query', 'edge pruning')
+    await h.act(screen, 'discover-search')
+    expect(h.api.searchDiscover).toHaveBeenCalled()
+    expect(h.popover(screen), 'Starting a search closes the source popover').toBeUndefined()
+    screen.dispose()
+  })
+  it('does not reopen the source popover after compact reading hides the composer', async () => {
+    const h = nativeHarness({ getLatestDiscover: vi.fn(async () => nativeDiscoverFixture) })
+    let compact = false
+    h.context.compact = () => compact
+    const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
+    await screen.load()
+    await h.act(screen, 'discover-results', 'arxiv:3')
+    await h.act(screen, 'discover-source-picker')
+    expect(h.popover(screen)).toBeDefined()
+    compact = true
+    const list = h.find(h.render(screen), 'discover-results')!
+    await h.context.presentation.dispatch(
+      JSON.stringify({ action: list.activate, value: 'arxiv:3' })
+    )
+    expect(h.find(h.render(screen), 'discover-source-picker')).toBeUndefined()
+    expect(h.popover(screen)).toBeUndefined()
+    compact = false
+    expect(h.find(h.render(screen), 'discover-source-picker')).toBeDefined()
+    expect(h.popover(screen), 'Leaving compact reading keeps the popover closed').toBeUndefined()
+    screen.dispose()
+  })
   it('summarizes the persisted session outcome in plain language with source counts', async () => {
     const [empty, skipped] = DISCOVER_SOURCE_IDS.filter((source) => source !== 'arxiv')
     const outcomes = {

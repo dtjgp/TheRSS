@@ -666,7 +666,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
 - (void)activateRow { [self.host emit:self.spec[@"activate"] value:[self selectedRowId] secret:NO]; }
 - (void)contextRow { [self.host emit:self.spec[@"context"] value:[self selectedRowId] secret:NO]; }
 - (void)trigger:(id)sender {
-  if (self.applying) return;
+  if (self.applying || [self.host.popover suppressesTriggerFrom:self.identifier]) return;
   if ([self.control isKindOfClass:NSControl.class] && !((NSControl *)self.control).enabled) return;
   NSString *kind = self.spec[@"kind"];
   if ([kind isEqual:@"select"]) [self.host emit:self.spec[@"action"] value:((NSPopUpButton *)self.control).selectedItem.representedObject secret:NO];

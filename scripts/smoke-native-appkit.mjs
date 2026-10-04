@@ -80,6 +80,7 @@ async function wait(id, predicate = (node) => !!node) {
     const node =
       find(state.root, id) ||
       find(state.modal, id) ||
+      find(state.popover?.root, id) ||
       state.toolbar?.items?.find((item) => item.id === id) ||
       null
     if (predicate(node)) return state
@@ -177,7 +178,7 @@ async function capture(name) {
   const before = await inspect()
   const owner = before.firstResponderId
   const inputValue = (state, id) => {
-    const node = find(state.root, id) || find(state.modal, id)
+    const node = find(state.root, id) || find(state.modal, id) || find(state.popover?.root, id)
     return node?.kind === 'input' ? node.value : undefined
   }
   const present = async () => {
@@ -219,6 +220,22 @@ async function capture(name) {
         exposed.add(await present())
         state = await inspect()
       }
+    }
+  }
+  if (state.popover?.windowNumber) {
+    // The popover is its own window; capture it beside the main window image.
+    try {
+      execFileSync(
+        '/usr/sbin/screencapture',
+        ['-x', `-l${state.popover.windowNumber}`, join(output, `${name}-popover.png`)],
+        { stdio: 'pipe' }
+      )
+    } catch (error) {
+      captureFailures.push({
+        name: `${name}-popover`,
+        windowNumber: state.popover.windowNumber,
+        error: String(error)
+      })
     }
   }
   assertFitsWindow(state, name)
@@ -316,21 +333,28 @@ try {
   await step('All 22 source choices and semantic search', async () => {
     await click('discover-source-picker')
     const state = await inspect()
-    assert.equal(flatten(state.root).filter((node) => node.kind === 'check').length, 22)
+    assert.equal(state.popover?.anchor, 'discover-source-picker', 'Sources open in a popover')
+    assert.equal(state.popover.below, true, 'The source popover opens below its button')
+    assert.equal(state.popover.keyWindow, true, 'The source finder takes keyboard focus')
+    assert(!find(state.root, 'discover-source-controls'), 'The picker no longer pushes results')
+    assert.equal(flatten(state.popover.root).filter((node) => node.kind === 'check').length, 22)
     assert.equal(
-      flatten(state.root).filter((node) => /^discover-group-.+-title$/u.test(node.id)).length,
+      flatten(state.popover.root).filter((node) => /^discover-group-.+-title$/u.test(node.id))
+        .length,
       5
     )
     await click('discover-group-code-toggle')
-    assert.equal(find((await inspect()).root, 'discover-source-github').checked, false)
-    assert.equal(find((await inspect()).root, 'discover-source-arxiv').checked, true)
+    assert.equal(find((await inspect()).popover.root, 'discover-source-github').checked, false)
+    assert.equal(find((await inspect()).popover.root, 'discover-source-arxiv').checked, true)
     await click('discover-group-code-toggle')
     await capture('source-picker-checked')
     await click('discover-clear-sources')
     await wait('discover-search', (node) => node?.enabled === false)
     await capture('source-picker-unchecked')
     await click('discover-all-sources')
-    await click('discover-source-picker')
+    await act('popover', 'dismiss-popover')
+    await wait('discover-source-picker', (node) => node?.title === 'Sources (22/22)')
+    assert.equal((await inspect()).popover, null, 'Dismissing the popover keeps the selection')
     await act('discover-runner', 'choose', 'codex')
     await click('discover-search')
     await wait('discover-results')

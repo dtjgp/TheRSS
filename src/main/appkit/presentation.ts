@@ -44,6 +44,13 @@ export interface NativeToolbar {
   readonly title: string
   readonly items: readonly NativeToolbarItem[]
 }
+/** Transient content shown in an NSPopover below the `anchor` node of the scene root. */
+export interface NativePopover {
+  readonly anchor: string
+  /** Emitted when the user dismisses the popover (outside click or Escape). */
+  readonly close: string
+  readonly root: NativeNode
+}
 export interface NativeColumn {
   readonly id: string
   readonly title: string
@@ -370,7 +377,8 @@ export class NativePresentation {
     focus?: string,
     zoom = 1,
     announcement?: NativeAnnouncement,
-    toolbar?: NativeToolbar
+    toolbar?: NativeToolbar,
+    popover?: NativePopover
   ): string {
     const ids = new Set<string>()
     const check = (node: NativeNode, depth: number) => {
@@ -381,12 +389,26 @@ export class NativePresentation {
     }
     check(root, 0)
     if (modal) check(modal, 0)
+    if (popover) {
+      // A sheet is window-modal, so a popover cannot share the scene with it.
+      if (modal || !ids.has(popover.anchor)) throw new Error('Invalid native popover anchor')
+      check(popover.root, 0)
+    }
     const validated = {
       version: 1,
       revision: ++this.revision,
       root: nodeSchema.parse(root),
       ...(modal ? { modal: nodeSchema.parse(modal) } : {}),
       ...(toolbar ? { toolbar: toolbarSchema.parse(toolbar) } : {}),
+      ...(popover
+        ? {
+            popover: {
+              anchor: z.string().min(1).max(300).parse(popover.anchor),
+              close: z.string().min(1).max(100).parse(popover.close),
+              root: nodeSchema.parse(popover.root)
+            }
+          }
+        : {}),
       ...(focus ? { focus } : {}),
       zoom: z.number().min(0.8).max(1.5).parse(zoom),
       ...(announcement
@@ -409,6 +431,10 @@ export class NativePresentation {
       node.children?.forEach(visit)
     }
     visit(modal ?? root)
+    if (popover) {
+      visit(popover.root)
+      liveActions.add(popover.close)
+    }
     // A sheet is window-modal: toolbar commands stay inert until it closes.
     if (!modal)
       toolbar?.items.forEach((item) => {

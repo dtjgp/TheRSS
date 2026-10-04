@@ -18,7 +18,7 @@ import {
   type NativeContext,
   type NativeScreen
 } from './common'
-import type { NativeNode } from './presentation'
+import type { NativeNode, NativePopover } from './presentation'
 import { ResearchReader, type TriageHistory } from './reading'
 import { researchMetadata, researchSubtitle } from './researchMetadata'
 import { ReadingWorkspace } from './readingWorkspace'
@@ -186,9 +186,7 @@ export class DiscoverScreen implements NativeScreen {
     return column(
       'discover-page',
       [
-        ...(!this.workspace.focused || busy
-          ? [this.composer(), ...this.readiness(), ...(this.picker ? [this.sourcePicker()] : [])]
-          : []),
+        ...(!this.workspace.focused || busy ? [this.composer(), ...this.readiness()] : []),
         ...(this.progress ? [this.runStatus(this.progress)] : []),
         ...(this.message ? [label('discover-message', this.message)] : []),
         ...(!this.loaded && !this.loading
@@ -370,6 +368,8 @@ export class DiscoverScreen implements NativeScreen {
             `Sources (${this.sources.size}/22)`,
             () => {
               this.picker = !this.picker
+              // Keyboard users land in the source finder, as in a Safari or Mail popover.
+              if (this.picker) this.context.focus('discover-source-query')
               this.context.redraw()
             },
             !busy && !this.loading
@@ -440,6 +440,23 @@ export class DiscoverScreen implements NativeScreen {
     ]
   }
 
+  popover(): NativePopover | undefined {
+    // The Sources button is part of the composer, which a focused reading workspace hides;
+    // hiding the anchor ends the choice so the popover never reopens on its own later.
+    if (this.workspace.focused) this.closePopover()
+    if (!this.picker || this.activeRun) return undefined
+    return {
+      anchor: 'discover-source-picker',
+      close: this.context.presentation.action('discover-source-popover-close', () => {
+        this.closePopover()
+        this.context.redraw()
+      }),
+      root: column('discover-source-popover', [this.sourcePicker()], { padding: 14 })
+    }
+  }
+  closePopover(): void {
+    this.picker = false
+  }
   private sourcePicker(): NativeNode {
     return discoverSources(this.context, {
       query: this.sourceQuery,
@@ -492,6 +509,7 @@ export class DiscoverScreen implements NativeScreen {
     const runId = `native:${randomUUID()}`
     this.version++
     this.activeRun = runId
+    this.picker = false
     this.canceling = false
     this.message = ''
     this.progress = {

@@ -133,6 +133,59 @@ describe('native presentation boundary', () => {
     ])
       expect(() => view.finish(invalid as NativeNode)).toThrow()
   })
+  it('anchors a popover to a root node with unique ids and keeps its actions live', async () => {
+    const view = new NativePresentation()
+    const received: string[] = []
+    view.begin()
+    const close = view.action('popover:close', () => {
+      received.push('close')
+    })
+    const toggle = view.action('popover:toggle', () => {
+      received.push('toggle')
+    })
+    const opener = view.action('popover:open', () => {
+      received.push('root')
+    })
+    const root: NativeNode = {
+      id: 'page',
+      kind: 'column',
+      children: [{ id: 'open', kind: 'button', title: 'Sources', action: opener }]
+    }
+    const content: NativeNode = {
+      id: 'picker',
+      kind: 'column',
+      children: [{ id: 'all', kind: 'button', title: 'Select all', action: toggle }]
+    }
+    const scene = JSON.parse(
+      view.finish(root, undefined, undefined, 1, undefined, undefined, {
+        anchor: 'open',
+        close,
+        root: content
+      })
+    )
+    expect(scene.popover).toMatchObject({ anchor: 'open', close, root: { id: 'picker' } })
+    await view.dispatch(JSON.stringify({ action: toggle }))
+    await view.dispatch(JSON.stringify({ action: close }))
+    // The window stays interactive: root actions remain live while the popover is open.
+    await view.dispatch(JSON.stringify({ action: opener }))
+    expect(received).toEqual(['toggle', 'close', 'root'])
+    for (const popover of [
+      { anchor: 'missing', close, root: content },
+      { anchor: 'open', close, root: { ...content, id: 'open' } },
+      { anchor: 'open', close: '', root: content }
+    ])
+      expect(() =>
+        view.finish(root, undefined, undefined, 1, undefined, undefined, popover)
+      ).toThrow()
+    const sheet: NativeNode = { id: 'sheet', kind: 'column', children: [] }
+    expect(() =>
+      view.finish(root, sheet, undefined, 1, undefined, undefined, {
+        anchor: 'open',
+        close,
+        root: content
+      })
+    ).toThrow()
+  })
   it('accepts keyboard shortcuts on buttons only', () => {
     const view = new NativePresentation()
     const button = {

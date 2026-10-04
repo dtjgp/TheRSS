@@ -6,7 +6,13 @@ import type {
   AnalysisRunner,
   AnalysisArtifact
 } from '../../shared/models'
-import type { NativeNode, NativeOption, NativePresentation, NativeRow } from './presentation'
+import type {
+  NativeNode,
+  NativeOption,
+  NativePopover,
+  NativePresentation,
+  NativeRow
+} from './presentation'
 import type { LocalResearchTarget } from '../../shared/localResearch'
 
 export type Route = 'discover' | 'saved' | 'analytics' | 'sources' | 'settings'
@@ -36,6 +42,10 @@ export interface NativeContext {
 }
 export interface NativeScreen {
   render(): NativeNode
+  /** Transient content anchored to a node of `render()`; omitted while closed. */
+  popover?(): NativePopover | undefined
+  /** Closes the popover without an event, e.g. when a sheet opens or the workspace changes. */
+  closePopover?(): void
   load?(): Promise<void>
   dispose?(): void
 }

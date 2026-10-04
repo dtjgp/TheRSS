@@ -2,8 +2,10 @@ import { DISCOVER_SOURCE_IDS, type DiscoverSnapshot } from '../../shared/discove
 import { vi } from 'vitest'
 import type { TheRSSApi, DashboardSnapshot } from '../../shared/api'
 import type { NativeContext } from './common'
-import { NativePresentation, type NativeNode } from './presentation'
+import { NativePresentation, type NativeNode, type NativePopover } from './presentation'
 import { LocalSearchScreen } from './localSearch'
+
+type TestScreen = { render(): NativeNode; popover?(): NativePopover | undefined }
 
 export function nativeHarness(overrides: Partial<TheRSSApi> = {}) {
   const dashboard: DashboardSnapshot = {
@@ -54,16 +56,23 @@ export function nativeHarness(overrides: Partial<TheRSSApi> = {}) {
     width: () => 320,
     setWidth: vi.fn()
   }
-  const render = (screen: { render(): NativeNode }) => {
+  // Test view: a screen's popover content is appended to its root so lookups and actions reach
+  // it; `popover()` returns the popover itself to assert its anchor and separation.
+  const render = (screen: TestScreen) => {
     context.presentation.begin()
     const root = screen.render()
-    context.presentation.finish(root)
-    return root
+    const popover = screen.popover?.()
+    context.presentation.finish(root, undefined, undefined, 1, undefined, undefined, popover)
+    return popover ? { ...root, children: [...(root.children ?? []), popover.root] } : root
+  }
+  const popover = (screen: TestScreen): NativePopover | undefined => {
+    render(screen)
+    return screen.popover?.()
   }
   const find = (node: NativeNode, id: string): NativeNode | undefined =>
     node.id === id ? node : node.children?.map((child) => find(child, id)).find(Boolean)
   const act = async (
-    screen: { render(): NativeNode },
+    screen: TestScreen,
     id: string,
     value?: string | boolean | number,
     secret = false
@@ -73,7 +82,7 @@ export function nativeHarness(overrides: Partial<TheRSSApi> = {}) {
     const json = JSON.stringify({ action: node.action, ...(value !== undefined ? { value } : {}) })
     await (secret ? context.presentation.dispatchSecret(json) : context.presentation.dispatch(json))
   }
-  return { api, context, render, find, act, dashboard }
+  return { api, context, render, popover, find, act, dashboard }
 }
 
 export const nativeDiscoverFixture: DiscoverSnapshot = {

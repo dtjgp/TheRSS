@@ -75,7 +75,7 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
 }
 - (BOOL)reduceTransparency { return [self increaseContrast] || (self.fixtureTransparency ? !self.fixtureTransparency.boolValue : NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency); }
 - (void)updateMaterials {
-  NSMutableArray<TRNode *> *queue = [NSMutableArray array]; if (self.root) [queue addObject:self.root]; if (self.modal) [queue addObject:self.modal];
+  NSMutableArray<TRNode *> *queue = [NSMutableArray array]; if (self.root) [queue addObject:self.root]; if (self.modal) [queue addObject:self.modal]; if (self.popover.node) [queue addObject:self.popover.node];
   for (NSUInteger i = 0; i < queue.count; i++) { [queue[i] updateMaterial]; [queue[i] update:queue[i].spec]; [queue addObjectsFromArray:queue[i].nodes]; }
   [self.root layoutSubtreeIfNeeded]; [self.modal layoutSubtreeIfNeeded];
 }
@@ -118,12 +118,19 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
     self.previousResponder = nil;
     [self ensureNativeFocus];
   }
+  // A popover follows the root (its anchor) and never coexists with a sheet.
+  if (scene[@"popover"] && !self.sheet) {
+    if (!self.popover) self.popover = [[TRPopover alloc] initWithHost:self];
+    [self.popover apply:scene[@"popover"]];
+  } else [self.popover close];
   NSString *focus = scene[@"focus"];
   if (focus) {
     TRNode *node = [self find:focus]; NSView *control = node.control ?: node;
     if (!node) [self.chrome focusSearchField:focus];
     if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
     if (control.window) {
+      // Focus inside the popover makes its window key so typing reaches the field.
+      if (control.window != self.window && control.window != self.sheet && !control.window.isKeyWindow) [control.window makeKeyWindow];
       [control.window makeFirstResponder:control];
       if ([node.spec[@"kind"] isEqual:@"table"]) [(NSTableView *)control scrollRowToVisible:((NSTableView *)control).selectedRow];
       if ([node.spec[@"kind"] isEqual:@"input"] || [node.spec[@"kind"] isEqual:@"secure"])
@@ -189,6 +196,7 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
   if (self.frameObserver) [NSNotificationCenter.defaultCenter removeObserver:self.frameObserver]; self.frameObserver = nil;
   if (self.accessibilityObserver) [NSWorkspace.sharedWorkspace.notificationCenter removeObserver:self.accessibilityObserver]; self.accessibilityObserver = nil;
   if (self.sheet) { [self.window endSheet:self.sheet]; [self.sheet orderOut:nil]; self.sheet = nil; self.modal = nil; }
+  [self.popover close]; self.popover = nil;
   [self.chrome uninstall]; self.chrome = nil;
   if (self.window.contentView == self.canvas) { [self.original removeFromSuperview]; self.original.hidden = NO; self.window.contentView = self.original; }
   self.root = nil;
@@ -198,13 +206,13 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
   if (self.regularRef) { napi_delete_reference(self.env,self.regularRef); self.regularRef = nullptr; }
   if (self.secretRef) { napi_delete_reference(self.env,self.secretRef); self.secretRef = nullptr; }
 }
-- (TRNode *)find:(NSString *)identifier { return [self.modal find:identifier] ?: [self.root find:identifier]; }
+- (TRNode *)find:(NSString *)identifier { return [self.modal find:identifier] ?: [self.popover.node find:identifier] ?: [self.root find:identifier]; }
 - (NSDictionary *)inspect {
   NSMutableDictionary *secure = [NSMutableDictionary dictionary];
   for (NSString *identifier in self.secureFields) secure[identifier] = @{@"hasValue":@(((NSSecureTextField *)self.secureFields[identifier].control).stringValue.length > 0)};
   NSMutableArray *ownedWindows = [NSMutableArray array];
   NSArray *windows = CFBridgingRelease(CGWindowListCopyWindowInfo(kCGWindowListOptionAll,kCGNullWindowID));
   for (NSDictionary *window in windows) if ([window[(id)kCGWindowOwnerPID] intValue] == NSProcessInfo.processInfo.processIdentifier) [ownedWindows addObject:window];
-  return @{@"announcementCount":@(self.announcementCount),@"announcementId":@(self.announcementId),@"alerts":TRFixtureAlerts(self),@"firstResponderId":TRFocusOwner(self.modal ?: self.root,(self.sheet ?: self.window).firstResponder) ?: @"",@"windowAppearance":self.window.appearance.name ?: @"automatic",@"windowEffectiveAppearance":self.window.effectiveAppearance.name,@"nativeRoot":NSStringFromClass(self.window.contentView.class),@"webHidden":@(self.original.hidden),@"windowNumber":@(self.window.windowNumber),@"visible":@(self.window.visible),@"onActiveSpace":@(self.window.onActiveSpace),@"miniaturized":@(self.window.miniaturized),@"zoom":@(self.zoom),@"root":[self.root inspect] ?: @{},@"modal":self.modal ? [self.modal inspect] : NSNull.null,@"toolbar":self.chrome ? [self.chrome inspect] : NSNull.null,@"keyWindow":@((self.sheet ?: self.window).isKeyWindow),@"appActive":@(NSApp.isActive),@"firstResponder":NSStringFromClass((self.sheet ?: self.window).firstResponder.class),@"disposed":@(self.disposed),@"secureDrafts":secure,@"ownedWindowServerEntries":ownedWindows};
+  return @{@"announcementCount":@(self.announcementCount),@"announcementId":@(self.announcementId),@"alerts":TRFixtureAlerts(self),@"firstResponderId":TRFocusOwner(self.modal ?: self.root,(self.sheet ?: self.window).firstResponder) ?: @"",@"windowAppearance":self.window.appearance.name ?: @"automatic",@"windowEffectiveAppearance":self.window.effectiveAppearance.name,@"nativeRoot":NSStringFromClass(self.window.contentView.class),@"webHidden":@(self.original.hidden),@"windowNumber":@(self.window.windowNumber),@"visible":@(self.window.visible),@"onActiveSpace":@(self.window.onActiveSpace),@"miniaturized":@(self.window.miniaturized),@"zoom":@(self.zoom),@"root":[self.root inspect] ?: @{},@"modal":self.modal ? [self.modal inspect] : NSNull.null,@"toolbar":self.chrome ? [self.chrome inspect] : NSNull.null,@"popover":[self.popover inspect] ?: NSNull.null,@"keyWindow":@((self.sheet ?: self.window).isKeyWindow),@"appActive":@(NSApp.isActive),@"firstResponder":NSStringFromClass((self.sheet ?: self.window).firstResponder.class),@"disposed":@(self.disposed),@"secureDrafts":secure,@"ownedWindowServerEntries":ownedWindows};
 }
 @end

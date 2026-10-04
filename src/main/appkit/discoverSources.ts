@@ -122,7 +122,8 @@ export function discoverSources(context: NativeContext, state: SourcePickerState
               ],
           { gap: 8 }
         ),
-        { height: 224, flex: 0 }
+        // The popover has room for most of the 22 sources; the list scrolls for the rest.
+        { height: 380, flex: 0 }
       )
     ],
     { gap: 4 }

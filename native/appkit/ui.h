@@ -31,6 +31,17 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 - (NSDictionary *)inspect;
 @end
 
+@interface TRPopover : NSObject <NSPopoverDelegate>
+@property(nonatomic, strong) NSPopover *popover;
+@property(nonatomic, strong) TRNode *node;
+- (instancetype)initWithHost:(TRHost *)host;
+- (void)apply:(NSDictionary *)spec;
+- (void)close;
+- (BOOL)suppressesTriggerFrom:(NSString *)identifier;
+- (BOOL)dismissFixture:(BOOL)fromAnchor;
+- (NSDictionary *)inspect;
+@end
+
 @interface TRHost : NSObject <NSWindowDelegate> {
 @public
   std::deque<std::shared_ptr<TREvent>> pending;
@@ -43,6 +54,7 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 @property(nonatomic, strong) NSPanel *sheet;
 @property(nonatomic, strong) TRNode *modal;
 @property(nonatomic, strong) TRChrome *chrome;
+@property(nonatomic, strong) TRPopover *popover;
 @property(nonatomic, weak) NSResponder *previousResponder;
 @property(nonatomic, strong) id closeObserver;
 @property(nonatomic, strong) id frameObserver;
