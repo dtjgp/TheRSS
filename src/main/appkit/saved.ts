@@ -1,7 +1,8 @@
 import type { AnalysisRunner } from '../../shared/models'
 import type { DashboardItem } from '../../shared/api'
+import type { DiscoverySource } from '../../shared/discovery'
 import { ACTIVE_TODAY_SOURCE_IDS, sourceDisplayName } from '../../shared/sourceIdentity'
-import { column, Controls, label, row, type NativeContext, type NativeScreen } from './common'
+import { column, Controls, emptyState, row, type NativeContext, type NativeScreen } from './common'
 import type { NativeNode } from './presentation'
 import { ResearchReader, type TriageHistory } from './reading'
 import { researchRowGlyph, researchSubtitle } from './researchMetadata'
@@ -127,28 +128,30 @@ export class SavedScreen implements NativeScreen {
               )
             ]
           : [
-              column(
-                'saved-empty',
-                [
-                  label(
-                    'saved-empty-message',
-                    all.length
-                      ? 'No saved items from this source.'
-                      : 'Save papers and repositories from Discover to build your local reading list.'
-                  ),
-                  row('saved-empty-actions', [
-                    all.length
-                      ? b.button('saved-reset-filter', 'Show all Saved', () => {
-                          this.filter = 'all'
-                          this.workspace.back()
-                        })
-                      : b.button('saved-open-discover', 'Open Discover', () =>
-                          this.context.navigate('discover')
-                        )
-                  ])
-                ],
-                { flex: 1 }
-              )
+              all.length
+                ? emptyState(
+                    'saved-empty',
+                    'star',
+                    `No items from ${sourceDisplayName(this.filter as DiscoverySource)}`,
+                    'No saved items from this source. Your other saved research is unchanged.',
+                    [
+                      b.button('saved-reset-filter', 'Show all Saved', () => {
+                        this.filter = 'all'
+                        this.workspace.back()
+                      })
+                    ]
+                  )
+                : emptyState(
+                    'saved-empty',
+                    'star',
+                    'No saved research',
+                    'Save papers and repositories from Discover to build your local reading list.',
+                    [
+                      b.button('saved-open-discover', 'Open Discover', () =>
+                        this.context.navigate('discover')
+                      )
+                    ]
+                  )
             ])
       ],
       { flex: 1 }

@@ -89,6 +89,7 @@ export type NativeKind =
   | 'sidebar'
   | 'progress'
   | 'segmented'
+  | 'symbol'
 export interface NativeNode {
   readonly compactPane?: 'list' | 'detail' | undefined
   readonly wrap?: boolean | undefined
@@ -137,6 +138,8 @@ export interface NativeNode {
   /** Determinate progress (progress nodes only); omit both for indeterminate progress. */
   readonly completed?: number | undefined
   readonly total?: number | undefined
+  /** Centered columns center their stack and children; centered labels center their text. */
+  readonly align?: 'center' | undefined
   /** Button key equivalent: Return (default button) or Command-Return. */
   readonly shortcut?: 'return' | 'command-return' | undefined
 }
@@ -163,7 +166,8 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
         'chart',
         'sidebar',
         'progress',
-        'segmented'
+        'segmented',
+        'symbol'
       ]),
       compactPane: z.enum(['list', 'detail']).optional(),
       wrap: z.boolean().optional(),
@@ -249,7 +253,8 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
       safeArea: z.boolean().optional(),
       completed: z.number().int().min(0).max(100000).optional(),
       total: z.number().int().min(1).max(100000).optional(),
-      shortcut: z.enum(['return', 'command-return']).optional()
+      shortcut: z.enum(['return', 'command-return']).optional(),
+      align: z.literal('center').optional()
     })
     .strict()
     .superRefine((node, context) => {
@@ -293,6 +298,13 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
         context.addIssue({
           code: 'custom',
           message: 'Native segmented controls need 2-6 options including the selected one'
+        })
+      if (node.align !== undefined && node.kind !== 'column' && node.kind !== 'label')
+        context.addIssue({ code: 'custom', message: 'Only columns and labels are centered' })
+      if (node.kind === 'symbol' && (!node.symbol || (node.size !== undefined && node.size < 16)))
+        context.addIssue({
+          code: 'custom',
+          message: 'Native symbols need an allowlisted symbol and a 16-48 pt size'
         })
       if (node.shortcut !== undefined && node.kind !== 'button')
         context.addIssue({ code: 'custom', message: 'Only native buttons carry a shortcut' })

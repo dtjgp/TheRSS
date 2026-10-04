@@ -4,7 +4,15 @@ import {
   type LocalSearchResult
 } from '../../shared/localSearch'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
-import { column, Controls, label, readableError, row, type NativeContext } from './common'
+import {
+  column,
+  Controls,
+  emptyState,
+  label,
+  readableError,
+  row,
+  type NativeContext
+} from './common'
 import type { NativeNode, NativeToolbarItem } from './presentation'
 
 const resultKey = (item: LocalSearchResult): string => `${item.kind}:${item.id}`
@@ -149,18 +157,19 @@ export class LocalSearchScreen {
                 : [])
             ]
           : [
-              column(
-                'local-search-empty',
-                [
-                  label(
-                    'local-search-empty-message',
-                    response
-                      ? 'No matching local records.'
-                      : 'Search Saved research, Discover sessions and stored analyses.'
+              response
+                ? emptyState(
+                    'local-search-empty',
+                    'magnifyingglass',
+                    `No results for “${response.query}”`,
+                    'No matching local records. Search looks in Saved research, Discover sessions and stored analyses on this Mac.'
                   )
-                ],
-                { flex: 1 }
-              )
+                : emptyState(
+                    'local-search-empty',
+                    'magnifyingglass',
+                    'Search local research',
+                    'Search Saved research, Discover sessions and stored analyses.'
+                  )
             ])
       ],
       { flex: 1, gap: 10 }

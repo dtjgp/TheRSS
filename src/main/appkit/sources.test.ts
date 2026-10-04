@@ -105,7 +105,10 @@ describe('AppKit Sources', () => {
     const h = nativeHarness(),
       screen = new SourcesScreen(h.context)
     await h.act(screen, 'sources-query', 'no-such-source-unique-fixture')
-    expect(h.find(h.render(screen), 'sources-empty-message')?.text).toContain('No sources')
+    expect(h.find(h.render(screen), 'sources-filter-empty')?.text).toContain('No sources')
+    // The detail pane names the state without repeating the list's sentence.
+    expect(h.find(h.render(screen), 'sources-empty-title')?.text).toBe('No matching sources')
+    expect(h.find(h.render(screen), 'sources-empty-message')?.text).toContain('Clear filters')
     expect(h.find(h.render(screen), 'sources-refresh')).toBeUndefined()
   })
   it('does not fetch initial previews or keyboard focus; activation loads source content', async () => {

@@ -423,6 +423,93 @@ try {
   segmentEvents = await application.evaluate(() => globalThis.__controls.events)
   assert.equal(segmentEvents.length, emitted, 'A scene update does not emit a choice')
   checks.push('Native segmented control shows every choice, emits clicks and skips scene updates')
+  const emptyScene = (zoom) =>
+    application.evaluate((_, data) => {
+      const f = globalThis.__controls
+      f.scene.root = {
+        id: 'empty-root',
+        kind: 'column',
+        children: [
+          {
+            id: 'empty-state',
+            kind: 'column',
+            align: 'center',
+            gap: 8,
+            padding: 18,
+            height: 600,
+            children: [
+              {
+                id: 'empty-symbol',
+                kind: 'symbol',
+                symbol: 'star',
+                title: 'No saved research',
+                size: 40
+              },
+              {
+                id: 'empty-title',
+                kind: 'label',
+                text: 'No saved research',
+                weight: 'bold',
+                size: 17,
+                align: 'center',
+                maxWidth: 420
+              },
+              {
+                id: 'empty-message',
+                kind: 'label',
+                text: 'Save papers and repositories from Discover to build your local reading list.',
+                weight: 'secondary',
+                align: 'center',
+                maxWidth: 420
+              },
+              {
+                id: 'empty-actions',
+                kind: 'row',
+                children: [
+                  { id: 'empty-open', kind: 'button', title: 'Open Discover', action: 'empty-open' }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+      f.bridge.present(f.handle, JSON.stringify({ ...f.scene, zoom: data }))
+    }, zoom)
+  for (const zoom of [1, 1.5]) {
+    await emptyScene(zoom)
+    const empty = find((await inspect()).root, 'empty-state')
+    const [, , columnWidth, columnHeight] = frameNumbers(empty.frame)
+    const frames = empty.children.map((child) => frameNumbers(child.frame))
+    for (const [index, [x, , width]] of frames.entries())
+      assert(
+        Math.abs(x + width / 2 - columnWidth / 2) <= 1,
+        `Child ${empty.children[index].id} is centered horizontally at zoom ${zoom}`
+      )
+    const top = frames[0][1],
+      bottom = frames.at(-1)[1] + frames.at(-1)[3]
+    assert(Math.abs((top + bottom) / 2 - columnHeight / 2) <= 2, `Stack centered at zoom ${zoom}`)
+    assert(top >= 0 && bottom <= columnHeight, `Stack fits at zoom ${zoom}`)
+    for (let index = 1; index < frames.length; index++)
+      assert(
+        frames[index][1] >= frames[index - 1][1] + frames[index - 1][3],
+        'Stack parts do not overlap'
+      )
+    assert(frames[1][2] <= 420 * zoom + 1, 'The title keeps its maximum width')
+    const symbol = find(empty, 'empty-symbol')
+    assert.equal(symbol.class, 'NSImageView')
+    assert.equal(symbol.hasImage, true)
+    assert.equal(symbol.exposed, false, 'The decorative symbol is not a separate VoiceOver element')
+    assert.equal(find(empty, 'empty-title').centered, true)
+    assert.equal(find(empty, 'empty-message').centered, true)
+  }
+  await act('empty-open', 'click')
+  assert.deepEqual((await application.evaluate(() => globalThis.__controls.events)).at(-1), {
+    action: 'empty-open'
+  })
+  await emptyScene(1)
+  checks.push(
+    'Empty states center a decorative symbol, title, message and action at zoom 1 and 1.5'
+  )
   await application.evaluate(() => {
     const f = globalThis.__controls
     f.scene.root = {

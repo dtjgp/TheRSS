@@ -303,6 +303,10 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     self.control = button;
   } else if ([kind isEqual:@"select"]) {
     NSPopUpButton *select = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO]; select.target = self; select.action = @selector(trigger:); self.control = select;
+  } else if ([kind isEqual:@"symbol"]) {
+    NSImageView *image = [NSImageView new]; image.imageScaling = NSImageScaleProportionallyDown;
+    // Decorative: the adjacent title carries the meaning for VoiceOver.
+    image.accessibilityElement = NO; self.control = image;
   } else if ([kind isEqual:@"segmented"]) {
     NSSegmentedControl *segmented = [NSSegmentedControl new];
     segmented.trackingMode = NSSegmentSwitchTrackingSelectOne; segmented.segmentStyle = NSSegmentStyleAutomatic;
@@ -351,6 +355,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     label.lineBreakMode = spec[@"maxLines"] ? NSLineBreakByTruncatingTail : NSLineBreakByWordWrapping;
     label.toolTip = spec[@"maxLines"] ? label.stringValue : nil;
     label.textColor = [spec[@"weight"] isEqual:@"secondary"] && ![self.host increaseContrast] ? NSColor.secondaryLabelColor : NSColor.labelColor;
+    label.alignment = [spec[@"align"] isEqual:@"center"] ? NSTextAlignmentCenter : NSTextAlignmentNatural;
   } else if ([kind isEqual:@"chart"]) {
     TRChart *chart = (TRChart *)self.control;
     chart.points = spec[@"points"] ?: @[]; chart.zoom = self.host.zoom; chart.highContrast = self.host.increaseContrast;
@@ -401,6 +406,11 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       select.autoenablesItems = NO;
     }
     for (NSMenuItem *item in select.itemArray) if ([item.representedObject isEqual:spec[@"selected"]]) [select selectItem:item];
+  } else if ([kind isEqual:@"symbol"]) {
+    NSImageView *image = (NSImageView *)self.control;
+    image.image = [NSImage imageWithSystemSymbolName:spec[@"symbol"] accessibilityDescription:spec[@"title"]];
+    image.symbolConfiguration = [NSImageSymbolConfiguration configurationWithPointSize:TRNumber(spec,@"size",40)*self.host.zoom weight:NSFontWeightLight];
+    image.contentTintColor = self.host.increaseContrast ? NSColor.secondaryLabelColor : NSColor.tertiaryLabelColor;
   } else if ([kind isEqual:@"segmented"]) {
     NSSegmentedControl *segmented = (NSSegmentedControl *)self.control;
     NSArray *options = spec[@"options"];
@@ -491,8 +501,24 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
 - (CGFloat)safeInset { return [self.spec[@"safeArea"] boolValue] ? [self.host safeTop] : 0; }
 - (CGFloat)preferredWidth {
   if (self.spec[@"width"]) return [self.spec[@"width"] doubleValue] * self.host.zoom;
+  if ([self.spec[@"kind"] isEqual:@"symbol"]) return ceil(TRNumber(self.spec,@"size",40) * 1.3 * self.host.zoom);
   if ([self.control isKindOfClass:NSControl.class]) return MAX(60, self.control.intrinsicContentSize.width + 8);
   return 180 * self.host.zoom;
+}
+// A row's natural width: its children side by side. Used only by centered columns, so other
+// rows keep their existing preferred width.
+- (CGFloat)naturalRowWidth {
+  CGFloat gap = TRNumber(self.spec,@"gap",10) * self.host.zoom, width = 2 * TRNumber(self.spec,@"padding",0) * self.host.zoom + MAX(0,(NSInteger)self.nodes.count-1) * gap;
+  for (TRNode *child in self.nodes) width += child.preferredWidth;
+  return width;
+}
+// Width of a child in a centered column: its own natural or maximum width, never the column's.
+- (CGFloat)centeredWidthFor:(TRNode *)child within:(CGFloat)available {
+  CGFloat width = available, zoom = self.host.zoom; NSString *kind = child.spec[@"kind"];
+  if (child.spec[@"maxWidth"]) width = MIN(width,[child.spec[@"maxWidth"] doubleValue]*zoom);
+  if ([kind isEqual:@"row"]) width = MIN(width,[child naturalRowWidth]);
+  else if ([kind isEqual:@"symbol"] || [kind isEqual:@"button"]) width = MIN(width,child.preferredWidth);
+  return MAX(0,width);
 }
 - (BOOL)wrapsRowAtWidth:(CGFloat)width {
   if (self.spec[@"wrap"] && ![self.spec[@"wrap"] boolValue]) return NO;
@@ -516,9 +542,11 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   CGFloat zoom = self.host.zoom, padding = TRNumber(self.spec, @"padding", 0) * zoom, gap = TRNumber(self.spec,@"gap",10) * zoom;
   if (self.spec[@"height"]) return [self.spec[@"height"] doubleValue] * zoom;
   NSString *kind = self.spec[@"kind"];
+  if ([kind isEqual:@"symbol"]) return ceil(TRNumber(self.spec,@"size",40) * 1.2 * zoom);
   if ([kind isEqual:@"column"]) {
+    BOOL centered = [self.spec[@"align"] isEqual:@"center"];
     CGFloat height = 2 * padding + [self safeInset] + MAX(0, (NSInteger)self.nodes.count - 1) * gap;
-    for (TRNode *child in self.nodes) height += [child heightForWidth:MAX(20,width-2*padding)];
+    for (TRNode *child in self.nodes) height += [child heightForWidth:centered ? MAX(20,[self centeredWidthFor:child within:width-2*padding]) : MAX(20,width-2*padding)];
     return MAX(height, TRNumber(self.spec,@"minHeight",0) * zoom);
   }
   if ([kind isEqual:@"row"]) {
@@ -603,6 +631,18 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       return;
     }
     CGFloat total = MAX(0,(NSInteger)self.nodes.count-1) * gap, flex = 0;
+    if (!row && [self.spec[@"align"] isEqual:@"center"]) {
+      // Centered stack (macOS empty states): natural sizes, centered both ways.
+      CGFloat inner = MAX(20,width-2*padding), safe = [self safeInset];
+      for (TRNode *child in self.nodes) total += [child heightForWidth:MAX(20,[self centeredWidthFor:child within:inner])];
+      CGFloat position = padding + safe + MAX(0,floor((height - 2*padding - safe - total)/2));
+      for (TRNode *child in self.nodes) {
+        CGFloat childWidth = MAX(20,[self centeredWidthFor:child within:inner]), extent = [child heightForWidth:childWidth];
+        child.frame = NSMakeRect(floor((width-childWidth)/2),position,childWidth,extent); position += extent + gap;
+      }
+      for (TRNode *child in self.nodes) { child.needsLayout = YES; [child layoutSubtreeIfNeeded]; }
+      return;
+    }
     for (TRNode *child in self.nodes) { if ([child.spec[@"flex"] doubleValue] > 0) flex += [child.spec[@"flex"] doubleValue]; else total += row ? child.preferredWidth : [child heightForWidth:MAX(20,width-2*padding)]; }
     CGFloat safe = row ? 0 : [self safeInset];
     CGFloat available = MAX(0, (row ? width : height) - 2*padding - safe - total), position = padding + safe;
@@ -816,7 +856,8 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     }];
     result[@"tableCells"] = cells; result[@"styledRuns"] = runs;
   }
-  if ([self.spec[@"kind"] isEqual:@"label"]) result[@"text"] = ((NSTextField *)self.control).stringValue;
+  if ([self.spec[@"kind"] isEqual:@"label"]) { result[@"text"] = ((NSTextField *)self.control).stringValue; result[@"centered"] = @(((NSTextField *)self.control).alignment == NSTextAlignmentCenter); }
+  if ([self.spec[@"kind"] isEqual:@"symbol"]) { NSImageView *image = (NSImageView *)self.control; result[@"hasImage"] = @(image.image != nil); result[@"exposed"] = @(image.isAccessibilityElement); }
   if ([self.spec[@"kind"] isEqual:@"chart"]) {
     result[@"points"] = ((TRChart *)self.control).points;
     result[@"bars"] = [(TRChart *)self.control geometry];

@@ -9,6 +9,7 @@ import type { AnalysisRunner } from '../../shared/models'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
 import {
   column,
+  emptyState,
   Controls,
   label,
   readableError,
@@ -26,6 +27,11 @@ import { discoverSources } from './discoverSources'
 import { describeDiscoverRun } from '../../shared/discoverRunProgress'
 
 type Filter = 'all' | 'paper' | 'repository' | 'other'
+const KIND_NAMES: Record<Exclude<Filter, 'all'>, string> = {
+  paper: 'papers',
+  repository: 'repositories',
+  other: 'other results'
+}
 
 const statusTitles: Record<DiscoverSnapshot['status'], string> = {
   completed: 'Complete',
@@ -283,18 +289,35 @@ export class DiscoverScreen implements NativeScreen {
               )
             ]
           : [
-              column(
-                'discover-empty',
-                [
-                  label(
-                    'discover-empty-message',
-                    snapshot
-                      ? 'No results match this view. Source outcomes remain available in Search details.'
-                      : 'Search research sources and keep the results on this Mac.'
+              snapshot
+                ? emptyState(
+                    'discover-empty',
+                    'sparkle.magnifyingglass',
+                    // An empty session keeps its outcome: failed and canceled are not "no results".
+                    this.filter !== 'all'
+                      ? `No ${KIND_NAMES[this.filter]} in this session`
+                      : snapshot.status === 'failed'
+                        ? 'Search failed'
+                        : snapshot.status === 'canceled'
+                          ? 'Search canceled'
+                          : 'No results',
+                    'No results match this view. Source outcomes remain available in Search details.',
+                    this.filter === 'all'
+                      ? []
+                      : [
+                          b.button('discover-show-all', 'Show all results', () => {
+                            this.filter = 'all'
+                            this.selected = ''
+                            this.context.redraw()
+                          })
+                        ]
                   )
-                ],
-                { flex: 1 }
-              )
+                : emptyState(
+                    'discover-empty',
+                    'sparkle.magnifyingglass',
+                    'Start a research search',
+                    'Search research sources and keep the results on this Mac.'
+                  )
             ])
       ],
       { flex: 1, gap: 8 }

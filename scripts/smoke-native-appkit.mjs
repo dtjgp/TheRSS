@@ -529,6 +529,25 @@ try {
     await wait('discover-save', (node) => node?.title === 'Unsave')
     await go('saved')
     await wait('saved-items')
+    // A source without saved items shows the centered native empty state and its recovery.
+    await act('saved-source-filter', 'choose', 'folo:312')
+    const emptySaved = await wait('saved-empty-title', (node) =>
+      /^No items from /u.test(node?.text || '')
+    )
+    const empty = find(emptySaved.root, 'saved-empty')
+    assert.equal(find(empty, 'saved-empty-symbol').hasImage, true)
+    assert.equal(find(empty, 'saved-empty-title').centered, true)
+    const emptyWidth = Number(empty.frame.match(/-?\d+(?:\.\d+)?/gu)[2])
+    const reset = find(empty, 'saved-empty-actions')
+      .frame.match(/-?\d+(?:\.\d+)?/gu)
+      .map(Number)
+    assert(
+      Math.abs(reset[0] + reset[2] / 2 - emptyWidth / 2) <= 1,
+      'The recovery action is centered'
+    )
+    await capture('saved-empty-filter')
+    await click('saved-reset-filter')
+    await wait('saved-items')
     await act('saved-source-filter', 'choose', 'github')
     await act('saved-runner', 'choose', 'codex')
     await click('saved-analyze')

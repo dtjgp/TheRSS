@@ -66,6 +66,28 @@ export const label = (id: string, text: string, extra: Partial<NativeNode> = {})
   text,
   ...extra
 })
+/**
+ * A macOS "content unavailable" composition: a large secondary symbol, a short title, one
+ * explanatory sentence and the actions that recover from the empty state.
+ */
+export const emptyState = (
+  id: string,
+  symbol: NonNullable<NativeNode['symbol']>,
+  title: string,
+  message: string,
+  actions: readonly NativeNode[] = []
+): NativeNode =>
+  column(
+    id,
+    [
+      { id: `${id}-symbol`, kind: 'symbol', symbol, title, size: 40 },
+      // 17 pt is the macOS Title 2 size used by system empty states.
+      label(`${id}-title`, title, { weight: 'bold', size: 17, align: 'center', maxWidth: 420 }),
+      label(`${id}-message`, message, { weight: 'secondary', align: 'center', maxWidth: 420 }),
+      ...(actions.length ? [row(`${id}-actions`, actions)] : [])
+    ],
+    { flex: 1, gap: 8, align: 'center', padding: 18 }
+  )
 export const text = (id: string, content: string, extra: Partial<NativeNode> = {}): NativeNode => ({
   id,
   kind: 'text',

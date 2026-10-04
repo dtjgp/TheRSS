@@ -136,6 +136,7 @@ Each slice has its own change contract and verification record.
 | F11 (filter)   | Native `segmented` node (NSSegmentedControl); the Discover result-kind filter shows every kind with its count.                                 | [segmented-filter](../2026-10-04-segmented-filter/CHANGE_CONTRACT.md)                 |
 | F11 (popover)  | Discover sources open in a semi-transient NSPopover under "Sources (n/22)" instead of pushing the results down.                                | [source-popover](../2026-10-04-source-popover/CHANGE_CONTRACT.md)                     |
 | F14 (glyphs)   | Discover and Saved rows show a kind glyph; saved Discover results show a star instead of the " · Saved" text.                                  | [row-glyphs](../2026-10-04-row-glyphs/CHANGE_CONTRACT.md)                             |
+| F13 (empty)    | Empty workspaces use a centered native composition: SF Symbol, title, explanation and recovery action; empty sessions keep their outcome.      | [empty-states](../2026-10-04-empty-states/CHANGE_CONTRACT.md)                         |
 
 Still open: F12/S4 (decision D5),
-F13 (system text styles, richer empty states), F14 date display (product decision), the NSSplitViewController/tracking-separator title placement, and P2 integration.
+F13 (system text styles), F14 date display (product decision), the NSSplitViewController/tracking-separator title placement, and P2 integration.

@@ -2,6 +2,7 @@ import type { DashboardItem, TriageState } from '../../shared/api'
 import type { AnalysisArtifact, AnalysisFreshness, AnalysisRunner } from '../../shared/models'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
 import {
+  emptyState,
   analysisText,
   column,
   Controls,
@@ -149,10 +150,11 @@ export class ResearchReader implements NativeScreen {
       item = this.item,
       prefix = this.scope
     if (!item)
-      return column(
+      return emptyState(
         `${prefix}-reader-empty`,
-        [label(`${prefix}-empty-hint`, 'Select an item to read its full details.')],
-        { flex: 1, padding: 18 }
+        'doc.text',
+        'No selection',
+        'Select an item to read its full details.'
       )
     const key = `${prefix}:${this.sessionId ?? ''}:${item.id}`
     const saved = this.isSaved(),

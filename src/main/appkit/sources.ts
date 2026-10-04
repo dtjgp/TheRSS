@@ -15,6 +15,7 @@ import {
 import { discoverySourceFromCatalogId } from '../../shared/sourceIdentity'
 import { SOURCE_GROUPS, sourceGroup } from '../../shared/sourceGroups'
 import {
+  emptyState,
   column,
   Controls,
   heading,
@@ -190,10 +191,11 @@ export class SourcesScreen implements NativeScreen {
             ),
             entry
               ? this.details(entry)
-              : column(
+              : emptyState(
                   'sources-empty',
-                  [label('sources-empty-message', 'No sources match these filters.')],
-                  { flex: 1 }
+                  'square.stack',
+                  'No matching sources',
+                  'Use Clear filters in the list to see every source.'
                 )
           ]
         })
