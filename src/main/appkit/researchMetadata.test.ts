@@ -1,8 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { researchMetadata, researchSubtitle } from './researchMetadata'
+import {
+  researchKindSymbol,
+  researchMetadata,
+  researchRowGlyph,
+  researchSubtitle
+} from './researchMetadata'
 import { nativeDiscoverFixture } from './testSupport'
 
 describe('readable research metadata without changing evidence', () => {
+  it('names every research kind with one SF Symbol and an accessible label', () => {
+    const kinds = ['paper', 'repository', 'article', 'model', 'dataset', 'post'] as const
+    const glyphs = kinds.map((kind) => researchKindSymbol(kind))
+    expect(glyphs).toEqual([
+      { symbol: 'doc.text', label: 'Paper' },
+      { symbol: 'chevron.left.forwardslash.chevron.right', label: 'Repository' },
+      { symbol: 'newspaper', label: 'Article' },
+      { symbol: 'cpu', label: 'Model' },
+      { symbol: 'tablecells', label: 'Dataset' },
+      { symbol: 'text.bubble', label: 'Post' }
+    ])
+    expect(researchRowGlyph('model')).toEqual({ symbol: 'cpu', symbolLabel: 'Model' })
+    expect(researchRowGlyph(undefined), 'An item without a recorded kind has no glyph').toEqual({})
+  })
   it('does not render a month sorting anchor as an exact publication or update day', () => {
     const monthly = {
       ...nativeDiscoverFixture.items[0]!,
@@ -22,7 +41,7 @@ describe('readable research metadata without changing evidence', () => {
     expect(text).toContain(`Published: ${paper.publishedAt}`)
     expect(text).not.toContain('Stars:')
     expect(text).not.toContain('Language:')
-    expect(researchSubtitle(paper, true)).toBe('arXiv · 2026-09-06 · Saved')
+    expect(researchSubtitle(paper)).toBe('arXiv · 2026-09-06')
     expect(paper.score).toBe(10)
   })
   it('preserves zero metrics and complete source-provided labels for repositories and models', () => {

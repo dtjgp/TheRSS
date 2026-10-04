@@ -423,6 +423,98 @@ try {
   segmentEvents = await application.evaluate(() => globalThis.__controls.events)
   assert.equal(segmentEvents.length, emitted, 'A scene update does not emit a choice')
   checks.push('Native segmented control shows every choice, emits clicks and skips scene updates')
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.scene.root = {
+      id: 'glyph-root',
+      kind: 'column',
+      padding: 20,
+      children: [
+        {
+          id: 'glyph-list',
+          kind: 'table',
+          title: 'Research list',
+          width: 300,
+          minHeight: 200,
+          rows: [
+            {
+              id: 'saved-paper',
+              title:
+                'Energy-Aware Compression-Computation Co-Adaptation for Latency Minimization in Multi-User Semantic Communication',
+              subtitle: 'arXiv · 2026-08-13',
+              symbol: 'doc.text',
+              symbolLabel: 'Paper',
+              saved: true
+            },
+            {
+              id: 'repository',
+              title: 'TheRSS/semantic-fixture',
+              subtitle: 'GitHub · 2026-08-13',
+              symbol: 'chevron.left.forwardslash.chevron.right',
+              symbolLabel: 'Repository'
+            }
+          ]
+        }
+      ]
+    }
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  })
+  const glyphRows = async () => find((await inspect()).root, 'glyph-list').rowGlyphs
+  let glyphs = await glyphRows()
+  assert.deepEqual(
+    glyphs.map((row) => [row.symbol, row.saved]),
+    [
+      ['doc.text', true],
+      ['chevron.left.forwardslash.chevron.right', false]
+    ]
+  )
+  for (const row of glyphs) {
+    const [kindX, , kindWidth] = frameNumbers(row.kindFrame)
+    const [titleX, , titleWidth] = frameNumbers(row.titleFrame)
+    assert(titleX >= kindX + kindWidth, 'The title starts after the kind glyph')
+    if (row.saved)
+      assert(
+        titleX + titleWidth <= frameNumbers(row.savedFrame)[0],
+        'The title stays clear of the Saved star'
+      )
+  }
+  assert.equal(
+    glyphs[0].accessibilityLabel,
+    'Energy-Aware Compression-Computation Co-Adaptation for Latency Minimization in Multi-User Semantic Communication. Paper. arXiv · 2026-08-13. Saved.'
+  )
+  assert.equal(
+    glyphs[1].accessibilityLabel,
+    'TheRSS/semantic-fixture. Repository. GitHub · 2026-08-13.'
+  )
+  assert.equal(find((await inspect()).root, 'glyph-list').titleTruncates, true)
+  for (const appearance of ['light', 'dark']) {
+    await act('glyph-list', 'appearance', appearance)
+    const [saved] = await glyphRows()
+    assert(
+      saved.savedContrast >= 3,
+      `Saved star on the list, ${appearance}: ${saved.savedContrast}`
+    )
+    assert(
+      saved.savedSelectedContrast >= 3,
+      `Saved star on an unfocused selection, ${appearance}: ${saved.savedSelectedContrast}`
+    )
+  }
+  await act('glyph-list', 'appearance', 'contrast-light')
+  glyphs = await glyphRows()
+  assert.equal(glyphs[0].highContrast, true, 'A live Increase Contrast change reaches the glyphs')
+  assert(glyphs[0].savedContrast >= 7, 'Increase Contrast draws the star in the label colour')
+  await act('glyph-list', 'appearance', 'light')
+  await act('glyph-list', 'select', 'saved-paper')
+  await act('glyph-list', 'focus')
+  const focusedList = await inspect()
+  glyphs = find(focusedList.root, 'glyph-list').rowGlyphs
+  assert(
+    glyphs.every((row) => row.glyphsFollowSelection),
+    'Glyphs follow the selection colour'
+  )
+  if (focusedList.keyWindow)
+    assert.equal(glyphs[0].emphasized, true, 'A focused list draws an emphasized selection')
+  checks.push('Research rows show kind glyphs, a readable Saved star and a complete spoken label')
   const popoverScene = (checked, focus) =>
     application.evaluate(
       (_, data) => {

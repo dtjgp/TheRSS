@@ -13,7 +13,9 @@ describe('AppKit Discover', () => {
     const h = nativeHarness({ getLatestDiscover: vi.fn(async () => snapshot) })
     const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
     await screen.load()
-    expect(h.find(h.render(screen), 'discover-results')?.rows?.[0]?.subtitle).toContain(' · Saved')
+    const row = h.find(h.render(screen), 'discover-results')?.rows?.[0]
+    expect(row).toMatchObject({ saved: true, symbol: 'doc.text', symbolLabel: 'Paper' })
+    expect(row?.subtitle).not.toContain('Saved')
   })
   it('filters result kinds with a segmented control that shows every count', async () => {
     const h = nativeHarness({ getLatestDiscover: vi.fn(async () => nativeDiscoverFixture) })

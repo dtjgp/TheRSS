@@ -186,6 +186,25 @@ describe('native presentation boundary', () => {
       })
     ).toThrow()
   })
+  it('accepts kind glyphs, accessible kind names and the Saved marker on research rows', () => {
+    const view = new NativePresentation()
+    const table = {
+      id: 'results',
+      kind: 'table',
+      title: 'Results',
+      rows: [
+        { id: 'a', title: 'A', symbol: 'doc.text', symbolLabel: 'Paper', saved: true },
+        { id: 'b', title: 'B', symbol: 'chevron.left.forwardslash.chevron.right' }
+      ]
+    } as NativeNode
+    expect(JSON.parse(view.finish(table)).root.rows[0]).toMatchObject({ saved: true })
+    for (const row of [
+      { id: 'a', title: 'A', saved: 'yes' },
+      { id: 'a', title: 'A', symbolLabel: 'x'.repeat(41) },
+      { id: 'a', title: 'A', symbol: 'flag' }
+    ])
+      expect(() => view.finish({ ...table, rows: [row] } as unknown as NativeNode)).toThrow()
+  })
   it('accepts keyboard shortcuts on buttons only', () => {
     const view = new NativePresentation()
     const button = {

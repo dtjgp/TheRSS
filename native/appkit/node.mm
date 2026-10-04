@@ -62,17 +62,45 @@ static NSColor *TRChartColor(NSColor *accent) {
 }
 @end
 
+// Saved marker: a darker saved accent in light mode, system yellow in dark mode; both keep at least
+// 3:1 against the list and the unfocused selection backgrounds. Increase Contrast uses the label colour.
+static NSColor *TRSavedColor(BOOL highContrast) {
+  if (highContrast) return NSColor.labelColor;
+  return [NSColor colorWithName:@"TRSaved" dynamicProvider:^NSColor *(NSAppearance *appearance) {
+    BOOL dark = [[appearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua,NSAppearanceNameDarkAqua]] isEqual:NSAppearanceNameDarkAqua];
+    return dark ? NSColor.systemYellowColor : [NSColor colorWithSRGBRed:0xa8/255.0 green:0x6f/255.0 blue:0 alpha:1];
+  }];
+}
+
 @interface TRResearchCell : NSTableCellView
 @property(nonatomic, strong) NSTextField *detailField;
+@property(nonatomic, strong) NSImageView *kindView;
+@property(nonatomic, strong) NSImageView *savedView;
+@property(nonatomic, copy) NSString *symbolName;
+@property(nonatomic) BOOL highContrast;
 @property(nonatomic) CGFloat zoom;
 @end
 @implementation TRResearchCell
 - (void)layout {
   [super layout];
-  CGFloat inset = 12*self.zoom, width = MAX(20,self.bounds.size.width-2*inset);
-  self.textField.frame = NSMakeRect(inset,27*self.zoom,width,35*self.zoom);
+  CGFloat zoom = self.zoom, inset = 12*zoom, glyph = 16*zoom, gap = 8*zoom;
+  CGFloat leading = self.kindView ? inset + glyph + gap : inset;
+  CGFloat trailing = self.savedView.hidden || !self.savedView ? inset : inset + glyph + 6*zoom;
+  CGFloat width = MAX(20,self.bounds.size.width-leading-trailing);
+  self.textField.frame = NSMakeRect(leading,27*zoom,width,35*zoom);
   self.textField.preferredMaxLayoutWidth = width;
-  self.detailField.frame = NSMakeRect(inset,7*self.zoom,width,16*self.zoom);
+  self.detailField.frame = NSMakeRect(leading,7*zoom,MAX(20,self.bounds.size.width-leading-inset),16*zoom);
+  // Glyphs sit on the first title line, as in Mail and Finder lists.
+  CGFloat top = 62*zoom - glyph - 2*zoom;
+  self.kindView.frame = NSMakeRect(inset,top,glyph,glyph);
+  self.savedView.frame = NSMakeRect(self.bounds.size.width-inset-glyph,top,glyph,glyph);
+}
+- (void)setBackgroundStyle:(NSBackgroundStyle)style {
+  [super setBackgroundStyle:style];
+  // A selected row in a focused list is drawn on the accent colour; glyphs follow the text.
+  BOOL emphasized = style == NSBackgroundStyleEmphasized;
+  self.kindView.contentTintColor = emphasized ? NSColor.alternateSelectedControlTextColor : self.highContrast ? NSColor.labelColor : NSColor.secondaryLabelColor;
+  self.savedView.contentTintColor = emphasized ? NSColor.alternateSelectedControlTextColor : TRSavedColor(self.highContrast);
 }
 @end
 
@@ -181,7 +209,12 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       NSRange visible = [table rowsInRect:table.visibleRect];
       if (visible.location != NSNotFound) for (NSUInteger i = visible.location; i < NSMaxRange(visible); i++) {
         NSTableCellView *cell = [table viewAtColumn:0 row:i makeIfNecessary:NO];
-        if ([cell isKindOfClass:TRResearchCell.class]) ((TRResearchCell *)cell).detailField.textColor = self.host.increaseContrast ? NSColor.labelColor : NSColor.secondaryLabelColor;
+        if ([cell isKindOfClass:TRResearchCell.class]) {
+          TRResearchCell *research = (TRResearchCell *)cell;
+          research.detailField.textColor = self.host.increaseContrast ? NSColor.labelColor : NSColor.secondaryLabelColor;
+          // Glyph tints follow a live Increase Contrast change, keeping the selection style.
+          research.highContrast = self.host.increaseContrast; research.backgroundStyle = research.backgroundStyle;
+        }
       }
     }
     if ([spec[@"kind"] isEqual:@"button"]) {
@@ -653,7 +686,25 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   NSTextField *detail = [NSTextField labelWithString:TRString(item[@"subtitle"])]; detail.font = [NSFont systemFontOfSize:12*self.host.zoom]; detail.textColor = self.host.increaseContrast ? NSColor.labelColor : NSColor.secondaryLabelColor;
   detail.lineBreakMode = NSLineBreakByTruncatingTail;
   [cell addSubview:detail]; cell.detailField = detail; cell.toolTip = item[@"title"];
-  cell.accessibilityLabel = [NSString stringWithFormat:@"%@. %@",item[@"title"],TRString(item[@"subtitle"])];
+  cell.highContrast = self.host.increaseContrast;
+  NSImage *kind = [item[@"symbol"] isKindOfClass:NSString.class] ? [NSImage imageWithSystemSymbolName:item[@"symbol"] accessibilityDescription:item[@"symbolLabel"]] : nil;
+  if (kind) {
+    NSImageView *view = [NSImageView imageViewWithImage:kind]; view.accessibilityElement = NO;
+    view.symbolConfiguration = [NSImageSymbolConfiguration configurationWithPointSize:13*self.host.zoom weight:NSFontWeightRegular];
+    [cell addSubview:view]; cell.kindView = view; cell.symbolName = item[@"symbol"];
+  }
+  if ([item[@"saved"] boolValue]) {
+    NSImageView *view = [NSImageView imageViewWithImage:[NSImage imageWithSystemSymbolName:@"star.fill" accessibilityDescription:@"Saved"]];
+    view.accessibilityElement = NO;
+    view.symbolConfiguration = [NSImageSymbolConfiguration configurationWithPointSize:12*self.host.zoom weight:NSFontWeightRegular];
+    [cell addSubview:view]; cell.savedView = view;
+  }
+  cell.backgroundStyle = NSBackgroundStyleNormal;
+  NSMutableArray *spoken = [NSMutableArray arrayWithObject:item[@"title"]];
+  if ([item[@"symbolLabel"] isKindOfClass:NSString.class] && kind) [spoken addObject:item[@"symbolLabel"]];
+  if (TRString(item[@"subtitle"]).length) [spoken addObject:item[@"subtitle"]];
+  if (cell.savedView) [spoken addObject:@"Saved"];
+  cell.accessibilityLabel = [[spoken componentsJoinedByString:@". "] stringByAppendingString:@"."];
   return cell;
 }
 - (NSString *)selectedRowId {
@@ -828,6 +879,25 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       result[@"titleLineHeight"] = @(ceil(font.ascender-font.descender+font.leading));
       NSRect required = [cell.textField.attributedStringValue boundingRectWithSize:NSMakeSize(MAX(20,cell.textField.frame.size.width),100000) options:NSStringDrawingUsesLineFragmentOrigin|NSStringDrawingUsesFontLeading];
       result[@"titleRequiredHeight"] = @(required.size.height);
+      NSMutableArray *glyphs = [NSMutableArray array];
+      for (NSInteger row = 0; row < MIN(table.numberOfRows,(NSInteger)20); row++) {
+        TRResearchCell *research = (TRResearchCell *)[table viewAtColumn:0 row:row makeIfNecessary:YES];
+        if (![research isKindOfClass:TRResearchCell.class]) break;
+        [research layoutSubtreeIfNeeded];
+        __block CGFloat contrast = 0, selectedContrast = 0;
+        if (research.savedView) [research.effectiveAppearance performAsCurrentDrawingAppearance:^{
+          NSColor *tint = TRSavedColor(research.highContrast);
+          contrast = TRContrast(tint,NSColor.textBackgroundColor);
+          selectedContrast = TRContrast(tint,NSColor.unemphasizedSelectedContentBackgroundColor);
+        }];
+        [glyphs addObject:@{@"symbol":research.symbolName ?: @"",@"saved":@(research.savedView != nil),@"titleFrame":NSStringFromRect(research.textField.frame),
+          @"kindFrame":research.kindView ? NSStringFromRect(research.kindView.frame) : @"",@"savedFrame":research.savedView ? NSStringFromRect(research.savedView.frame) : @"",
+          @"savedContrast":@(contrast),@"savedSelectedContrast":@(selectedContrast),@"highContrast":@(research.highContrast),
+          @"emphasized":@(research.backgroundStyle == NSBackgroundStyleEmphasized),
+          @"glyphsFollowSelection":@(research.backgroundStyle != NSBackgroundStyleEmphasized || [research.kindView.contentTintColor isEqual:NSColor.alternateSelectedControlTextColor]),
+          @"accessibilityLabel":research.accessibilityLabel ?: @""}];
+      }
+      result[@"rowGlyphs"] = glyphs;
     }
     if (table.numberOfRows) result[@"rowFontSize"] = @(((NSTableCellView *)[table viewAtColumn:0 row:0 makeIfNecessary:YES]).textField.font.pointSize);
   }

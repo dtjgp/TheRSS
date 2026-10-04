@@ -13,15 +13,25 @@ const nativeSymbols = [
   'arrow.up.right',
   'exclamationmark.circle',
   'sparkles',
-  'chevron.backward'
+  'chevron.backward',
+  'doc.text',
+  'chevron.left.forwardslash.chevron.right',
+  'newspaper',
+  'cpu',
+  'tablecells',
+  'text.bubble'
 ] as const
-type NativeSymbol = (typeof nativeSymbols)[number]
+export type NativeSymbol = (typeof nativeSymbols)[number]
 
 export interface NativeRow {
   readonly id: string
   readonly title: string
   readonly subtitle?: string | undefined
   readonly symbol?: NativeSymbol | undefined
+  /** Accessible name of a research row's kind glyph, e.g. "Paper". */
+  readonly symbolLabel?: string | undefined
+  /** Research rows: the item is saved (trailing star). */
+  readonly saved?: boolean | undefined
   readonly cells?: Readonly<Record<string, string>> | undefined
 }
 /** Window-level commands shown in the AppKit toolbar; never part of the content tree. */
@@ -192,6 +202,8 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
               title: short,
               subtitle: short.optional(),
               symbol: z.enum(nativeSymbols).optional(),
+              symbolLabel: z.string().min(1).max(40).optional(),
+              saved: z.boolean().optional(),
               cells: z.record(z.string().min(1).max(40), z.string().max(300)).optional()
             })
             .strict()

@@ -20,7 +20,7 @@ import {
 } from './common'
 import type { NativeNode, NativePopover } from './presentation'
 import { ResearchReader, type TriageHistory } from './reading'
-import { researchMetadata, researchSubtitle } from './researchMetadata'
+import { researchMetadata, researchRowGlyph, researchSubtitle } from './researchMetadata'
 import { ReadingWorkspace } from './readingWorkspace'
 import { discoverSources } from './discoverSources'
 import { describeDiscoverRun } from '../../shared/discoverRunProgress'
@@ -243,17 +243,20 @@ export class DiscoverScreen implements NativeScreen {
                       b.table(
                         'discover-results',
                         'Discover results',
-                        visible.map((item) => ({
-                          id: item.id,
-                          title: item.title,
-                          subtitle: researchSubtitle(
-                            item,
+                        visible.map((item) => {
+                          const saved =
                             this.triage.state({
                               ...item,
                               triageState: item.saved ? 'saved' : 'new'
                             }) === 'saved'
-                          )
-                        })),
+                          return {
+                            id: item.id,
+                            title: item.title,
+                            subtitle: researchSubtitle(item),
+                            ...researchRowGlyph(item.kind),
+                            ...(saved ? { saved: true } : {})
+                          }
+                        }),
                         this.selected,
                         (id) => this.select(id),
                         {

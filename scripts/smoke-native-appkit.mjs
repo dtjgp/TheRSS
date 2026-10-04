@@ -475,6 +475,22 @@ try {
       find(beforeSave.root, 'discover-reading-scroll').scrollOrigin
     )
     assert.equal(afterSave.announcementCount, beforeSave.announcementCount + 1)
+    // The saved result shows the star; every row keeps its kind glyph.
+    const savedId = find(afterSave.root, 'discover-results').selected
+    const rowIndex = find(afterSave.root, 'discover-results').rows.findIndex(
+      (row) => row.id === savedId
+    )
+    const savedRow = await wait(
+      'discover-results',
+      (node) => node?.rowGlyphs?.[rowIndex]?.saved === true
+    )
+    const rowGlyphs = find(savedRow.root, 'discover-results').rowGlyphs
+    assert(
+      rowGlyphs.every((row) => row.symbol),
+      'Every Discover row shows its kind glyph'
+    )
+    assert.match(rowGlyphs[rowIndex].accessibilityLabel, /\. Saved\.$/u)
+    assert(!/Saved/u.test(find(savedRow.root, 'discover-results').rows[rowIndex].subtitle))
     await capture('discover-saved-feedback')
     await wait('native-notice', (node) => !node?.text)
     const expired = await inspect()

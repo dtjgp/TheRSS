@@ -4,7 +4,7 @@ import { ACTIVE_TODAY_SOURCE_IDS, sourceDisplayName } from '../../shared/sourceI
 import { column, Controls, label, row, type NativeContext, type NativeScreen } from './common'
 import type { NativeNode } from './presentation'
 import { ResearchReader, type TriageHistory } from './reading'
-import { researchSubtitle } from './researchMetadata'
+import { researchRowGlyph, researchSubtitle } from './researchMetadata'
 import { ReadingWorkspace } from './readingWorkspace'
 import { SavedSourceUpdateControls } from './savedSourceUpdate'
 
@@ -102,10 +102,12 @@ export class SavedScreen implements NativeScreen {
                   b.table(
                     'saved-items',
                     'Saved research',
+                    // Every row here is saved: the workspace, not a star, carries that state.
                     items.map((item) => ({
                       id: item.id,
                       title: item.title,
-                      subtitle: researchSubtitle(item, true)
+                      subtitle: researchSubtitle(item),
+                      ...researchRowGlyph(item.kind)
                     })),
                     this.selected,
                     (id) => this.select(id),
