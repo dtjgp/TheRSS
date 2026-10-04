@@ -361,7 +361,7 @@ try {
     assert.equal(chrome.fullSizeContent, true)
     assert.deepEqual(
       chrome.items.map((item) => item.id),
-      ['sidebar-toggle', 'NSToolbarFlexibleSpaceItem', 'open-local-search', 'undo-triage']
+      ['sidebar-toggle', 'NSToolbarFlexibleSpaceItem', 'local-search-query', 'undo-triage']
     )
     const top = (node) => Number(node.frame.match(/-?\d+(?:\.\d+)?/gu)[1])
     assert(chrome.safeTop >= 28, 'The full-size window reports its toolbar safe area')
@@ -627,50 +627,51 @@ try {
     const github = await wait('source-detail-title', (node) => /GitHub/.test(node?.text || ''))
     assert.equal(find(github.root, 'sources-refresh').enabled, false)
   })
-  await step('Local search uses a native sheet and safe external-open routing', async () => {
+  await step('Local search uses the toolbar field and safe external-open routing', async () => {
     await menu('Find Local Research')
-    const initial = await wait('local-search-query')
-    assert(!find(initial.modal, 'local-search-submit'))
-    assert.equal(initial.firstResponderId, 'local-search-query')
-    await act('local-search-query', 'key', 'tab')
-    const tabbed = await inspect()
-    assert(find(tabbed.modal, tabbed.firstResponderId), 'Tab focus must remain in the native sheet')
+    const initial = await wait('local-search-query', (node) => node?.editing === true)
+    assert.equal(initial.modal, null, 'Local search no longer opens a sheet')
+    assert(!find(initial.root, 'local-search-submit'))
     await act('local-search-query', 'fill', 'pruning')
     const state = await wait('local-search-results')
-    assert(!find(state.modal, 'local-search-open-in-app'))
-    assert(find(state.modal, 'local-search-results').rows.length > 0)
+    assert(!find(state.root, 'local-search-open-in-app'))
+    assert(find(state.root, 'local-search-results').rows.length > 0)
+    assert.equal(state.toolbar.title, 'Search')
     await click('local-search-open')
     const opened = await application.evaluate(() => globalThis.__nativeOpened)
     assert(opened.every((url) => new URL(url).protocol === 'https:'))
     await capture('local-search')
     for (const kind of ['saved', 'discover']) {
       const searchState = await inspect()
-      const target = find(searchState.modal, 'local-search-results').rows.find((row) =>
+      const target = find(searchState.root, 'local-search-results').rows.find((row) =>
         row.id.startsWith(kind + ':')
       )
       assert(target, `Fixture must include a ${kind} local target`)
       await act('local-search-results', 'select', target.id)
       await act('local-search-results', 'key', 'enter')
-      await wait('local-search-query', (node) => !node)
+      await wait('local-search-page', (node) => !node)
       const openedLocal = await wait('return-local-search')
       assert.equal(find(openedLocal.root, `${kind}-reading-title`).text, target.title)
       assert.equal(openedLocal.modal, null)
       await capture(`local-open-${kind}`)
       await click('return-local-search')
       const restored = await wait('local-search-results')
-      assert.equal(find(restored.modal, 'local-search-results').selected, target.id)
-      assert.equal(find(restored.modal, 'local-search-query').value, 'pruning')
+      assert.equal(find(restored.root, 'local-search-results').selected, target.id)
+      assert.equal(
+        restored.toolbar.items.find((item) => item.id === 'local-search-query').value,
+        'pruning'
+      )
     }
     await act('local-search-query', 'fill', 'analysis')
     await wait('local-search-result-count', (node) => /for “analysis”/.test(node?.text || ''))
     const analysisResults = await wait('local-search-results')
-    const analysisTarget = find(analysisResults.modal, 'local-search-results').rows.find((row) =>
+    const analysisTarget = find(analysisResults.root, 'local-search-results').rows.find((row) =>
       row.id.startsWith('analysis:')
     )
     assert(analysisTarget, 'Fixture must include a stored analysis target')
     await act('local-search-results', 'select', analysisTarget.id)
     await act('local-search-results', 'key', 'enter')
-    await wait('local-search-query', (node) => !node)
+    await wait('local-search-page', (node) => !node)
     const localAnalysis = await wait('analytics-local-record')
     assert(
       find(localAnalysis.root, 'analytics-analysis-content').text.includes(
@@ -681,8 +682,12 @@ try {
     await click('return-local-search')
     await wait('local-search-results')
     await act('local-search-query', 'key', 'escape')
-    await wait('local-search-query', (node) => !node)
-    assert((await inspect()).firstResponderId, 'Closing a sheet must restore native focus')
+    const cleared = await wait('local-search-page', (node) => !node)
+    assert.notEqual(
+      cleared.toolbar.title,
+      'Search',
+      'Escape ends search and restores the workspace'
+    )
   })
   await step(
     'Promotion preview includes verified facts and produces a fixture receipt only after confirmation',

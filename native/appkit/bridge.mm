@@ -149,6 +149,32 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     return nothing(env);
   }
   TRNode *node = [host find:input[@"id"]];
+  NSSearchField *search = node ? nil : [host.chrome searchField:input[@"id"]];
+  if (search) {
+    // Toolbar search fields are chrome, not scene nodes; drive them like native text input.
+    NSString *action = input[@"action"], *value = [input[@"value"] isKindOfClass:NSString.class] ? input[@"value"] : @"";
+    BOOL editing = search.currentEditor != nil;
+    if ([action isEqual:@"focus"]) [search.window makeFirstResponder:search];
+    else if ([action isEqual:@"fill"]) {
+      if (editing) {
+        // Replace the text through the text system, as a user would, so the field's own
+        // change notification reports it.
+        NSTextView *editor = (NSTextView *)search.currentEditor;
+        editor.selectedRange = NSMakeRange(0,editor.string.length);
+        [editor insertText:value replacementRange:NSMakeRange(NSNotFound,0)];
+      } else { search.stringValue = value; [host.chrome searchTextChanged:search]; }
+    } else if ([action isEqual:@"mark"] || [action isEqual:@"type"]) {
+      if (!editing) [search.window makeFirstResponder:search];
+      NSTextView *editor = (NSTextView *)search.currentEditor; if (!editor) return fail(env,"Fixture search field cannot edit");
+      if (!editing) editor.selectedRange = NSMakeRange(editor.string.length,0);
+      if ([action isEqual:@"mark"]) { [editor setMarkedText:value selectedRange:NSMakeRange(value.length,0) replacementRange:NSMakeRange(NSNotFound,0)]; [host.chrome searchTextChanged:search]; }
+      else [editor insertText:value replacementRange:NSMakeRange(NSNotFound,0)];
+    } else if ([action isEqual:@"key"] && ([value isEqual:@"enter"] || [value isEqual:@"escape"])) {
+      if (!editing) [search.window makeFirstResponder:search];
+      [search.currentEditor doCommandBySelector:[value isEqual:@"enter"] ? @selector(insertNewline:) : @selector(cancelOperation:)];
+    } else return fail(env,"Unsupported fixture action for a toolbar search field");
+    [host flush]; return nothing(env);
+  }
   if (!node && [input[@"action"] isEqual:@"click"] && host.chrome) {
     // Toolbar items are window chrome, not scene nodes; activate them like a click.
     if (![host.chrome activateFixture:input[@"id"]]) return fail(env,"Fixture toolbar item is unavailable or disabled");

@@ -33,11 +33,12 @@ describe('AppKit application shell', () => {
     expect(parsed.toolbar.title).toBe('Discover')
     expect(parsed.toolbar.items.map((item: { id: string }) => item.id)).toEqual([
       'sidebar-toggle',
-      'open-local-search',
+      'local-search-query',
       'undo-triage'
     ])
     expect(parsed.toolbar.items[1]).toMatchObject({
-      title: 'Find local research',
+      kind: 'search',
+      title: 'Search local research',
       symbol: 'magnifyingglass',
       enabled: true
     })
@@ -74,6 +75,42 @@ describe('AppKit application shell', () => {
       const parsed = JSON.parse(scene)
       expect(headings(h.find(parsed.root, 'native-main')!)).not.toContain(parsed.toolbar.title)
     }
+    presenter.dispose()
+  })
+  it('shows toolbar search results in the content area and ends search on clear or navigation', async () => {
+    const h = nativeHarness({
+      getLocalAgentStatuses: vi.fn(async () => []),
+      searchLocal: vi.fn(async (query: string) => ({ query, results: [] }))
+    })
+    let scene = ''
+    const presenter = new NativePresenter(h.api, {
+      preferences: { ...defaultNativePreferences },
+      present: (next) => {
+        scene = next
+      },
+      persist: vi.fn(async () => undefined),
+      openExternal: vi.fn()
+    })
+    await presenter.start()
+    const field = () =>
+      JSON.parse(scene).toolbar.items.find(
+        (item: { id: string }) => item.id === 'local-search-query'
+      )
+    const type = (value: string) =>
+      presenter.presentation.dispatch(JSON.stringify({ action: field().action, value }))
+    await type('edge')
+    expect(JSON.parse(scene).toolbar.title).toBe('Search')
+    expect(h.find(JSON.parse(scene).root, 'local-search-page')).toBeDefined()
+    expect(h.find(JSON.parse(scene).root, 'discover-page')).toBeUndefined()
+    expect(field().value).toBe('edge')
+    await type('')
+    expect(JSON.parse(scene).toolbar.title).toBe('Discover')
+    expect(h.find(JSON.parse(scene).root, 'discover-page')).toBeDefined()
+    await type('pruning')
+    await presenter.navigate('saved')
+    expect(h.find(JSON.parse(scene).root, 'local-search-page')).toBeUndefined()
+    expect(JSON.parse(scene).toolbar.title).toBe('Saved')
+    expect(field().value).toBe('')
     presenter.dispose()
   })
   it('keeps source failures on Sources without a global attention action', async () => {

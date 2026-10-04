@@ -569,6 +569,91 @@ try {
   checks.push(
     'Compact research navigation preserves a thousand-row list position and independent long-reading position'
   )
+  const searchItem = {
+    id: 'local-search-query',
+    kind: 'search',
+    title: 'Search local research',
+    placeholder: 'Search local research',
+    symbol: 'magnifyingglass',
+    value: '',
+    action: 'search-text',
+    activate: 'search-enter'
+  }
+  await application.evaluate((_, item) => {
+    const f = globalThis.__controls
+    f.scene.root = {
+      id: 'search-root',
+      kind: 'column',
+      padding: 20,
+      children: [
+        { id: 'search-status', kind: 'label', text: 'Toolbar search fixture' },
+        { id: 'search-note', kind: 'input', title: 'Note', value: '', action: 'search-note-edit' }
+      ]
+    }
+    f.scene.toolbar = { title: 'Search', items: [item] }
+    f.events.length = 0
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  }, searchItem)
+  const toolbarSearch = (current) =>
+    current.toolbar?.items?.find((item) => item.id === 'local-search-query')
+  const events = () => application.evaluate(() => globalThis.__controls.events)
+  let field = toolbarSearch(await inspect())
+  assert.equal(field?.kind, 'search')
+  assert.equal(field.placeholder, 'Search local research')
+  const instance = field.instance
+  await act('local-search-query', 'fill', 'edge')
+  assert.deepEqual((await events()).at(-1), { action: 'search-text', value: 'edge' })
+  await act('local-search-query', 'mark', '边缘')
+  assert.notEqual((await events()).at(-1)?.value, 'edge边缘', 'Marked IME text is not searched')
+  await act('local-search-query', 'type', '边缘计算')
+  assert.deepEqual((await events()).at(-1), { action: 'search-text', value: 'edge边缘计算' })
+  await application.evaluate((_, item) => {
+    const f = globalThis.__controls
+    f.scene.toolbar = {
+      title: 'Search',
+      items: [
+        { id: 'return-local-search', title: 'Back', symbol: 'chevron.backward', action: 'back' },
+        { ...item, value: 'stale programmatic value' }
+      ]
+    }
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  }, searchItem)
+  field = toolbarSearch(await inspect())
+  assert.equal(field.instance, instance, 'Adding a toolbar item keeps the same search field')
+  assert.equal(field.value, 'edge边缘计算', 'An edited field is not overwritten by the scene')
+  await act('local-search-query', 'key', 'enter')
+  assert.equal((await events()).at(-1)?.action, 'search-enter')
+  await act('search-status', 'focus')
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.bridge.present(f.handle, JSON.stringify({ ...f.scene, focus: 'local-search-query' }))
+  })
+  assert.equal(toolbarSearch(await inspect()).editing, true, 'Scene focus reaches the search field')
+  // A later scene that repeats the focus (results arriving) must not end the edit: ending it
+  // used to send the field action with an empty editor and clear the query.
+  await act('local-search-query', 'fill', 'pruning')
+  const typed = (await events()).length
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.bridge.present(f.handle, JSON.stringify({ ...f.scene, focus: 'local-search-query' }))
+  })
+  field = toolbarSearch(await inspect())
+  assert.equal(field.editing, true, 'Repeated scene focus keeps the edit')
+  assert.equal(field.value, 'pruning')
+  assert.equal((await events()).length, typed, 'Repeated scene focus emits nothing')
+  await act('search-note', 'focus')
+  assert(
+    !(await events()).slice(typed).some((event) => event.action === 'search-text'),
+    'Moving focus out of the search field does not clear the query'
+  )
+  assert.equal(toolbarSearch(await inspect()).value, 'pruning')
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    delete f.scene.toolbar
+  })
+  checks.push(
+    'Toolbar search emits committed text and Return, skips IME marking and survives item changes'
+  )
   await writeFile(
     join(output, 'result.json'),
     JSON.stringify(

@@ -3,6 +3,7 @@ import { vi } from 'vitest'
 import type { TheRSSApi, DashboardSnapshot } from '../../shared/api'
 import type { NativeContext } from './common'
 import { NativePresentation, type NativeNode } from './presentation'
+import { LocalSearchScreen } from './localSearch'
 
 export function nativeHarness(overrides: Partial<TheRSSApi> = {}) {
   const dashboard: DashboardSnapshot = {
@@ -134,4 +135,34 @@ export const nativeDiscoverFixture: DiscoverSnapshot = {
     reasons: ['Relevant'],
     saved: false
   }))
+}
+
+/**
+ * Test view of the toolbar search: the toolbar field is presented as a `local-search-query`
+ * node carrying the item's text action and Return activation, above the results page.
+ */
+export function localSearchHarness(context: NativeContext) {
+  const search = new LocalSearchScreen(context)
+  return {
+    search,
+    render: (): NativeNode => {
+      const item = search.toolbarItem(true)
+      return {
+        id: 'local-search-test-root',
+        kind: 'column',
+        children: [
+          {
+            id: item.id,
+            kind: 'input',
+            title: item.title,
+            value: item.value ?? '',
+            enabled: item.enabled,
+            action: item.action,
+            activate: item.activate
+          },
+          ...(search.showing ? [search.render()] : [])
+        ]
+      }
+    }
+  }
 }

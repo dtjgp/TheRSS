@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { AnalysisArtifact } from '../../shared/models'
-import { nativeHarness, nativeDiscoverFixture } from './testSupport'
+import { localSearchHarness, nativeHarness, nativeDiscoverFixture } from './testSupport'
 import { DiscoverScreen } from './discover'
 import { SavedScreen } from './saved'
 import { SourcesScreen } from './sources'
@@ -205,19 +205,19 @@ describe('native workflow branches', () => {
     const screen = { render: () => modal.render()! }
     expect(h.find(h.render(screen), 'document-modal-content')?.text).toBe('Local help content')
     await h.act(screen, 'modal-close')
-    modal.openSearch()
-    await h.act(screen, 'local-search-query', 'edge')
+    const local = localSearchHarness(h.context)
+    await h.act(local, 'local-search-query', 'edge')
     await h.context.presentation.dispatch(
-      JSON.stringify({ action: h.find(h.render(screen), 'local-search-query')!.activate })
+      JSON.stringify({ action: h.find(h.render(local), 'local-search-query')!.activate })
     )
-    expect(h.find(h.render(screen), 'modal-message')?.text).toContain('Index unavailable')
+    expect(h.find(h.render(local), 'local-search-message')?.text).toContain('Index unavailable')
     await h.context.presentation.dispatch(
-      JSON.stringify({ action: h.find(h.render(screen), 'local-search-query')!.activate })
+      JSON.stringify({ action: h.find(h.render(local), 'local-search-query')!.activate })
     )
-    await h.act(screen, 'local-search-results', 'analysis:result-1')
-    await h.act(screen, 'local-search-open')
+    await h.act(local, 'local-search-results', 'analysis:result-1')
+    await h.act(local, 'local-search-open')
     expect(h.context.openExternal).toHaveBeenCalledWith(item.url)
-    await h.act(screen, 'modal-close')
+    local.search.dispose()
     modal.dispose()
   })
 })

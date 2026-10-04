@@ -121,6 +121,7 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
   NSString *focus = scene[@"focus"];
   if (focus) {
     TRNode *node = [self find:focus]; NSView *control = node.control ?: node;
+    if (!node) [self.chrome focusSearchField:focus];
     if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
     if (control.window) {
       [control.window makeFirstResponder:control];

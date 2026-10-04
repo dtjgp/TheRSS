@@ -18,6 +18,7 @@ import { SettingsScreen } from './settings'
 import { SourcesScreen } from './sources'
 import { AnalyticsScreen } from './analytics'
 import { NativeModals } from './modals'
+import { LocalSearchScreen, LOCAL_SEARCH_FIELD } from './localSearch'
 import { TriageHistory } from './reading'
 import type { NativePreferences } from './preferences'
 import type { LocalResearchTarget } from '../../shared/localResearch'
@@ -43,6 +44,7 @@ export class NativePresenter {
   private readonly controls: Controls
   private readonly triage: TriageHistory
   private readonly modals: NativeModals
+  private readonly localSearch: LocalSearchScreen
   private readonly screens: Record<Route, NativeScreen>
   private route: Route = 'discover'
   private preferences: NativePreferences
@@ -97,6 +99,7 @@ export class NativePresenter {
     this.controls = new Controls(this.context)
     this.triage = new TriageHistory(this.context)
     this.modals = new NativeModals(this.context)
+    this.localSearch = new LocalSearchScreen(this.context)
     this.screens = {
       discover: new DiscoverScreen(this.context, this.triage),
       saved: new SavedScreen(this.context, this.triage),
@@ -141,6 +144,11 @@ export class NativePresenter {
   }
   async navigate(route: Route): Promise<void> {
     if (this.navigating || this.modals.blocksNavigation || !this.ready) return
+    // Choosing a workspace ends an active search, as in Notes and Mail.
+    if (this.localSearch.showing) {
+      this.localSearch.clear()
+      this.redraw()
+    }
     if (
       this.localReturn &&
       !this.modals.visible &&
@@ -179,7 +187,7 @@ export class NativePresenter {
       this.persistSoon()
       this.redraw()
     } else if (command === 'open-local-search') {
-      this.returnToSearch(false)
+      await this.returnToSearch(false)
     } else if (command === 'open-help')
       this.modals.openDocument(
         'TheRSS Help',
@@ -248,10 +256,11 @@ export class NativePresenter {
     this.localReturn = { route: origin, restore }
     this.route = route
     await this.modals.close()
+    this.localSearch.suspend()
     this.redraw()
     return null
   }
-  private returnToSearch(restoreResults: boolean): void {
+  private async returnToSearch(restoreResults: boolean): Promise<void> {
     if (!this.modals.canOpenSearch) return
     if (this.localReturn && (this.screens.discover as DiscoverScreen).searching) {
       this.notify(
@@ -265,7 +274,11 @@ export class NativePresenter {
       previous.restore()
       this.route = previous.route
     }
-    this.modals.openSearch(restoreResults)
+    await this.modals.close()
+    this.localSearch.resume()
+    this.pendingFocus =
+      restoreResults && this.localSearch.hasResults ? 'local-search-results' : LOCAL_SEARCH_FIELD
+    this.redraw()
   }
   receive(json: string, secure = false): void {
     void (secure ? this.presentation.dispatchSecret(json) : this.presentation.dispatch(json)).catch(
@@ -285,6 +298,7 @@ export class NativePresenter {
     this.unsubscribe()
     this.presentation.dispose()
     this.modals.dispose()
+    this.localSearch.dispose()
     Object.values(this.screens).forEach((screen) => screen.dispose?.())
     if (this.noticeTimer) clearTimeout(this.noticeTimer)
     void this.flushPreferences()
@@ -381,7 +395,11 @@ export class NativePresenter {
           'native-main',
           [
             ...(this.ready
-              ? [this.screens[this.route].render()]
+              ? [
+                  this.localSearch.showing
+                    ? this.localSearch.render()
+                    : this.screens[this.route].render()
+                ]
               : [
                   column(
                     'native-loading',
@@ -450,7 +468,11 @@ export class NativePresenter {
       this.presentation.action(key, enabled ? receive : () => undefined)
     const searching = (this.screens.discover as DiscoverScreen).searching
     return {
-      title: this.ready ? routes.find((route) => route.id === this.route)!.title : 'TheRSS',
+      title: !this.ready
+        ? 'TheRSS'
+        : this.localSearch.showing
+          ? 'Search'
+          : routes.find((route) => route.id === this.route)!.title,
       items: [
         {
           id: 'sidebar-toggle',
@@ -472,14 +494,7 @@ export class NativePresenter {
               }
             ]
           : []),
-        {
-          id: 'open-local-search',
-          title: 'Find local research',
-          symbol: 'magnifyingglass',
-          help: 'Find local research (Command-F)',
-          enabled: this.ready,
-          action: action('toolbar:find', () => this.command('open-local-search'), this.ready)
-        },
+        this.localSearch.toolbarItem(this.ready),
         {
           id: 'undo-triage',
           title: 'Undo triage',

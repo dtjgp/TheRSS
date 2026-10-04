@@ -69,6 +69,7 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
   window.toolbar = _previousToolbar; window.toolbarStyle = _toolbarStyle;
   window.titleVisibility = _titleVisibility; window.titlebarAppearsTransparent = _transparentTitlebar;
   window.styleMask = _styleMask; _previousToolbar = nil;
+  [NSNotificationCenter.defaultCenter removeObserver:self name:NSControlTextDidChangeNotification object:nil];
 }
 - (NSArray<NSToolbarItemIdentifier> *)identifiers {
   NSMutableArray *leading = [NSMutableArray array], *trailing = [NSMutableArray array];
@@ -87,13 +88,26 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
   if (![window.title isEqual:title]) window.title = title;
   _items = [spec[@"items"] isKindOfClass:NSArray.class] ? spec[@"items"] : @[];
   NSString *signature = [[self identifiers] componentsJoinedByString:@"|"];
-  if (!window.toolbar || window.toolbar == _previousToolbar || ![signature isEqual:_signature]) {
+  if (!window.toolbar || window.toolbar == _previousToolbar) {
     _signature = signature;
     NSToolbar *toolbar = [[NSToolbar alloc] initWithIdentifier:[NSString stringWithFormat:@"therss.window.%lu",(unsigned long)++_generation]];
     toolbar.delegate = self; toolbar.displayMode = NSToolbarDisplayModeIconOnly;
     toolbar.allowsUserCustomization = NO; toolbar.autosavesConfiguration = NO;
     window.toolbar = toolbar;
-  } else for (NSToolbarItem *item in window.toolbar.items) [self configure:item];
+    return;
+  }
+  if (![signature isEqual:_signature]) {
+    // Insert and remove items in place: replacing the toolbar would recreate the search field
+    // and drop its text, caret and IME composition.
+    _signature = signature;
+    NSToolbar *toolbar = window.toolbar; NSArray<NSToolbarItemIdentifier> *wanted = [self identifiers];
+    for (NSInteger index = (NSInteger)toolbar.items.count - 1; index >= 0; index--)
+      if (![wanted containsObject:toolbar.items[index].itemIdentifier]) [toolbar removeItemAtIndex:index];
+    for (NSUInteger index = 0; index < wanted.count; index++)
+      if (index >= toolbar.items.count || ![toolbar.items[index].itemIdentifier isEqual:wanted[index]])
+        [toolbar insertItemWithItemIdentifier:wanted[index] atIndex:index];
+  }
+  for (NSToolbarItem *item in window.toolbar.items) [self configure:item];
 }
 - (NSDictionary *)specFor:(NSString *)identifier {
   for (NSDictionary *item in _items) if ([item[@"id"] isEqual:identifier]) return item;
@@ -101,13 +115,36 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
 }
 - (void)configure:(NSToolbarItem *)item {
   NSDictionary *spec = [self specFor:item.itemIdentifier]; if (!spec) return;
+  if ([item isKindOfClass:NSSearchToolbarItem.class]) {
+    NSSearchField *field = ((NSSearchToolbarItem *)item).searchField;
+    item.label = spec[@"title"]; item.paletteLabel = spec[@"title"]; item.toolTip = spec[@"help"] ?: spec[@"title"];
+    field.placeholderString = spec[@"placeholder"]; field.accessibilityLabel = spec[@"title"];
+    // Scene values never replace text the user is editing (including IME composition).
+    NSString *value = [spec[@"value"] isKindOfClass:NSString.class] ? spec[@"value"] : @"";
+    if (!field.currentEditor && ![field.stringValue isEqual:value]) field.stringValue = value;
+    return;
+  }
   item.label = spec[@"title"]; item.paletteLabel = spec[@"title"];
   item.toolTip = spec[@"help"] ?: spec[@"title"];
   item.image = [NSImage imageWithSystemSymbolName:spec[@"symbol"] accessibilityDescription:spec[@"title"]];
   item.autovalidates = NO; item.enabled = spec[@"enabled"] ? [spec[@"enabled"] boolValue] : YES;
 }
 - (NSToolbarItem *)toolbar:(NSToolbar *)toolbar itemForItemIdentifier:(NSToolbarItemIdentifier)identifier willBeInsertedIntoToolbar:(BOOL)flag {
-  if (![self specFor:identifier]) return nil;
+  NSDictionary *spec = [self specFor:identifier]; if (!spec) return nil;
+  if ([spec[@"kind"] isEqual:@"search"]) {
+    NSSearchToolbarItem *search = [[NSSearchToolbarItem alloc] initWithItemIdentifier:identifier];
+    NSSearchField *field = search.searchField;
+    // Observe text changes by notification: NSSearchToolbarItem may manage the field's delegate
+    // during search interaction, and a lost delegate callback would drop typed queries.
+    field.target = self; field.action = @selector(searchActivated:);
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(searchFieldTextDidChange:) name:NSControlTextDidChangeNotification object:field];
+    field.sendsWholeSearchString = YES; field.sendsSearchStringImmediately = NO;
+    // Only Return, the clear button and Escape send the action. Ending an edit (focus moving)
+    // must not: the field editor is already detached and would report an empty query.
+    field.cell.sendsActionOnEndEditing = NO;
+    [self configure:search];
+    return search;
+  }
   NSToolbarItem *item = [[NSToolbarItem alloc] initWithItemIdentifier:identifier];
   item.bordered = YES; item.target = self; item.action = @selector(activate:);
   // Navigational items lead the title, where Finder and Mail keep the sidebar toggle.
@@ -122,14 +159,66 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
   if (!spec || !sender.enabled || _host.sheet) return;
   [_host emit:spec[@"action"] value:nil secret:NO];
 }
+- (NSSearchField *)searchField:(NSString *)identifier {
+  for (NSToolbarItem *item in _host.window.toolbar.items)
+    if ([item isKindOfClass:NSSearchToolbarItem.class] && [item.itemIdentifier isEqual:identifier]) return ((NSSearchToolbarItem *)item).searchField;
+  return nil;
+}
+- (NSDictionary *)specForField:(NSSearchField *)field {
+  for (NSToolbarItem *item in _host.window.toolbar.items)
+    if ([item isKindOfClass:NSSearchToolbarItem.class] && ((NSSearchToolbarItem *)item).searchField == field) return [self specFor:item.itemIdentifier];
+  return nil;
+}
+- (void)searchTextChanged:(NSSearchField *)field {
+  NSDictionary *spec = [self specForField:field];
+  // Composition (marked text) is not a query yet; search once it is committed.
+  if (!spec || [(NSTextView *)field.currentEditor hasMarkedText]) return;
+  // While editing, the field editor holds the live text; stringValue can still be the last
+  // committed value (plain workflow run: an edited field emitted '' and cleared the search).
+  NSString *text = field.currentEditor ? ((NSTextView *)field.currentEditor).string : field.stringValue;
+  NSString *value = text.length > 200 ? [text substringToIndex:200] : text;
+  [_host emit:spec[@"action"] value:value secret:NO];
+}
+- (void)searchFieldTextDidChange:(NSNotification *)notification {
+  if ([notification.object isKindOfClass:NSSearchField.class]) [self searchTextChanged:notification.object];
+}
+- (void)searchActivated:(NSSearchField *)field {
+  NSDictionary *spec = [self specForField:field]; if (!spec || _host.sheet) return;
+  // An empty whole-string action is the clear button or Escape; otherwise Return. Read the live
+  // editor text: stringValue can lag while editing and would clear a just-typed query.
+  NSString *text = field.currentEditor ? ((NSTextView *)field.currentEditor).string : field.stringValue;
+  if (text.length) [_host emit:spec[@"activate"] value:nil secret:NO];
+  else [_host emit:spec[@"action"] value:@"" secret:NO];
+}
+- (BOOL)focusSearchField:(NSString *)identifier {
+  for (NSToolbarItem *item in _host.window.toolbar.items)
+    if ([item isKindOfClass:NSSearchToolbarItem.class] && [item.itemIdentifier isEqual:identifier]) {
+      NSSearchField *field = ((NSSearchToolbarItem *)item).searchField;
+      // A field that is already editing keeps its editor; re-focusing would end the edit.
+      if (field.currentEditor && _host.window.firstResponder == field.currentEditor) return YES;
+      [(NSSearchToolbarItem *)item beginSearchInteraction];
+      [_host.window makeFirstResponder:field];
+      return YES;
+    }
+  return NO;
+}
 - (BOOL)activateFixture:(NSString *)identifier {
   for (NSToolbarItem *item in _host.window.toolbar.items) if ([item.itemIdentifier isEqual:identifier] && item.enabled) { [self activate:item]; return YES; }
   return NO;
 }
 - (NSDictionary *)inspect {
   NSWindow *window = _host.window; NSMutableArray *items = [NSMutableArray array];
-  for (NSToolbarItem *item in window.toolbar.items)
-    [items addObject:@{@"id":item.itemIdentifier,@"label":item.label ?: @"",@"enabled":@(item.enabled),@"bordered":@(item.bordered),@"hasImage":@(item.image != nil)}];
+  for (NSToolbarItem *item in window.toolbar.items) {
+    NSMutableDictionary *entry = [@{@"id":item.itemIdentifier,@"label":item.label ?: @"",@"enabled":@(item.enabled),@"bordered":@(item.bordered),@"hasImage":@(item.image != nil)} mutableCopy];
+    if ([item isKindOfClass:NSSearchToolbarItem.class]) {
+      NSSearchField *field = ((NSSearchToolbarItem *)item).searchField;
+      entry[@"kind"] = @"search"; entry[@"value"] = field.stringValue ?: @""; entry[@"placeholder"] = field.placeholderString ?: @"";
+      entry[@"editing"] = @(field.currentEditor != nil && window.firstResponder == field.currentEditor);
+      entry[@"marked"] = @([(NSTextView *)field.currentEditor hasMarkedText]);
+      entry[@"instance"] = [NSString stringWithFormat:@"%p",field];
+    }
+    [items addObject:entry];
+  }
   NSButton *close = [window standardWindowButton:NSWindowCloseButton];
   NSRect closeFrame = close ? [close convertRect:close.bounds toView:nil] : NSZeroRect;
   return @{@"installed":@(_installed),@"title":window.title ?: @"",@"titleVisible":@(window.titleVisibility == NSWindowTitleVisible),

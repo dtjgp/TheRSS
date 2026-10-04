@@ -80,13 +80,13 @@ describe('in-app local research navigation', () => {
       expect(f.toolbarItem('return-local-search')?.enabled).toBe(false)
       await f.presenter.command('open-local-search')
       await Promise.resolve()
-      expect(f.scene().modal).toBeUndefined()
+      expect(f.h.find(f.scene().root, 'local-search-page')).toBeUndefined()
       expect(f.h.find(f.scene().root, 'discover-query')?.value).toBe('Historical question')
       finish(historical)
       await work
       expect(f.toolbarItem('return-local-search')?.enabled).toBe(true)
       await f.act('return-local-search')
-      expect(f.scene().modal).toBeDefined()
+      expect(f.h.find(f.scene().root, 'local-search-page')).toBeDefined()
     } finally {
       f.presenter.dispose()
     }
@@ -99,13 +99,13 @@ describe('in-app local research navigation', () => {
       await f.act('discover-query', 'My unsubmitted question')
       await f.search()
       await f.act('local-search-results', 'discover:historical:arxiv:29', true)
-      expect(f.scene().modal).toBeUndefined()
+      expect(f.h.find(f.scene().root, 'local-search-page')).toBeUndefined()
       expect(f.h.find(f.scene().root, 'discover-results')?.selected).toBe('arxiv:29')
       expect(f.h.find(f.scene().root, 'discover-reading-title')?.text).toBe('Paper 29')
       expect(f.h.api.searchDiscover).not.toHaveBeenCalled()
       await f.act('return-local-search')
-      expect(f.h.find(f.scene().modal, 'local-search-query')?.value).toBe('edge')
-      await f.act('modal-close')
+      expect(f.toolbarItem('local-search-query')?.value).toBe('edge')
+      await f.act('local-search-query', '')
       expect(f.h.find(f.scene().root, 'discover-query')?.value).toBe('My unsubmitted question')
       expect(f.h.find(f.scene().root, 'discover-results')?.selected).toBe('arxiv:0')
     } finally {
@@ -113,14 +113,16 @@ describe('in-app local research navigation', () => {
     }
   })
 
-  it('keeps missing results recoverable in the search sheet', async () => {
+  it('keeps missing results recoverable in the search results', async () => {
     const f = setup(async () => null)
     try {
       await f.presenter.start()
       await f.search()
       await f.act('local-search-results', 'discover:historical:arxiv:29', true)
-      expect(f.h.find(f.scene().modal, 'modal-message')?.text).toContain('no longer available')
-      expect(f.h.find(f.scene().modal, 'local-search-query')?.value).toBe('edge')
+      expect(f.h.find(f.scene().root, 'local-search-message')?.text).toContain(
+        'no longer available'
+      )
+      expect(f.toolbarItem('local-search-query')?.value).toBe('edge')
     } finally {
       f.presenter.dispose()
     }
@@ -139,14 +141,14 @@ describe('in-app local research navigation', () => {
       await f.search()
       const pending = f.act('local-search-results', 'discover:historical:arxiv:29', true)
       await Promise.resolve()
-      await f.act('modal-close')
+      await f.act('local-search-query', '')
       finish({
         kind: 'discover',
         snapshot: { ...nativeDiscoverFixture, id: 'historical' },
         itemId: 'arxiv:29'
       })
       await pending
-      expect(f.scene().modal).toBeUndefined()
+      expect(f.h.find(f.scene().root, 'local-search-page')).toBeUndefined()
       expect(f.h.find(f.scene().root, 'discover-results')?.selected).toBe('arxiv:0')
     } finally {
       f.presenter.dispose()

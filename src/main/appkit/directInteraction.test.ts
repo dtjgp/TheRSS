@@ -1,9 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { DiscoverScreen } from './discover'
-import { NativeModals } from './modals'
 import { ResearchReader, TriageHistory } from './reading'
 import { SourcesScreen } from './sources'
-import { nativeDiscoverFixture, nativeHarness } from './testSupport'
+import { localSearchHarness, nativeDiscoverFixture, nativeHarness } from './testSupport'
 
 describe('direct native interaction', () => {
   it('keeps local typing responsive and discards obsolete or closed-query responses', async () => {
@@ -15,9 +14,7 @@ describe('direct native interaction', () => {
           new Promise<{ query: string; results: [] }>((resolve) => complete.set(query, resolve))
       )
       const h = nativeHarness({ searchLocal: search })
-      const modal = new NativeModals(h.context)
-      modal.openSearch()
-      const screen = { render: () => modal.render()! }
+      const screen = localSearchHarness(h.context)
       await h.act(screen, 'local-search-query', 'first')
       await vi.advanceTimersByTimeAsync(250)
       expect(h.find(h.render(screen), 'local-search-query')?.enabled).toBe(true)
@@ -31,11 +28,11 @@ describe('direct native interaction', () => {
       await h.act(screen, 'local-search-query', 'x')
       expect(h.find(h.render(screen), 'local-search-result-count')).toBeUndefined()
       await h.act(screen, 'local-search-query', 'closing')
-      await modal.close()
+      screen.search.clear()
       await vi.advanceTimersByTimeAsync(500)
       expect(search).toHaveBeenCalledTimes(2)
-      expect(modal.render()).toBeUndefined()
-      modal.dispose()
+      expect(screen.search.showing).toBe(false)
+      screen.search.dispose()
     } finally {
       vi.useRealTimers()
     }
@@ -119,9 +116,7 @@ describe('direct native interaction', () => {
       const h = nativeHarness({
         searchLocal: vi.fn(async (query) => ({ query, results: [result] }))
       })
-      const modal = new NativeModals(h.context)
-      modal.openSearch()
-      const screen = { render: () => modal.render()! }
+      const screen = localSearchHarness(h.context)
       await h.act(screen, 'local-search-query', 'edge')
       await vi.advanceTimersByTimeAsync(249)
       expect(h.api.searchLocal).not.toHaveBeenCalled()
@@ -135,7 +130,7 @@ describe('direct native interaction', () => {
       )
       expect(h.context.openLocal).toHaveBeenCalledWith(target, expect.any(Function))
       expect(h.context.openExternal).not.toHaveBeenCalled()
-      modal.dispose()
+      screen.search.dispose()
     } finally {
       vi.useRealTimers()
     }

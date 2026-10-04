@@ -39,8 +39,8 @@ NSSharingService or drag registration.
 
 | ID  | Finding                                                                                                                               | Status        |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| F5  | No default buttons or `keyEquivalent`; no Command-Return submit; triage undo is a separate button instead of NSUndoManager/Command-Z. | Open (S2)     |
-| F6  | Discover progress is text only, although PRODUCT.md describes native source progress.                                                 | Open (S3)     |
+| F5  | No default buttons or `keyEquivalent`; no Command-Return submit; triage undo is a separate button instead of NSUndoManager/Command-Z. | **Fixed S2**  |
+| F6  | Discover progress is text only, although PRODUCT.md describes native source progress.                                                 | **Fixed S3**  |
 | F7  | Two-line result titles clipped without an ellipsis.                                                                                   | **Fixed S0**  |
 | F8  | Row labels drawn ~8 px above adjacent controls; single buttons stretched to column width (Saved "Open Settings").                     | **Fixed S0**  |
 | F9  | Result status showed the raw enum (`partial`).                                                                                        | **Fixed S0**  |
@@ -68,8 +68,8 @@ context menus, standard menu roles and the dedicated secure-input path.
 | ----- | ----------------------------------------------------------------------------------------------- | ------------------------------------------- |
 | S0    | F7-F10 quick fixes                                                                              | **Done**, see below                         |
 | S1    | Typed `toolbar` and `sidebar` (source list) node kinds; remove title strip and sidebar branding | **Done**, [contract](S1_CHANGE_CONTRACT.md) |
-| S2    | Default buttons, Command-Return, NSUndoManager triage undo                                      | Change contract                             |
-| S3    | Toolbar search replacing the sheet; `progress`, `segmented`, `popover` node kinds               | Change contract                             |
+| S2    | Default buttons, Command-Return, NSUndoManager triage undo                                      | **Done**, see S2/S3 progress                |
+| S3    | Toolbar search replacing the sheet; `progress`, `segmented`, `popover` node kinds               | Search and progress done; F11 open          |
 | S4    | Separate Settings window                                                                        | Decision gate D5 first                      |
 
 Every new node kind keeps zod validation at the presentation boundary, AppKit smoke coverage and
@@ -121,3 +121,19 @@ were removed; content now starts directly below the toolbar.
   in window recreation (personal prompt read empty), not reproduced in two reruns.
 - Still open in F13: Settings pane headings ("Personal context", "Model provider") repeat the
   section pop-up value; ad hoc font sizes; single-label empty states.
+
+## S2/S3 progress (2026-09-24 to 2026-10-04)
+
+Each slice has its own change contract and verification record.
+
+| Finding        | Outcome                                                                                                                                        | Contract                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| F13 (Settings) | Settings pane headings that repeated the section pop-up value are removed.                                                                     | [settings-titles-progress](../2026-09-24-settings-titles-progress/CHANGE_CONTRACT.md) |
+| F6             | Native `progress` node (NSProgressIndicator); Discover shows the three stages and the latest completed-source outcome.                         | same                                                                                  |
+| F5             | Command-Z reaches triage undo outside text views; Command-Return runs Discover; Return closes read-only sheets only; bounded button shortcuts. | [keyboard](../2026-09-24-keyboard/CHANGE_CONTRACT.md)                                 |
+| F3             | Discover lists every result in the lazy table (no "Show 24 more"); workspaces fit the window; page scroll is only a small-window fallback.     | [page-scroll](../2026-09-24-page-scroll/CHANGE_CONTRACT.md)                           |
+| F4             | `NSSearchToolbarItem` replaces the search sheet; results fill the content area; clearing or Escape restores the workspace.                     | [toolbar-search](../2026-09-24-toolbar-search/CHANGE_CONTRACT.md)                     |
+
+Still open: F11 (segmented result-kind filter, source-picker popover), F12/S4 (decision D5),
+F13 (system text styles, richer empty states), F14 (row glyphs; date display is a product
+decision), the NSSplitViewController/tracking-separator title placement, and P2 integration.

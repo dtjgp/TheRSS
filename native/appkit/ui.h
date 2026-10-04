@@ -25,6 +25,9 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 - (void)uninstall;
 - (void)fitContentView;
 - (BOOL)activateFixture:(NSString *)identifier;
+- (NSSearchField *)searchField:(NSString *)identifier;
+- (void)searchTextChanged:(NSSearchField *)field;
+- (BOOL)focusSearchField:(NSString *)identifier;
 - (NSDictionary *)inspect;
 @end
 

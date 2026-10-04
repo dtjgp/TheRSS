@@ -34,6 +34,11 @@ export interface NativeToolbarItem {
   readonly action?: string | undefined
   /** Items placed in the sidebar section, before the toolbar's sidebar tracking separator. */
   readonly placement?: 'sidebar' | undefined
+  /** A toolbar search field: `action` receives committed text, `activate` receives Return. */
+  readonly kind?: 'search' | undefined
+  readonly placeholder?: string | undefined
+  readonly value?: string | undefined
+  readonly activate?: string | undefined
 }
 export interface NativeToolbar {
   readonly title: string
@@ -278,7 +283,11 @@ const toolbarSchema: z.ZodType<NativeToolbar> = z
             help: short.optional(),
             enabled: z.boolean().optional(),
             action: short.optional(),
-            placement: z.literal('sidebar').optional()
+            placement: z.literal('sidebar').optional(),
+            kind: z.literal('search').optional(),
+            placeholder: z.string().max(200).optional(),
+            value: z.string().max(200).optional(),
+            activate: short.optional()
           })
           .strict()
       )
@@ -386,7 +395,11 @@ export class NativePresentation {
     }
     visit(modal ?? root)
     // A sheet is window-modal: toolbar commands stay inert until it closes.
-    if (!modal) toolbar?.items.forEach((item) => item.action && liveActions.add(item.action))
+    if (!modal)
+      toolbar?.items.forEach((item) => {
+        if (item.action) liveActions.add(item.action)
+        if (item.activate) liveActions.add(item.activate)
+      })
     this.active = new Map([...this.next].filter(([, binding]) => liveActions.has(binding.id)))
     this.secureResets.clear()
     return json
