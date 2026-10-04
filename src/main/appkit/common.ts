@@ -141,6 +141,17 @@ export class Controls {
       ...extra
     }
   }
+  /** A select-one segmented control for a few short choices that should stay visible. */
+  segmented(
+    id: string,
+    title: string,
+    selected: string,
+    options: readonly NativeOption[],
+    receive: (value: string) => void,
+    extra: Partial<NativeNode> = {}
+  ): NativeNode {
+    return { ...this.select(id, title, selected, options, receive, extra), kind: 'segmented' }
+  }
   check(
     id: string,
     title: string,

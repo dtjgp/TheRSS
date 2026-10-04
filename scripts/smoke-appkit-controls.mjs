@@ -363,6 +363,69 @@ try {
   await application.evaluate(() => {
     const f = globalThis.__controls
     f.scene.root = {
+      id: 'segmented-root',
+      kind: 'column',
+      padding: 20,
+      children: [
+        {
+          id: 'segmented-row',
+          kind: 'row',
+          children: [
+            {
+              id: 'segmented-kind',
+              kind: 'segmented',
+              title: 'Result kind',
+              selected: 'all',
+              action: 'segmented-choose',
+              options: [
+                { id: 'all', title: 'All (3)' },
+                { id: 'paper', title: 'Papers (1)' },
+                { id: 'repository', title: 'Repositories (2)' },
+                { id: 'other', title: 'Other (0)', enabled: false }
+              ]
+            },
+            { id: 'segmented-status', kind: 'label', text: 'Complete', flex: 1 }
+          ]
+        }
+      ]
+    }
+    f.events.length = 0
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  })
+  state = await inspect()
+  let segmented = find(state.root, 'segmented-kind')
+  assert.equal(segmented.class, 'NSSegmentedControl')
+  assert.equal(segmented.label, 'Result kind')
+  assert.deepEqual(
+    segmented.segments.map((segment) => segment.label),
+    ['All (3)', 'Papers (1)', 'Repositories (2)', 'Other (0)']
+  )
+  assert.equal(segmented.selected, 'all')
+  assert.equal(segmented.segments[3].enabled, false)
+  const segmentFrame = frameNumbers(segmented.frame)
+  assert(
+    segmentFrame[2] >= segmented.intrinsicWidth,
+    'The row gives the segments their intrinsic width without clipping a count'
+  )
+  assert(segmentFrame[3] <= 32, 'Segments keep their natural height in the row')
+  await act('segmented-kind', 'choose', 'repository')
+  let segmentEvents = await application.evaluate(() => globalThis.__controls.events)
+  assert.deepEqual(segmentEvents.at(-1), { action: 'segmented-choose', value: 'repository' })
+  await assert.rejects(act('segmented-kind', 'choose', 'other'), /disabled/u)
+  const emitted = segmentEvents.length
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.scene.root.children[0].children[0].selected = 'paper'
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  })
+  segmented = find((await inspect()).root, 'segmented-kind')
+  assert.equal(segmented.selected, 'paper')
+  segmentEvents = await application.evaluate(() => globalThis.__controls.events)
+  assert.equal(segmentEvents.length, emitted, 'A scene update does not emit a choice')
+  checks.push('Native segmented control shows every choice, emits clicks and skips scene updates')
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.scene.root = {
       id: 'keyboard-root',
       kind: 'column',
       padding: 20,

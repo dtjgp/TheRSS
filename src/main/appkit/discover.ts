@@ -197,7 +197,7 @@ export class DiscoverScreen implements NativeScreen {
         ...(snapshot && !this.workspace.focused
           ? [
               row('discover-results-toolbar', [
-                b.select(
+                b.segmented(
                   'discover-kind',
                   'Result kind',
                   this.filter,
@@ -217,8 +217,7 @@ export class DiscoverScreen implements NativeScreen {
                     this.filter = filter as Filter
                     this.selected = ''
                     this.context.redraw()
-                  },
-                  { width: 210 }
+                  }
                 ),
                 label('discover-result-status', resultStatus(snapshot), { flex: 1 }),
                 b.button('discover-details', 'Search details', () => this.details()),

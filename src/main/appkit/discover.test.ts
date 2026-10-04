@@ -15,6 +15,30 @@ describe('AppKit Discover', () => {
     await screen.load()
     expect(h.find(h.render(screen), 'discover-results')?.rows?.[0]?.subtitle).toContain(' · Saved')
   })
+  it('filters result kinds with a segmented control that shows every count', async () => {
+    const h = nativeHarness({ getLatestDiscover: vi.fn(async () => nativeDiscoverFixture) })
+    const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
+    await screen.load()
+    const filter = h.find(h.render(screen), 'discover-kind')
+    expect(filter).toMatchObject({ kind: 'segmented', title: 'Result kind', selected: 'all' })
+    expect(filter?.options?.map((option) => option.id)).toEqual([
+      'all',
+      'paper',
+      'repository',
+      'other'
+    ])
+    expect(filter?.options?.every((option) => /\(\d+\)$/u.test(option.title))).toBe(true)
+    await h.act(screen, 'discover-kind', 'other')
+    const empty = h.render(screen)
+    expect(h.find(empty, 'discover-kind')?.selected).toBe('other')
+    expect(h.find(empty, 'discover-results')).toBeUndefined()
+    expect(h.find(empty, 'discover-empty-message')?.text).toContain('No results')
+    await h.act(screen, 'discover-kind', 'paper')
+    expect(h.find(h.render(screen), 'discover-results')?.rows).toHaveLength(
+      nativeDiscoverFixture.items.filter((item) => item.kind === 'paper').length
+    )
+    screen.dispose()
+  })
   it('summarizes the persisted session outcome in plain language with source counts', async () => {
     const [empty, skipped] = DISCOVER_SOURCE_IDS.filter((source) => source !== 'arxiv')
     const outcomes = {

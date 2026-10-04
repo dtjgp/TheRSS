@@ -206,6 +206,11 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
   else if ([action isEqual:@"choose"] && [node.control isKindOfClass:NSPopUpButton.class]) {
     NSPopUpButton *select = (NSPopUpButton *)node.control;
     for (NSMenuItem *item in select.itemArray) if ([item.representedObject isEqual:input[@"value"]] && item.enabled) { [select selectItem:item]; [node trigger:select]; break; }
+  } else if ([action isEqual:@"choose"] && [node.control isKindOfClass:NSSegmentedControl.class]) {
+    NSSegmentedControl *segmented = (NSSegmentedControl *)node.control; NSArray *options = node.spec[@"options"];
+    NSUInteger index = [options indexOfObjectPassingTest:^BOOL(NSDictionary *option, NSUInteger i, BOOL *stop) { return [option[@"id"] isEqual:input[@"value"]]; }];
+    if (index == NSNotFound || !segmented.enabled || ![segmented isEnabledForSegment:(NSInteger)index]) return fail(env,"Fixture segment is unavailable or disabled");
+    segmented.selectedSegment = (NSInteger)index; [node trigger:segmented];
   } else if ([action isEqual:@"select"] && ([node.spec[@"kind"] isEqual:@"table"] || [node.spec[@"kind"] isEqual:@"sidebar"])) {
     NSTableView *table = (NSTableView *)((NSScrollView *)node.control).documentView;
     NSInteger row = 0; for (NSDictionary *item in node.spec[@"rows"]) { if ([item[@"id"] isEqual:input[@"value"]]) { [table selectRowIndexes:[NSIndexSet indexSetWithIndex:row] byExtendingSelection:NO]; if ([input[@"activate"] boolValue]) [node activateRow]; break; } row++; }

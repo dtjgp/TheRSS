@@ -71,6 +71,7 @@ export type NativeKind =
   | 'chart'
   | 'sidebar'
   | 'progress'
+  | 'segmented'
 export interface NativeNode {
   readonly compactPane?: 'list' | 'detail' | undefined
   readonly wrap?: boolean | undefined
@@ -144,7 +145,8 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
         'table',
         'chart',
         'sidebar',
-        'progress'
+        'progress',
+        'segmented'
       ]),
       compactPane: z.enum(['list', 'detail']).optional(),
       wrap: z.boolean().optional(),
@@ -259,6 +261,19 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
         context.addIssue({
           code: 'custom',
           message: 'Native progress needs completed <= total on a progress node'
+        })
+      if (node.options !== undefined && node.kind !== 'select' && node.kind !== 'segmented')
+        context.addIssue({ code: 'custom', message: 'Only native choice controls carry options' })
+      if (
+        node.kind === 'segmented' &&
+        (!node.options ||
+          node.options.length < 2 ||
+          node.options.length > 6 ||
+          !node.options.some((option) => option.id === node.selected))
+      )
+        context.addIssue({
+          code: 'custom',
+          message: 'Native segmented controls need 2-6 options including the selected one'
         })
       if (node.shortcut !== undefined && node.kind !== 'button')
         context.addIssue({ code: 'custom', message: 'Only native buttons carry a shortcut' })

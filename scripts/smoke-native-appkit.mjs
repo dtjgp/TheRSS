@@ -346,6 +346,19 @@ try {
       find(result.root, 'discover-result-status').text,
       /^Complete · \d+ of \d+ sources complete · \d{4}-\d{2}-\d{2}$/u
     )
+    const kinds = find(result.root, 'discover-kind')
+    assert.equal(kinds.class, 'NSSegmentedControl', 'Result kinds are a segmented control')
+    assert.deepEqual(
+      kinds.segments.map((segment) => segment.label),
+      ['All (3)', 'Papers (1)', 'Repositories (1)', 'Other (1)']
+    )
+    const kindsWidth = Number(kinds.frame.match(/-?\d+(?:\.\d+)?/gu)[2])
+    assert(kindsWidth >= kinds.intrinsicWidth, 'No segment count is clipped')
+    await act('discover-kind', 'choose', 'repository')
+    const repositories = await wait('discover-results', (node) => node?.rows.length === 1)
+    assert.equal(find(repositories.root, 'discover-kind').selected, 'repository')
+    await act('discover-kind', 'choose', 'all')
+    await wait('discover-results', (node) => node?.rows.length === 3)
     const nav = find(result.root, 'native-navigation')
     assert.equal(nav.sourceList, true, 'Workspaces use an AppKit source list')
     assert.equal(nav.selected, 'discover')
@@ -794,6 +807,12 @@ try {
     await delay(200)
     const narrow = await capture('discover-narrow')
     assert.equal(find(narrow.root, 'discover-workspace').compactPane, 'list')
+    // 820 px is the window minimum: the wrapped results row still fits every segment count.
+    const narrowKinds = find(narrow.root, 'discover-kind')
+    assert(
+      Number(narrowKinds.frame.match(/-?\d+(?:\.\d+)?/gu)[2]) >= narrowKinds.intrinsicWidth,
+      'Segment counts are not clipped at the minimum window width'
+    )
     assert.equal(find(narrow.root, 'discover-results').hidden, false)
     assert.equal(find(narrow.root, 'discover-reading-scroll').hidden, true)
     const selectedBefore = find(narrow.root, 'discover-results').selected

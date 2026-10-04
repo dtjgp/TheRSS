@@ -270,6 +270,10 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     self.control = button;
   } else if ([kind isEqual:@"select"]) {
     NSPopUpButton *select = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO]; select.target = self; select.action = @selector(trigger:); self.control = select;
+  } else if ([kind isEqual:@"segmented"]) {
+    NSSegmentedControl *segmented = [NSSegmentedControl new];
+    segmented.trackingMode = NSSegmentSwitchTrackingSelectOne; segmented.segmentStyle = NSSegmentStyleAutomatic;
+    segmented.target = self; segmented.action = @selector(trigger:); self.control = segmented;
   } else if ([kind isEqual:@"progress"]) {
     NSProgressIndicator *progress = [NSProgressIndicator new];
     progress.style = NSProgressIndicatorStyleBar; progress.displayedWhenStopped = YES; progress.minValue = 0;
@@ -364,6 +368,18 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       select.autoenablesItems = NO;
     }
     for (NSMenuItem *item in select.itemArray) if ([item.representedObject isEqual:spec[@"selected"]]) [select selectItem:item];
+  } else if ([kind isEqual:@"segmented"]) {
+    NSSegmentedControl *segmented = (NSSegmentedControl *)self.control;
+    NSArray *options = spec[@"options"];
+    if (![old[@"options"] isEqual:options]) {
+      segmented.segmentCount = (NSInteger)options.count;
+      [options enumerateObjectsUsingBlock:^(NSDictionary *option, NSUInteger index, BOOL *stop) {
+        [segmented setLabel:option[@"title"] forSegment:(NSInteger)index]; [segmented setWidth:0 forSegment:(NSInteger)index];
+        [segmented setEnabled:option[@"enabled"] ? [option[@"enabled"] boolValue] : YES forSegment:(NSInteger)index];
+      }];
+    }
+    NSUInteger index = [options indexOfObjectPassingTest:^BOOL(NSDictionary *option, NSUInteger i, BOOL *stop) { return [option[@"id"] isEqual:spec[@"selected"]]; }];
+    if (index != NSNotFound) segmented.selectedSegment = (NSInteger)index;
   } else if ([kind isEqual:@"progress"]) {
     NSProgressIndicator *progress = (NSProgressIndicator *)self.control;
     BOOL determinate = spec[@"completed"] && spec[@"total"];
@@ -502,6 +518,11 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   if (splitLayout) self.applying = YES;
   self.control.frame = self.bounds;
   NSString *kind = self.spec[@"kind"];
+  if ([kind isEqual:@"segmented"]) {
+    // Segments keep their natural height, centred in the row like the adjacent buttons.
+    CGFloat natural = MIN(height,self.control.intrinsicContentSize.height);
+    self.control.frame = NSMakeRect(0,floor((height-natural)/2),width,natural);
+  }
   if ([self.spec[@"adaptiveScroll"] boolValue]) {
     NSScrollView *scroll = (NSScrollView *)self.control;
     width = scroll.contentSize.width; height = MAX(scroll.contentSize.height,[self heightForWidth:width]);
@@ -649,6 +670,10 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   if ([self.control isKindOfClass:NSControl.class] && !((NSControl *)self.control).enabled) return;
   NSString *kind = self.spec[@"kind"];
   if ([kind isEqual:@"select"]) [self.host emit:self.spec[@"action"] value:((NSPopUpButton *)self.control).selectedItem.representedObject secret:NO];
+  else if ([kind isEqual:@"segmented"]) {
+    NSInteger index = ((NSSegmentedControl *)self.control).selectedSegment; NSArray *options = self.spec[@"options"];
+    if (index >= 0 && index < (NSInteger)options.count) [self.host emit:self.spec[@"action"] value:options[(NSUInteger)index][@"id"] secret:NO];
+  }
   else if ([kind isEqual:@"check"]) [self.host emit:self.spec[@"action"] value:@(((NSButton *)self.control).state == NSControlStateValueOn) secret:NO];
   else if ([kind isEqual:@"input"] || [kind isEqual:@"secure"]) [self.host emit:self.spec[@"activate"] value:nil secret:NO];
   else [self.host emit:self.spec[@"action"] value:nil secret:NO];
@@ -756,6 +781,14 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   }
   if ([self.control isKindOfClass:NSButton.class]) { result[@"title"] = ((NSButton *)self.control).title; result[@"checked"] = @(((NSButton *)self.control).state == NSControlStateValueOn); }
   if ([self.control isKindOfClass:NSPopUpButton.class]) result[@"selected"] = ((NSPopUpButton *)self.control).selectedItem.representedObject ?: @"";
+  if ([self.spec[@"kind"] isEqual:@"segmented"]) {
+    NSSegmentedControl *segmented = (NSSegmentedControl *)self.control; NSMutableArray *segments = [NSMutableArray array];
+    for (NSInteger index = 0; index < segmented.segmentCount; index++)
+      [segments addObject:@{@"label":[segmented labelForSegment:index] ?: @"",@"enabled":@([segmented isEnabledForSegment:index]),@"selected":@([segmented isSelectedForSegment:index])}];
+    NSArray *options = self.spec[@"options"]; NSInteger index = segmented.selectedSegment;
+    result[@"segments"] = segments; result[@"selected"] = index >= 0 && index < (NSInteger)options.count ? options[(NSUInteger)index][@"id"] : @"";
+    result[@"intrinsicWidth"] = @(segmented.intrinsicContentSize.width);
+  }
   if ([self.control isKindOfClass:NSSplitView.class]) result[@"vertical"] = @(((NSSplitView *)self.control).vertical);
   if ([self.spec[@"kind"] isEqual:@"input"]) {
     NSTextView *input = [self.control isKindOfClass:NSScrollView.class] ? (NSTextView *)((NSScrollView *)self.control).documentView : (NSTextView *)((NSTextField *)self.control).currentEditor;

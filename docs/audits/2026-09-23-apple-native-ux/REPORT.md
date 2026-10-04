@@ -133,7 +133,8 @@ Each slice has its own change contract and verification record.
 | F5             | Command-Z reaches triage undo outside text views; Command-Return runs Discover; Return closes read-only sheets only; bounded button shortcuts. | [keyboard](../2026-09-24-keyboard/CHANGE_CONTRACT.md)                                 |
 | F3             | Discover lists every result in the lazy table (no "Show 24 more"); workspaces fit the window; page scroll is only a small-window fallback.     | [page-scroll](../2026-09-24-page-scroll/CHANGE_CONTRACT.md)                           |
 | F4             | `NSSearchToolbarItem` replaces the search sheet; results fill the content area; clearing or Escape restores the workspace.                     | [toolbar-search](../2026-09-24-toolbar-search/CHANGE_CONTRACT.md)                     |
+| F11 (filter)   | Native `segmented` node (NSSegmentedControl); the Discover result-kind filter shows every kind with its count.                                 | [segmented-filter](../2026-10-04-segmented-filter/CHANGE_CONTRACT.md)                 |
 
-Still open: F11 (segmented result-kind filter, source-picker popover), F12/S4 (decision D5),
+Still open: F11 (source-picker popover), F12/S4 (decision D5),
 F13 (system text styles, richer empty states), F14 (row glyphs; date display is a product
 decision), the NSSplitViewController/tracking-separator title placement, and P2 integration.

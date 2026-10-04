@@ -108,6 +108,31 @@ describe('native presentation boundary', () => {
     ])
       expect(() => view.finish(invalid as NativeNode)).toThrow()
   })
+  it('bounds segmented controls to 2-6 options with a listed selection', () => {
+    const view = new NativePresentation()
+    const options = [
+      { id: 'all', title: 'All (3)' },
+      { id: 'paper', title: 'Papers (1)' },
+      { id: 'other', title: 'Other (0)', enabled: false }
+    ]
+    const node: NativeNode = {
+      id: 'kind',
+      kind: 'segmented',
+      title: 'Result kind',
+      selected: 'all',
+      options
+    }
+    expect(JSON.parse(view.finish(node)).root).toMatchObject(node)
+    const many = Array.from({ length: 7 }, (_, index) => ({ id: `o${index}`, title: `${index}` }))
+    for (const invalid of [
+      { ...node, options: options.slice(0, 1) },
+      { ...node, options: many, selected: 'o0' },
+      { ...node, selected: 'repository' },
+      { ...node, selected: undefined },
+      { id: 'label', kind: 'label', options }
+    ])
+      expect(() => view.finish(invalid as NativeNode)).toThrow()
+  })
   it('accepts keyboard shortcuts on buttons only', () => {
     const view = new NativePresentation()
     const button = {
