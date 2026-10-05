@@ -7,6 +7,7 @@ import {
   label,
   row,
   type NativeContext,
+  type NativeRecord,
   type NativeScreen,
   type Route
 } from './common'
@@ -29,6 +30,8 @@ export interface NativePresenterPort {
   persist(preferences: NativePreferences): Promise<void>
   openExternal(url: string): void
   contentSize?(): { readonly width: number; readonly height: number }
+  /** Opens a record in its own read-only window (native route only). */
+  openRecord?(record: NativeRecord): void
 }
 const routes: readonly { id: Route; title: string; symbol: NativeNode['symbol'] }[] = [
   { id: 'discover', title: 'Discover', symbol: 'sparkle.magnifyingglass' },
@@ -90,6 +93,7 @@ export class NativePresenter {
       openExternal: (url) => port.openExternal(url),
       showDocument: (title, content) => this.modals.openDocument(title, content),
       promote: (itemId, sessionId) => this.modals.openPromotion(itemId, sessionId),
+      openRecord: (record) => port.openRecord?.(record),
       width: (key) => this.preferences[key],
       setWidth: (key, width) => {
         this.preferences = { ...this.preferences, [key]: Math.round(width) }

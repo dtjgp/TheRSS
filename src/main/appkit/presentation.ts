@@ -113,6 +113,8 @@ export interface NativeNode {
   readonly action?: string | undefined
   readonly activate?: string | undefined
   readonly context?: string | undefined
+  /** Tables: double-click opens the row in its own window. */
+  readonly openWindow?: string | undefined
   readonly checked?: boolean | undefined
   readonly enabled?: boolean | undefined
   readonly selected?: string | undefined
@@ -214,6 +216,7 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
       action: short.optional(),
       activate: short.optional(),
       context: short.optional(),
+      openWindow: short.optional(),
       checked: z.boolean().optional(),
       enabled: z.boolean().optional(),
       selected: short.optional(),
@@ -479,7 +482,7 @@ export class NativePresentation {
       throw new Error('Native scene exceeds its explicit size budget')
     const liveActions = new Set<string>()
     const visit = (node: NativeNode) => {
-      for (const action of [node.action, node.activate, node.context])
+      for (const action of [node.action, node.activate, node.context, node.openWindow])
         if (action) liveActions.add(action)
       node.children?.forEach(visit)
     }

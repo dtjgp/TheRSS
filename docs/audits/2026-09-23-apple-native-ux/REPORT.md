@@ -139,7 +139,7 @@ Each slice has its own change contract and verification record.
 | F13 (empty)    | Empty workspaces use a centered native composition: SF Symbol, title, explanation and recovery action; empty sessions keep their outcome.                 | [empty-states](../2026-10-04-empty-states/CHANGE_CONTRACT.md)                         |
 | S1 residual    | The window split is hosted by an NSSplitViewController with a tracking separator: the toggle sits over the sidebar and the title over the content column. | [window-title](../2026-10-05-window-title/CHANGE_CONTRACT.md)                         |
 | P2 (share)     | Context-menu Share submenu, a reading Share button (sharing picker) and dragging rows out as link, title and citation; https links only.                  | [share-drag](../2026-10-05-share-drag/CHANGE_CONTRACT.md)                             |
+| P2 (windows)   | Double-click or "Open in New Window" opens a record read-only in its own window; item commands never act from it.                                         | [record-window](../2026-10-05-record-window/CHANGE_CONTRACT.md)                       |
 
 Still open: F12/S4 (decision D5),
-F13 (system text styles), F14 date display (product decision), and the rest of P2 (record
-windows, animated split transitions).
+F13 (system text styles), F14 date display (product decision), and the rest of P2 (animated split transitions).

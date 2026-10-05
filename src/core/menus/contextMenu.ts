@@ -68,7 +68,10 @@ export function buildContextMenuTemplate(target: ContextMenuTarget): readonly Co
   if (target.canAnalyze) actions.push(item('analyze', 'Analyze…'))
   if (target.canPromote) actions.push(item('promote', 'Promote to llm-wiki…'))
 
-  const groups: ContextMenuEntry[][] = [navigation, copy, actions].filter(
+  const window: ContextMenuItem[] = target.canOpenWindow
+    ? [item('open-window', 'Open in New Window')]
+    : []
+  const groups: ContextMenuEntry[][] = [window, navigation, copy, actions].filter(
     (group) => group.length > 0
   )
   return groups.flatMap((group, index) =>

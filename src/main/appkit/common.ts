@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import type { DashboardSnapshot, TheRSSApi } from '../../shared/api'
+import type { DashboardItem, DashboardSnapshot, TheRSSApi } from '../../shared/api'
 import type {
   LocalAgentStatus,
   ModelProviderSummary,
@@ -24,6 +24,14 @@ export interface NativeData {
   agents: readonly LocalAgentStatus[]
   personalPrompt: string
 }
+/** A record opened in its own window (read-only reader). */
+export interface NativeRecord {
+  readonly item: DashboardItem
+  readonly sessionId?: string | undefined
+  readonly scope: 'discover' | 'saved'
+  /** Source details shown with the record (Discover metadata), as in the main reader. */
+  readonly extra?: string | undefined
+}
 export interface NativeContext {
   readonly api: TheRSSApi
   readonly presentation: NativePresentation
@@ -37,6 +45,7 @@ export interface NativeContext {
   openExternal(url: string): void
   showDocument(title: string, content: string): void
   promote(itemId: string, sessionId?: string): Promise<void>
+  openRecord(record: NativeRecord): void
   width(key: 'sidebar' | 'discover' | 'saved'): number
   setWidth(key: 'sidebar' | 'discover' | 'saved', width: number): void
 }
@@ -215,6 +224,7 @@ export class Controls {
     options: {
       activate?: (id: string) => void | Promise<void>
       context?: (id: string) => void | Promise<void>
+      openWindow?: (id: string) => void
     } = {}
   ): NativeNode {
     const rule = { type: 'choice' as const, values: rows.map((item) => item.id) }
@@ -240,6 +250,15 @@ export class Controls {
             context: this.context.presentation.action(
               `${id}:context`,
               (value) => options.context!(value as string),
+              rule
+            )
+          }
+        : {}),
+      ...(options.openWindow
+        ? {
+            openWindow: this.context.presentation.action(
+              `${id}:open-window`,
+              (value) => options.openWindow!(value as string),
               rule
             )
           }

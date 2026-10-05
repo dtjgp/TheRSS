@@ -543,6 +543,68 @@ try {
     await capture('search-details')
     await click('modal-close')
   })
+  await step('A double-clicked result opens read-only in its own window', async () => {
+    await go('discover')
+    const listed = await wait('discover-results', (node) => node?.rows.length > 0)
+    const row = find(listed.root, 'discover-results').rows[0]
+    const recordWindow = () =>
+      application.evaluate(({ BrowserWindow }) => {
+        const main = globalThis.__nativeWindow
+        const others = BrowserWindow.getAllWindows().filter((window) => window !== main)
+        let record = null
+        try {
+          // A new window is inspectable once its native host is attached.
+          if (others[0])
+            record = JSON.parse(
+              globalThis.__nativeBridge.inspect(others[0].getNativeWindowHandle())
+            )
+        } catch {
+          record = null
+        }
+        return { count: BrowserWindow.getAllWindows().length, record }
+      })
+    await act('discover-results', 'double', row.id)
+    let opened = await recordWindow()
+    for (let attempt = 0; attempt < 60 && !opened.record?.root?.id; attempt++) {
+      await delay(100)
+      opened = await recordWindow()
+    }
+    assert.equal(opened.count, 2, 'The record opens in a second window')
+    assert.equal(opened.record.toolbar.title, row.title.slice(0, 200))
+    assert.equal(find(opened.record.root, 'discover-reading-title').text, row.title)
+    assert(find(opened.record.root, 'discover-open'), 'The record window opens the original')
+    assert(!find(opened.record.root, 'discover-save'), 'The record window is read-only')
+    assert(!find(opened.record.root, 'discover-analyze'), 'The record window is read-only')
+    if (screenshots) {
+      await delay(300)
+      try {
+        execFileSync(
+          '/usr/sbin/screencapture',
+          ['-x', `-l${opened.record.windowNumber}`, join(output, 'record-window.png')],
+          { stdio: 'pipe' }
+        )
+      } catch (error) {
+        captureFailures.push({
+          name: 'record-window',
+          windowNumber: opened.record.windowNumber,
+          error: String(error)
+        })
+      }
+    }
+    await act('discover-results', 'double', row.id)
+    await delay(300)
+    assert.equal((await recordWindow()).count, 2, 'The same record focuses its existing window')
+    await application.evaluate(({ BrowserWindow }) => {
+      const main = globalThis.__nativeWindow
+      BrowserWindow.getAllWindows()
+        .find((window) => window !== main)
+        ?.close()
+    })
+    for (let attempt = 0; attempt < 60 && (await recordWindow()).count > 1; attempt++)
+      await delay(100)
+    assert.equal((await recordWindow()).count, 1)
+    await wait('discover-results', (node) => node?.rows.length > 0)
+  })
   await step('Saved repository analysis and independent source/runner filters', async () => {
     const state = await inspect(),
       repository = find(state.root, 'discover-results').rows.find((row) =>

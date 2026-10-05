@@ -1,10 +1,13 @@
 import {
   attachAppKit,
+  attachRecordAppKit,
   shouldUseAppKit,
   flushNativeInterface,
   dispatchNativeMenu,
   drainNativePreferences
 } from './nativeAppKitRuntime'
+import type { NativeRecord } from './appkit/common'
+import { routeAppCommand } from './recordWindowRouting'
 import {
   WindowApplicationRuntime,
   dirtySettingsWindows,
@@ -74,6 +77,74 @@ function readSystemAccent(): SystemAccentName | null {
   }
 }
 
+/** Read-only record windows by record key; at most one window per record. */
+const recordWindows = new Map<string, BrowserWindow>()
+const isRecordWindow = (window: BrowserWindow): boolean =>
+  [...recordWindows.values()].includes(window)
+/** The window an app command addresses; a focused record window forwards view commands only. */
+function commandWindow(command: string): BrowserWindow | undefined {
+  const focused = BrowserWindow.getFocusedWindow()
+  const route = routeAppCommand(command, !!focused && isRecordWindow(focused))
+  if (route === 'drop') return undefined
+  if (route === 'focused' && focused) return focused
+  const main = BrowserWindow.getAllWindows().find(
+    (window) => !window.isDestroyed() && !isRecordWindow(window)
+  )
+  if (main && focused) main.focus()
+  return main
+}
+
+async function openRecordWindow(
+  record: NativeRecord,
+  applicationRuntime: WindowApplicationRuntime,
+  parent: BrowserWindow
+): Promise<void> {
+  const key = `${record.scope}:${record.sessionId ?? ''}:${record.item.id}`
+  const existing = recordWindows.get(key)
+  if (existing && !existing.isDestroyed()) {
+    existing.show()
+    existing.focus()
+    return
+  }
+  const origin = parent.isDestroyed() ? { x: 80, y: 60 } : parent.getBounds()
+  const offset = 28 * ((recordWindows.size % 6) + 1)
+  const window = new BrowserWindow({
+    x: origin.x + offset,
+    y: origin.y + offset,
+    width: 780,
+    height: 860,
+    minWidth: 560,
+    minHeight: 520,
+    title: record.item.title.slice(0, 200) || 'TheRSS',
+    backgroundColor: '#00000000',
+    show: false,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true
+    }
+  })
+  recordWindows.set(key, window)
+  window.once('closed', () => recordWindows.delete(key))
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (isSafeExternalUrl(url)) void shell.openExternal(url)
+    return { action: 'deny' }
+  })
+  try {
+    const application = applicationRuntime.bind(window)
+    await window.loadFile(join(__dirname, '../renderer/native-host.html'))
+    await attachRecordAppKit(window, application, record)
+    window.show()
+  } catch (error) {
+    // A window that failed to bind or attach must not stay hidden in the map, where reopening
+    // the record would show a blank window.
+    recordWindows.delete(key)
+    if (!window.isDestroyed()) window.destroy()
+    throw error
+  }
+}
+
 async function createWindow(
   useE2eFixtures: boolean,
   applicationRuntime: WindowApplicationRuntime
@@ -126,7 +197,9 @@ async function createWindow(
 
   if (nativeUi) {
     await window.loadFile(join(__dirname, '../renderer/native-host.html'))
-    await attachAppKit(window, application)
+    await attachAppKit(window, application, (record) => {
+      void openRecordWindow(record, applicationRuntime, window).catch(() => undefined)
+    })
     if (restoredState.maximized) window.maximize()
     window.show()
   } else if (process.env.ELECTRON_RENDERER_URL) {
@@ -378,9 +451,7 @@ app.whenReady().then(async () => {
     Menu.buildFromTemplate(
       createApplicationMenuTemplate(
         (command) => {
-          const targetWindow =
-            BrowserWindow.getFocusedWindow() ??
-            BrowserWindow.getAllWindows().find((window) => !window.isDestroyed())
+          const targetWindow = commandWindow(command)
           if (targetWindow) {
             flushNativeInterface(targetWindow)
             applicationRuntime.get(targetWindow)?.command(command)
@@ -440,7 +511,8 @@ app.whenReady().then(async () => {
   })
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    // Record windows alone do not replace the main window.
+    if (!BrowserWindow.getAllWindows().some((window) => !isRecordWindow(window))) {
       void createWindow(useE2eFixtures, applicationRuntime)
     }
   })

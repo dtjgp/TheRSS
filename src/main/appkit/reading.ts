@@ -104,7 +104,9 @@ export class ResearchReader implements NativeScreen {
   constructor(
     private readonly context: NativeContext,
     private readonly scope: 'saved' | 'discover',
-    private readonly triage: TriageHistory
+    private readonly triage: TriageHistory,
+    /** Record windows read without changing data (no cross-window updates exist). */
+    private readonly options: { readonly readOnly?: boolean } = {}
   ) {
     this.controls = new Controls(context)
   }
@@ -159,7 +161,8 @@ export class ResearchReader implements NativeScreen {
       )
     const key = `${prefix}:${this.sessionId ?? ''}:${item.id}`
     const saved = this.isSaved(),
-      analyzing = this.analysisPending.has(item.id)
+      analyzing = this.analysisPending.has(item.id),
+      readOnly = !!this.options.readOnly
     return scroll(
       `${prefix}-reading-scroll`,
       column(
@@ -195,39 +198,43 @@ export class ResearchReader implements NativeScreen {
                   }
                 ]
               : []),
-            {
-              ...b.button(
-                `${prefix}-save`,
-                saved ? 'Unsave' : 'Save',
-                () => this.toggleSave(),
-                !this.triage.busy,
-                `${key}:save:${saved}`
-              ),
-              symbol: saved ? 'star.fill' : 'star'
-            },
-            {
-              ...b.button(
-                `${prefix}-analyze`,
-                analyzing ? 'Analyzing…' : this.artifact ? 'Analyze again' : 'Analyze',
-                () => this.analyze(),
-                !analyzing && this.canAnalyze(),
-                `${key}:analyze`
-              ),
-              symbol: 'sparkles'
-            },
-            ...(prefix === 'saved'
-              ? [
-                  b.button(
-                    `${prefix}-dismiss`,
-                    'Dismiss',
-                    () => this.dismiss(),
-                    !this.triage.busy,
-                    `${key}:dismiss`
-                  )
-                ]
-              : [])
+            ...(readOnly
+              ? []
+              : [
+                  {
+                    ...b.button(
+                      `${prefix}-save`,
+                      saved ? 'Unsave' : 'Save',
+                      () => this.toggleSave(),
+                      !this.triage.busy,
+                      `${key}:save:${saved}`
+                    ),
+                    symbol: (saved ? 'star.fill' : 'star') as NativeNode['symbol']
+                  },
+                  {
+                    ...b.button(
+                      `${prefix}-analyze`,
+                      analyzing ? 'Analyzing…' : this.artifact ? 'Analyze again' : 'Analyze',
+                      () => this.analyze(),
+                      !analyzing && this.canAnalyze(),
+                      `${key}:analyze`
+                    ),
+                    symbol: 'sparkles' as const
+                  },
+                  ...(prefix === 'saved'
+                    ? [
+                        b.button(
+                          `${prefix}-dismiss`,
+                          'Dismiss',
+                          () => this.dismiss(),
+                          !this.triage.busy,
+                          `${key}:dismiss`
+                        )
+                      ]
+                    : [])
+                ])
           ]),
-          ...(!this.canAnalyze() && !analyzing
+          ...(!readOnly && !this.canAnalyze() && !analyzing
             ? [
                 label(
                   `${prefix}-analysis-readiness`,
@@ -290,7 +297,7 @@ export class ResearchReader implements NativeScreen {
               ),
               emphasis: 'quiet'
             },
-            ...(item.source === 'arxiv'
+            ...(!readOnly && item.source === 'arxiv'
               ? [
                   b.button(
                     `${prefix}-promote`,
@@ -449,6 +456,17 @@ export class ResearchReader implements NativeScreen {
   async dismiss(): Promise<void> {
     if (this.item && this.scope === 'saved') await this.triage.change(this.item, 'dismissed')
   }
+  /** Opens the selected record in its own read-only window. */
+  openWindow(): void {
+    // The window shows the state as of opening (it receives no later updates).
+    if (this.item)
+      this.context.openRecord({
+        item: { ...this.item, triageState: this.triage.state(this.item) },
+        sessionId: this.sessionId,
+        scope: this.scope,
+        extra: this.extra
+      })
+  }
   async contextMenu(): Promise<void> {
     const item = this.item,
       sessionId = this.sessionId,
@@ -464,7 +482,8 @@ export class ResearchReader implements NativeScreen {
       publishedAt: item.publishedAt,
       isSaved: this.isSaved(),
       canAnalyze: this.canAnalyze(),
-      canPromote: item.source === 'arxiv'
+      canPromote: item.source === 'arxiv',
+      canOpenWindow: !this.options.readOnly
     })
     if (
       version !== this.version ||
@@ -473,7 +492,8 @@ export class ResearchReader implements NativeScreen {
       result.sessionId !== sessionId
     )
       return
-    if (result.action === 'save' || result.action === 'unsave') await this.toggleSave()
+    if (result.action === 'open-window') this.openWindow()
+    else if (result.action === 'save' || result.action === 'unsave') await this.toggleSave()
     else if (result.action === 'analyze') await this.analyze()
     else if (result.action === 'promote') await this.context.promote(item.id, sessionId)
   }

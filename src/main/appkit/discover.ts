@@ -279,6 +279,11 @@ export class DiscoverScreen implements NativeScreen {
                           context: async (id) => {
                             this.select(id)
                             await this.reader.contextMenu()
+                          },
+                          // Double-click opens the record in its own window, as in Mail.
+                          openWindow: (id) => {
+                            this.select(id)
+                            this.reader.openWindow()
                           }
                         }
                       ),
@@ -509,7 +514,11 @@ export class DiscoverScreen implements NativeScreen {
     const item = this.snapshot?.items.find((item) => item.id === id)
     if (!item) return
     this.selected = id
-    this.reader.select({ ...item, triageState: item.saved ? 'saved' : 'new' }, this.snapshot?.id)
+    this.reader.select(
+      { ...item, triageState: item.saved ? 'saved' : 'new' },
+      this.snapshot?.id,
+      researchMetadata(item)
+    )
     this.context.redraw()
   }
   private retryable(): DiscoverSource[] {

@@ -357,6 +357,8 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     // Rows with a link can be dragged as a copy to other apps (Zotero, Obsidian, Mail, Finder).
     [table setDraggingSourceOperationMask:NSDragOperationCopy forLocal:NO];
     [table setDraggingSourceOperationMask:NSDragOperationNone forLocal:YES];
+    // Double-click opens the row in its own window when the scene offers it (Mail pattern).
+    table.target = self; table.doubleAction = @selector(openRowWindow:);
     table.headerView = nil; table.rowHeight = 70 * self.host.zoom; table.intercellSpacing = NSMakeSize(0, 2);
     table.style = NSTableViewStyleInset; table.backgroundColor = NSColor.textBackgroundColor;
     NSTableColumn *column = [[NSTableColumn alloc] initWithIdentifier:@"item"]; [table addTableColumn:column];
@@ -812,6 +814,14 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   if (!self.applying) [self.host emit:self.spec[@"action"] value:[self selectedRowId] secret:NO];
 }
 - (void)activateRow { [self.host emit:self.spec[@"activate"] value:[self selectedRowId] secret:NO]; }
+- (void)openRowWindow:(id)sender {
+  NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
+  // A real double-click acts on the clicked row only (not empty space); the fixture path (nil
+  // sender) uses the selection it just made.
+  NSArray *rows = self.spec[@"rows"]; NSInteger row = sender ? table.clickedRow : table.selectedRow;
+  if (!self.spec[@"openWindow"] || row < 0 || row >= (NSInteger)rows.count) return;
+  [self.host emit:self.spec[@"openWindow"] value:rows[(NSUInteger)row][@"id"] secret:NO];
+}
 - (void)contextRow { [self.host emit:self.spec[@"context"] value:[self selectedRowId] secret:NO]; }
 - (NSPasteboardItem *)pasteboardItemForRow:(NSInteger)row {
   NSArray *rows = self.spec[@"rows"]; if (row < 0 || row >= (NSInteger)rows.count) return nil;

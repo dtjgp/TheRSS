@@ -116,6 +116,7 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 - (void)reconcileWindowSplit;
 - (void)trigger:(id)sender;
 - (void)activateRow;
+- (void)openRowWindow:(id)sender;
 - (void)contextRow;
 - (void)editChanged;
 - (void)updateMaterial;

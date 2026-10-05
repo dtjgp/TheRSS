@@ -53,6 +53,7 @@ export function nativeHarness(overrides: Partial<TheRSSApi> = {}) {
     openExternal: vi.fn(),
     showDocument: vi.fn(),
     promote: vi.fn(async () => undefined),
+    openRecord: vi.fn(),
     width: () => 320,
     setWidth: vi.fn()
   }

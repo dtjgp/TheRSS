@@ -118,6 +118,10 @@ export class SavedScreen implements NativeScreen {
                         this.select(id)
                         this.workspace.open()
                       },
+                      openWindow: (id) => {
+                        this.select(id)
+                        this.reader.openWindow()
+                      },
                       context: async (id) => {
                         this.select(id)
                         await this.reader.contextMenu()

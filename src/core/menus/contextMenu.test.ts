@@ -30,6 +30,15 @@ function labelFor(
   return found?.type === 'item' ? found.label : undefined
 }
 
+describe('Open in New Window', () => {
+  it('leads the menu only when the native route can open record windows', () => {
+    const entries = buildContextMenuTemplate(target({ canOpenWindow: true }))
+    expect(entries[0]).toEqual({ type: 'item', action: 'open-window', label: 'Open in New Window' })
+    expect(entries[1]).toEqual({ type: 'separator' })
+    expect(actionsOf(buildContextMenuTemplate(target()))).not.toContain('open-window')
+  })
+})
+
 describe('Share in the context menu', () => {
   it('offers the system Share submenu after Copy Link for https links only', () => {
     const entries = buildContextMenuTemplate(target())

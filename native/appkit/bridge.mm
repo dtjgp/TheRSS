@@ -217,6 +217,12 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     NSUInteger index = [options indexOfObjectPassingTest:^BOOL(NSDictionary *option, NSUInteger i, BOOL *stop) { return [option[@"id"] isEqual:input[@"value"]]; }];
     if (index == NSNotFound || !segmented.enabled || ![segmented isEnabledForSegment:(NSInteger)index]) return fail(env,"Fixture segment is unavailable or disabled");
     segmented.selectedSegment = (NSInteger)index; [node trigger:segmented];
+  } else if ([action isEqual:@"double"] && [node.spec[@"kind"] isEqual:@"table"]) {
+    // Same path as a double-click on the row: select it, then open it in its own window.
+    NSTableView *table = (NSTableView *)((NSScrollView *)node.control).documentView;
+    NSUInteger row = [node.spec[@"rows"] indexOfObjectPassingTest:^BOOL(NSDictionary *item, NSUInteger i, BOOL *stop) { return [item[@"id"] isEqual:input[@"value"]]; }];
+    if (row == NSNotFound) return fail(env,"Fixture row is unavailable");
+    [table selectRowIndexes:[NSIndexSet indexSetWithIndex:row] byExtendingSelection:NO]; [node openRowWindow:nil];
   } else if ([action isEqual:@"select"] && ([node.spec[@"kind"] isEqual:@"table"] || [node.spec[@"kind"] isEqual:@"sidebar"])) {
     NSTableView *table = (NSTableView *)((NSScrollView *)node.control).documentView;
     NSInteger row = 0; for (NSDictionary *item in node.spec[@"rows"]) { if ([item[@"id"] isEqual:input[@"value"]]) { [table selectRowIndexes:[NSIndexSet indexSetWithIndex:row] byExtendingSelection:NO]; if ([input[@"activate"] boolValue]) [node activateRow]; break; } row++; }
