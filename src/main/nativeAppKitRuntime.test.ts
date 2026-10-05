@@ -153,6 +153,16 @@ describe('AppKit runtime wiring', () => {
     dispatchNativeMenu(w.window, 'copy')
     expect(f.bridge.flush).toHaveBeenCalledTimes(6)
   })
+  it('keeps the native toolbar title instead of the host page title', async () => {
+    const w = windowFixture()
+    await attachAppKit(w.window, { api: {} } as WindowApplication)
+    const calls = vi.mocked(w.window.on).mock.calls as unknown as [string, unknown][]
+    const registration = calls.find(([event]) => event === 'page-title-updated')
+    expect(registration, 'native windows cancel page-title updates').toBeDefined()
+    const preventDefault = vi.fn()
+    ;(registration![1] as (event: { preventDefault(): void }) => void)({ preventDefault })
+    expect(preventDefault).toHaveBeenCalled()
+  })
   it('uses the system locale for dates; only fixture runs may pin another', () => {
     const saved = {
       fixtures: process.env.THERSS_E2E_FIXTURES,

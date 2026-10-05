@@ -122,6 +122,9 @@ async function bindSession(
     (json) => presenter.receive(json, true)
   )
   sessions.set(window, { presenter, bridge, handle })
+  // The AppKit toolbar owns the window title; the empty host page's <title> must not replace it
+  // (a record window redraws rarely and kept "TheRSS").
+  window.on('page-title-updated', (event) => event.preventDefault())
   const resize = () => presenter.layoutChanged()
   window.on('resize', resize)
   window.once('closed', () => {
