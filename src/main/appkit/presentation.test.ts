@@ -205,6 +205,20 @@ describe('native presentation boundary', () => {
     ])
       expect(() => view.finish({ ...table, rows: [row] } as unknown as NativeNode)).toThrow()
   })
+  it('marks only a split as the window sidebar host', () => {
+    const view = new NativePresentation()
+    const pane = (id: string): NativeNode => ({ id, kind: 'column', children: [] })
+    const split = {
+      id: 'workspace',
+      kind: 'split',
+      windowSidebar: true,
+      children: [pane('sidebar'), pane('main')]
+    } as NativeNode
+    expect(JSON.parse(view.finish(split)).root.windowSidebar).toBe(true)
+    expect(() =>
+      view.finish({ id: 'column', kind: 'column', windowSidebar: true } as NativeNode)
+    ).toThrow()
+  })
   it('accepts keyboard shortcuts on buttons only', () => {
     const view = new NativePresentation()
     const button = {

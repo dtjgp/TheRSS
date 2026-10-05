@@ -23,6 +23,11 @@ describe('AppKit application shell', () => {
     expect(h.find(parsed.root, 'navigate-discover')).toBeUndefined()
     const navigation = h.find(parsed.root, 'native-navigation')!
     expect(navigation).toMatchObject({ kind: 'sidebar', title: 'Workspaces', selected: 'discover' })
+    // The workspace split hosts the window sidebar so the title sits over the content column.
+    expect(h.find(parsed.root, 'native-workspace')).toMatchObject({
+      kind: 'split',
+      windowSidebar: true
+    })
     expect(navigation.rows!.map((row) => [row.id, row.title, row.symbol])).toEqual([
       ['discover', 'Discover', 'sparkle.magnifyingglass'],
       ['saved', 'Saved', 'star'],

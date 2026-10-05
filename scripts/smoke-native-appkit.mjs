@@ -398,7 +398,13 @@ try {
     assert.equal(chrome.fullSizeContent, true)
     assert.deepEqual(
       chrome.items.map((item) => item.id),
-      ['sidebar-toggle', 'NSToolbarFlexibleSpaceItem', 'local-search-query', 'undo-triage']
+      [
+        'sidebar-toggle',
+        'therss.sidebar-separator',
+        'NSToolbarFlexibleSpaceItem',
+        'local-search-query',
+        'undo-triage'
+      ]
     )
     const top = (node) => Number(node.frame.match(/-?\d+(?:\.\d+)?/gu)[1])
     assert(chrome.safeTop >= 28, 'The full-size window reports its toolbar safe area')
@@ -407,14 +413,24 @@ try {
       'Content starts below the toolbar'
     )
     assert.equal(top(find(result.root, 'native-sidebar')), 0, 'The sidebar reaches the window top')
+    // The title sits over the content column, after the toolbar's sidebar tracking separator.
+    assert.equal(chrome.trackingSeparator, true)
+    assert(
+      Number(chrome.titleFrame.match(/-?\d+(?:\.\d+)?/gu)[0]) >= chrome.sidebarDivider,
+      'The window title starts over the content column'
+    )
     await click('sidebar-toggle')
     const hidden = await wait('native-workspace', (node) => node?.compactPane === 'detail')
     assert.equal(
       hidden.toolbar.items.find((item) => item.id === 'sidebar-toggle').label,
       'Show Sidebar'
     )
+    assert.equal((await inspect()).toolbar.sidebarDivider, 0, 'Hiding collapses the native sidebar')
     await click('sidebar-toggle')
     await wait('native-workspace', (node) => !!node && !node.compactPane)
+    for (let attempt = 0; attempt < 40 && (await inspect()).toolbar.sidebarDivider < 184; attempt++)
+      await delay(50)
+    assert((await inspect()).toolbar.sidebarDivider >= 184, 'Showing restores the native sidebar')
     assert.equal(find(result.root, 'discover-search').emphasis, 'primary')
     assert.equal(find(result.root, 'discover-search').hasSymbol, true)
     assert.equal(find(result.root, 'discover-composer').surface, 'panel')
@@ -907,6 +923,7 @@ try {
       'Reading mode must not require an outer page scroll at minimum window size'
     )
     await capture('discover-narrow-zoomed')
+    assert(zoomed.toolbar.sidebarDivider > 0, 'A narrow zoomed window keeps the sidebar shown')
     await click('discover-back-to-results')
     await menu('Actual Size')
     await application.evaluate(() =>
@@ -931,6 +948,11 @@ try {
     )
     await delay(150)
     assert.match(find((await inspect()).root, 'native-sidebar').frame, /248,/)
+    assert.equal(
+      JSON.parse(await readFile(join(profile, 'native-ui.json'), 'utf8')).sidebar,
+      248,
+      'Narrow and zoomed windows do not change the saved sidebar width'
+    )
     await application.evaluate(({ nativeTheme }) => {
       nativeTheme.themeSource = 'dark'
     })
@@ -983,9 +1005,10 @@ try {
           break
         await delay(50)
       }
-      const reopened = await wait('discover-results')
+      await wait('discover-results')
+      // The controller-hosted sidebar takes its saved width right after the first layout.
+      const reopened = await wait('native-sidebar', (node) => /248,/.test(node?.frame || ''))
       assert.equal(reopened.nativeRoot, 'TRCanvas')
-      assert.match(find(reopened.root, 'native-sidebar').frame, /248,/)
       assert(find(reopened.root, 'discover-results').rows.length > 0)
       await go('settings')
       // A recreated window has a fresh Settings screen: wait for its load, not only the node.

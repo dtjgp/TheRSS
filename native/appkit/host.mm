@@ -38,6 +38,7 @@ BOOL TRActivateFixtureAlert(TRHost *host, NSString *title) {
 static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
   if (node.control == responder) return node.identifier;
   if ([node.control isKindOfClass:NSScrollView.class] && ((NSScrollView *)node.control).documentView == responder) return node.identifier;
+  if (node.splitController && node.splitController.splitView == responder) return node.identifier;
   if ([node.control isKindOfClass:NSTextField.class] && ((NSTextField *)node.control).currentEditor == responder) return node.identifier;
   for (TRNode *child in node.nodes) { NSString *identifier = TRFocusOwner(child,responder); if (identifier) return identifier; }
   return nil;
@@ -205,6 +206,11 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
   if (self.regularCallback) { napi_release_threadsafe_function(self.regularCallback,napi_tsfn_abort); self.regularCallback = nullptr; }
   if (self.regularRef) { napi_delete_reference(self.env,self.regularRef); self.regularRef = nullptr; }
   if (self.secretRef) { napi_delete_reference(self.env,self.secretRef); self.secretRef = nullptr; }
+}
+- (NSSplitView *)windowSplitView {
+  NSMutableArray<TRNode *> *queue = [NSMutableArray array]; if (self.root) [queue addObject:self.root];
+  for (NSUInteger i = 0; i < queue.count && i < 8; i++) { if (queue[i].splitController) return queue[i].splitController.splitView; [queue addObjectsFromArray:queue[i].nodes]; }
+  return nil;
 }
 - (TRNode *)find:(NSString *)identifier { return [self.modal find:identifier] ?: [self.popover.node find:identifier] ?: [self.root find:identifier]; }
 - (NSDictionary *)inspect {

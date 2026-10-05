@@ -350,6 +350,7 @@ export class NativePresenter {
     const root = {
       id: 'native-workspace',
       kind: 'split' as const,
+      windowSidebar: true,
       width: this.preferences.sidebar,
       minWidth: 184,
       minContentWidth: 636,

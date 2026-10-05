@@ -227,14 +227,15 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     if (![input[@"value"] isEqual:@"legacy"] && ![input[@"value"] isEqual:@"overlay"]) return fail(env,"Unsupported fixture scroller style");
     ((NSScrollView *)node.control).scrollerStyle = [input[@"value"] isEqual:@"legacy"] ? NSScrollerStyleLegacy : NSScrollerStyleOverlay;
     node.needsLayout = YES; [host.root layoutSubtreeIfNeeded];
-  } else if ([action isEqual:@"divider"] && [node.control isKindOfClass:NSSplitView.class]) {
+  } else if ([action isEqual:@"divider"] && [node splitView]) {
     CGFloat value = [input[@"value"] doubleValue];
     if (value < [node.spec[@"minWidth"] doubleValue] || value > [node.spec[@"maxWidth"] doubleValue]) return fail(env,"Invalid fixture divider position");
-    [(NSSplitView *)node.control setPosition:value ofDividerAtIndex:0];
+    // Same path as dragging the divider: a user resize that sets the preference.
+    node.userResizing = YES; [[node splitView] setPosition:value ofDividerAtIndex:0]; [[node splitView] layoutSubtreeIfNeeded]; node.userResizing = NO;
   } else if ([action isEqual:@"key"]) {
     NSDictionary *codes = @{@"left":@123,@"right":@124,@"down":@125,@"up":@126,@"home":@115,@"end":@119,@"escape":@53,@"enter":@36,@"tab":@48,@"space":@49};
     NSNumber *code = codes[input[@"value"]]; if (!code) return fail(env,"Unsupported fixture key");
-    NSView *control = node.control ?: node; if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
+    NSView *control = [node splitView] ?: node.control ?: node; if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
     if ([control isKindOfClass:NSControl.class] && !((NSControl *)control).enabled) return fail(env,"Fixture control is disabled");
     BOOL focused = [control.window makeFirstResponder:control];
     NSResponder *responder = control.window.firstResponder;
@@ -263,7 +264,7 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     if (![input[@"value"] isEqual:@"system"] && !colors[input[@"value"]]) return fail(env,"Unsupported fixture accent");
     host.fixtureAccent = colors[input[@"value"]]; [host updateMaterials];
   } else if ([action isEqual:@"focus"]) {
-    NSView *control = node.control ?: node; if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
+    NSView *control = [node splitView] ?: node.control ?: node; if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
     [control.window makeFirstResponder:control];
   } else return fail(env,"Unsupported fixture action for this control");
   if (![input[@"deferFlush"] boolValue]) [host flush]; return nothing(env);

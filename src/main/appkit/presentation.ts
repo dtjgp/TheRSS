@@ -138,6 +138,8 @@ export interface NativeNode {
   /** Determinate progress (progress nodes only); omit both for indeterminate progress. */
   readonly completed?: number | undefined
   readonly total?: number | undefined
+  /** The window's sidebar split: hosted so the toolbar title sits over the content column. */
+  readonly windowSidebar?: boolean | undefined
   /** Centered columns center their stack and children; centered labels center their text. */
   readonly align?: 'center' | undefined
   /** Button key equivalent: Return (default button) or Command-Return. */
@@ -254,7 +256,8 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
       completed: z.number().int().min(0).max(100000).optional(),
       total: z.number().int().min(1).max(100000).optional(),
       shortcut: z.enum(['return', 'command-return']).optional(),
-      align: z.literal('center').optional()
+      align: z.literal('center').optional(),
+      windowSidebar: z.boolean().optional()
     })
     .strict()
     .superRefine((node, context) => {
@@ -299,6 +302,8 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
           code: 'custom',
           message: 'Native segmented controls need 2-6 options including the selected one'
         })
+      if (node.windowSidebar !== undefined && node.kind !== 'split')
+        context.addIssue({ code: 'custom', message: 'Only a split hosts the window sidebar' })
       if (node.align !== undefined && node.kind !== 'column' && node.kind !== 'label')
         context.addIssue({ code: 'custom', message: 'Only columns and labels are centered' })
       if (node.kind === 'symbol' && (!node.symbol || (node.size !== undefined && node.size < 16)))

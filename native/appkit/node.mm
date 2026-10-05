@@ -136,10 +136,14 @@ static NSColor *TRSavedColor(BOOL highContrast) {
 @implementation TRSplit
 - (BOOL)acceptsFirstResponder { return !self.node.spec[@"compactPane"]; }
 - (CGFloat)dividerThickness { return self.node.spec[@"compactPane"] ? 0 : [super dividerThickness]; }
-- (BOOL)becomeFirstResponder { self.initialPosition = self.vertical ? self.subviews.firstObject.frame.size.width : self.subviews.firstObject.frame.size.height; return YES; }
+- (void)mouseDown:(NSEvent *)event {
+  // NSSplitView tracks a divider drag inside mouseDown; mark it as a user resize.
+  self.node.userResizing = YES; [super mouseDown:event]; self.node.userResizing = NO;
+}
+- (BOOL)becomeFirstResponder { self.initialPosition = self.vertical ? self.arrangedSubviews.firstObject.frame.size.width : self.arrangedSubviews.firstObject.frame.size.height; return YES; }
 - (void)keyDown:(NSEvent *)event {
   if (self.node.spec[@"compactPane"]) { [super keyDown:event]; return; }
-  CGFloat position = self.vertical ? self.subviews.firstObject.frame.size.width : self.subviews.firstObject.frame.size.height;
+  CGFloat position = self.vertical ? self.arrangedSubviews.firstObject.frame.size.width : self.arrangedSubviews.firstObject.frame.size.height;
   CGFloat step = (event.modifierFlags & NSEventModifierFlagShift) ? 32 : 8;
   CGFloat minimum = [self.node splitView:self constrainMinCoordinate:0 ofSubviewAt:0];
   CGFloat maximum = [self.node splitView:self constrainMaxCoordinate:0 ofSubviewAt:0];
@@ -150,7 +154,21 @@ static NSColor *TRSavedColor(BOOL highContrast) {
   else if (event.keyCode == 53) position = self.initialPosition;
   else { [super keyDown:event]; return; }
   position = MIN(MAX(position,minimum),maximum);
-  [self setPosition:position ofDividerAtIndex:0];
+  self.node.userResizing = YES; [self setPosition:position ofDividerAtIndex:0]; [self layoutSubtreeIfNeeded]; self.node.userResizing = NO;
+}
+@end
+
+// The window's sidebar/content split is hosted by a split view controller so AppKit can place
+// the toolbar's tracking separator, and with it the window title, over the content column.
+@interface TRWindowSplitController : NSSplitViewController
+@property(nonatomic, weak) TRNode *node;
+@end
+@implementation TRWindowSplitController
+- (void)viewDidLayout { [super viewDidLayout]; [self.node reconcileWindowSplit]; }
+- (void)splitViewDidResizeSubviews:(NSNotification *)notification {
+  if ([NSSplitViewController instancesRespondToSelector:@selector(splitViewDidResizeSubviews:)]) [super splitViewDidResizeSubviews:notification];
+  [self.node splitViewDidResizeSubviews:notification];
+  for (NSSplitViewItem *item in self.splitViewItems) item.viewController.view.needsLayout = YES;
 }
 @end
 
@@ -269,6 +287,10 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       scroll.automaticallyAdjustsContentInsets = NO;
       self.container = [TRCanvas new]; scroll.documentView = self.container; self.control = scroll;
     } else [self updateMaterial];
+  } else if ([kind isEqual:@"split"] && [self.spec[@"windowSidebar"] boolValue]) {
+    TRSplit *split = [TRSplit new]; split.node = self; split.vertical = YES; split.dividerStyle = NSSplitViewDividerStyleThin;
+    TRWindowSplitController *controller = [TRWindowSplitController new]; controller.node = self;
+    controller.splitView = split; self.splitController = controller; self.control = controller.view;
   } else if ([kind isEqual:@"split"]) {
     TRSplit *split = [TRSplit new]; split.node = self; split.delegate = self; split.vertical = YES; split.dividerStyle = NSSplitViewDividerStyleThin;
     split.accessibilityLabel = self.spec[@"title"] ?: @"Resize panes with arrow keys";
@@ -487,10 +509,35 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     if (node) [node update:child]; else node = [[TRNode alloc] initWithHost:self.host spec:child];
     if ([child[@"kind"] isEqual:@"secure"]) self.host.secureFields[child[@"id"]] = node;
     [existing removeObjectForKey:child[@"id"]]; [children addObject:node];
-    if (node.superview != parent) [parent addSubview:node];
+    if (node.superview != parent && !self.splitController) [parent addSubview:node];
   }
   for (TRNode *node in existing.allValues) [node removeFromSuperview];
   self.nodes = children;
+  if (self.splitController && children.count == 2) {
+    NSArray<NSSplitViewItem *> *items = self.splitController.splitViewItems;
+    if (items.count != 2 || items[0].viewController.view != children[0] || items[1].viewController.view != children[1]) {
+      for (NSSplitViewItem *item in items.copy) [self.splitController removeSplitViewItem:item];
+      NSViewController *sidebar = [NSViewController new], *content = [NSViewController new];
+      sidebar.view = children[0]; content.view = children[1];
+      NSSplitViewItem *sidebarItem = [NSSplitViewItem sidebarWithViewController:sidebar];
+      // Only the scene collapses the sidebar (toolbar toggle): neither a drag nor a narrow window
+      // may collapse it without the presenter knowing.
+      sidebarItem.canCollapse = NO; sidebarItem.holdingPriority = NSLayoutPriorityDefaultLow + 10;
+      [self.splitController addSplitViewItem:sidebarItem];
+      [self.splitController addSplitViewItem:[NSSplitViewItem splitViewItemWithViewController:content]];
+    }
+    NSSplitViewItem *sidebarItem = self.splitController.splitViewItems[0];
+    // Unscaled points, as the saved preference and the other splits use: the drag and save
+    // limits agree at every zoom.
+    sidebarItem.minimumThickness = TRNumber(spec,@"minWidth",180);
+    sidebarItem.maximumThickness = TRNumber(spec,@"maxWidth",360);
+    // The divider counts against the content minimum so both minimums fit the 820 pt window.
+    self.splitController.splitViewItems[1].minimumThickness = TRNumber(spec,@"minContentWidth",200) - [self splitView].dividerThickness;
+    [self splitView].accessibilityLabel = spec[@"title"]; [self splitView].accessibilityHelp = spec[@"help"];
+    // Collapse here, outside layout: it changes the split view controller's constraints.
+    BOOL collapsed = [spec[@"compactPane"] isEqual:@"detail"];
+    if (sidebarItem.collapsed != collapsed) sidebarItem.collapsed = collapsed;
+  }
   if ([kind isEqual:@"scroll"] && old && (![old[@"clearRevision"] ?: @0 isEqual:spec[@"clearRevision"] ?: @0] || ![[old[@"children"] firstObject][@"id"] isEqual:[spec[@"children"] firstObject][@"id"]])) {
     self.resetScrollAfterLayout = YES;
   }
@@ -597,6 +644,8 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       CGFloat h = [child heightForWidth:childWidth]; child.frame = NSMakeRect(0,y,childWidth,h); y += h;
     }
     self.container.frame = NSMakeRect(0,0,contentWidth,MAX(y,scroll.contentSize.height));
+  } else if (self.splitController && self.nodes.count == 2) {
+    [self reconcileWindowSplit];
   } else if ([kind isEqual:@"split"] && self.nodes.count == 2) {
     NSSplitView *split = (NSSplitView *)self.control;
     NSString *pane = self.spec[@"compactPane"];
@@ -807,12 +856,47 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
 - (CGFloat)splitView:(NSSplitView *)split constrainMaxCoordinate:(CGFloat)proposed ofSubviewAt:(NSInteger)index { return split.vertical ? MAX(TRNumber(self.spec,@"minWidth",180),MIN(TRNumber(self.spec,@"maxWidth",520),split.bounds.size.width-TRNumber(self.spec,@"minContentWidth",200))) : split.bounds.size.height-160; }
 - (void)splitViewDidResizeSubviews:(NSNotification *)notification {
   if (self.spec[@"compactPane"]) return;
-  NSSplitView *split = (NSSplitView *)self.control;
-  if (!self.applying && !split.vertical && self.window && split.bounds.size.height > 0) self.stackedFraction = split.subviews.firstObject.frame.size.height/split.bounds.size.height;
-  if (!self.applying && split.vertical && self.lastWidth && self.window) {
-    CGFloat value = split.subviews.firstObject.frame.size.width;
+  NSSplitView *split = [self splitView];
+  if (!self.applying && !split.vertical && self.window && split.bounds.size.height > 0) self.stackedFraction = split.arrangedSubviews.firstObject.frame.size.height/split.bounds.size.height;
+  // A controller-hosted split also resizes for window changes; only user resizes are preferences.
+  if (!self.applying && split.vertical && self.lastWidth && self.window && (!self.splitController || self.userResizing)) {
+    CGFloat value = split.arrangedSubviews.firstObject.frame.size.width;
     if (value >= TRNumber(self.spec,@"minWidth",180) && value <= TRNumber(self.spec,@"maxWidth",520)) { self.preferredSplit = value; [self.host emit:self.spec[@"action"] value:@(value) secret:NO]; }
   }
+}
+// Keep the window sidebar at its preferred width whenever the window has room (a narrow window
+// squeezes it; widening restores it). Called after node and split view controller layouts.
+- (void)reconcileWindowSplit {
+  if (!self.splitController || self.nodes.count != 2 || [self.spec[@"compactPane"] isEqual:@"detail"]) return;
+  // Moving the divider changes Auto Layout constraints, which AppKit forbids inside a layout
+  // pass, so it runs right after.
+  NSSplitView *split = self.splitController.splitView;
+  CGFloat room = split.bounds.size.width - TRNumber(self.spec,@"minContentWidth",200) - split.dividerThickness;
+  CGFloat desired = MAX(TRNumber(self.spec,@"minWidth",180), MIN(self.preferredSplit, room));
+  CGFloat actual = split.arrangedSubviews.firstObject.frame.size.width;
+  if (!self.lastWidth && split.bounds.size.width > 0) self.lastWidth = desired;
+  // One attempt per split width and target: when the window cannot fit the target, AppKit keeps
+  // its own width and the next layout must not schedule the same move again.
+  CGFloat attempt = split.bounds.size.width * 4096 + desired;
+  if (room > 0 && fabs(actual - desired) > 0.5 && !self.reconcilePending && attempt != self.reconcileAttempt) {
+    self.reconcilePending = YES; self.reconcileAttempt = attempt;
+    __weak TRNode *weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+      TRNode *node = weakSelf; if (!node) return;
+      node.reconcilePending = NO;
+      if (!node.splitController || node.splitController.splitViewItems.firstObject.collapsed) return;
+      // Re-read the target: the window or preference may have changed since scheduling.
+      NSSplitView *current = node.splitController.splitView;
+      CGFloat space = current.bounds.size.width - TRNumber(node.spec,@"minContentWidth",200) - current.dividerThickness;
+      CGFloat target = MAX(TRNumber(node.spec,@"minWidth",180), MIN(node.preferredSplit, space));
+      node.lastWidth = target; node.applying = YES; [current setPosition:target ofDividerAtIndex:0]; node.applying = NO;
+    });
+  }
+}
+- (NSSplitView *)splitView {
+  // A controller-hosted split view sits inside the controller's container view.
+  if (self.splitController) return self.splitController.splitView;
+  return [self.control isKindOfClass:NSSplitView.class] ? (NSSplitView *)self.control : nil;
 }
 - (TRNode *)find:(NSString *)identifier {
   if ([self.identifier isEqual:identifier]) return self;
@@ -881,7 +965,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     result[@"segments"] = segments; result[@"selected"] = index >= 0 && index < (NSInteger)options.count ? options[(NSUInteger)index][@"id"] : @"";
     result[@"intrinsicWidth"] = @(segmented.intrinsicContentSize.width);
   }
-  if ([self.control isKindOfClass:NSSplitView.class]) result[@"vertical"] = @(((NSSplitView *)self.control).vertical);
+  if ([self splitView]) result[@"vertical"] = @([self splitView].vertical);
   if ([self.spec[@"kind"] isEqual:@"input"]) {
     NSTextView *input = [self.control isKindOfClass:NSScrollView.class] ? (NSTextView *)((NSScrollView *)self.control).documentView : (NSTextView *)((NSTextField *)self.control).currentEditor;
     if (input) { result[@"enabled"] = @(input.editable); result[@"selection"] = NSStringFromRange(input.selectedRange); result[@"marked"] = @(input.hasMarkedText); }

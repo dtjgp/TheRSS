@@ -1,5 +1,7 @@
 #import "ui.h"
 
+static NSToolbarItemIdentifier const TRSidebarSeparator = @"therss.sidebar-separator";
+
 // Window chrome for the AppKit route: a unified NSToolbar over a full-size content view.
 // Items and their actions come only from the validated scene `toolbar`; AppKit owns the
 // title, traffic lights and toolbar layout.
@@ -74,9 +76,10 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
 - (NSArray<NSToolbarItemIdentifier> *)identifiers {
   NSMutableArray *leading = [NSMutableArray array], *trailing = [NSMutableArray array];
   for (NSDictionary *item in _items) [[item[@"placement"] isEqual:@"sidebar"] ? leading : trailing addObject:item[@"id"]];
-  // NSTrackingSeparatorToolbarItem requires an NSSplitViewController delegate (the S1 spike
-  // crashed with the TRSplit delegate), so sidebar items lead and a flexible space follows.
+  // With the window split hosted by a split view controller, a tracking separator follows the
+  // sidebar divider; AppKit then draws the title over the content column, as in Mail.
   NSMutableArray *result = [leading mutableCopy];
+  if ([_host windowSplitView]) [result addObject:TRSidebarSeparator];
   [result addObject:NSToolbarFlexibleSpaceItemIdentifier];
   [result addObjectsFromArray:trailing];
   return result;
@@ -107,6 +110,14 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
       if (index >= toolbar.items.count || ![toolbar.items[index].itemIdentifier isEqual:wanted[index]])
         [toolbar insertItemWithItemIdentifier:wanted[index] atIndex:index];
   }
+  // A replaced window split needs a fresh tracking separator (the item retains its split view).
+  NSSplitView *split = [_host windowSplitView];
+  for (NSInteger index = (NSInteger)window.toolbar.items.count - 1; index >= 0; index--) {
+    NSToolbarItem *item = window.toolbar.items[index];
+    if ([item isKindOfClass:NSTrackingSeparatorToolbarItem.class] && ((NSTrackingSeparatorToolbarItem *)item).splitView != split) {
+      [window.toolbar removeItemAtIndex:index]; [window.toolbar insertItemWithItemIdentifier:TRSidebarSeparator atIndex:index];
+    }
+  }
   for (NSToolbarItem *item in window.toolbar.items) [self configure:item];
 }
 - (NSDictionary *)specFor:(NSString *)identifier {
@@ -130,6 +141,10 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
   item.autovalidates = NO; item.enabled = spec[@"enabled"] ? [spec[@"enabled"] boolValue] : YES;
 }
 - (NSToolbarItem *)toolbar:(NSToolbar *)toolbar itemForItemIdentifier:(NSToolbarItemIdentifier)identifier willBeInsertedIntoToolbar:(BOOL)flag {
+  if ([identifier isEqual:TRSidebarSeparator]) {
+    NSSplitView *split = [_host windowSplitView];
+    return split ? [NSTrackingSeparatorToolbarItem trackingSeparatorToolbarItemWithIdentifier:identifier splitView:split dividerIndex:0] : nil;
+  }
   NSDictionary *spec = [self specFor:identifier]; if (!spec) return nil;
   if ([spec[@"kind"] isEqual:@"search"]) {
     NSSearchToolbarItem *search = [[NSSearchToolbarItem alloc] initWithItemIdentifier:identifier];
@@ -147,8 +162,9 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
   }
   NSToolbarItem *item = [[NSToolbarItem alloc] initWithItemIdentifier:identifier];
   item.bordered = YES; item.target = self; item.action = @selector(activate:);
-  // Navigational items lead the title, where Finder and Mail keep the sidebar toggle.
-  item.navigational = [[self specFor:identifier][@"placement"] isEqual:@"sidebar"];
+  // Sidebar items sit in the sidebar section before the tracking separator, as in Mail and
+  // Notes; without a window split they fall back to leading the title as navigational items.
+  item.navigational = [[self specFor:identifier][@"placement"] isEqual:@"sidebar"] && ![_host windowSplitView];
   [self configure:item];
   return item;
 }
@@ -221,7 +237,20 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
   }
   NSButton *close = [window standardWindowButton:NSWindowCloseButton];
   NSRect closeFrame = close ? [close convertRect:close.bounds toView:nil] : NSZeroRect;
-  return @{@"installed":@(_installed),@"title":window.title ?: @"",@"titleVisible":@(window.titleVisibility == NSWindowTitleVisible),
+  // Where AppKit draws the title, and where the sidebar divider is, in window coordinates.
+  __block NSRect titleFrame = NSZeroRect;
+  NSMutableArray<NSView *> *views = [NSMutableArray arrayWithObject:window.contentView.superview ?: window.contentView];
+  for (NSUInteger i = 0; i < views.count && NSIsEmptyRect(titleFrame); i++) {
+    NSView *view = views[i];
+    if (view == window.contentView) continue;
+    if ([view isKindOfClass:NSTextField.class] && [((NSTextField *)view).stringValue isEqual:window.title] && !view.isHiddenOrHasHiddenAncestor) titleFrame = [view convertRect:view.bounds toView:nil];
+    else [views addObjectsFromArray:view.subviews];
+  }
+  NSSplitView *split = [_host windowSplitView];
+  NSView *sidebarPane = split.arrangedSubviews.firstObject;
+  CGFloat divider = sidebarPane && !sidebarPane.isHidden ? NSMaxX([sidebarPane convertRect:sidebarPane.bounds toView:nil]) : 0;
+  BOOL separator = NO; for (NSToolbarItem *item in window.toolbar.items) if ([item isKindOfClass:NSTrackingSeparatorToolbarItem.class]) separator = YES;
+  return @{@"installed":@(_installed),@"title":window.title ?: @"",@"titleFrame":NSStringFromRect(titleFrame),@"sidebarDivider":@(divider),@"trackingSeparator":@(separator),@"titleVisible":@(window.titleVisibility == NSWindowTitleVisible),
            @"style":window.toolbarStyle == NSWindowToolbarStyleUnified ? @"unified" : @"other",
            @"fullSizeContent":@((window.styleMask & NSWindowStyleMaskFullSizeContentView) != 0),
            @"safeTop":@([_host safeTop]),@"closeButtonFrame":NSStringFromRect(closeFrame),

@@ -84,6 +84,7 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 - (void)dispose;
 - (TRNode *)find:(NSString *)identifier;
 - (NSDictionary *)inspect;
+- (NSSplitView *)windowSplitView;
 @end
 
 @interface TRNode : TRCanvas <NSTableViewDataSource, NSTableViewDelegate, NSTextFieldDelegate, NSTextViewDelegate, NSSplitViewDelegate>
@@ -96,6 +97,12 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 @property(nonatomic) CGFloat lastWidth;
 @property(nonatomic) CGFloat preferredSplit;
 @property(nonatomic) CGFloat stackedFraction;
+/** Window sidebar split only: lets the toolbar's tracking separator follow the divider. */
+@property(nonatomic, strong) NSSplitViewController *splitController;
+/** Set while the user drags or keys the divider: only then is a new width a preference. */
+@property(nonatomic) BOOL userResizing;
+@property(nonatomic) BOOL reconcilePending;
+@property(nonatomic) CGFloat reconcileAttempt;
 @property(nonatomic) BOOL resetScrollAfterLayout;
 @property(nonatomic) BOOL revealSelection;
 - (instancetype)initWithHost:(TRHost *)host spec:(NSDictionary *)spec;
@@ -103,6 +110,8 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 - (CGFloat)heightForWidth:(CGFloat)width;
 - (CGFloat)preferredWidth;
 - (TRNode *)find:(NSString *)identifier;
+- (NSSplitView *)splitView;
+- (void)reconcileWindowSplit;
 - (void)trigger:(id)sender;
 - (void)activateRow;
 - (void)contextRow;
