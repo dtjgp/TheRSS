@@ -430,7 +430,7 @@ export class NativePresenter {
               [
                 label('native-notice', this.notice, {
                   weight: this.noticeKind === 'error' ? 'bold' : 'secondary',
-                  size: 12,
+                  textStyle: 'callout',
                   maxLines: 1,
                   flex: 1
                 }),

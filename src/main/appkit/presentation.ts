@@ -130,6 +130,17 @@ export interface NativeNode {
   readonly padding?: number | undefined
   readonly size?: number | undefined
   readonly weight?: 'regular' | 'bold' | 'secondary' | 'title' | undefined
+  /** macOS text style (system sizes); `size` is kept only for reading text and symbols. */
+  readonly textStyle?:
+    | 'title1'
+    | 'title2'
+    | 'title3'
+    | 'headline'
+    | 'body'
+    | 'callout'
+    | 'subheadline'
+    | 'footnote'
+    | undefined
   readonly glass?: boolean | undefined
   readonly adaptiveScroll?: boolean | undefined
   readonly multiline?: boolean | undefined
@@ -267,6 +278,18 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
       padding: positive.optional(),
       size: z.number().min(8).max(48).optional(),
       weight: z.enum(['regular', 'bold', 'secondary', 'title']).optional(),
+      textStyle: z
+        .enum([
+          'title1',
+          'title2',
+          'title3',
+          'headline',
+          'body',
+          'callout',
+          'subheadline',
+          'footnote'
+        ])
+        .optional(),
       glass: z.boolean().optional(),
       adaptiveScroll: z.boolean().optional(),
       multiline: z.boolean().optional(),
@@ -326,6 +349,11 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
         context.addIssue({
           code: 'custom',
           message: 'Native segmented controls need 2-6 options including the selected one'
+        })
+      if (node.size !== undefined && node.kind !== 'text' && node.kind !== 'symbol')
+        context.addIssue({
+          code: 'custom',
+          message: 'Point sizes are for reading text and symbols; other nodes use a text style'
         })
       if (node.share !== undefined && node.kind !== 'button')
         context.addIssue({ code: 'custom', message: 'Only native buttons share a link' })

@@ -347,7 +347,7 @@ export class DiscoverScreen implements NativeScreen {
       'discover-run',
       [
         label('discover-run-headline', run.headline, { weight: 'bold' }),
-        label('discover-run-stage', run.stageLine, { weight: 'secondary', size: 12 }),
+        label('discover-run-stage', run.stageLine, { weight: 'secondary', textStyle: 'callout' }),
         {
           id: 'discover-run-progress',
           kind: 'progress',
@@ -378,7 +378,10 @@ export class DiscoverScreen implements NativeScreen {
     return column(
       'discover-composer',
       [
-        label('discover-query-label', 'Research question', { weight: 'bold', size: 12 }),
+        label('discover-query-label', 'Research question', {
+          weight: 'bold',
+          textStyle: 'callout'
+        }),
         b.input(
           'discover-query',
           'Research question',
@@ -441,7 +444,7 @@ export class DiscoverScreen implements NativeScreen {
         ...(changed
           ? [
               label('discover-draft-status', `Draft not searched. Results: ${snapshot.intent}`, {
-                size: 11,
+                textStyle: 'subheadline',
                 maxLines: 2
               })
             ]
@@ -449,7 +452,7 @@ export class DiscoverScreen implements NativeScreen {
         label(
           'discover-personalization',
           `${this.query.length}/2000 characters · ${this.context.data.personalPrompt.trim() ? 'Personal context active' : 'No personal context saved'}`,
-          { weight: 'secondary', size: 11 }
+          { weight: 'secondary', textStyle: 'subheadline' }
         )
       ],
       { surface: 'panel', padding: 12, gap: 6 }

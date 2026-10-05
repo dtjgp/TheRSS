@@ -332,7 +332,7 @@ export class AnalyticsScreen implements NativeScreen {
           this.trendKind === 'analysis'
             ? 'Counts stored analysis artifacts, including repeated analyses of the same item.'
             : 'Counts returned records, including repeat searches. Zero means no records stored for that date.',
-          { size: 11, weight: 'secondary', maxLines: 2 }
+          { textStyle: 'subheadline', weight: 'secondary', maxLines: 2 }
         )
       ],
       { surface: 'panel', padding: 12, gap: 6 }

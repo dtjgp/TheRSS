@@ -142,6 +142,6 @@ Each slice has its own change contract and verification record.
 | P2 (windows)   | Double-click or "Open in New Window" opens a record read-only in its own window; item commands never act from it.                                         | [record-window](../2026-10-05-record-window/CHANGE_CONTRACT.md)                       |
 | P2 (motion)    | The sidebar slides when hidden or shown (system split item animation); Reduce Motion changes it at once.                                                  | [sidebar-motion](../2026-10-05-sidebar-motion/CHANGE_CONTRACT.md)                     |
 | F14 (dates)    | Native display dates follow the macOS language and region (UTC calendar day kept); evidence, citations and chart data stay ISO.                           | [localized-dates](../2026-10-05-localized-dates/CHANGE_CONTRACT.md)                   |
+| F13 (styles)   | Labels use macOS text styles (Title 1/2, Body, Callout, Subheadline); the reading summary keeps 14 pt by decision.                                        | [text-styles](../2026-10-05-text-styles/CHANGE_CONTRACT.md)                           |
 
-Still open: F12/S4 (decision D5),
-F13 (system text styles).
+Still open: F12/S4 (decision D5).

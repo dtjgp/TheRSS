@@ -93,7 +93,12 @@ export const emptyState = (
     [
       { id: `${id}-symbol`, kind: 'symbol', symbol, title, size: 40 },
       // 17 pt is the macOS Title 2 size used by system empty states.
-      label(`${id}-title`, title, { weight: 'bold', size: 17, align: 'center', maxWidth: 420 }),
+      label(`${id}-title`, title, {
+        weight: 'bold',
+        textStyle: 'title2',
+        align: 'center',
+        maxWidth: 420
+      }),
       label(`${id}-message`, message, { weight: 'secondary', align: 'center', maxWidth: 420 }),
       ...(actions.length ? [row(`${id}-actions`, actions)] : [])
     ],

@@ -188,6 +188,20 @@ static NSColor *TRSavedColor(BOOL highContrast) {
 - (void)drawRect:(NSRect)rect { if (self.paintsBackground) { [NSColor.windowBackgroundColor setFill]; NSRectFill(rect); } }
 @end
 
+/** The system point size of a macOS text style (Body when unknown). */
+static CGFloat TRTextStyleSize(NSString *style) {
+  // Layout asks for fonts often; the system sizes are fixed per process, so look them up once.
+  static NSDictionary<NSString *, NSNumber *> *sizes;
+  static dispatch_once_t once;
+  dispatch_once(&once, ^{
+    NSDictionary<NSString *, NSFontTextStyle> *styles = @{@"title1":NSFontTextStyleTitle1,@"title2":NSFontTextStyleTitle2,@"title3":NSFontTextStyleTitle3,
+      @"headline":NSFontTextStyleHeadline,@"body":NSFontTextStyleBody,@"callout":NSFontTextStyleCallout,@"subheadline":NSFontTextStyleSubheadline,@"footnote":NSFontTextStyleFootnote};
+    NSMutableDictionary *measured = [NSMutableDictionary dictionary];
+    for (NSString *name in styles) measured[name] = @([NSFont preferredFontForTextStyle:styles[name] options:@{}].pointSize);
+    sizes = measured;
+  });
+  return (sizes[style] ?: sizes[@"body"]).doubleValue;
+}
 static NSString *TRString(id value) { return [value isKindOfClass:NSString.class] ? value : @""; }
 static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { return spec[key] ? [spec[key] doubleValue] : fallback; }
 
@@ -287,8 +301,13 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   return self;
 }
 - (NSFont *)font {
-  CGFloat size = TRNumber(self.spec, @"size", [self.spec[@"weight"] isEqual:@"title"] ? 23 : 13) * self.host.zoom;
-  return ([self.spec[@"weight"] isEqual:@"bold"] || [self.spec[@"weight"] isEqual:@"title"]) ? [NSFont boldSystemFontOfSize:size] : [NSFont systemFontOfSize:size];
+  // macOS text styles at system sizes, scaled by the window zoom. Headings are Title 1; a point
+  // size is kept only where a node sets one (reading text, symbols).
+  NSString *style = self.spec[@"textStyle"] ?: ([self.spec[@"weight"] isEqual:@"title"] ? @"title1" : @"body");
+  CGFloat size = (self.spec[@"size"] ? [self.spec[@"size"] doubleValue] : TRTextStyleSize(style)) * self.host.zoom;
+  // Headline is bold by definition, as the system style is.
+  BOOL bold = [self.spec[@"weight"] isEqual:@"bold"] || [self.spec[@"weight"] isEqual:@"title"] || [style isEqual:@"headline"];
+  return bold ? [NSFont boldSystemFontOfSize:size] : [NSFont systemFontOfSize:size];
 }
 - (void)createControl {
   NSString *kind = self.spec[@"kind"];
@@ -509,7 +528,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     table.style = columns ? NSTableViewStylePlain : NSTableViewStyleInset;
     BOOL fontChanged = table.rowHeight != rowHeight;
     table.rowHeight = rowHeight;
-    for (NSTableColumn *column in table.tableColumns) column.headerCell.font = [NSFont systemFontOfSize:12*self.host.zoom weight:NSFontWeightMedium];
+    for (NSTableColumn *column in table.tableColumns) column.headerCell.font = [NSFont systemFontOfSize:TRTextStyleSize(@"callout")*self.host.zoom weight:NSFontWeightMedium];
     table.backgroundColor = NSColor.textBackgroundColor;
     NSPoint origin = ((NSScrollView *)self.control).contentView.bounds.origin;
     if (fontChanged || columnsChanged || ![old[@"rows"] isEqual:spec[@"rows"]]) [table reloadData];
@@ -813,7 +832,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   label.cell.wraps = YES; label.cell.usesSingleLineMode = NO; label.cell.truncatesLastVisibleLine = YES;
   label.preferredMaxLayoutWidth = MAX(30,column.width-24*self.host.zoom);
   [cell addSubview:label]; cell.textField = label;
-  NSTextField *detail = [NSTextField labelWithString:TRString(item[@"subtitle"])]; detail.font = [NSFont systemFontOfSize:12*self.host.zoom]; detail.textColor = self.host.increaseContrast ? NSColor.labelColor : NSColor.secondaryLabelColor;
+  NSTextField *detail = [NSTextField labelWithString:TRString(item[@"subtitle"])]; detail.font = [NSFont systemFontOfSize:TRTextStyleSize(@"callout")*self.host.zoom]; detail.textColor = self.host.increaseContrast ? NSColor.labelColor : NSColor.secondaryLabelColor;
   detail.lineBreakMode = NSLineBreakByTruncatingTail;
   [cell addSubview:detail]; cell.detailField = detail; cell.toolTip = item[@"title"];
   cell.highContrast = self.host.increaseContrast;
@@ -1023,6 +1042,12 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       if (traits & (NSBoldFontMask|NSItalicFontMask)) [runs addObject:@{@"text":[text.string substringWithRange:range],@"bold":@((traits & NSBoldFontMask) != 0),@"italic":@((traits & NSItalicFontMask) != 0)}];
     }];
     result[@"tableCells"] = cells; result[@"styledRuns"] = runs;
+  }
+  if ([self.spec[@"kind"] isEqual:@"label"] || [self.spec[@"kind"] isEqual:@"text"]) {
+    NSFont *font = [self.spec[@"kind"] isEqual:@"text"] ? ((NSTextView *)self.control).font : ((NSTextField *)self.control).font;
+    result[@"fontSize"] = @(font.pointSize); result[@"fontBold"] = @((font.fontDescriptor.symbolicTraits & NSFontDescriptorTraitBold) != 0);
+    NSString *style = self.spec[@"textStyle"] ?: ([self.spec[@"weight"] isEqual:@"title"] ? @"title1" : @"body");
+    result[@"styleSize"] = @(TRTextStyleSize(style));
   }
   if ([self.spec[@"kind"] isEqual:@"label"]) { result[@"text"] = ((NSTextField *)self.control).stringValue; result[@"centered"] = @(((NSTextField *)self.control).alignment == NSTextAlignmentCenter); }
   if ([self.spec[@"kind"] isEqual:@"symbol"]) { NSImageView *image = (NSImageView *)self.control; result[@"hasImage"] = @(image.image != nil); result[@"exposed"] = @(image.isAccessibilityElement); }

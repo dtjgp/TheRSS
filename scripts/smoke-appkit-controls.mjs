@@ -423,6 +423,58 @@ try {
   segmentEvents = await application.evaluate(() => globalThis.__controls.events)
   assert.equal(segmentEvents.length, emitted, 'A scene update does not emit a choice')
   checks.push('Native segmented control shows every choice, emits clicks and skips scene updates')
+  // Each label takes its style's system size (measured on macOS 27: Title 1 22, Title 2 17,
+  // Body 13, Callout 12, Subheadline 11, Footnote 10). The check compares with the size the
+  // running macOS reports, plus the hierarchy order, so another macOS version does not break
+  // it. The reading text keeps the user's 14 pt.
+  const styled = [
+    ['style-title1', { weight: 'title' }, true],
+    ['style-title2', { textStyle: 'title2', weight: 'bold' }, true],
+    ['style-body', {}, false],
+    ['style-callout', { textStyle: 'callout' }, false],
+    ['style-subheadline', { textStyle: 'subheadline' }, false],
+    ['style-footnote', { textStyle: 'footnote' }, false]
+  ]
+  for (const zoom of [1, 1.5]) {
+    await application.evaluate(
+      (_, data) => {
+        const f = globalThis.__controls
+        f.scene.root = {
+          id: 'styles-root',
+          kind: 'column',
+          padding: 20,
+          children: [
+            ...data.styled.map(([id, extra]) => ({ id, kind: 'label', text: id, ...extra })),
+            { id: 'style-reading', kind: 'text', text: 'Reading summary', size: 14 }
+          ]
+        }
+        f.bridge.present(f.handle, JSON.stringify({ ...f.scene, zoom: data.zoom }))
+      },
+      { styled, zoom }
+    )
+    const root = (await inspect()).root
+    for (const [id, , bold] of styled) {
+      const node = find(root, id)
+      assert.equal(
+        node.fontSize,
+        node.styleSize * zoom,
+        `${id} uses its system size at zoom ${zoom}`
+      )
+      assert.equal(node.fontBold, bold, `${id} weight`)
+    }
+    const sizes = styled.map(([id]) => find(root, id).styleSize)
+    assert(
+      sizes.every((size, index) => index === 0 || size <= sizes[index - 1]),
+      `Text styles keep their hierarchy: ${sizes.join(' >= ')}`
+    )
+    assert(sizes[0] > sizes[2], 'Headings are larger than body text')
+    assert.equal(find(root, 'style-reading').fontSize, 14 * zoom, 'Reading text keeps 14 pt')
+  }
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.bridge.present(f.handle, JSON.stringify({ ...f.scene, zoom: 1 }))
+  })
+  checks.push('Labels use macOS text styles at system sizes; reading text keeps 14 pt')
   await application.evaluate(() => {
     const f = globalThis.__controls
     f.scene.root = {
@@ -520,7 +572,7 @@ try {
                 kind: 'label',
                 text: 'No saved research',
                 weight: 'bold',
-                size: 17,
+                textStyle: 'title2',
                 align: 'center',
                 maxWidth: 420
               },

@@ -261,6 +261,7 @@ export class ResearchReader implements NativeScreen {
                   : [])
               ]
             : []),
+          // Reading size decided by the user (F13, 2026-10-05): 14 pt, between Body and Title 3.
           { ...b.rich(`${prefix}-summary`, item.summary), size: 14 },
           column(
             `${prefix}-evidence-panel`,
@@ -270,7 +271,7 @@ export class ResearchReader implements NativeScreen {
                 item.kind === 'paper'
                   ? 'Evidence: paper discovery metadata and retrieved summary. Full-paper results are not verified here.'
                   : 'Evidence: source metadata and retrieved summary.',
-                { weight: 'secondary', size: 12 }
+                { weight: 'secondary', textStyle: 'callout' }
               )
             ],
             { surface: 'inset', padding: 10 }
