@@ -261,6 +261,10 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     NSString *name = names[input[@"value"]]; if (!name) return fail(env,"Unsupported fixture appearance");
     host.fixtureContrast = @([input[@"value"] hasPrefix:@"contrast-"]);
     host.canvas.appearance = [NSAppearance appearanceNamed:name]; [host updateMaterials];
+  } else if ([action isEqual:@"animations"] && [input[@"value"] isKindOfClass:NSNumber.class]) {
+    host.fixtureAnimations = [input[@"value"] boolValue];
+  } else if ([action isEqual:@"reduce-motion"] && [input[@"value"] isKindOfClass:NSNumber.class]) {
+    host.fixtureReduceMotion = [input[@"value"] boolValue];
   } else if ([action isEqual:@"transparency"] && [input[@"value"] isKindOfClass:NSNumber.class]) {
     host.fixtureTransparency = input[@"value"]; [host updateMaterials];
   } else if ([action isEqual:@"accent"]) {

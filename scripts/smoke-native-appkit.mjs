@@ -440,6 +440,73 @@ try {
     for (let attempt = 0; attempt < 40 && (await inspect()).toolbar.sidebarDivider < 184; attempt++)
       await delay(50)
     assert((await inspect()).toolbar.sidebarDivider >= 184, 'Showing restores the native sidebar')
+    // Animated hide/show (system split item animation); Reduce Motion changes at once.
+    const sidebarState = async () => {
+      const state = await inspect()
+      return {
+        divider: state.toolbar.sidebarDivider,
+        animating: find(state.root, 'native-workspace').animating
+      }
+    }
+    const savedWidth = async () =>
+      JSON.parse(await readFile(join(profile, 'native-ui.json'), 'utf8')).sidebar
+    const widthBefore = (await sidebarState()).divider
+    const preferenceBefore = await savedWidth()
+    const widthEvents = async () => find((await inspect()).root, 'native-workspace').widthEvents
+    const eventsBefore = await widthEvents()
+    const sample = async (done) => {
+      const samples = []
+      for (let attempt = 0; attempt < 80; attempt++) {
+        samples.push(await sidebarState())
+        if (done(samples.at(-1))) break
+        await delay(10)
+      }
+      return samples
+    }
+    await act('native-workspace', 'animations', true)
+    await click('sidebar-toggle')
+    const hiding = await sample((state) => state.divider === 0 && !state.animating)
+    assert(
+      hiding.some((state) => state.divider > 0 && state.divider < widthBefore),
+      'Hiding the sidebar passes through intermediate widths'
+    )
+    assert.equal(hiding.at(-1).divider, 0)
+    await click('sidebar-toggle')
+    const showing = await sample(
+      (state) => Math.abs(state.divider - widthBefore) <= 1 && !state.animating
+    )
+    assert(
+      showing.some((state) => state.divider > 0 && state.divider < widthBefore),
+      'Showing the sidebar passes through intermediate widths'
+    )
+    assert(Math.abs(showing.at(-1).divider - widthBefore) <= 1, 'Showing restores the saved width')
+    await writeFile(
+      join(output, 'sidebar-motion.json'),
+      JSON.stringify({ widthBefore, hiding, showing }, null, 2)
+    )
+    // Reversing mid-animation ends shown at the saved width, with no stray restore.
+    await click('sidebar-toggle')
+    await delay(60)
+    await click('sidebar-toggle')
+    const reversed = await sample(
+      (state) => Math.abs(state.divider - widthBefore) <= 1 && !state.animating
+    )
+    assert(Math.abs(reversed.at(-1).divider - widthBefore) <= 1, 'A reversed toggle ends shown')
+    await delay(300)
+    assert(Math.abs((await sidebarState()).divider - widthBefore) <= 1, 'The width stays settled')
+    assert.equal(await widthEvents(), eventsBefore, 'Animations emit no sidebar width')
+    assert.equal(await savedWidth(), preferenceBefore, 'The animation writes no width preference')
+    await act('native-workspace', 'reduce-motion', true)
+    await click('sidebar-toggle')
+    const reduced = await sidebarState()
+    assert.equal(reduced.divider, 0, 'Reduce Motion hides the sidebar at once')
+    assert.equal(reduced.animating, false)
+    await click('sidebar-toggle')
+    const restored = await sample((state) => Math.abs(state.divider - widthBefore) <= 1)
+    assert(Math.abs(restored.at(-1).divider - widthBefore) <= 1, 'Reduce Motion shows it again')
+    assert.equal(restored.length, 1, 'Reduce Motion shows the sidebar at once')
+    await act('native-workspace', 'reduce-motion', false)
+    await act('native-workspace', 'animations', false)
     assert.equal(find(result.root, 'discover-search').emphasis, 'primary')
     assert.equal(find(result.root, 'discover-search').hasSymbol, true)
     assert.equal(find(result.root, 'discover-composer').surface, 'panel')

@@ -62,6 +62,9 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 @property(nonatomic, strong) id accessibilityObserver;
 @property(nonatomic, strong) NSNumber *fixtureTransparency;
 @property(nonatomic, strong) NSNumber *fixtureContrast;
+/** Fixtures are instant unless a test enables animations or simulates Reduce Motion. */
+@property(nonatomic) BOOL fixtureAnimations;
+@property(nonatomic) BOOL fixtureReduceMotion;
 @property(nonatomic, strong) NSColor *fixtureAccent;
 @property(nonatomic) CGFloat zoom;
 @property(nonatomic) BOOL fixture;
@@ -80,6 +83,8 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 - (BOOL)reduceTransparency;
 - (CGFloat)safeTop;
 - (BOOL)increaseContrast;
+/** Built-in transitions run unless Reduce Motion is on (fixtures: only when enabled). */
+- (BOOL)animatesTransitions;
 - (void)updateMaterials;
 - (void)dispose;
 - (TRNode *)find:(NSString *)identifier;
@@ -102,6 +107,10 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 /** Set while the user drags or keys the divider: only then is a new width a preference. */
 @property(nonatomic) BOOL userResizing;
 @property(nonatomic) BOOL reconcilePending;
+@property(nonatomic) BOOL animatingSplit;
+@property(nonatomic) NSUInteger splitAnimation;
+/** Inspection only: width events the split has emitted (preference writes). */
+@property(nonatomic) NSUInteger widthEvents;
 @property(nonatomic) CGFloat reconcileAttempt;
 /** Fixture only: the link a Share button would have handed to the sharing picker. */
 @property(nonatomic, copy) NSString *sharedURL;

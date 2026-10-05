@@ -74,6 +74,10 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
   if (!window || !(window.styleMask & NSWindowStyleMaskFullSizeContentView)) return 0;
   return MAX(0,NSHeight(window.contentView.frame) - NSMaxY(window.contentLayoutRect));
 }
+- (BOOL)animatesTransitions {
+  BOOL reduce = self.fixture ? self.fixtureReduceMotion : NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion;
+  return !reduce && (!self.fixture || self.fixtureAnimations);
+}
 - (BOOL)reduceTransparency { return [self increaseContrast] || (self.fixtureTransparency ? !self.fixtureTransparency.boolValue : NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency); }
 - (void)updateMaterials {
   NSMutableArray<TRNode *> *queue = [NSMutableArray array]; if (self.root) [queue addObject:self.root]; if (self.modal) [queue addObject:self.modal]; if (self.popover.node) [queue addObject:self.popover.node];

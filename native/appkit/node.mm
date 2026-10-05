@@ -544,9 +544,24 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     // The divider counts against the content minimum so both minimums fit the 820 pt window.
     self.splitController.splitViewItems[1].minimumThickness = TRNumber(spec,@"minContentWidth",200) - [self splitView].dividerThickness;
     [self splitView].accessibilityLabel = spec[@"title"]; [self splitView].accessibilityHelp = spec[@"help"];
-    // Collapse here, outside layout: it changes the split view controller's constraints.
+    // Collapse here, outside layout: it changes the split view controller's constraints. The
+    // split item's own animator slides the sidebar (Finder, Mail); Reduce Motion is instant.
     BOOL collapsed = [spec[@"compactPane"] isEqual:@"detail"];
-    if (sidebarItem.collapsed != collapsed) sidebarItem.collapsed = collapsed;
+    if (sidebarItem.collapsed != collapsed) {
+      if (old && [self.host animatesTransitions]) {
+        // A toggle during a running animation starts a newer one; only the latest completion
+        // ends the pause and reconciles.
+        self.animatingSplit = YES; NSUInteger generation = ++self.splitAnimation;
+        __weak TRNode *weakSelf = self;
+        [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
+          context.allowsImplicitAnimation = YES;
+          sidebarItem.animator.collapsed = collapsed;
+        } completionHandler:^{
+          TRNode *node = weakSelf; if (!node || node.splitAnimation != generation) return;
+          node.animatingSplit = NO; [node reconcileWindowSplit];
+        }];
+      } else { ++self.splitAnimation; self.animatingSplit = NO; sidebarItem.collapsed = collapsed; }
+    }
   }
   if ([kind isEqual:@"scroll"] && old && (![old[@"clearRevision"] ?: @0 isEqual:spec[@"clearRevision"] ?: @0] || ![[old[@"children"] firstObject][@"id"] isEqual:[spec[@"children"] firstObject][@"id"]])) {
     self.resetScrollAfterLayout = YES;
@@ -913,13 +928,14 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   // A controller-hosted split also resizes for window changes; only user resizes are preferences.
   if (!self.applying && split.vertical && self.lastWidth && self.window && (!self.splitController || self.userResizing)) {
     CGFloat value = split.arrangedSubviews.firstObject.frame.size.width;
-    if (value >= TRNumber(self.spec,@"minWidth",180) && value <= TRNumber(self.spec,@"maxWidth",520)) { self.preferredSplit = value; [self.host emit:self.spec[@"action"] value:@(value) secret:NO]; }
+    if (value >= TRNumber(self.spec,@"minWidth",180) && value <= TRNumber(self.spec,@"maxWidth",520)) { self.preferredSplit = value; self.widthEvents++; [self.host emit:self.spec[@"action"] value:@(value) secret:NO]; }
   }
 }
 // Keep the window sidebar at its preferred width whenever the window has room (a narrow window
 // squeezes it; widening restores it). Called after node and split view controller layouts.
 - (void)reconcileWindowSplit {
-  if (!self.splitController || self.nodes.count != 2 || [self.spec[@"compactPane"] isEqual:@"detail"]) return;
+  // Wait for a running show/hide animation; its completion reconciles once.
+  if (!self.splitController || self.nodes.count != 2 || self.animatingSplit || [self.spec[@"compactPane"] isEqual:@"detail"]) return;
   // Moving the divider changes Auto Layout constraints, which AppKit forbids inside a layout
   // pass, so it runs right after.
   NSSplitView *split = self.splitController.splitView;
@@ -1026,6 +1042,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     result[@"intrinsicWidth"] = @(segmented.intrinsicContentSize.width);
   }
   if ([self splitView]) result[@"vertical"] = @([self splitView].vertical);
+  if (self.splitController) { result[@"animating"] = @(self.animatingSplit); result[@"widthEvents"] = @(self.widthEvents); }
   if ([self.spec[@"kind"] isEqual:@"input"]) {
     NSTextView *input = [self.control isKindOfClass:NSScrollView.class] ? (NSTextView *)((NSScrollView *)self.control).documentView : (NSTextView *)((NSTextField *)self.control).currentEditor;
     if (input) { result[@"enabled"] = @(input.editable); result[@"selection"] = NSStringFromRange(input.selectedRange); result[@"marked"] = @(input.hasMarkedText); }
