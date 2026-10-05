@@ -481,11 +481,12 @@ try {
       }
       return samples
     }
+    // An instant change draws no frame between start and end widths; slow CI runners draw one.
     await act('native-workspace', 'animations', true)
     await click('sidebar-toggle')
     const hiding = await sample((state) => state.divider === 0 && !state.animating)
     assert(
-      find((await inspect()).root, 'native-workspace').animationSteps >= 2,
+      find((await inspect()).root, 'native-workspace').animationSteps >= 1,
       'Hiding the sidebar draws intermediate widths'
     )
     assert.equal(hiding.at(-1).divider, 0)
@@ -494,7 +495,7 @@ try {
       (state) => Math.abs(state.divider - widthBefore) <= 1 && !state.animating
     )
     assert(
-      find((await inspect()).root, 'native-workspace').animationSteps >= 2,
+      find((await inspect()).root, 'native-workspace').animationSteps >= 1,
       'Showing the sidebar draws intermediate widths'
     )
     assert(Math.abs(showing.at(-1).divider - widthBefore) <= 1, 'Showing restores the saved width')

@@ -50,7 +50,8 @@ Scope: CI failures reported by Auto-fix on PR #58 and the user's request "排查
   sampled widths from outside the app; on CI the slide finished between two samples.
 - Fix: the native split records the distinct sidebar widths drawn during each animation and
   reports how many lie strictly between the start and end widths (`animationSteps`); the smoke
-  requires at least two. A collapsed pane is hidden but keeps its frame width, so the start
+  requires at least one (an instant change draws none). The first threshold, two, failed on CI
+  run 37318584177, whose artifact shows `animationSteps = 1`: the runner drew one frame. A collapsed pane is hidden but keeps its frame width, so the start
   width of a show is 0 (first version of the counter missed this; a diagnostic run showed the
   real frames 0 → 25 → 70 → 116 → 173 → 207 → 222 → 224).
 - RED: with animations forced off the check fails ("Hiding the sidebar draws intermediate
