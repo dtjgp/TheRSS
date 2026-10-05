@@ -1026,6 +1026,51 @@ try {
   checks.push(
     'Compact research navigation preserves a thousand-row list position and independent long-reading position'
   )
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.scene.root = {
+      id: 'keys-split',
+      kind: 'split',
+      width: 300,
+      minWidth: 200,
+      maxWidth: 500,
+      action: 'keys-split-width',
+      children: [
+        {
+          id: 'keys-left',
+          kind: 'column',
+          padding: 20,
+          children: [
+            { id: 'keys-button', kind: 'button', title: 'Focused button', action: 'keys-press' }
+          ]
+        },
+        {
+          id: 'keys-right',
+          kind: 'column',
+          children: [{ id: 'keys-label', kind: 'label', text: 'Detail' }]
+        }
+      ]
+    }
+    f.events.length = 0
+    f.bridge.present(f.handle, JSON.stringify({ ...f.scene, focus: undefined }))
+  })
+  const paneWidth = async () =>
+    Number(find((await inspect()).root, 'keys-left').frame.match(/-?\d+(?:\.\d+)?/gu)[2])
+  const widthBeforeKeys = await paneWidth()
+  for (const key of ['right', 'left', 'escape'])
+    await act('keys-button', 'key', key, { shift: true })
+  assert.equal(
+    await paneWidth(),
+    widthBeforeKeys,
+    'Keys on a focused button do not move the divider'
+  )
+  assert(
+    !(await application.evaluate(() => globalThis.__controls.events)).some(
+      (event) => event.action === 'keys-split-width'
+    ),
+    'Keys on a focused button save no split width'
+  )
+  checks.push('Arrow keys reach a split divider only when the divider itself has focus')
   const searchItem = {
     id: 'local-search-query',
     kind: 'search',

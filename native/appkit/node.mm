@@ -147,7 +147,9 @@ static NSColor *TRSavedColor(BOOL highContrast) {
 }
 - (BOOL)becomeFirstResponder { self.initialPosition = self.vertical ? self.arrangedSubviews.firstObject.frame.size.width : self.arrangedSubviews.firstObject.frame.size.height; return YES; }
 - (void)keyDown:(NSEvent *)event {
-  if (self.node.spec[@"compactPane"]) { [super keyDown:event]; return; }
+  // Only a focused divider handles arrow keys. Keys a focused descendant ignores travel up the
+  // responder chain; an outer split must not treat them as divider moves (and save a width).
+  if (self.node.spec[@"compactPane"] || self.window.firstResponder != self) { [super keyDown:event]; return; }
   CGFloat position = self.vertical ? self.arrangedSubviews.firstObject.frame.size.width : self.arrangedSubviews.firstObject.frame.size.height;
   CGFloat step = (event.modifierFlags & NSEventModifierFlagShift) ? 32 : 8;
   CGFloat minimum = [self.node splitView:self constrainMinCoordinate:0 ofSubviewAt:0];
@@ -308,7 +310,10 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   } else if ([kind isEqual:@"chart"]) {
     TRChart *chart = [TRChart new]; chart.accessibilityElement = YES; chart.accessibilityRole = NSAccessibilityImageRole; self.control = chart;
   } else if ([kind isEqual:@"text"]) {
-    NSTextView *text = [[NSTextView alloc] initWithFrame:NSMakeRect(0,0,500,100)];
+    // TextKit 1 from the start: heightForWidth measures through the layout manager. A default
+    // (TextKit 2) view switches to TextKit 1 on first access and could report an empty layout
+    // (8 pt) for that measurement, leaving a long reading pane unscrollable.
+    NSTextView *text = [NSTextView textViewUsingTextLayoutManager:NO]; text.frame = NSMakeRect(0,0,500,100);
     text.editable = NO; text.selectable = YES; text.drawsBackground = NO; text.delegate = self;
     text.textContainerInset = NSMakeSize(0, 4); text.textContainer.lineFragmentPadding = 0;
     text.textContainer.widthTracksTextView = YES; text.verticallyResizable = YES; text.horizontallyResizable = NO;

@@ -52,6 +52,18 @@ function find(node, id) {
   if (node.id === id) return node
   return (node.children || []).map((child) => find(child, id)).find(Boolean) || null
 }
+/**
+ * The sidebar width the window shows for a saved width, measured at the split divider: the
+ * node inside the system sidebar item can be inset by the OS (8 pt narrower on CI's macOS),
+ * and the content column keeps its 636 pt minimum (plus the 1 pt divider) in narrow windows.
+ */
+function sidebarFits(state, saved) {
+  const workspace = find(state.root, 'native-workspace')
+  const width = Number(workspace.frame.match(/-?\d+(?:\.\d+)?/gu)[2])
+  const expected = Math.max(184, Math.min(saved, width - 636 - 1))
+  const actual = state.toolbar.sidebarDivider
+  return { ok: Math.abs(actual - expected) <= 1, expected, actual, width }
+}
 function flatten(node) {
   return node ? [node, ...(node.children || []).flatMap(flatten)] : []
 }
@@ -1091,7 +1103,8 @@ try {
       globalThis.__nativeWindow.setBounds({ width: 1360, height: 880 })
     )
     await delay(150)
-    assert.match(find((await inspect()).root, 'native-sidebar').frame, /248,/)
+    const widened = sidebarFits(await inspect(), 248)
+    assert(widened.ok, `Widening restores the saved sidebar width: ${JSON.stringify(widened)}`)
     assert.equal(
       JSON.parse(await readFile(join(profile, 'native-ui.json'), 'utf8')).sidebar,
       248,
@@ -1151,7 +1164,12 @@ try {
       }
       await wait('discover-results')
       // The controller-hosted sidebar takes its saved width right after the first layout.
-      const reopened = await wait('native-sidebar', (node) => /248,/.test(node?.frame || ''))
+      let reopened = await wait('native-sidebar')
+      for (let attempt = 0; attempt < 40 && !sidebarFits(reopened, 248).ok; attempt++) {
+        await delay(50)
+        reopened = await inspect()
+      }
+      assert(sidebarFits(reopened, 248).ok, JSON.stringify(sidebarFits(reopened, 248)))
       assert.equal(reopened.nativeRoot, 'TRCanvas')
       assert(find(reopened.root, 'discover-results').rows.length > 0)
       await go('settings')
