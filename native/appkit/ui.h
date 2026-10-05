@@ -109,6 +109,9 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 @property(nonatomic) BOOL reconcilePending;
 @property(nonatomic) BOOL animatingSplit;
 @property(nonatomic) NSUInteger splitAnimation;
+/** Inspection only: distinct sidebar widths drawn during the last show/hide animation. */
+@property(nonatomic, strong) NSMutableSet<NSNumber *> *animationWidths;
+@property(nonatomic) CGFloat animationFrom;
 /** Inspection only: width events the split has emitted (preference writes). */
 @property(nonatomic) NSUInteger widthEvents;
 @property(nonatomic) CGFloat reconcileAttempt;

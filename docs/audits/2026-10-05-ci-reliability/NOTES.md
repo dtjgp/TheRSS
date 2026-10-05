@@ -17,18 +17,22 @@ Scope: CI failures reported by Auto-fix on PR #58 and the user's request "排查
 ## 2. Intermittent `smoke-appkit-controls.mjs:1009` (reader not scrollable)
 
 - Symptom: after switching a compact split to its reading pane, `scroll 400` left the origin at
-  0,0. Failure rate before the fix: 5 failed runs out of 12 on this Mac (also on the pushed
-  head without the date change, 1 of 2).
-- Evidence: in all five failed runs `retained-text` measured 8 pt (insets only) instead of
-  about 5590 pt, so the document was not taller than the 728 pt viewport and the scroll was
-  clamped to 0.
-- Cause (inference): reading text views were created as TextKit 2 views and measured through
-  `layoutManager`, which switches them to TextKit 1 on first access; that measurement could
-  report an empty layout.
-- Fix: reading text views are created with TextKit 1 (`textViewUsingTextLayoutManager:NO`).
-- Verification: 0 failures in 10 consecutive controls runs, then 18/18 in later runs. Limit:
-  the evidence is statistical; a deterministic check was tried (TextKit mode at inspection)
-  and removed because it also passed without the fix.
+  0,0. Before the fix it failed in roughly a third to a half of local runs (also on the pushed
+  head without the date change).
+- Evidence: in every failed run `retained-text` measured 8 pt (insets only) instead of about
+  5590 pt, so the document was not taller than the 728 pt viewport and the scroll was clamped.
+  An in-memory record of the last measurement in a failed run showed: requested width 1000,
+  text view frame 500 × 5590, text container 500, 8001 glyphs, laid-out height 0.
+- Cause: `heightForWidth` set the container to the requested width while
+  `widthTracksTextView` was on; AppKit reset the container to the stale view width and
+  invalidated the layout just made, so the measurement read an empty layout. Whether the view
+  frame was already current depended on layout order, hence the intermittency.
+- Fix: reading text views do not track the view width; the measurement owns the container width.
+- Correction: commit `3261956` first attributed the failure to TextKit 2 and switched reading
+  text views to TextKit 1. That change stays (it avoids a TextKit 2 → 1 switch on first
+  measurement) but it was not the cause: the failure recurred with the same 8 pt signature.
+- Verification: 0 failures in 15 consecutive controls runs after the fix; a file-based trace
+  hid the failure (timing), the in-memory record above caught it.
 
 ## 3. Arrow keys from a focused descendant resized an outer split (product defect)
 
@@ -40,7 +44,19 @@ Scope: CI failures reported by Auto-fix on PR #58 and the user's request "排查
 - Regression: new controls group "Arrow keys reach a split divider only when the divider itself
   has focus"; RED without the fix ("Keys on a focused button do not move the divider").
 
+## 4. Sidebar show animation sampled too slowly (CI `desktop`)
+
+- Symptom (run 37316499167): "Showing the sidebar passes through intermediate widths". The test
+  sampled widths from outside the app; on CI the slide finished between two samples.
+- Fix: the native split records the distinct sidebar widths drawn during each animation and
+  reports how many lie strictly between the start and end widths (`animationSteps`); the smoke
+  requires at least two. A collapsed pane is hidden but keeps its frame width, so the start
+  width of a show is 0 (first version of the counter missed this; a diagnostic run showed the
+  real frames 0 → 25 → 70 → 116 → 173 → 207 → 222 → 224).
+- RED: with animations forced off the check fails ("Hiding the sidebar draws intermediate
+  widths"). GREEN: 15/15 workflow runs, including runs with the fixture app inactive as on CI.
+
 ## Verification of the combined head
 
 `npm run check` exit 0 (743 main, 141 AppKit tests); workflow smoke 15/15 in CI mode
-(`THERSS_NATIVE_DEFAULT_ONLY=1`); controls smoke 18/18; E2E 8/8.
+(`THERSS_NATIVE_DEFAULT_ONLY=1`); controls smoke 18/18 (15 consecutive runs); E2E 8/8.

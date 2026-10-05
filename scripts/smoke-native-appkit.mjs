@@ -485,8 +485,8 @@ try {
     await click('sidebar-toggle')
     const hiding = await sample((state) => state.divider === 0 && !state.animating)
     assert(
-      hiding.some((state) => state.divider > 0 && state.divider < widthBefore),
-      'Hiding the sidebar passes through intermediate widths'
+      find((await inspect()).root, 'native-workspace').animationSteps >= 2,
+      'Hiding the sidebar draws intermediate widths'
     )
     assert.equal(hiding.at(-1).divider, 0)
     await click('sidebar-toggle')
@@ -494,8 +494,8 @@ try {
       (state) => Math.abs(state.divider - widthBefore) <= 1 && !state.animating
     )
     assert(
-      showing.some((state) => state.divider > 0 && state.divider < widthBefore),
-      'Showing the sidebar passes through intermediate widths'
+      find((await inspect()).root, 'native-workspace').animationSteps >= 2,
+      'Showing the sidebar draws intermediate widths'
     )
     assert(Math.abs(showing.at(-1).divider - widthBefore) <= 1, 'Showing restores the saved width')
     await writeFile(

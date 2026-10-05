@@ -173,6 +173,10 @@ static NSColor *TRSavedColor(BOOL highContrast) {
 @implementation TRWindowSplitController
 - (void)viewDidLayout { [super viewDidLayout]; [self.node reconcileWindowSplit]; }
 - (void)splitViewDidResizeSubviews:(NSNotification *)notification {
+  if (self.node.animatingSplit) {
+    NSView *pane = self.splitView.arrangedSubviews.firstObject;
+    [self.node.animationWidths addObject:@(round(pane.isHidden ? 0 : pane.frame.size.width))];
+  }
   if ([NSSplitViewController instancesRespondToSelector:@selector(splitViewDidResizeSubviews:)]) [super splitViewDidResizeSubviews:notification];
   [self.node splitViewDidResizeSubviews:notification];
   for (NSSplitViewItem *item in self.splitViewItems) item.viewController.view.needsLayout = YES;
@@ -316,7 +320,10 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     NSTextView *text = [NSTextView textViewUsingTextLayoutManager:NO]; text.frame = NSMakeRect(0,0,500,100);
     text.editable = NO; text.selectable = YES; text.drawsBackground = NO; text.delegate = self;
     text.textContainerInset = NSMakeSize(0, 4); text.textContainer.lineFragmentPadding = 0;
-    text.textContainer.widthTracksTextView = YES; text.verticallyResizable = YES; text.horizontallyResizable = NO;
+    // heightForWidth sets the container width explicitly. Tracking the view width would reset it
+    // to a stale view frame right after the measurement and invalidate the layout just made
+    // (an intermittently empty 8 pt reading pane: asked 1000, view 500, laid-out height 0).
+    text.textContainer.widthTracksTextView = NO; text.verticallyResizable = YES; text.horizontallyResizable = NO;
     text.automaticLinkDetectionEnabled = NO; self.control = text;
   } else if ([kind isEqual:@"input"] && [self.spec[@"multiline"] boolValue]) {
     NSScrollView *scroll = [NSScrollView new]; scroll.hasVerticalScroller = YES; scroll.autohidesScrollers = YES; scroll.borderType = NSBezelBorder;
@@ -557,6 +564,10 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
         // A toggle during a running animation starts a newer one; only the latest completion
         // ends the pause and reconciles.
         self.animatingSplit = YES; NSUInteger generation = ++self.splitAnimation;
+        self.animationWidths = [NSMutableSet set];
+        // A collapsed sidebar pane is hidden but keeps its last frame width: it starts at 0.
+        NSView *pane = self.splitController.splitView.arrangedSubviews.firstObject;
+        self.animationFrom = pane.isHidden ? 0 : pane.frame.size.width;
         __weak TRNode *weakSelf = self;
         [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
           context.allowsImplicitAnimation = YES;
@@ -637,7 +648,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   }
   if ([kind isEqual:@"text"]) {
     NSTextView *text = (NSTextView *)self.control;
-    text.textContainer.containerSize = NSMakeSize(MAX(20,width),CGFLOAT_MAX);
+    if (fabs(text.textContainer.containerSize.width - MAX(20,width)) > 0.5) text.textContainer.containerSize = NSMakeSize(MAX(20,width),CGFLOAT_MAX);
     [text.layoutManager ensureLayoutForTextContainer:text.textContainer];
     NSRect rect = [text.layoutManager usedRectForTextContainer:text.textContainer];
     return ceil(rect.size.height) + 2*text.textContainerInset.height;
@@ -1047,7 +1058,16 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     result[@"intrinsicWidth"] = @(segmented.intrinsicContentSize.width);
   }
   if ([self splitView]) result[@"vertical"] = @([self splitView].vertical);
-  if (self.splitController) { result[@"animating"] = @(self.animatingSplit); result[@"widthEvents"] = @(self.widthEvents); }
+  if (self.splitController) {
+    result[@"animating"] = @(self.animatingSplit); result[@"widthEvents"] = @(self.widthEvents);
+    // Frames strictly between the start and end widths prove a visible slide, independent of
+    // how often a test can sample from outside the app.
+    NSView *pane = self.splitController.splitView.arrangedSubviews.firstObject;
+    CGFloat to = pane.isHidden ? 0 : pane.frame.size.width;
+    CGFloat low = MIN(self.animationFrom, to) + 0.5, high = MAX(self.animationFrom, to) - 0.5; NSUInteger between = 0;
+    for (NSNumber *width in self.animationWidths) if (width.doubleValue > low && width.doubleValue < high) between++;
+    result[@"animationSteps"] = @(between);
+  }
   if ([self.spec[@"kind"] isEqual:@"input"]) {
     NSTextView *input = [self.control isKindOfClass:NSScrollView.class] ? (NSTextView *)((NSScrollView *)self.control).documentView : (NSTextView *)((NSTextField *)self.control).currentEditor;
     if (input) { result[@"enabled"] = @(input.editable); result[@"selection"] = NSStringFromRange(input.selectedRange); result[@"marked"] = @(input.hasMarkedText); }
