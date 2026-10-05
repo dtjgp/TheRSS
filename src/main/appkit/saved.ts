@@ -5,7 +5,7 @@ import { ACTIVE_TODAY_SOURCE_IDS, sourceDisplayName } from '../../shared/sourceI
 import { column, Controls, emptyState, row, type NativeContext, type NativeScreen } from './common'
 import type { NativeNode } from './presentation'
 import { ResearchReader, type TriageHistory } from './reading'
-import { researchRowGlyph, researchSubtitle } from './researchMetadata'
+import { researchRowDrag, researchRowGlyph, researchSubtitle } from './researchMetadata'
 import { ReadingWorkspace } from './readingWorkspace'
 import { SavedSourceUpdateControls } from './savedSourceUpdate'
 
@@ -108,7 +108,8 @@ export class SavedScreen implements NativeScreen {
                       id: item.id,
                       title: item.title,
                       subtitle: researchSubtitle(item),
-                      ...researchRowGlyph(item.kind)
+                      ...researchRowGlyph(item.kind),
+                      ...researchRowDrag(item)
                     })),
                     this.selected,
                     (id) => this.select(id),

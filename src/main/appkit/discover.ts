@@ -21,7 +21,12 @@ import {
 } from './common'
 import type { NativeNode, NativePopover } from './presentation'
 import { ResearchReader, type TriageHistory } from './reading'
-import { researchMetadata, researchRowGlyph, researchSubtitle } from './researchMetadata'
+import {
+  researchMetadata,
+  researchRowDrag,
+  researchRowGlyph,
+  researchSubtitle
+} from './researchMetadata'
 import { ReadingWorkspace } from './readingWorkspace'
 import { discoverSources } from './discoverSources'
 import { describeDiscoverRun } from '../../shared/discoverRunProgress'
@@ -260,6 +265,7 @@ export class DiscoverScreen implements NativeScreen {
                             title: item.title,
                             subtitle: researchSubtitle(item),
                             ...researchRowGlyph(item.kind),
+                            ...researchRowDrag(item),
                             ...(saved ? { saved: true } : {})
                           }
                         }),

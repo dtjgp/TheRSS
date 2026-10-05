@@ -18,6 +18,7 @@ import {
   type NativeScreen
 } from './common'
 import type { NativeNode } from './presentation'
+import { isShareableLink } from './researchMetadata'
 import { hashAnalysisSource } from '../../core/analysis/sourceSnapshot'
 import { sourcePublicationLabel, sourceMatchReasons } from '../../shared/sourceDate'
 
@@ -181,6 +182,19 @@ export class ResearchReader implements NativeScreen {
               ),
               symbol: 'arrow.up.right'
             },
+            // The system sharing picker (Mail, Messages, Notes ...) for the https link.
+            ...(isShareableLink(item.url)
+              ? [
+                  {
+                    id: `${prefix}-share`,
+                    kind: 'button' as const,
+                    title: 'Share',
+                    symbol: 'square.and.arrow.up' as const,
+                    help: 'Share the link with another app',
+                    share: { url: item.url }
+                  }
+                ]
+              : []),
             {
               ...b.button(
                 `${prefix}-save`,

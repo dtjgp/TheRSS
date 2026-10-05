@@ -370,6 +370,15 @@ try {
       find(result.root, 'discover-result-status').text,
       /^Complete · \d+ of \d+ sources complete · \d{4}-\d{2}-\d{2}$/u
     )
+    // Rows drag their https link out; the reading Share button hands the link to the picker.
+    const drag = find(result.root, 'discover-results').dragItem
+    assert.equal(new URL(drag.url).protocol, 'https:')
+    assert(drag.text.startsWith(drag.title), 'The drag text is the discovery citation')
+    await click('discover-share')
+    assert.equal(
+      new URL(find((await inspect()).root, 'discover-share').sharedURL).protocol,
+      'https:'
+    )
     const kinds = find(result.root, 'discover-kind')
     assert.equal(kinds.class, 'NSSegmentedControl', 'Result kinds are a segmented control')
     assert.deepEqual(

@@ -10,14 +10,21 @@ export interface ContextMenuItem {
   readonly label: string
 }
 
-export type ContextMenuEntry = ContextMenuSeparator | ContextMenuItem
+/** The macOS Share submenu for an `https:` link (rendered by the platform sharing picker). */
+export interface ContextMenuShare {
+  readonly type: 'share'
+  readonly url: string
+  readonly title: string
+}
+
+export type ContextMenuEntry = ContextMenuSeparator | ContextMenuItem | ContextMenuShare
 
 /**
  * Only `https:` targets may be opened or copied as links. This mirrors the main
  * process' `isSafeExternalUrl` so a feed-supplied `javascript:` or `file:` URL can
  * never reach `shell.openExternal` or the clipboard.
  */
-function isSafeLink(value: string): boolean {
+export function isSafeLink(value: string): boolean {
   try {
     return new URL(value).protocol === 'https:'
   } catch {
@@ -41,9 +48,13 @@ function item(action: ContextMenuAction, label: string): ContextMenuItem {
  * joined, so an absent group cannot leave a leading, trailing, or doubled separator.
  */
 export function buildContextMenuTemplate(target: ContextMenuTarget): readonly ContextMenuEntry[] {
-  const navigation: ContextMenuItem[] = []
+  const navigation: (ContextMenuItem | ContextMenuShare)[] = []
   if (isSafeLink(target.url)) {
-    navigation.push(item('open-external', 'Open in Browser'), item('copy-link', 'Copy Link'))
+    navigation.push(item('open-external', 'Open in Browser'), item('copy-link', 'Copy Link'), {
+      type: 'share',
+      url: target.url,
+      title: target.title
+    })
   }
 
   const copy: ContextMenuItem[] = [
@@ -57,7 +68,9 @@ export function buildContextMenuTemplate(target: ContextMenuTarget): readonly Co
   if (target.canAnalyze) actions.push(item('analyze', 'Analyze…'))
   if (target.canPromote) actions.push(item('promote', 'Promote to llm-wiki…'))
 
-  const groups = [navigation, copy, actions].filter((group) => group.length > 0)
+  const groups: ContextMenuEntry[][] = [navigation, copy, actions].filter(
+    (group) => group.length > 0
+  )
   return groups.flatMap((group, index) =>
     index === 0 ? group : [{ type: 'separator' as const }, ...group]
   )
@@ -78,6 +91,19 @@ export function buildCopyPayload(
   if (action === 'copy-title') return target.title
   if (action !== 'copy-citation') return null
 
-  const day = isoDay(target.publishedAt)
-  return [target.title, target.sourceLabel, day, link].filter((part) => Boolean(part)).join('. ')
+  return buildCitation(target.title, target.sourceLabel, target.publishedAt, target.url)
+}
+
+/**
+ * Plain-text citation from discovery metadata: title, source, ISO day and the `https:` link.
+ * Discovery evidence only, not a verified bibliographic record; used for copy and drag.
+ */
+export function buildCitation(
+  title: string,
+  sourceLabel: string,
+  publishedAt: string,
+  url: string
+): string {
+  const link = isSafeLink(url) ? url : null
+  return [title, sourceLabel, isoDay(publishedAt), link].filter((part) => Boolean(part)).join('. ')
 }

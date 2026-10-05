@@ -1,5 +1,6 @@
 import type { DiscoveryItem, DiscoveryItemKind } from '../../shared/discovery'
-import type { NativeSymbol } from './presentation'
+import type { NativeRow, NativeSymbol } from './presentation'
+import { buildCitation, isSafeLink } from '../../core/menus/contextMenu'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
 import {
   sourcePublicationEvidence,
@@ -37,6 +38,27 @@ export function researchRowGlyph(kind: DiscoveryItemKind | undefined): {
   return kind && kindGlyphs[kind]
     ? { symbol: kindGlyphs[kind].symbol, symbolLabel: kindGlyphs[kind].label }
     : {}
+}
+
+/** An https link short enough to share or drag; longer feed URLs are left in the app. */
+export function isShareableLink(url: string): boolean {
+  return url.length <= 2048 && isSafeLink(url)
+}
+
+/** Row drag payload for other apps; only a shareable https link makes a row draggable. */
+export function researchRowDrag(
+  item: Pick<DiscoveryItem, 'title' | 'url' | 'source' | 'publishedAt'>
+): Pick<NativeRow, 'drag'> {
+  if (!isShareableLink(item.url)) return {}
+  // Feed titles are unbounded; keep the payload within the presentation bounds.
+  const title = item.title.slice(0, 1000)
+  return {
+    drag: {
+      url: item.url,
+      title,
+      text: buildCitation(title, sourceDisplayName(item.source), item.publishedAt, item.url)
+    }
+  }
 }
 
 /** Present relevant fields; no source value is rewritten and zero is not treated as missing. */

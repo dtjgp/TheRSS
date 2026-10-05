@@ -423,6 +423,76 @@ try {
   segmentEvents = await application.evaluate(() => globalThis.__controls.events)
   assert.equal(segmentEvents.length, emitted, 'A scene update does not emit a choice')
   checks.push('Native segmented control shows every choice, emits clicks and skips scene updates')
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.scene.root = {
+      id: 'share-root',
+      kind: 'column',
+      padding: 20,
+      children: [
+        {
+          id: 'share-list',
+          kind: 'table',
+          title: 'Research list',
+          minHeight: 160,
+          rows: [
+            {
+              id: 'paper',
+              title: 'Structured Pruning for Edge Inference',
+              subtitle: 'arXiv · 2026-02-14',
+              drag: {
+                url: 'https://arxiv.org/abs/2501.00001v1',
+                title: 'Structured Pruning for Edge Inference',
+                text: 'Structured Pruning for Edge Inference. arXiv. 2026-02-14. https://arxiv.org/abs/2501.00001v1'
+              }
+            }
+          ]
+        },
+        {
+          id: 'plain-list',
+          kind: 'table',
+          title: 'Plain list',
+          minHeight: 80,
+          rows: [{ id: 'x', title: 'No link' }]
+        },
+        {
+          id: 'share-button',
+          kind: 'button',
+          title: 'Share',
+          symbol: 'square.and.arrow.up',
+          share: { url: 'https://arxiv.org/abs/2501.00001v1' }
+        }
+      ]
+    }
+    f.events.length = 0
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+  })
+  state = await inspect()
+  const shareList = find(state.root, 'share-list')
+  assert.deepEqual(shareList.dragItem, {
+    url: 'https://arxiv.org/abs/2501.00001v1',
+    title: 'Structured Pruning for Edge Inference',
+    text: 'Structured Pruning for Edge Inference. arXiv. 2026-02-14. https://arxiv.org/abs/2501.00001v1'
+  })
+  assert.equal(shareList.dragOutside, true, 'Rows are copied, not moved, to other apps')
+  assert.deepEqual(
+    find(state.root, 'plain-list').dragItem,
+    {},
+    'A row without a link is not draggable'
+  )
+  await act('share-button', 'click')
+  assert.equal(
+    find((await inspect()).root, 'share-button').sharedURL,
+    'https://arxiv.org/abs/2501.00001v1'
+  )
+  assert.equal(
+    (await application.evaluate(() => globalThis.__controls.events)).length,
+    0,
+    'Share opens the system picker without a scene event'
+  )
+  checks.push(
+    'Research rows drag a link, title and citation out; Share hands the link to the picker'
+  )
   const emptyScene = (zoom) =>
     application.evaluate((_, data) => {
       const f = globalThis.__controls

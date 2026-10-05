@@ -103,6 +103,8 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 @property(nonatomic) BOOL userResizing;
 @property(nonatomic) BOOL reconcilePending;
 @property(nonatomic) CGFloat reconcileAttempt;
+/** Fixture only: the link a Share button would have handed to the sharing picker. */
+@property(nonatomic, copy) NSString *sharedURL;
 @property(nonatomic) BOOL resetScrollAfterLayout;
 @property(nonatomic) BOOL revealSelection;
 - (instancetype)initWithHost:(TRHost *)host spec:(NSDictionary *)spec;

@@ -116,9 +116,14 @@ static NSColor *TRSavedColor(BOOL highContrast) {
 
 @interface TRTable : NSTableView
 @property(nonatomic, weak) TRNode *node;
+@property(nonatomic) BOOL dragged;
 @end
 @implementation TRTable
-- (void)mouseDown:(NSEvent *)event { [super mouseDown:event]; [self.node activateRow]; }
+- (void)mouseDown:(NSEvent *)event {
+  // A drag to another app runs inside mouseDown; finishing it must not also open the row.
+  self.dragged = NO; [super mouseDown:event];
+  if (!self.dragged) [self.node activateRow];
+}
 - (void)keyDown:(NSEvent *)event {
   if (event.keyCode == 36 || event.keyCode == 76) { [self.node activateRow]; return; }
   [super keyDown:event];
@@ -349,6 +354,9 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   } else if ([kind isEqual:@"table"]) {
     NSScrollView *scroll = [NSScrollView new]; scroll.hasVerticalScroller = YES; scroll.autohidesScrollers = YES; scroll.drawsBackground = NO;
     TRTable *table = [TRTable new]; table.node = self; table.delegate = self; table.dataSource = self;
+    // Rows with a link can be dragged as a copy to other apps (Zotero, Obsidian, Mail, Finder).
+    [table setDraggingSourceOperationMask:NSDragOperationCopy forLocal:NO];
+    [table setDraggingSourceOperationMask:NSDragOperationNone forLocal:YES];
     table.headerView = nil; table.rowHeight = 70 * self.host.zoom; table.intercellSpacing = NSMakeSize(0, 2);
     table.style = NSTableViewStyleInset; table.backgroundColor = NSColor.textBackgroundColor;
     NSTableColumn *column = [[NSTableColumn alloc] initWithIdentifier:@"item"]; [table addTableColumn:column];
@@ -805,9 +813,43 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
 }
 - (void)activateRow { [self.host emit:self.spec[@"activate"] value:[self selectedRowId] secret:NO]; }
 - (void)contextRow { [self.host emit:self.spec[@"context"] value:[self selectedRowId] secret:NO]; }
+- (NSPasteboardItem *)pasteboardItemForRow:(NSInteger)row {
+  NSArray *rows = self.spec[@"rows"]; if (row < 0 || row >= (NSInteger)rows.count) return nil;
+  NSDictionary *drag = rows[(NSUInteger)row][@"drag"]; if (![drag isKindOfClass:NSDictionary.class]) return nil;
+  NSURL *url = [NSURL URLWithString:TRString(drag[@"url"])];
+  // The scene already admits only https links; check again before anything leaves the app.
+  if (![url.scheme.lowercaseString isEqual:@"https"]) return nil;
+  NSPasteboardItem *item = [NSPasteboardItem new];
+  [item setString:url.absoluteString forType:NSPasteboardTypeURL];
+  [item setString:TRString(drag[@"title"]) forType:@"public.url-name"];
+  [item setString:TRString(drag[@"text"]) forType:NSPasteboardTypeString];
+  return item;
+}
+- (id<NSPasteboardWriting>)tableView:(NSTableView *)table pasteboardWriterForRow:(NSInteger)row {
+  NSPasteboardItem *item = [self.spec[@"kind"] isEqual:@"table"] ? [self pasteboardItemForRow:row] : nil;
+  // AppKit asks for the writer synchronously when a drag starts inside mouseDown; the session
+  // itself may run later, so mark the drag here, before mouseDown would open the row.
+  if (item && [table isKindOfClass:TRTable.class]) ((TRTable *)table).dragged = YES;
+  return item;
+}
+- (void)tableView:(NSTableView *)table draggingSession:(NSDraggingSession *)session willBeginAtPoint:(NSPoint)point forRowIndexes:(NSIndexSet *)rows {
+  if ([table isKindOfClass:TRTable.class]) ((TRTable *)table).dragged = YES;
+}
+- (void)tableView:(NSTableView *)table draggingSession:(NSDraggingSession *)session endedAtPoint:(NSPoint)point operation:(NSDragOperation)operation {
+  if ([table isKindOfClass:TRTable.class]) ((TRTable *)table).dragged = YES;
+}
+- (void)share {
+  NSURL *url = [NSURL URLWithString:TRString(self.spec[@"share"][@"url"])];
+  if (![url.scheme.lowercaseString isEqual:@"https"]) return;
+  // Fixtures record the request; opening system sharing UI would block an unattended run.
+  if (self.host.fixture) { self.sharedURL = url.absoluteString; return; }
+  NSSharingServicePicker *picker = [[NSSharingServicePicker alloc] initWithItems:@[url]];
+  [picker showRelativeToRect:self.control.bounds ofView:self.control preferredEdge:NSRectEdgeMinY];
+}
 - (void)trigger:(id)sender {
   if (self.applying || [self.host.popover suppressesTriggerFrom:self.identifier]) return;
   if ([self.control isKindOfClass:NSControl.class] && !((NSControl *)self.control).enabled) return;
+  if ([self.spec[@"share"] isKindOfClass:NSDictionary.class]) { [self share]; return; }
   NSString *kind = self.spec[@"kind"];
   if ([kind isEqual:@"select"]) [self.host emit:self.spec[@"action"] value:((NSPopUpButton *)self.control).selectedItem.representedObject secret:NO];
   else if ([kind isEqual:@"segmented"]) {
@@ -949,6 +991,14 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     [self.control.effectiveAppearance performAsCurrentDrawingAppearance:^{
       result[@"graphicContrast"] = @(TRContrast(((TRChart *)self.control).accent,NSColor.textBackgroundColor));
     }];
+  }
+  if ([self.spec[@"share"] isKindOfClass:NSDictionary.class]) result[@"sharedURL"] = self.sharedURL ?: @"";
+  if ([self.spec[@"kind"] isEqual:@"table"] && [self.spec[@"rows"] count]) {
+    TRTable *table = (TRTable *)((NSScrollView *)self.control).documentView;
+    NSPasteboardItem *item = [self pasteboardItemForRow:0];
+    result[@"dragItem"] = item ? @{@"url":[item stringForType:NSPasteboardTypeURL] ?: @"",@"title":[item stringForType:@"public.url-name"] ?: @"",@"text":[item stringForType:NSPasteboardTypeString] ?: @""} : @{};
+    NSDraggingSession *noSession = nil;
+    result[@"dragOutside"] = @([table draggingSession:noSession sourceOperationMaskForDraggingContext:NSDraggingContextOutsideApplication] == NSDragOperationCopy);
   }
   if ([self.spec[@"kind"] isEqual:@"button"]) {
     NSButton *button = (NSButton *)self.control;

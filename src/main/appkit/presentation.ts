@@ -19,7 +19,8 @@ const nativeSymbols = [
   'newspaper',
   'cpu',
   'tablecells',
-  'text.bubble'
+  'text.bubble',
+  'square.and.arrow.up'
 ] as const
 export type NativeSymbol = (typeof nativeSymbols)[number]
 
@@ -32,6 +33,9 @@ export interface NativeRow {
   readonly symbolLabel?: string | undefined
   /** Research rows: the item is saved (trailing star). */
   readonly saved?: boolean | undefined
+  /** Research rows: what a drag to another app carries (https link, title, citation text). */
+  readonly drag?:
+    { readonly url: string; readonly title: string; readonly text: string } | undefined
   readonly cells?: Readonly<Record<string, string>> | undefined
 }
 /** Window-level commands shown in the AppKit toolbar; never part of the content tree. */
@@ -138,6 +142,8 @@ export interface NativeNode {
   /** Determinate progress (progress nodes only); omit both for indeterminate progress. */
   readonly completed?: number | undefined
   readonly total?: number | undefined
+  /** Button only: opens the system sharing picker for this https link instead of an action. */
+  readonly share?: { readonly url: string } | undefined
   /** The window's sidebar split: hosted so the toolbar title sits over the content column. */
   readonly windowSidebar?: boolean | undefined
   /** Centered columns center their stack and children; centered labels center their text. */
@@ -147,6 +153,17 @@ export interface NativeNode {
 }
 
 const short = z.string().max(4096)
+// Only https links may reach the pasteboard or a sharing service (as for Open in Browser).
+const httpsUrl = z
+  .string()
+  .max(4096)
+  .refine((value) => {
+    try {
+      return new URL(value).protocol === 'https:'
+    } catch {
+      return false
+    }
+  }, 'Only https links can be shared or dragged')
 const positive = z.number().finite().min(0).max(100000)
 const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
   z
@@ -210,6 +227,10 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
               symbol: z.enum(nativeSymbols).optional(),
               symbolLabel: z.string().min(1).max(40).optional(),
               saved: z.boolean().optional(),
+              drag: z
+                .object({ url: httpsUrl, title: z.string().max(4000), text: z.string().max(4000) })
+                .strict()
+                .optional(),
               cells: z.record(z.string().min(1).max(40), z.string().max(300)).optional()
             })
             .strict()
@@ -257,7 +278,8 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
       total: z.number().int().min(1).max(100000).optional(),
       shortcut: z.enum(['return', 'command-return']).optional(),
       align: z.literal('center').optional(),
-      windowSidebar: z.boolean().optional()
+      windowSidebar: z.boolean().optional(),
+      share: z.object({ url: httpsUrl }).strict().optional()
     })
     .strict()
     .superRefine((node, context) => {
@@ -302,6 +324,8 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
           code: 'custom',
           message: 'Native segmented controls need 2-6 options including the selected one'
         })
+      if (node.share !== undefined && node.kind !== 'button')
+        context.addIssue({ code: 'custom', message: 'Only native buttons share a link' })
       if (node.windowSidebar !== undefined && node.kind !== 'split')
         context.addIssue({ code: 'custom', message: 'Only a split hosts the window sidebar' })
       if (node.align !== undefined && node.kind !== 'column' && node.kind !== 'label')
