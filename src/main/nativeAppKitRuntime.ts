@@ -4,7 +4,8 @@ import { release } from 'node:os'
 import { app, type BrowserWindow, shell } from 'electron'
 import { NativePresenter } from './appkit/presenter'
 import { NativeRecordPresenter } from './appkit/recordPresenter'
-import type { NativeRecord } from './appkit/common'
+import { NativeSettingsPresenter } from './appkit/settingsPresenter'
+import type { NativeRecord, SettingsSection } from './appkit/common'
 import { readNativePreferences, writeNativePreferences } from './appkit/preferences'
 import type { WindowApplication } from './windowApplication'
 import { isSafeExternalUrl } from './windowApplicationRuntime'
@@ -25,6 +26,15 @@ interface WindowPresenter {
   dispose(): void
   flushPreferences(): Promise<void>
   start(): Promise<void>
+  /** The main window reloads settings saved in the Settings window. */
+  settingsChanged?(): Promise<void>
+  /** The Settings window shows one pane. */
+  select?(section: SettingsSection): void
+}
+/** Further windows the main window opens (native route only). */
+export interface NativeWindowOpeners {
+  readonly openRecord?: (record: NativeRecord) => void
+  readonly openSettings?: (section?: SettingsSection) => void
 }
 interface NativeSession {
   readonly presenter: WindowPresenter
@@ -58,7 +68,7 @@ function loadBridge(): NativeBridge {
 export async function attachAppKit(
   window: BrowserWindow,
   application: WindowApplication,
-  openRecord?: (record: NativeRecord) => void
+  openers: NativeWindowOpeners = {}
 ): Promise<void> {
   const bridge = loadBridge()
   const handle = window.getNativeWindowHandle()
@@ -84,7 +94,8 @@ export async function attachAppKit(
       const { width, height } = window.getContentBounds()
       return { width, height }
     },
-    ...(openRecord ? { openRecord } : {})
+    ...(openers.openRecord ? { openRecord: openers.openRecord } : {}),
+    ...(openers.openSettings ? { openSettings: openers.openSettings } : {})
   })
   await bindSession(window, bridge, handle, presenter)
 }
@@ -108,6 +119,34 @@ export async function attachRecordAppKit(
     }
   })
   await bindSession(window, bridge, handle, presenter)
+}
+
+/** The single Settings window; a save there reloads settings in every other native window. */
+export async function attachSettingsAppKit(
+  window: BrowserWindow,
+  application: WindowApplication,
+  section?: SettingsSection
+): Promise<void> {
+  const bridge = loadBridge()
+  const handle = window.getNativeWindowHandle()
+  const presenter = new NativeSettingsPresenter(application.api, {
+    locale: displayLocale(),
+    present: (scene) => {
+      if (!window.isDestroyed()) bridge.present(handle, scene)
+    },
+    openExternal: (url) => {
+      if (isSafeExternalUrl(url)) void shell.openExternal(url)
+    },
+    changed: () => {
+      for (const [other, session] of sessions)
+        if (other !== window) void session.presenter.settingsChanged?.().catch(() => undefined)
+    }
+  })
+  if (section) presenter.select(section)
+  await bindSession(window, bridge, handle, presenter)
+}
+export function selectSettingsPane(window: BrowserWindow, section: SettingsSection): void {
+  sessions.get(window)?.presenter.select?.(section)
 }
 
 async function bindSession(

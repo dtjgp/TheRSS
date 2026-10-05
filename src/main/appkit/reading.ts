@@ -255,7 +255,7 @@ export class ResearchReader implements NativeScreen {
                 ...(this.scope === 'saved' || item.kind === 'paper'
                   ? [
                       b.button(`${prefix}-analysis-configure-runner`, 'Open Settings', () =>
-                        this.context.navigate('settings')
+                        this.context.openSettings('provider')
                       )
                     ]
                   : [])

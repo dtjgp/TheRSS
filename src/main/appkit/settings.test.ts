@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
-import { SettingsScreen } from './settings'
+import { SETTINGS_SECTIONS, SettingsScreen } from './settings'
 import { nativeHarness } from './testSupport'
 import type { NativeNode } from './presentation'
 
@@ -15,7 +15,7 @@ const provider = {
 }
 
 describe('AppKit Settings', () => {
-  it('names the selected section once, in the section pop-up, not again as a heading', async () => {
+  it('switches panes without a pop-up and never repeats the pane name as a heading', async () => {
     const h = nativeHarness()
     const screen = new SettingsScreen(h.context)
     await screen.load()
@@ -23,25 +23,50 @@ describe('AppKit Settings', () => {
       ...(node.kind === 'label' && node.weight === 'title' ? [node.text ?? ''] : []),
       ...(node.children ?? []).flatMap(headings)
     ]
-    for (const [section, title] of [
-      ['personal', 'Personal context'],
-      ['provider', 'Model provider']
+    expect(screen.section).toBe('personal')
+    for (const [section, form] of [
+      ['personal', 'personal-form'],
+      ['provider', 'provider-form']
     ] as const) {
-      await h.act(screen, 'settings-tab', section)
+      screen.select(section)
       const scene = h.render(screen)
-      expect(
-        h.find(scene, 'settings-tab')?.options?.find((option) => option.id === section)?.title
-      ).toBe(title)
-      expect(headings(scene)).not.toContain(title)
+      expect(screen.section).toBe(section)
+      expect(h.find(scene, form)).toBeDefined()
+      expect(h.find(scene, 'settings-tab')).toBeUndefined()
+      expect(h.find(scene, 'settings-description')).toBeUndefined()
+      expect(headings(scene)).not.toContain(SETTINGS_SECTIONS[section].title)
     }
     expect(headings(h.render(screen))).toContain('Local agents')
+  })
+  it('reports a successful save, credential clear and prompt save to its window', async () => {
+    const changed = vi.fn()
+    const h = nativeHarness({
+      getModelProvider: vi.fn(async () => provider),
+      saveModelProvider: vi.fn(async () => provider),
+      clearModelProviderCredential: vi.fn(async () => ({ ...provider, hasCredential: false })),
+      saveDiscoverPersonalizationPrompt: vi.fn(async (prompt) => ({ prompt, updatedAt: 'now' }))
+    })
+    const screen = new SettingsScreen(h.context, { changed })
+    await screen.load()
+    await h.act(screen, 'personal-prompt', 'Edge AI')
+    await h.act(screen, 'personal-save')
+    expect(changed).toHaveBeenCalledTimes(1)
+    screen.select('provider')
+    await h.act(screen, 'provider-save')
+    expect(changed).toHaveBeenCalledTimes(2)
+    await h.act(screen, 'provider-clear-key')
+    expect(changed).toHaveBeenCalledTimes(3)
+    // A rejected save changes nothing elsewhere.
+    vi.mocked(h.api.saveModelProvider).mockRejectedValueOnce(new Error('rejected'))
+    await h.act(screen, 'provider-save')
+    expect(changed).toHaveBeenCalledTimes(3)
   })
   it('reports invalid fields beside their inputs, focuses the first error and clears only edited errors', async () => {
     const save = vi.fn()
     const h = nativeHarness({ saveModelProvider: save })
     const screen = new SettingsScreen(h.context)
     await screen.load()
-    await h.act(screen, 'settings-tab', 'provider')
+    screen.select('provider')
     await h.act(screen, 'provider-url', 'file:///not-a-provider')
     await h.act(screen, 'provider-save')
     expect(save).not.toHaveBeenCalled()
@@ -66,15 +91,15 @@ describe('AppKit Settings', () => {
     const screen = new SettingsScreen(h.context)
     await screen.load()
     await h.act(screen, 'personal-prompt', 'Research focus')
-    await h.act(screen, 'settings-tab', 'provider')
+    screen.select('provider')
     await h.act(screen, 'provider-name', 'Edited')
-    await h.act(screen, 'settings-tab', 'personal')
+    screen.select('personal')
     expect(h.find(h.render(screen), 'personal-prompt')?.value).toBe('Research focus')
     await h.act(screen, 'personal-save')
     expect(h.api.setSettingsDirty).toHaveBeenLastCalledWith(true)
     screen.discard()
     expect(h.api.setSettingsDirty).toHaveBeenLastCalledWith(false)
-    await h.act(screen, 'settings-tab', 'provider')
+    screen.select('provider')
     expect(h.find(h.render(screen), 'provider-name')?.value).toBe('Original')
   })
 
@@ -93,7 +118,7 @@ describe('AppKit Settings', () => {
     })
     const screen = new SettingsScreen(h.context)
     await screen.load()
-    await h.act(screen, 'settings-tab', 'provider')
+    screen.select('provider')
     await h.act(screen, 'provider-key', fixtureCredential, true)
     expect(JSON.stringify(h.render(screen))).not.toContain(fixtureCredential)
     await h.act(screen, 'provider-test')
@@ -116,7 +141,7 @@ describe('AppKit Settings', () => {
     })
     const screen = new SettingsScreen(h.context)
     await screen.load()
-    await h.act(screen, 'settings-tab', 'provider')
+    screen.select('provider')
     await h.act(screen, 'provider-url', 'https://another.invalid')
     await h.act(screen, 'provider-save')
     expect(save).not.toHaveBeenCalled()

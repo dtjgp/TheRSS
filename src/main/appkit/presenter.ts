@@ -9,13 +9,13 @@ import {
   type NativeContext,
   type NativeRecord,
   type NativeScreen,
-  type Route
+  type Route,
+  type SettingsSection
 } from './common'
 import { NativePresentation } from './presentation'
 import type { NativeAnnouncement, NativeNode, NativeToolbar } from './presentation'
 import { DiscoverScreen } from './discover'
 import { SavedScreen } from './saved'
-import { SettingsScreen } from './settings'
 import { SourcesScreen } from './sources'
 import { AnalyticsScreen } from './analytics'
 import { NativeModals } from './modals'
@@ -34,13 +34,14 @@ export interface NativePresenterPort {
   readonly locale?: string
   /** Opens a record in its own read-only window (native route only). */
   openRecord?(record: NativeRecord): void
+  /** Opens the separate Settings window (native route only). */
+  openSettings?(section?: SettingsSection): void
 }
 const routes: readonly { id: Route; title: string; symbol: NativeNode['symbol'] }[] = [
   { id: 'discover', title: 'Discover', symbol: 'sparkle.magnifyingglass' },
   { id: 'saved', title: 'Saved', symbol: 'star' },
   { id: 'analytics', title: 'Data Analytics', symbol: 'chart.bar' },
-  { id: 'sources', title: 'Sources', symbol: 'square.stack' },
-  { id: 'settings', title: 'Settings', symbol: 'gearshape' }
+  { id: 'sources', title: 'Sources', symbol: 'square.stack' }
 ]
 
 export class NativePresenter {
@@ -58,6 +59,8 @@ export class NativePresenter {
   private disposed = false
   private renderQueued = false
   private navigating = false
+  private settingsReload = 0
+  private settingsReloadPending = false
   private pendingFocus: string | undefined
   private notice = ''
   private noticeKind: 'success' | 'error' = 'success'
@@ -97,6 +100,7 @@ export class NativePresenter {
       showDocument: (title, content) => this.modals.openDocument(title, content),
       promote: (itemId, sessionId) => this.modals.openPromotion(itemId, sessionId),
       openRecord: (record) => port.openRecord?.(record),
+      openSettings: (section) => port.openSettings?.(section),
       width: (key) => this.preferences[key],
       setWidth: (key, width) => {
         this.preferences = { ...this.preferences, [key]: Math.round(width) }
@@ -110,7 +114,6 @@ export class NativePresenter {
     this.screens = {
       discover: new DiscoverScreen(this.context, this.triage),
       saved: new SavedScreen(this.context, this.triage),
-      settings: new SettingsScreen(this.context),
       sources: new SourcesScreen(this.context),
       analytics: new AnalyticsScreen(this.context)
     }
@@ -142,12 +145,39 @@ export class NativePresenter {
       })
       await this.screens.discover.load?.()
       this.ready = true
+      if (this.settingsReloadPending) {
+        this.settingsReloadPending = false
+        void this.settingsChanged()
+      }
     } catch {
       this.notice = 'The local research index could not be opened. Retry to load your workspace.'
     } finally {
       this.loading = false
       this.renderNow()
     }
+  }
+  /** The Settings window saved changes: reload what Discover and reading depend on. */
+  async settingsChanged(): Promise<void> {
+    if (this.disposed) return
+    // Startup may already have read the old values: reload once it is ready.
+    if (!this.ready) {
+      this.settingsReloadPending = true
+      return
+    }
+    const reload = ++this.settingsReload
+    const [provider, agents, personal] = await Promise.all([
+      this.api.getModelProvider(),
+      this.api.getLocalAgentStatuses(),
+      this.api.getDiscoverPersonalizationSettings()
+    ]).catch(() => [undefined, undefined, undefined] as const)
+    // Only the latest reload applies; a failed one keeps the current values.
+    if (this.disposed || reload !== this.settingsReload || agents === undefined) return
+    Object.assign(this.context.data, {
+      provider: provider ?? null,
+      agents,
+      personalPrompt: personal?.prompt ?? ''
+    })
+    this.redraw()
   }
   async navigate(route: Route): Promise<void> {
     if (this.navigating || this.modals.blocksNavigation || !this.ready) return
@@ -169,10 +199,6 @@ export class NativePresenter {
       return
     this.navigating = true
     try {
-      if (this.route === 'settings') {
-        if (!(await this.api.confirmDiscardSettings())) return
-        ;(this.screens.settings as SettingsScreen).discard()
-      }
       await this.modals.close()
       this.screens[this.route].closePopover?.()
       this.route = route
@@ -185,7 +211,7 @@ export class NativePresenter {
   }
   async command(command: AppCommand): Promise<void> {
     if (this.disposed) return
-    if (command === 'open-settings') await this.navigate('settings')
+    if (command === 'open-settings') this.port.openSettings?.()
     else if (command === 'show-saved') await this.navigate('saved')
     else if (command === 'show-discover') await this.navigate('discover')
     else if (command === 'show-analytics') await this.navigate('analytics')
@@ -246,12 +272,6 @@ export class NativePresenter {
     const discover = this.screens.discover as DiscoverScreen
     if (record.kind === 'discover' && discover.searching)
       return 'Wait for the active Discover search to finish before opening a historical session.'
-    if (this.route === 'settings') {
-      if (!(await this.api.confirmDiscardSettings()))
-        return 'Settings were kept. Finish editing before opening this local result.'
-      if (!isCurrent()) return null
-      ;(this.screens.settings as SettingsScreen).discard()
-    }
     if (route === 'analytics') await this.screens.analytics.load?.()
     if (!isCurrent() || this.disposed) return null
     const origin = this.route

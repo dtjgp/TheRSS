@@ -476,7 +476,7 @@ export class DiscoverScreen implements NativeScreen {
       ...(!queryMissing && !sourcesMissing && runnerReason
         ? [
             b.button('discover-configure-runner', 'Open Settings', () =>
-              this.context.navigate('settings')
+              this.context.openSettings('provider')
             )
           ]
         : [])

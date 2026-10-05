@@ -52,6 +52,7 @@ export class NativeRecordPresenter {
       showDocument: () => undefined,
       promote: async () => undefined,
       openRecord: () => undefined,
+      openSettings: () => undefined,
       width: () => 320,
       setWidth: () => undefined
     }

@@ -20,7 +20,8 @@ const nativeSymbols = [
   'cpu',
   'tablecells',
   'text.bubble',
-  'square.and.arrow.up'
+  'square.and.arrow.up',
+  'person.crop.circle'
 ] as const
 export type NativeSymbol = (typeof nativeSymbols)[number]
 
@@ -57,6 +58,10 @@ export interface NativeToolbarItem {
 export interface NativeToolbar {
   readonly title: string
   readonly items: readonly NativeToolbarItem[]
+  /** `preference`: a Settings window toolbar of selectable panes (centered, with labels). */
+  readonly style?: 'preference' | undefined
+  /** The selected pane item of a preference toolbar. */
+  readonly selected?: string | undefined
 }
 /** Transient content shown in an NSPopover below the `anchor` node of the scene root. */
 export interface NativePopover {
@@ -400,9 +405,24 @@ const toolbarSchema: z.ZodType<NativeToolbar> = z
       .max(8)
       .refine((items) => new Set(items.map((item) => item.id)).size === items.length, {
         message: 'Toolbar item identities must be unique'
-      })
+      }),
+    style: z.literal('preference').optional(),
+    selected: z.string().min(1).max(100).optional()
   })
   .strict()
+  .refine(
+    (toolbar) =>
+      toolbar.selected === undefined ||
+      (toolbar.style === 'preference' &&
+        toolbar.items.some((item) => item.id === toolbar.selected && item.kind !== 'search')),
+    { message: 'A selected toolbar item must be a pane of a preference toolbar' }
+  )
+  .refine(
+    (toolbar) =>
+      toolbar.style !== 'preference' ||
+      toolbar.items.every((item) => item.kind === undefined && item.placement === undefined),
+    { message: 'A preference toolbar contains only selectable panes' }
+  )
 
 type Value = string | boolean | number | undefined
 type Rule =

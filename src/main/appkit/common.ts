@@ -15,7 +15,9 @@ import type {
 } from './presentation'
 import type { LocalResearchTarget } from '../../shared/localResearch'
 
-export type Route = 'discover' | 'saved' | 'analytics' | 'sources' | 'settings'
+export type Route = 'discover' | 'saved' | 'analytics' | 'sources'
+/** A pane of the separate Settings window. */
+export type SettingsSection = 'personal' | 'provider'
 export const recordViewId = (prefix: string, id: string): string =>
   `${prefix}:${createHash('sha256').update(id).digest('hex').slice(0, 16)}`
 export interface NativeData {
@@ -48,6 +50,8 @@ export interface NativeContext {
   showDocument(title: string, content: string): void
   promote(itemId: string, sessionId?: string): Promise<void>
   openRecord(record: NativeRecord): void
+  /** Opens the Settings window (native route), optionally on one pane. */
+  openSettings(section?: SettingsSection): void
   width(key: 'sidebar' | 'discover' | 'saved'): number
   setWidth(key: 'sidebar' | 'discover' | 'saved', width: number): void
 }

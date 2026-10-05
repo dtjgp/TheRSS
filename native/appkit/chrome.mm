@@ -37,6 +37,7 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
   __weak TRHost *_host;
   NSArray<NSDictionary *> *_items;
   NSString *_signature;
+  BOOL _preference;
   NSUInteger _generation;
   BOOL _installed;
   NSWindowStyleMask _styleMask;
@@ -74,6 +75,8 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
   [NSNotificationCenter.defaultCenter removeObserver:self name:NSControlTextDidChangeNotification object:nil];
 }
 - (NSArray<NSToolbarItemIdentifier> *)identifiers {
+  // A Settings window's panes: AppKit centers them in the preference toolbar style.
+  if (_preference) return [_items valueForKey:@"id"] ?: @[];
   NSMutableArray *leading = [NSMutableArray array], *trailing = [NSMutableArray array];
   for (NSDictionary *item in _items) [[item[@"placement"] isEqual:@"sidebar"] ? leading : trailing addObject:item[@"id"]];
   // With the window split hosted by a split view controller, a tracking separator follows the
@@ -90,13 +93,17 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
   NSString *title = [spec[@"title"] isKindOfClass:NSString.class] ? spec[@"title"] : @"TheRSS";
   if (![window.title isEqual:title]) window.title = title;
   _items = [spec[@"items"] isKindOfClass:NSArray.class] ? spec[@"items"] : @[];
+  _preference = [spec[@"style"] isEqual:@"preference"];
+  NSWindowToolbarStyle style = _preference ? NSWindowToolbarStylePreference : NSWindowToolbarStyleUnified;
+  if (window.toolbarStyle != style) window.toolbarStyle = style;
   NSString *signature = [[self identifiers] componentsJoinedByString:@"|"];
   if (!window.toolbar || window.toolbar == _previousToolbar) {
     _signature = signature;
     NSToolbar *toolbar = [[NSToolbar alloc] initWithIdentifier:[NSString stringWithFormat:@"therss.window.%lu",(unsigned long)++_generation]];
-    toolbar.delegate = self; toolbar.displayMode = NSToolbarDisplayModeIconOnly;
-    toolbar.allowsUserCustomization = NO; toolbar.autosavesConfiguration = NO;
+    toolbar.delegate = self; toolbar.allowsUserCustomization = NO; toolbar.autosavesConfiguration = NO;
     window.toolbar = toolbar;
+    [self applyDisplayMode];
+    [self select:spec[@"selected"]];
     return;
   }
   if (![signature isEqual:_signature]) {
@@ -119,6 +126,20 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
     }
   }
   for (NSToolbarItem *item in window.toolbar.items) [self configure:item];
+  [self applyDisplayMode];
+  [self select:spec[@"selected"]];
+}
+// Preference panes show their labels, as in Mail Settings; workspace commands are icons only.
+// Set after the toolbar is attached: AppKit applies the window's own default when it attaches.
+- (void)applyDisplayMode {
+  NSToolbar *toolbar = _host.window.toolbar;
+  NSToolbarDisplayMode mode = _preference ? NSToolbarDisplayModeIconAndLabel : NSToolbarDisplayModeIconOnly;
+  if (toolbar && toolbar.displayMode != mode) toolbar.displayMode = mode;
+}
+- (void)select:(id)identifier {
+  NSToolbar *toolbar = _host.window.toolbar;
+  NSString *selected = _preference && [identifier isKindOfClass:NSString.class] ? identifier : nil;
+  if (toolbar && ![toolbar.selectedItemIdentifier ?: @"" isEqual:selected ?: @""]) toolbar.selectedItemIdentifier = selected;
 }
 - (NSDictionary *)specFor:(NSString *)identifier {
   for (NSDictionary *item in _items) if ([item[@"id"] isEqual:identifier]) return item;
@@ -161,7 +182,8 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
     return search;
   }
   NSToolbarItem *item = [[NSToolbarItem alloc] initWithItemIdentifier:identifier];
-  item.bordered = YES; item.target = self; item.action = @selector(activate:);
+  // Preference panes are plain selectable icons with labels, as in Mail Settings.
+  item.bordered = !_preference; item.target = self; item.action = @selector(activate:);
   // Sidebar items sit in the sidebar section before the tracking separator, as in Mail and
   // Notes; without a window split they fall back to leading the title as navigational items.
   item.navigational = [[self specFor:identifier][@"placement"] isEqual:@"sidebar"] && ![_host windowSplitView];
@@ -170,6 +192,7 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
 }
 - (NSArray<NSToolbarItemIdentifier> *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar { return [self identifiers]; }
 - (NSArray<NSToolbarItemIdentifier> *)toolbarAllowedItemIdentifiers:(NSToolbar *)toolbar { return [self identifiers]; }
+- (NSArray<NSToolbarItemIdentifier> *)toolbarSelectableItemIdentifiers:(NSToolbar *)toolbar { return _preference ? [self identifiers] : @[]; }
 - (void)activate:(NSToolbarItem *)sender {
   NSDictionary *spec = [self specFor:sender.itemIdentifier];
   if (!spec || !sender.enabled || _host.sheet) return;
@@ -251,7 +274,8 @@ NSTableCellView *TRSidebarCellView(NSDictionary *row, CGFloat zoom) {
   CGFloat divider = sidebarPane && !sidebarPane.isHidden ? NSMaxX([sidebarPane convertRect:sidebarPane.bounds toView:nil]) : 0;
   BOOL separator = NO; for (NSToolbarItem *item in window.toolbar.items) if ([item isKindOfClass:NSTrackingSeparatorToolbarItem.class]) separator = YES;
   return @{@"installed":@(_installed),@"title":window.title ?: @"",@"titleFrame":NSStringFromRect(titleFrame),@"sidebarDivider":@(divider),@"trackingSeparator":@(separator),@"titleVisible":@(window.titleVisibility == NSWindowTitleVisible),
-           @"style":window.toolbarStyle == NSWindowToolbarStyleUnified ? @"unified" : @"other",
+           @"style":window.toolbarStyle == NSWindowToolbarStyleUnified ? @"unified" : window.toolbarStyle == NSWindowToolbarStylePreference ? @"preference" : @"other",
+           @"selected":window.toolbar.selectedItemIdentifier ?: @"",@"displayMode":window.toolbar.displayMode == NSToolbarDisplayModeIconAndLabel ? @"iconAndLabel" : window.toolbar.displayMode == NSToolbarDisplayModeIconOnly ? @"iconOnly" : @"other",
            @"fullSizeContent":@((window.styleMask & NSWindowStyleMaskFullSizeContentView) != 0),
            @"safeTop":@([_host safeTop]),@"closeButtonFrame":NSStringFromRect(closeFrame),
            @"windowHeight":@(window.frame.size.height),@"contentFrame":NSStringFromRect(window.contentView.frame),

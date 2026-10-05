@@ -32,8 +32,7 @@ describe('AppKit application shell', () => {
       ['discover', 'Discover', 'sparkle.magnifyingglass'],
       ['saved', 'Saved', 'star'],
       ['analytics', 'Data Analytics', 'chart.bar'],
-      ['sources', 'Sources', 'square.stack'],
-      ['settings', 'Settings', 'gearshape']
+      ['sources', 'Sources', 'square.stack']
     ])
     expect(parsed.toolbar.title).toBe('Discover')
     expect(parsed.toolbar.items.map((item: { id: string }) => item.id)).toEqual([
@@ -105,7 +104,7 @@ describe('AppKit application shell', () => {
       ...(node.kind === 'label' && node.weight === 'title' ? [node.text ?? ''] : []),
       ...(node.children ?? []).flatMap(headings)
     ]
-    for (const route of ['discover', 'saved', 'analytics', 'sources', 'settings'] as const) {
+    for (const route of ['discover', 'saved', 'analytics', 'sources'] as const) {
       await presenter.navigate(route)
       const parsed = JSON.parse(scene)
       expect(headings(h.find(parsed.root, 'native-main')!)).not.toContain(parsed.toolbar.title)
@@ -170,27 +169,111 @@ describe('AppKit application shell', () => {
     })
     presenter.dispose()
   })
-  it('guards settings navigation and keeps the original route when edits are retained', async () => {
-    const confirm = vi.fn(async () => false)
-    const h = nativeHarness({
-      getLocalAgentStatuses: vi.fn(async () => []),
-      confirmDiscardSettings: confirm
-    })
-    const output: string[] = []
+  it('opens Settings in its own window and reloads settings saved there', async () => {
+    const provider = {
+      id: 'default',
+      name: 'Saved provider',
+      protocol: 'openai-compatible' as const,
+      baseUrl: 'https://model.invalid/v1',
+      model: 'research',
+      hasCredential: false,
+      updatedAt: '2026-10-05'
+    }
+    const h = nativeHarness({ getLocalAgentStatuses: vi.fn(async () => []) })
+    const openSettings = vi.fn()
+    let scene = ''
     const presenter = new NativePresenter(h.api, {
       preferences: { ...defaultNativePreferences },
-      present: (scene) => output.push(scene),
+      present: (next) => {
+        scene = next
+      },
+      persist: vi.fn(async () => undefined),
+      openExternal: vi.fn(),
+      openSettings
+    })
+    await presenter.start()
+    await presenter.command('open-settings')
+    expect(openSettings).toHaveBeenCalledExactlyOnceWith()
+    expect(JSON.parse(scene).toolbar.title).toBe('Discover')
+    expect(h.find(JSON.parse(scene).root, 'native-navigation')?.selected).toBe('discover')
+    const runner = () =>
+      h
+        .find(JSON.parse(scene).root, 'discover-runner')
+        ?.options?.find((option) => option.id === 'model-provider')
+    expect(runner()).toMatchObject({ title: 'Model provider', enabled: false })
+    expect(h.find(JSON.parse(scene).root, 'discover-personalization')?.text).toContain(
+      'No personal context saved'
+    )
+    // Another window saved a provider and personal context: the workspace reloads them.
+    vi.mocked(h.api.getModelProvider).mockResolvedValue(provider)
+    vi.mocked(h.api.getDiscoverPersonalizationSettings).mockResolvedValue({
+      prompt: 'Edge AI',
+      updatedAt: '2026-10-05'
+    })
+    await presenter.settingsChanged()
+    await Promise.resolve()
+    expect(runner()).toMatchObject({ title: 'Saved provider', enabled: true })
+    expect(h.find(JSON.parse(scene).root, 'discover-personalization')?.text).toContain(
+      'Personal context active'
+    )
+    expect(h.api.getLocalAgentStatuses).toHaveBeenCalledTimes(2)
+    presenter.dispose()
+  })
+  it('keeps a settings reload requested during startup and applies only the latest reload', async () => {
+    const provider = (name: string) => ({
+      id: 'default',
+      name,
+      protocol: 'openai-compatible' as const,
+      baseUrl: 'https://model.invalid/v1',
+      model: 'research',
+      hasCredential: false,
+      updatedAt: '2026-10-05'
+    })
+    let finishDashboard!: () => void
+    const h = nativeHarness({ getLocalAgentStatuses: vi.fn(async () => []) })
+    const dashboard = await h.api.getDashboard()
+    vi.mocked(h.api.getDashboard).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishDashboard = () => resolve(dashboard)
+        })
+    )
+    let scene = ''
+    const presenter = new NativePresenter(h.api, {
+      preferences: { ...defaultNativePreferences },
+      present: (next) => {
+        scene = next
+      },
       persist: vi.fn(async () => undefined),
       openExternal: vi.fn()
     })
-    await presenter.start()
-    await presenter.navigate('settings')
-    await presenter.navigate('saved')
-    expect(confirm).toHaveBeenCalledOnce()
-    expect(output.at(-1)).toContain('settings-page')
-    confirm.mockResolvedValue(true)
-    await presenter.navigate('saved')
-    expect(output.at(-1)).toContain('saved-page')
+    const runner = () =>
+      h
+        .find(JSON.parse(scene).root, 'discover-runner')
+        ?.options?.find((option) => option.id === 'model-provider')?.title
+    const starting = presenter.start()
+    // Startup already read the old provider; a save lands before startup finishes.
+    await Promise.resolve()
+    vi.mocked(h.api.getModelProvider).mockResolvedValue(provider('Saved during startup'))
+    await presenter.settingsChanged()
+    finishDashboard()
+    await starting
+    await vi.waitFor(() => expect(runner()).toBe('Saved during startup'))
+    // Two quick saves: the older, slower reload must not overwrite the newer one.
+    let finishOld!: () => void
+    vi.mocked(h.api.getModelProvider).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishOld = () => resolve(provider('Older'))
+        })
+    )
+    const older = presenter.settingsChanged()
+    vi.mocked(h.api.getModelProvider).mockResolvedValue(provider('Newer'))
+    await presenter.settingsChanged()
+    finishOld()
+    await older
+    await Promise.resolve()
+    expect(runner()).toBe('Newer')
     presenter.dispose()
   })
   it('changes native zoom and sidebar preferences, with no renderer zoom or geometry API', async () => {

@@ -17,11 +17,24 @@ const f = vi.hoisted(() => {
     flushPreferences: vi.fn(async () => undefined),
     zoom: vi.fn(),
     layoutChanged: vi.fn(),
-    command: vi.fn(async () => undefined)
+    command: vi.fn(async () => undefined),
+    settingsChanged: vi.fn(async () => undefined)
+  }
+  const settings = {
+    start: vi.fn(async () => undefined),
+    receive: vi.fn(),
+    dispose: vi.fn(),
+    flushPreferences: vi.fn(async () => undefined),
+    zoom: vi.fn(),
+    layoutChanged: vi.fn(),
+    command: vi.fn(async () => undefined),
+    select: vi.fn()
   }
   return {
     bridge,
     presenter,
+    settings,
+    settingsOptions: [] as unknown[],
     presenterOptions: [] as unknown[],
     create: vi.fn(),
     read: vi.fn(async () => ({
@@ -62,8 +75,18 @@ vi.mock('./appkit/presenter', () => ({
     }
   }
 }))
+vi.mock('./appkit/settingsPresenter', () => ({
+  NativeSettingsPresenter: class {
+    constructor(_api: unknown, options: unknown) {
+      f.settingsOptions.push(options)
+      return f.settings
+    }
+  }
+}))
 import {
   attachAppKit,
+  attachSettingsAppKit,
+  selectSettingsPane,
   dispatchNativeMenu,
   displayLocale,
   drainNativePreferences,
@@ -94,6 +117,7 @@ describe('AppKit runtime wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     f.presenterOptions.length = 0
+    f.settingsOptions.length = 0
     f.bridge.edit.mockReturnValue(true)
   })
   afterEach(() => vi.unstubAllEnvs())
@@ -152,6 +176,25 @@ describe('AppKit runtime wiring', () => {
     flushNativeInterface(w.window)
     dispatchNativeMenu(w.window, 'copy')
     expect(f.bridge.flush).toHaveBeenCalledTimes(6)
+  })
+  it('opens Settings on a pane and reloads the other windows after a save there', async () => {
+    const main = windowFixture(),
+      settings = windowFixture()
+    const openSettings = vi.fn()
+    await attachAppKit(main.window, { api: {} } as WindowApplication, { openSettings })
+    expect((f.presenterOptions[0] as { openSettings: unknown }).openSettings).toBe(openSettings)
+    await attachSettingsAppKit(settings.window, { api: {} } as WindowApplication, 'provider')
+    expect(f.settings.select).toHaveBeenCalledWith('provider')
+    expect(f.settings.start).toHaveBeenCalledOnce()
+    selectSettingsPane(settings.window, 'personal')
+    expect(f.settings.select).toHaveBeenLastCalledWith('personal')
+    selectSettingsPane(main.window, 'personal')
+    expect(f.settings.select).toHaveBeenCalledTimes(2)
+    ;(f.settingsOptions[0] as { changed(): void }).changed()
+    expect(f.presenter.settingsChanged).toHaveBeenCalledOnce()
+    settings.close()
+    main.close()
+    await drainNativePreferences()
   })
   it('keeps the native toolbar title instead of the host page title', async () => {
     const w = windowFixture()

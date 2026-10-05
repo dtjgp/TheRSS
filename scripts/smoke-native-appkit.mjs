@@ -164,6 +164,42 @@ async function menu(label) {
       throw new Error('Missing native menu item: ' + wanted)
   }, label)
 }
+/**
+ * Command-comma opens the separate Settings window. The fixture helpers drive
+ * `__nativeWindow`, so point it at the Settings window until `useMainWindow()`.
+ */
+async function useSettingsWindow({ open = true } = {}) {
+  if (open) await menu('Settings…')
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const found = await application.evaluate(({ BrowserWindow }) => {
+      globalThis.__mainWindow ??= globalThis.__nativeWindow
+      for (const window of BrowserWindow.getAllWindows()) {
+        if (window === globalThis.__mainWindow || window.isDestroyed()) continue
+        try {
+          const state = JSON.parse(
+            globalThis.__nativeBridge.inspect(window.getNativeWindowHandle())
+          )
+          if (state.toolbar?.style !== 'preference' || !state.visible) continue
+        } catch {
+          continue
+        }
+        globalThis.__nativeWindow = window
+        return true
+      }
+      return false
+    })
+    if (found) return
+    await delay(100)
+  }
+  throw new Error('The Settings window did not open')
+}
+async function useMainWindow() {
+  await application.evaluate(() => {
+    globalThis.__nativeWindow = globalThis.__mainWindow ?? globalThis.__nativeWindow
+  })
+}
+const windowCount = () =>
+  application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)
 // At ordinary window heights every workspace must fit: lists, tables and readers scroll, the
 // page does not. The adaptive outer scroll remains a fallback for small windows and high zoom.
 function assertFitsWindow(state, name) {
@@ -415,7 +451,7 @@ try {
     assert.equal(nav.selected, 'discover')
     assert.deepEqual(
       nav.rows.map((row) => row.id),
-      ['discover', 'saved', 'analytics', 'sources', 'settings']
+      ['discover', 'saved', 'analytics', 'sources']
     )
     assert(!find(result.root, 'native-brand'), 'The sidebar carries no in-window branding')
     const chrome = result.toolbar
@@ -729,14 +765,46 @@ try {
     assert.match(find(saved.root, 'saved-analysis').text, /Analysis provenance/)
     await capture('saved-repository')
   })
+  await step(
+    'Settings opens in its own window and the workspace reloads saved context',
+    async () => {
+      const before = await windowCount()
+      await useSettingsWindow()
+      const opened = await wait('personal-prompt', (node) => node?.enabled)
+      assert.equal(await windowCount(), before + 1, 'Settings is a separate window')
+      assert.equal(opened.toolbar.style, 'preference')
+      assert.equal(opened.toolbar.displayMode, 'iconAndLabel')
+      assert.equal(opened.toolbar.selected, 'settings-personal')
+      assert.equal(opened.toolbar.title, 'Personal Context')
+      assert.deepEqual(
+        opened.toolbar.items.map((item) => [item.id, item.label, item.hasImage]),
+        [
+          ['settings-personal', 'Personal Context', true],
+          ['settings-provider', 'Model Provider', true]
+        ]
+      )
+      assert(!find(opened.root, 'settings-tab'), 'Panes are toolbar items, not a pop-up')
+      await act('personal-prompt', 'fill', '资源高效 AI 与边缘智能')
+      await click('personal-save')
+      await wait('settings-status', (node) => /context saved/.test(node?.text || ''))
+      await capture('settings-personal')
+      // Command-comma again focuses the same window.
+      await menu('Settings…')
+      await delay(200)
+      assert.equal(await windowCount(), before + 1)
+      await useMainWindow()
+      await go('discover')
+      await wait('discover-personalization', (node) =>
+        /Personal context active/.test(node?.text || '')
+      )
+    }
+  )
   await step('Secure key then immediate Save uses the real ordered callback queue', async () => {
-    await go('settings')
-    await wait('personal-prompt', (node) => node?.enabled)
-    await act('personal-prompt', 'fill', '资源高效 AI 与边缘智能')
-    await click('personal-save')
-    await wait('settings-status', (node) => /context saved/.test(node?.text || ''))
-    await act('settings-tab', 'choose', 'provider')
-    await wait('provider-name', (node) => node?.enabled)
+    await useSettingsWindow({ open: false })
+    await click('settings-provider')
+    const pane = await wait('provider-name', (node) => node?.enabled)
+    assert.equal(pane.toolbar.selected, 'settings-provider')
+    assert.equal(pane.toolbar.title, 'Model Provider')
     await act('provider-name', 'fill', 'Native fixture')
     await act('provider-url', 'fill', 'https://fixture.invalid/v1')
     await act('provider-model', 'fill', 'fixture-model')
@@ -764,30 +832,51 @@ try {
     await capture('settings-provider')
     const form = await inspect()
     const frameWidth = (node) => Number(node.frame.match(/-?\d+(?:\.\d+)?/gu)[2])
-    assert(frameWidth(find(form.root, 'settings-tab')) <= 250)
     assert(frameWidth(find(form.root, 'provider-form')) <= 800)
   })
   await step(
     'Secure draft survives tabs and explicit discard clears the hidden native field',
     async () => {
       await act('provider-key', 'fill', 'fixture-unsaved-replacement')
-      await act('settings-tab', 'choose', 'personal')
+      await click('settings-personal')
       await wait('personal-prompt')
       assert.equal((await inspect()).secureDrafts['provider-key'].hasValue, true)
-      await act('settings-tab', 'choose', 'provider')
+      await click('settings-provider')
       await wait('provider-key', (node) => node?.hasValue === true)
-      await act('settings-tab', 'choose', 'personal')
+      await click('settings-personal')
       await wait('personal-prompt')
+      // Workspace commands from the Settings window go to the main window and keep the draft.
       await menu('Saved')
+      await useMainWindow()
+      await wait('saved-items')
+      await useSettingsWindow({ open: false })
+      assert.equal((await inspect()).secureDrafts['provider-key'].hasValue, true)
+      await application.evaluate(() => globalThis.__nativeWindow.close())
       await alert('Keep Editing')
       await answerAlert('Keep Editing')
       await wait('personal-prompt')
       assert.equal((await inspect()).secureDrafts['provider-key'].hasValue, true)
-      await menu('Saved')
+      await application.evaluate(() => globalThis.__nativeWindow.close())
       await alert('Discard Changes')
       await answerAlert('Discard Changes')
+      for (
+        let attempt = 0;
+        attempt < 100 &&
+        !(await application.evaluate(() => globalThis.__nativeWindow.isDestroyed()));
+        attempt++
+      )
+        await delay(50)
+      assert.equal(await application.evaluate(() => globalThis.__nativeWindow.isDestroyed()), true)
+      await useMainWindow()
+      // A reopened Settings window starts from the saved values, without the discarded draft.
+      await useSettingsWindow()
+      await click('settings-provider')
+      const reopened = await wait('provider-name', (node) => node?.enabled)
+      assert.equal(find(reopened.root, 'provider-name').value, 'Native fixture')
+      assert.equal(reopened.secureDrafts['provider-key']?.hasValue, false)
+      await application.evaluate(() => globalThis.__nativeWindow.close())
+      await useMainWindow()
       await wait('saved-items')
-      assert.equal((await inspect()).secureDrafts['provider-key'].hasValue, false)
     }
   )
   await step('Persisted Analytics metrics and complete analysis artifact', async () => {
@@ -1130,39 +1219,57 @@ try {
   await step(
     'Dirty marked-text close guard and native window recreation preserve data/preferences',
     async () => {
-      await go('settings')
+      const destroyed = () => application.evaluate(() => globalThis.__nativeWindow.isDestroyed())
+      const untilDestroyed = async () => {
+        for (let attempt = 0; attempt < 100 && !(await destroyed()); attempt++) await delay(50)
+        assert.equal(await destroyed(), true)
+      }
+      await useSettingsWindow()
       await wait('personal-prompt', (node) => node?.enabled)
       await act('personal-prompt', 'fill', '')
       await act('personal-prompt', 'mark', '尚未保存')
       await application.evaluate(() => globalThis.__nativeWindow.close())
       await alert('Keep Editing')
       await answerAlert('Keep Editing')
-      assert.equal(await application.evaluate(() => globalThis.__nativeWindow.isDestroyed()), false)
+      assert.equal(await destroyed(), false)
       assert.equal(find((await inspect()).root, 'personal-prompt').value, '尚未保存')
       await application.evaluate(() => globalThis.__nativeWindow.close())
       await alert('Discard Changes')
       await answerAlert('Discard Changes')
-      for (
-        let attempt = 0;
-        attempt < 100 &&
-        !(await application.evaluate(() => globalThis.__nativeWindow.isDestroyed()));
-        attempt++
-      )
-        await delay(50)
-      assert.equal(await application.evaluate(() => globalThis.__nativeWindow.isDestroyed()), true)
+      await untilDestroyed()
+      // With only the Settings window left, activation recreates the workspace window. The
+      // workspace window has no Settings drafts and closes without a prompt.
+      await useMainWindow()
+      await useSettingsWindow()
+      await wait('personal-prompt', (node) => node?.enabled)
+      await useMainWindow()
+      await application.evaluate(() => globalThis.__nativeWindow.close())
+      await untilDestroyed()
+      assert.equal(await windowCount(), 1, 'The Settings window stays open')
       await application.evaluate(({ app }) => app.emit('activate'))
       for (let attempt = 0; attempt < 100; attempt++) {
         if (
           await application.evaluate(({ BrowserWindow }) => {
-            const window = BrowserWindow.getAllWindows()[0]
+            const window = BrowserWindow.getAllWindows().find((candidate) => {
+              try {
+                const state = JSON.parse(
+                  globalThis.__nativeBridge.inspect(candidate.getNativeWindowHandle())
+                )
+                return state.toolbar?.style !== 'preference'
+              } catch {
+                return false
+              }
+            })
             if (!window) return false
             globalThis.__nativeWindow = window
+            globalThis.__mainWindow = window
             return true
           })
         )
           break
         await delay(50)
       }
+      assert.equal(await windowCount(), 2, 'A new workspace window joins the Settings window')
       await wait('discover-results')
       // The controller-hosted sidebar takes its saved width right after the first layout.
       let reopened = await wait('native-sidebar')
@@ -1173,10 +1280,12 @@ try {
       assert(sidebarFits(reopened, 248).ok, JSON.stringify(sidebarFits(reopened, 248)))
       assert.equal(reopened.nativeRoot, 'TRCanvas')
       assert(find(reopened.root, 'discover-results').rows.length > 0)
-      await go('settings')
-      // A recreated window has a fresh Settings screen: wait for its load, not only the node.
+      // A new Settings window loads the saved context: wait for its load, not only the node.
+      await useSettingsWindow()
       const settings = await wait('personal-prompt', (node) => node?.enabled)
       assert.equal(find(settings.root, 'personal-prompt').value, '资源高效 AI 与边缘智能')
+      await application.evaluate(() => globalThis.__nativeWindow.close())
+      await useMainWindow()
       await go('discover')
     }
   )

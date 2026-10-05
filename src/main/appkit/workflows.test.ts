@@ -162,7 +162,7 @@ describe('native workflow branches', () => {
     await screen.load()
     expect(JSON.stringify(h.render(screen))).toContain('Retry')
     await h.act(screen, 'settings-retry')
-    await h.act(screen, 'settings-tab', 'provider')
+    screen.select('provider')
     await h.act(screen, 'provider-save')
     expect(save).not.toHaveBeenCalled()
     await h.act(screen, 'provider-name', 'Fixture')

@@ -1,13 +1,16 @@
 import {
   attachAppKit,
   attachRecordAppKit,
+  attachSettingsAppKit,
+  selectSettingsPane,
   shouldUseAppKit,
   flushNativeInterface,
   dispatchNativeMenu,
   drainNativePreferences
 } from './nativeAppKitRuntime'
-import type { NativeRecord } from './appkit/common'
+import type { NativeRecord, SettingsSection } from './appkit/common'
 import { routeAppCommand } from './recordWindowRouting'
+import { AuxiliaryWindows } from './auxiliaryWindows'
 import {
   WindowApplicationRuntime,
   dirtySettingsWindows,
@@ -77,18 +80,17 @@ function readSystemAccent(): SystemAccentName | null {
   }
 }
 
-/** Read-only record windows by record key; at most one window per record. */
-const recordWindows = new Map<string, BrowserWindow>()
-const isRecordWindow = (window: BrowserWindow): boolean =>
-  [...recordWindows.values()].includes(window)
-/** The window an app command addresses; a focused record window forwards view commands only. */
+const auxiliary = new AuxiliaryWindows<BrowserWindow, SettingsSection>()
+const recordWindows = auxiliary.records
+const isAuxiliaryWindow = (window: BrowserWindow): boolean => auxiliary.isAuxiliary(window)
+/** The window an app command addresses; a focused auxiliary window forwards view commands only. */
 function commandWindow(command: string): BrowserWindow | undefined {
   const focused = BrowserWindow.getFocusedWindow()
-  const route = routeAppCommand(command, !!focused && isRecordWindow(focused))
+  const route = routeAppCommand(command, !!focused && isAuxiliaryWindow(focused))
   if (route === 'drop') return undefined
   if (route === 'focused' && focused) return focused
   const main = BrowserWindow.getAllWindows().find(
-    (window) => !window.isDestroyed() && !isRecordWindow(window)
+    (window) => !window.isDestroyed() && !isAuxiliaryWindow(window)
   )
   if (main && focused) main.focus()
   return main
@@ -140,6 +142,93 @@ async function openRecordWindow(
     // A window that failed to bind or attach must not stay hidden in the map, where reopening
     // the record would show a blank window.
     recordWindows.delete(key)
+    if (!window.isDestroyed()) window.destroy()
+    throw error
+  }
+}
+
+/** Closing a window with unsaved Settings edits asks Keep Editing or Discard Changes. */
+function guardUnsavedSettings(window: BrowserWindow, useE2eFixtures: boolean): void {
+  let allowClose = false
+  let closePromptPending = false
+  window.on('close', (event) => {
+    flushNativeInterface(window)
+    if (allowClose || !dirtySettingsWindows.has(window.webContents)) return
+    event.preventDefault()
+    if (closePromptPending) return
+    closePromptPending = true
+    const decision =
+      useE2eFixtures && env.THERSS_E2E_NATIVE_DIALOGS !== '1'
+        ? Promise.resolve(true)
+        : confirmDiscardSettings(window)
+    void decision
+      .then((shouldDiscard) => {
+        if (!shouldDiscard || window.isDestroyed()) return
+        dirtySettingsWindows.delete(window.webContents)
+        allowClose = true
+        window.close()
+      })
+      .finally(() => {
+        closePromptPending = false
+      })
+  })
+}
+
+/** Command-comma opens one Settings window (native route), or focuses it on a pane. */
+async function openSettingsWindow(
+  applicationRuntime: WindowApplicationRuntime,
+  useE2eFixtures: boolean,
+  section?: SettingsSection
+): Promise<void> {
+  const existing = auxiliary.settings
+  if (existing && !existing.window.isDestroyed()) {
+    // A window still attaching shows itself, on the latest requested pane, when ready.
+    if (!existing.ready) {
+      if (section) existing.section = section
+      return
+    }
+    if (section) selectSettingsPane(existing.window, section)
+    existing.window.show()
+    existing.window.focus()
+    return
+  }
+  const window = new BrowserWindow({
+    width: 640,
+    height: 660,
+    minWidth: 520,
+    minHeight: 460,
+    center: true,
+    title: 'Settings',
+    fullscreenable: false,
+    maximizable: false,
+    backgroundColor: '#00000000',
+    show: false,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true
+    }
+  })
+  const entry: NonNullable<typeof auxiliary.settings> = { window, ready: false, section }
+  auxiliary.settings = entry
+  window.once('closed', () => {
+    if (auxiliary.settings === entry) auxiliary.settings = null
+  })
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (isSafeExternalUrl(url)) void shell.openExternal(url)
+    return { action: 'deny' }
+  })
+  guardUnsavedSettings(window, useE2eFixtures)
+  try {
+    const application = applicationRuntime.bind(window)
+    await window.loadFile(join(__dirname, '../renderer/native-host.html'))
+    await attachSettingsAppKit(window, application, section)
+    if (entry.section && entry.section !== section) selectSettingsPane(window, entry.section)
+    entry.ready = true
+    window.show()
+  } catch (error) {
+    if (auxiliary.settings === entry) auxiliary.settings = null
     if (!window.isDestroyed()) window.destroy()
     throw error
   }
@@ -197,8 +286,13 @@ async function createWindow(
 
   if (nativeUi) {
     await window.loadFile(join(__dirname, '../renderer/native-host.html'))
-    await attachAppKit(window, application, (record) => {
-      void openRecordWindow(record, applicationRuntime, window).catch(() => undefined)
+    await attachAppKit(window, application, {
+      openRecord: (record) => {
+        void openRecordWindow(record, applicationRuntime, window).catch(() => undefined)
+      },
+      openSettings: (section) => {
+        void openSettingsWindow(applicationRuntime, useE2eFixtures, section).catch(() => undefined)
+      }
     })
     if (restoredState.maximized) window.maximize()
     window.show()
@@ -225,29 +319,7 @@ async function createWindow(
   window.on('maximize', persistWindowState)
   window.on('unmaximize', persistWindowState)
 
-  let allowClose = false
-  let closePromptPending = false
-  window.on('close', (event) => {
-    flushNativeInterface(window)
-    if (allowClose || !dirtySettingsWindows.has(window.webContents)) return
-    event.preventDefault()
-    if (closePromptPending) return
-    closePromptPending = true
-    const decision =
-      useE2eFixtures && env.THERSS_E2E_NATIVE_DIALOGS !== '1'
-        ? Promise.resolve(true)
-        : confirmDiscardSettings(window)
-    void decision
-      .then((shouldDiscard) => {
-        if (!shouldDiscard || window.isDestroyed()) return
-        dirtySettingsWindows.delete(window.webContents)
-        allowClose = true
-        window.close()
-      })
-      .finally(() => {
-        closePromptPending = false
-      })
-  })
+  guardUnsavedSettings(window, useE2eFixtures)
   window.on('closed', () => {
     if (stateSaveTimer) clearTimeout(stateSaveTimer)
   })
@@ -451,6 +523,11 @@ app.whenReady().then(async () => {
     Menu.buildFromTemplate(
       createApplicationMenuTemplate(
         (command) => {
+          // Native Settings is a window of its own, opened even when no main window remains.
+          if (command === 'open-settings' && shouldUseAppKit()) {
+            void openSettingsWindow(applicationRuntime, useE2eFixtures).catch(() => undefined)
+            return
+          }
           const targetWindow = commandWindow(command)
           if (targetWindow) {
             flushNativeInterface(targetWindow)
@@ -489,6 +566,13 @@ app.whenReady().then(async () => {
       const dirtyWindow = BrowserWindow.getAllWindows().find((window) =>
         dirtySettingsWindows.has(window.webContents)
       )
+      // The prompt is a sheet on the dirty window: bring that window forward first (Settings
+      // can sit behind the main window or be minimized).
+      if (dirtyWindow && !dirtyWindow.isDestroyed()) {
+        if (dirtyWindow.isMinimized()) dirtyWindow.restore()
+        dirtyWindow.show()
+        dirtyWindow.focus()
+      }
       const shouldQuit = dirtyWindow
         ? (useE2eFixtures && env.THERSS_E2E_NATIVE_DIALOGS !== '1') ||
           (await confirmDiscardSettings(dirtyWindow))
@@ -511,8 +595,8 @@ app.whenReady().then(async () => {
   })
 
   app.on('activate', () => {
-    // Record windows alone do not replace the main window.
-    if (!BrowserWindow.getAllWindows().some((window) => !isRecordWindow(window))) {
+    // Record and Settings windows alone do not replace the main window.
+    if (auxiliary.needsMainWindow(BrowserWindow.getAllWindows())) {
       void createWindow(useE2eFixtures, applicationRuntime)
     }
   })

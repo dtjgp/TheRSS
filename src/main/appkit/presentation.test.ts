@@ -87,6 +87,50 @@ describe('native presentation boundary', () => {
       } as unknown as NativeNode)
     ).toThrow()
   })
+  it('accepts a selected pane only on a preference toolbar that contains it', () => {
+    const view = new NativePresentation()
+    const root: NativeNode = { id: 'settings-window', kind: 'column' }
+    const panes: NativeToolbar = {
+      title: 'Personal Context',
+      style: 'preference',
+      selected: 'settings-personal',
+      items: [
+        { id: 'settings-personal', title: 'Personal Context', symbol: 'person.crop.circle' },
+        { id: 'settings-provider', title: 'Model Provider', symbol: 'cpu' }
+      ]
+    }
+    expect(
+      JSON.parse(view.finish(root, undefined, undefined, 1, undefined, panes)).toolbar
+    ).toEqual(panes)
+    for (const invalid of [
+      { ...panes, selected: 'settings-missing' },
+      { ...panes, style: undefined },
+      { ...panes, style: 'unified' },
+      {
+        ...panes,
+        selected: 'find',
+        items: [{ id: 'find', title: 'Find', symbol: 'magnifyingglass', kind: 'search' }]
+      },
+      // Preference panes are plain selectable items: no search field or sidebar placement.
+      {
+        ...panes,
+        items: [
+          ...panes.items,
+          { id: 'find', title: 'Find', symbol: 'magnifyingglass', kind: 'search' }
+        ]
+      },
+      {
+        ...panes,
+        items: [
+          ...panes.items,
+          { id: 'toggle', title: 'Toggle', symbol: 'sidebar.left', placement: 'sidebar' }
+        ]
+      }
+    ])
+      expect(() =>
+        view.finish(root, undefined, undefined, 1, undefined, invalid as NativeToolbar)
+      ).toThrow()
+  })
   it('bounds native progress to integer completed-of-total values on progress nodes', () => {
     const view = new NativePresentation()
     const node: NativeNode = {
