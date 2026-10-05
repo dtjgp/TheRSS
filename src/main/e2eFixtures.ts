@@ -96,21 +96,39 @@ export async function waitForE2eDiscoverStage(enabled: boolean): Promise<void> {
   })
 }
 
+const DAY = 24 * 60 * 60 * 1000
+
+/**
+ * Discover results dated from the run clock, so Sources (a rolling 30-day window) keeps showing
+ * them. All results move together: the paper and the configured-source article share a UTC
+ * midnight three days back and the repository is a day older, the same order as the fixed
+ * fixture dates, so ranking and the first selected result do not change.
+ */
+export function e2eDiscoverResultsAt(now = new Date()) {
+  const day = Math.floor((now.getTime() - 3 * DAY) / DAY) * DAY
+  const at = (time: number) => new Date(time).toISOString()
+  return {
+    paper: { ...e2eDiscoverPaper, publishedAt: at(day), updatedAt: at(day) },
+    repository: { ...e2eDiscoverRepository, publishedAt: at(day - DAY), updatedAt: at(day) },
+    article: { ...e2eDiscoverConfiguredArticle, publishedAt: at(day), updatedAt: at(day) }
+  }
+}
+
 export function createE2eDiscoverFetchers(delayEnabled: boolean) {
   const wait = () => waitForE2eDiscoverStage(delayEnabled)
   return {
     fetchArxiv: async () => {
       await wait()
-      return [e2eDiscoverPaper]
+      return [e2eDiscoverResultsAt().paper]
     },
     fetchGitHub: async () => {
       await wait()
-      return [e2eDiscoverRepository]
+      return [e2eDiscoverResultsAt().repository]
     },
     fetchConfiguredSource: async (definition: { readonly id: string }) => {
       await wait()
       return {
-        items: definition.id === 'folo:302' ? [e2eDiscoverConfiguredArticle] : [],
+        items: definition.id === 'folo:302' ? [e2eDiscoverResultsAt().article] : [],
         rejectedCount: 0
       }
     }
