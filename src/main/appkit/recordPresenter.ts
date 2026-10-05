@@ -5,6 +5,7 @@ import { ResearchReader, TriageHistory } from './reading'
 
 export interface NativeRecordPort {
   readonly record: NativeRecord
+  readonly locale?: string
   present(scene: string): void
   openExternal(url: string): void
 }
@@ -28,6 +29,7 @@ export class NativeRecordPresenter {
   ) {
     this.context = {
       api,
+      locale: port.locale ?? Intl.DateTimeFormat().resolvedOptions().locale,
       presentation: this.presentation,
       data: { dashboard: null, provider: null, personalPrompt: '', agents: [] },
       redraw: () => this.redraw(),

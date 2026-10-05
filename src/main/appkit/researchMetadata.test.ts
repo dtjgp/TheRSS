@@ -29,7 +29,7 @@ describe('readable research metadata without changing evidence', () => {
       summary: '《研究期刊》2026年8月',
       publishedAt: '2026-08-01T00:00:00.000Z'
     }
-    expect(researchSubtitle(monthly)).toContain('2026-08 (month only)')
+    expect(researchSubtitle(monthly, 'en-US')).toContain('Aug 2026 (month only)')
     expect(researchMetadata(monthly)).toContain('exact day unavailable')
     expect(researchMetadata(monthly)).not.toContain('Published: 2026-08-01')
     expect(researchMetadata(monthly)).toContain('Updated: Not supplied separately')
@@ -41,7 +41,7 @@ describe('readable research metadata without changing evidence', () => {
     expect(text).toContain(`Published: ${paper.publishedAt}`)
     expect(text).not.toContain('Stars:')
     expect(text).not.toContain('Language:')
-    expect(researchSubtitle(paper)).toBe('arXiv · 2026-09-06')
+    expect(researchSubtitle(paper, 'en-US')).toBe('arXiv · Sep 6, 2026')
     expect(paper.score).toBe(10)
   })
   it('preserves zero metrics and complete source-provided labels for repositories and models', () => {

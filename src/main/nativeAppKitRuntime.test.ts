@@ -38,7 +38,7 @@ const f = vi.hoisted(() => {
 })
 vi.mock('node:module', () => ({ createRequire: () => () => f.bridge }))
 vi.mock('electron', () => ({
-  app: { getPath: () => '/private/tmp/fixture-native-user-data' },
+  app: { getPath: () => '/private/tmp/fixture-native-user-data', getSystemLocale: () => 'en-US' },
   shell: { openExternal: f.open }
 }))
 vi.mock('./windowApplicationRuntime', () => ({
@@ -65,6 +65,7 @@ vi.mock('./appkit/presenter', () => ({
 import {
   attachAppKit,
   dispatchNativeMenu,
+  displayLocale,
   drainNativePreferences,
   flushNativeInterface,
   shouldUseAppKit
@@ -151,6 +152,24 @@ describe('AppKit runtime wiring', () => {
     flushNativeInterface(w.window)
     dispatchNativeMenu(w.window, 'copy')
     expect(f.bridge.flush).toHaveBeenCalledTimes(6)
+  })
+  it('uses the system locale for dates; only fixture runs may pin another', () => {
+    const saved = {
+      fixtures: process.env.THERSS_E2E_FIXTURES,
+      locale: process.env.THERSS_E2E_LOCALE
+    }
+    try {
+      process.env.THERSS_E2E_LOCALE = 'zh-CN'
+      delete process.env.THERSS_E2E_FIXTURES
+      expect(displayLocale()).toBe('en-US')
+      process.env.THERSS_E2E_FIXTURES = '1'
+      expect(displayLocale()).toBe('zh-CN')
+    } finally {
+      if (saved.fixtures === undefined) delete process.env.THERSS_E2E_FIXTURES
+      else process.env.THERSS_E2E_FIXTURES = saved.fixtures
+      if (saved.locale === undefined) delete process.env.THERSS_E2E_LOCALE
+      else process.env.THERSS_E2E_LOCALE = saved.locale
+    }
   })
   it('defaults supported macOS to AppKit and retains an explicit compatibility route', () => {
     vi.stubEnv('THERSS_UI', undefined)

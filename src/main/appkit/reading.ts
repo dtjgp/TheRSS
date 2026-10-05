@@ -20,7 +20,7 @@ import {
 import type { NativeNode } from './presentation'
 import { isShareableLink } from './researchMetadata'
 import { hashAnalysisSource } from '../../core/analysis/sourceSnapshot'
-import { sourcePublicationLabel, sourceMatchReasons } from '../../shared/sourceDate'
+import { sourcePublicationDisplay, sourceMatchReasons } from '../../shared/sourceDate'
 
 export class TriageHistory {
   private previous: { id: string; state: TriageState } | null = null
@@ -171,7 +171,7 @@ export class ResearchReader implements NativeScreen {
           heading(`${prefix}-reading-title`, item.title),
           label(
             `${prefix}-reading-meta`,
-            `${sourceDisplayName(item.source)} · ${sourcePublicationLabel(item)}${saved ? ' · Saved' : ''}`,
+            `${sourceDisplayName(item.source)} · ${sourcePublicationDisplay(item, this.context.locale)}${saved ? ' · Saved' : ''}`,
             { weight: 'secondary' }
           ),
           row(`${prefix}-reading-actions`, [

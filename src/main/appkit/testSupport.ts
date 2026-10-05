@@ -38,6 +38,7 @@ export function nativeHarness(overrides: Partial<TheRSSApi> = {}) {
   const context: NativeContext = {
     api,
     presentation: new NativePresentation(),
+    locale: 'en-US',
     data: {
       dashboard,
       provider: null,

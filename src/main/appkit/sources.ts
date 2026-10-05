@@ -1,7 +1,7 @@
 import {
-  sourcePublicationLabel,
   sourcePublicationEvidence,
-  hasPublicationMonthOnly
+  hasPublicationMonthOnly,
+  sourcePublicationDisplay
 } from '../../shared/sourceDate'
 import { sourceHealthLabel, sourceObservationLabel } from '../../shared/sourceHealth'
 import type { SourceContentSnapshot, SourceHealth } from '../../shared/api'
@@ -375,7 +375,7 @@ export class SourcesScreen implements NativeScreen {
                           snapshot.items.map((item) => ({
                             id: item.id,
                             title: item.title,
-                            subtitle: `${sourcePublicationLabel(item)} · ${item.kind ?? 'item'}`
+                            subtitle: `${sourcePublicationDisplay(item, this.context.locale)} · ${item.kind ?? 'item'}`
                           })),
                           item?.id ?? '',
                           (id) => {

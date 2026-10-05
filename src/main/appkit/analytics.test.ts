@@ -70,7 +70,7 @@ describe('AppKit analytics', () => {
       'Discover 10'
     )
     expect(h.find(h.render(screen), 'analytics-daily')?.rows?.[0]?.cells).toEqual({
-      date: '2026-09-06',
+      date: 'Sep 6, 2026',
       returned: '12',
       discover: '10',
       legacy: '2',

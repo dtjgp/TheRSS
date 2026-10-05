@@ -4,14 +4,15 @@ import { buildCitation, isSafeLink } from '../../core/menus/contextMenu'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
 import {
   sourcePublicationEvidence,
-  sourcePublicationLabel,
+  sourcePublicationDisplay,
   hasPublicationMonthOnly
 } from '../../shared/sourceDate'
 
 export function researchSubtitle(
-  item: Pick<DiscoveryItem, 'source' | 'publishedAt'> & Partial<Pick<DiscoveryItem, 'summary'>>
+  item: Pick<DiscoveryItem, 'source' | 'publishedAt'> & Partial<Pick<DiscoveryItem, 'summary'>>,
+  locale: string
 ): string {
-  return `${sourceDisplayName(item.source)} · ${sourcePublicationLabel(item)}`
+  return `${sourceDisplayName(item.source)} · ${sourcePublicationDisplay(item, locale)}`
 }
 
 const kindGlyphs: Record<DiscoveryItemKind, { symbol: NativeSymbol; label: string }> = {

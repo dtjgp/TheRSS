@@ -4,6 +4,7 @@ import {
   type LocalSearchResult
 } from '../../shared/localSearch'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
+import { formatDisplayDate } from '../../shared/sourceDate'
 import {
   column,
   Controls,
@@ -127,7 +128,7 @@ export class LocalSearchScreen {
                 response.results.map((item) => ({
                   id: resultKey(item),
                   title: item.title,
-                  subtitle: `${{ saved: 'Saved item', discover: 'Search session', analysis: 'Stored analysis' }[item.kind]} · ${sourceDisplayName(item.source)} · ${item.createdAt.slice(0, 10)}`
+                  subtitle: `${{ saved: 'Saved item', discover: 'Search session', analysis: 'Stored analysis' }[item.kind]} · ${sourceDisplayName(item.source)} · ${formatDisplayDate(item.createdAt, this.context.locale)}`
                 })),
                 selected ? resultKey(selected) : '',
                 (id) => {

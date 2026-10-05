@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { formatDisplayDate } from '../../shared/sourceDate'
 import {
   DISCOVER_SOURCE_IDS,
   type DiscoverRunProgress,
@@ -47,7 +48,7 @@ const statusTitles: Record<DiscoverSnapshot['status'], string> = {
 }
 
 /** Plain-language session outcome derived only from persisted per-source outcomes. */
-function resultStatus(snapshot: DiscoverSnapshot): string {
+function resultStatus(snapshot: DiscoverSnapshot, locale: string): string {
   const searched = DISCOVER_SOURCE_IDS.map((source) => snapshot.sourceOutcomes[source]).filter(
     (outcome): outcome is DiscoverSnapshot['sourceOutcomes'][DiscoverSource] =>
       !!outcome && outcome.status !== 'not_searched'
@@ -55,7 +56,7 @@ function resultStatus(snapshot: DiscoverSnapshot): string {
   const complete = searched.filter(
     (outcome) => outcome.status === 'healthy' || outcome.status === 'no_results'
   ).length
-  return `${statusTitles[snapshot.status]} · ${complete} of ${searched.length} sources complete · ${snapshot.createdAt.slice(0, 10)}`
+  return `${statusTitles[snapshot.status]} · ${complete} of ${searched.length} sources complete · ${formatDisplayDate(snapshot.createdAt, locale)}`
 }
 
 export class DiscoverScreen implements NativeScreen {
@@ -228,7 +229,9 @@ export class DiscoverScreen implements NativeScreen {
                     this.context.redraw()
                   }
                 ),
-                label('discover-result-status', resultStatus(snapshot), { flex: 1 }),
+                label('discover-result-status', resultStatus(snapshot, this.context.locale), {
+                  flex: 1
+                }),
                 b.button('discover-details', 'Search details', () => this.details()),
                 ...(retryable.length
                   ? [
@@ -263,7 +266,7 @@ export class DiscoverScreen implements NativeScreen {
                           return {
                             id: item.id,
                             title: item.title,
-                            subtitle: researchSubtitle(item),
+                            subtitle: researchSubtitle(item, this.context.locale),
                             ...researchRowGlyph(item.kind),
                             ...researchRowDrag(item),
                             ...(saved ? { saved: true } : {})

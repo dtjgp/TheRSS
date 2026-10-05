@@ -44,6 +44,12 @@ export function shouldUseAppKit(
   )
 }
 
+/** Display dates follow the macOS language and region; fixture runs may pin a locale. */
+export function displayLocale(): string {
+  const pinned = process.env.THERSS_E2E_FIXTURES === '1' ? process.env.THERSS_E2E_LOCALE : undefined
+  return pinned || app.getSystemLocale() || Intl.DateTimeFormat().resolvedOptions().locale
+}
+
 function loadBridge(): NativeBridge {
   const require = createRequire(import.meta.url)
   return require(join(__dirname, '../native-appkit/therss-ui.node')) as NativeBridge
@@ -66,6 +72,7 @@ export async function attachAppKit(
   await writeNativePreferences(path, preferences).catch(() => undefined)
   const presenter = new NativePresenter(application.api, {
     preferences,
+    locale: displayLocale(),
     present: (scene) => {
       if (!window.isDestroyed()) bridge.present(handle, scene)
     },
@@ -92,6 +99,7 @@ export async function attachRecordAppKit(
   const handle = window.getNativeWindowHandle()
   const presenter = new NativeRecordPresenter(application.api, {
     record,
+    locale: displayLocale(),
     present: (scene) => {
       if (!window.isDestroyed()) bridge.present(handle, scene)
     },

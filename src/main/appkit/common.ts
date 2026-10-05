@@ -34,6 +34,8 @@ export interface NativeRecord {
 }
 export interface NativeContext {
   readonly api: TheRSSApi
+  /** The macOS language and region (BCP 47) for display dates. */
+  readonly locale: string
   readonly presentation: NativePresentation
   readonly data: NativeData
   redraw(): void

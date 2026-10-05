@@ -141,6 +141,7 @@ Each slice has its own change contract and verification record.
 | P2 (share)     | Context-menu Share submenu, a reading Share button (sharing picker) and dragging rows out as link, title and citation; https links only.                  | [share-drag](../2026-10-05-share-drag/CHANGE_CONTRACT.md)                             |
 | P2 (windows)   | Double-click or "Open in New Window" opens a record read-only in its own window; item commands never act from it.                                         | [record-window](../2026-10-05-record-window/CHANGE_CONTRACT.md)                       |
 | P2 (motion)    | The sidebar slides when hidden or shown (system split item animation); Reduce Motion changes it at once.                                                  | [sidebar-motion](../2026-10-05-sidebar-motion/CHANGE_CONTRACT.md)                     |
+| F14 (dates)    | Native display dates follow the macOS language and region (UTC calendar day kept); evidence, citations and chart data stay ISO.                           | [localized-dates](../2026-10-05-localized-dates/CHANGE_CONTRACT.md)                   |
 
 Still open: F12/S4 (decision D5),
-F13 (system text styles), F14 date display (product decision).
+F13 (system text styles).

@@ -107,7 +107,7 @@ export class SavedScreen implements NativeScreen {
                     items.map((item) => ({
                       id: item.id,
                       title: item.title,
-                      subtitle: researchSubtitle(item),
+                      subtitle: researchSubtitle(item, this.context.locale),
                       ...researchRowGlyph(item.kind),
                       ...researchRowDrag(item)
                     })),

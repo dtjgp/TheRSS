@@ -1,4 +1,5 @@
 import type { AnalyticsSnapshot } from '../../shared/analytics'
+import { formatDisplayDate } from '../../shared/sourceDate'
 import type { AnalysisArtifactState } from '../../shared/models'
 import type { LocalResearchRecord } from '../../shared/localResearch'
 import {
@@ -177,7 +178,7 @@ export class AnalyticsScreen implements NativeScreen {
                     s.analyzedItems.slice(0, 50).map((item) => ({
                       id: item.analysisId,
                       title: item.title,
-                      subtitle: `${item.providerName} · ${item.model} · ${item.createdAt.slice(0, 10)}`
+                      subtitle: `${item.providerName} · ${item.model} · ${formatDisplayDate(item.createdAt, this.context.locale)}`
                     })),
                     this.selected,
                     (id) => this.select(id),
@@ -219,10 +220,10 @@ export class AnalyticsScreen implements NativeScreen {
         'Daily activity',
         s.daily.map((day) => ({
           id: day.date,
-          title: day.date,
+          title: formatDisplayDate(day.date, this.context.locale),
           subtitle: `Search ${day.searchResults} · Source ${day.todayResults} · Discover ${day.discoverResults} · Analysis ${day.deepAnalyses}`,
           cells: {
-            date: day.date,
+            date: formatDisplayDate(day.date, this.context.locale),
             returned: String(day.searchResults),
             discover: String(day.discoverResults),
             legacy: String(day.todayResults),
@@ -236,7 +237,8 @@ export class AnalyticsScreen implements NativeScreen {
       height: 220,
       maxWidth: 800,
       columns: [
-        { id: 'date', title: 'Date', width: 110 },
+        // Wide enough for long medium-style dates (pt-BR, hu-HU, ru-RU) at minimum width.
+        { id: 'date', title: 'Date', width: 130 },
         {
           id: 'returned',
           title: 'Returned',

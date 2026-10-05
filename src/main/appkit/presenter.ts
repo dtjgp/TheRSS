@@ -30,6 +30,8 @@ export interface NativePresenterPort {
   persist(preferences: NativePreferences): Promise<void>
   openExternal(url: string): void
   contentSize?(): { readonly width: number; readonly height: number }
+  /** The system locale for display dates (defaults to the process locale). */
+  readonly locale?: string
   /** Opens a record in its own read-only window (native route only). */
   openRecord?(record: NativeRecord): void
 }
@@ -73,6 +75,7 @@ export class NativePresenter {
     this.preferences = { ...port.preferences }
     this.context = {
       api,
+      locale: port.locale ?? Intl.DateTimeFormat().resolvedOptions().locale,
       presentation: this.presentation,
       data: { dashboard: null, provider: null, personalPrompt: '', agents: [] },
       redraw: () => this.redraw(),

@@ -27,6 +27,8 @@ const launchEnvironment = {
   ...process.env,
   THERSS_E2E_FIXTURES: '1',
   THERSS_E2E_NATIVE_DIALOGS: '1',
+  // Display dates follow the system locale; pin one so assertions do not depend on this Mac.
+  THERSS_E2E_LOCALE: process.env.THERSS_E2E_LOCALE || 'en-US',
   THERSS_UI: 'appkit'
 }
 if (process.env.THERSS_NATIVE_DEFAULT_ONLY === '1') delete launchEnvironment.THERSS_UI
@@ -372,7 +374,7 @@ try {
     assert(!find(result.root, 'discover-expand'))
     assert.match(
       find(result.root, 'discover-result-status').text,
-      /^Complete · \d+ of \d+ sources complete · \d{4}-\d{2}-\d{2}$/u
+      /^Complete · \d+ of \d+ sources complete · [A-Z][a-z]{2} \d{1,2}, \d{4}$/u
     )
     // Rows drag their https link out; the reading Share button hands the link to the picker.
     const drag = find(result.root, 'discover-results').dragItem
