@@ -38,6 +38,11 @@
   } else [self.node update:content];
   CGFloat zoom = _host.zoom, width = MIN(560 * zoom, MAX(320, _host.window.frame.size.width - 40));
   CGFloat cap = MAX(240, MIN(560 * zoom, _host.window.frame.size.height - 120));
+  // Fit below the anchor on small screens (the content scrolls) instead of letting AppKit flip
+  // the popover above the button and over the title bar.
+  NSRect anchorOnScreen = [anchor.window convertRectToScreen:[anchor convertRect:anchor.bounds toView:nil]];
+  NSScreen *screen = anchor.window.screen ?: NSScreen.mainScreen;
+  if (screen) cap = MAX(240, MIN(cap, NSMinY(anchorOnScreen) - NSMinY(screen.visibleFrame) - 40));
   if (!self.popover) {
     NSPopover *popover = [NSPopover new];
     // Semi-transient: a click in the window or Escape closes it, but switching to another app
@@ -104,7 +109,10 @@
   NSScrollView *scroll = (NSScrollView *)self.popover.contentViewController.view;
   NSRect frame = scroll.window.frame; NSWindow *window = scroll.window;
   return @{@"anchor":_anchor ?: @"",@"root":[self.node inspect] ?: @{},@"behavior":@(self.popover.behavior),
-           @"below":@(NSMaxY(frame) <= NSMinY(anchor) + 2),@"contentSize":NSStringFromSize(self.popover.contentSize),
+           // Below = the popover's centre is under the anchor's centre (window frames include the
+           // arrow and shadow margins, so edge comparisons depend on the display).
+           @"below":@(NSMidY(frame) < NSMidY(anchor)),@"popoverFrame":NSStringFromRect(frame),@"anchorFrame":NSStringFromRect(anchor),
+           @"screenFrame":NSStringFromRect((window.screen ?: NSScreen.mainScreen).visibleFrame),@"contentSize":NSStringFromSize(self.popover.contentSize),
            @"documentHeight":@(scroll.documentView.frame.size.height),@"visibleHeight":@(scroll.contentSize.height),
            @"keyWindow":@(window.isKeyWindow),@"windowNumber":@(window.windowNumber),@"firstResponder":NSStringFromClass(window.firstResponder.class)};
 }

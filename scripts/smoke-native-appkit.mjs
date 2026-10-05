@@ -334,7 +334,11 @@ try {
     await click('discover-source-picker')
     const state = await inspect()
     assert.equal(state.popover?.anchor, 'discover-source-picker', 'Sources open in a popover')
-    assert.equal(state.popover.below, true, 'The source popover opens below its button')
+    assert.equal(
+      state.popover.below,
+      true,
+      `The source popover opens below its button (popover ${state.popover.popoverFrame}, button ${state.popover.anchorFrame}, screen ${state.popover.screenFrame})`
+    )
     assert.equal(state.popover.keyWindow, true, 'The source finder takes keyboard focus')
     assert(!find(state.root, 'discover-source-controls'), 'The picker no longer pushes results')
     assert.equal(flatten(state.popover.root).filter((node) => node.kind === 'check').length, 22)
