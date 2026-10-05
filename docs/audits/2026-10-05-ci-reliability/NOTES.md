@@ -61,3 +61,15 @@ Scope: CI failures reported by Auto-fix on PR #58 and the user's request "排查
 
 `npm run check` exit 0 (743 main, 141 AppKit tests); workflow smoke 15/15 in CI mode
 (`THERSS_NATIVE_DEFAULT_ONLY=1`); controls smoke 18/18 (15 consecutive runs); E2E 8/8.
+
+## Sidebar animation with no intermediate frame (head d05b154)
+
+- CI evidence: "Hiding the sidebar draws intermediate widths" failed with `animationSteps` 0,
+  `animating` false and divider 0. The same head drew 7 intermediate hide widths locally.
+- Inference: a loaded runner can complete one 0.2 s slide without a drawn intermediate frame.
+  This is runner timing, not a product change in d05b154.
+- Change: the native split counts completed animator groups (`animationsCompleted`). Each toggle
+  must run the animated path; intermediate frames must appear in at least one of up to three
+  hide/show cycles. The cycle record is in `sidebar-motion.json`.
+- Discrimination: with fixture animations left off, the smoke fails at "Hiding the sidebar runs
+  the animated path". With animations on, it passed locally (cycles `[{hideSteps: 6, showSteps: 8}]`).

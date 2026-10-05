@@ -517,27 +517,52 @@ try {
       }
       return samples
     }
-    // An instant change draws no frame between start and end widths; slow CI runners draw one.
+    // The instant path neither completes an animator group nor draws a frame between the start
+    // and end widths. A loaded CI runner can draw no intermediate frame in one 0.2 s slide (one
+    // observed run), so a cycle without frames repeats, at most three times.
+    const workspace = async () => find((await inspect()).root, 'native-workspace')
+    const toggle = async (done) => {
+      const completedBefore = (await workspace()).animationsCompleted
+      await click('sidebar-toggle')
+      const samples = await sample(done)
+      const state = await workspace()
+      return {
+        samples,
+        steps: state.animationSteps,
+        animated: state.animationsCompleted === completedBefore + 1
+      }
+    }
     await act('native-workspace', 'animations', true)
-    await click('sidebar-toggle')
-    const hiding = await sample((state) => state.divider === 0 && !state.animating)
+    const cycles = []
+    let hiding, showing
+    for (let cycle = 0; cycle < 3; cycle++) {
+      const hide = await toggle((state) => state.divider === 0 && !state.animating)
+      assert(hide.animated, 'Hiding the sidebar runs the animated path')
+      assert.equal(hide.samples.at(-1).divider, 0)
+      const show = await toggle(
+        (state) => Math.abs(state.divider - widthBefore) <= 1 && !state.animating
+      )
+      assert(show.animated, 'Showing the sidebar runs the animated path')
+      assert(
+        Math.abs(show.samples.at(-1).divider - widthBefore) <= 1,
+        'Showing restores the saved width'
+      )
+      cycles.push({ hideSteps: hide.steps, showSteps: show.steps })
+      hiding = hide.samples
+      showing = show.samples
+      if (hide.steps >= 1 && show.steps >= 1) break
+    }
     assert(
-      find((await inspect()).root, 'native-workspace').animationSteps >= 1,
-      'Hiding the sidebar draws intermediate widths'
-    )
-    assert.equal(hiding.at(-1).divider, 0)
-    await click('sidebar-toggle')
-    const showing = await sample(
-      (state) => Math.abs(state.divider - widthBefore) <= 1 && !state.animating
+      cycles.some((cycle) => cycle.hideSteps >= 1),
+      `Hiding the sidebar draws intermediate widths: ${JSON.stringify(cycles)}`
     )
     assert(
-      find((await inspect()).root, 'native-workspace').animationSteps >= 1,
-      'Showing the sidebar draws intermediate widths'
+      cycles.some((cycle) => cycle.showSteps >= 1),
+      `Showing the sidebar draws intermediate widths: ${JSON.stringify(cycles)}`
     )
-    assert(Math.abs(showing.at(-1).divider - widthBefore) <= 1, 'Showing restores the saved width')
     await writeFile(
       join(output, 'sidebar-motion.json'),
-      JSON.stringify({ widthBefore, hiding, showing }, null, 2)
+      JSON.stringify({ widthBefore, cycles, hiding, showing }, null, 2)
     )
     // Reversing mid-animation ends shown at the saved width, with no stray restore.
     await click('sidebar-toggle')

@@ -112,6 +112,8 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 /** Inspection only: distinct sidebar widths drawn during the last show/hide animation. */
 @property(nonatomic, strong) NSMutableSet<NSNumber *> *animationWidths;
 @property(nonatomic) CGFloat animationFrom;
+/** Inspection only: show/hide changes that ran through the animator and completed. */
+@property(nonatomic) NSUInteger animationsCompleted;
 /** Inspection only: width events the split has emitted (preference writes). */
 @property(nonatomic) NSUInteger widthEvents;
 @property(nonatomic) CGFloat reconcileAttempt;

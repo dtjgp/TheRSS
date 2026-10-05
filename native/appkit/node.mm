@@ -593,7 +593,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
           sidebarItem.animator.collapsed = collapsed;
         } completionHandler:^{
           TRNode *node = weakSelf; if (!node || node.splitAnimation != generation) return;
-          node.animatingSplit = NO; [node reconcileWindowSplit];
+          node.animatingSplit = NO; node.animationsCompleted++; [node reconcileWindowSplit];
         }];
       } else { ++self.splitAnimation; self.animatingSplit = NO; sidebarItem.collapsed = collapsed; }
     }
@@ -1085,6 +1085,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   if ([self splitView]) result[@"vertical"] = @([self splitView].vertical);
   if (self.splitController) {
     result[@"animating"] = @(self.animatingSplit); result[@"widthEvents"] = @(self.widthEvents);
+    result[@"animationsCompleted"] = @(self.animationsCompleted);
     // Frames strictly between the start and end widths prove a visible slide, independent of
     // how often a test can sample from outside the app.
     NSView *pane = self.splitController.splitView.arrangedSubviews.firstObject;
