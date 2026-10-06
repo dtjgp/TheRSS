@@ -97,3 +97,17 @@ Scope: CI failures reported by Auto-fix on PR #58 and the user's request "排查
 - Fix: the fit measures at the width without a vertical scroller. With legacy scroll bars the
   workflow smoke failed before the fix and passed 16/16 after it; with overlay scroll bars it
   also passed 16/16, and the controls smoke passed 20/20.
+
+## Settings pane taller than the CI screen (head 22d6440)
+
+- CI evidence: "The Model Provider pane fits its window: 660 pt of content in 519 pt". The
+  Personal Context pane fit there after the legacy-scroller fix.
+- Inference (not measured): the fit never grows the window past the screen's visible height,
+  and the runner's display is small, so the provider pane scrolls there. Locally (work area
+  1194 pt) the same pane fits with and without legacy scroll bars.
+- Change: the smoke accepts a scrolling pane only when the window height equals the display's
+  work-area height; otherwise content must equal the viewport. A failure now prints the window
+  bounds and work area, which confirms or refutes the inference on the next CI run.
+- Separate finding: a zoom change in Settings does not refit the window (150 %: 961 pt of
+  content in 628 pt with room on screen), because zoom changes the pane width and a width change
+  only updates the record.

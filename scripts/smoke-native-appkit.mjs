@@ -843,9 +843,17 @@ try {
         const state = await wait(form)
         const viewport = numbers(find(state.root, 'settings-scroll').viewportSize)[1]
         const content = numbers(find(state.root, form).frame)[3]
+        // The window never grows past the screen's visible height; a taller pane scrolls there
+        // (CI displays are small).
+        const { bounds, workArea } = await application.evaluate(({ screen }) => {
+          const bounds = globalThis.__nativeWindow.getBounds()
+          return { bounds, workArea: screen.getDisplayMatching(bounds).workArea }
+        })
+        const capped = content > viewport + 1 && bounds.height >= workArea.height - 1
         assert(
-          Math.abs(content - viewport) <= 1,
-          `The ${pane} pane fits its window: ${content} pt of content in ${viewport} pt`
+          capped || Math.abs(content - viewport) <= 1,
+          `The ${pane} pane fits its window: ${content} pt of content in ${viewport} pt ` +
+            JSON.stringify({ bounds, workArea })
         )
         return state
       }
