@@ -117,6 +117,8 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 @property(nonatomic) BOOL reconcilePending;
 @property(nonatomic) BOOL animatingSplit;
 @property(nonatomic) NSUInteger splitAnimation;
+/** The sidebar state the latest scene asked for; the split item can lag it during animations. */
+@property(nonatomic) BOOL splitTarget;
 /** Inspection only: distinct sidebar widths drawn during the last show/hide animation. */
 @property(nonatomic, strong) NSMutableSet<NSNumber *> *animationWidths;
 @property(nonatomic) CGFloat animationFrom;

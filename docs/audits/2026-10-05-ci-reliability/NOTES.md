@@ -111,3 +111,20 @@ Scope: CI failures reported by Auto-fix on PR #58 and the user's request "排查
 - Separate finding: a zoom change in Settings does not refit the window (150 %: 961 pt of
   content in 628 pt with room on screen), because zoom changes the pane width and a width change
   only updates the record.
+
+## Reversed sidebar toggle ends hidden (head d760daa)
+
+- CI evidence: "A reversed toggle ends shown" failed. The same run's `sidebar-motion.json` shows
+  4–5 samples per 0.2 s slide, so the runner's main thread was heavily loaded.
+- Reproduction: two toggles sent in one main-process task (no run loop turn between them, with a
+  0–150 ms stall) ended with the sidebar hidden in 8 of 8 tries, while the presenter's preference
+  said shown. Separate reversals with 0–260 ms between them always ended shown.
+- Cause: the update compared the request with `NSSplitViewItem.collapsed`, which can still report
+  the old state before the run loop turns, so the second request was dropped; an older animation
+  could also finish after the latest one.
+- Fix: the split keeps the requested state (`splitTarget`). While animating it compares with that
+  state; the completion that comes once no animation is pending sets the item to it, lays out, and
+  gets a fresh width-restore attempt (without that, the sidebar stayed at 184 pt instead of 224).
+- Regression check: the workflow smoke sends both toggles in one task (0 and 60 ms stall). Before
+  the fix it failed with the sidebar hidden; after it, the workflow smoke passed twice (16/16) and
+  the controls smoke passed 20/20.

@@ -589,10 +589,14 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     // Collapse here, outside layout: it changes the split view controller's constraints. The
     // split item's own animator slides the sidebar (Finder, Mail); Reduce Motion is instant.
     BOOL collapsed = [spec[@"compactPane"] isEqual:@"detail"];
-    if (sidebarItem.collapsed != collapsed) {
+    // While an animation runs, the item can still report its old state (a second toggle before
+    // the run loop turns), so compare with the requested state.
+    if ((self.animatingSplit ? self.splitTarget : sidebarItem.collapsed) != collapsed) {
+      self.splitTarget = collapsed;
       if (old && [self.host animatesTransitions]) {
         // A toggle during a running animation starts a newer one; only the latest completion
-        // ends the pause and reconciles.
+        // ends the pause. An older animation can finish after it, so whichever completion comes
+        // once no animation is pending puts the item in the requested state, then reconciles.
         self.animatingSplit = YES; NSUInteger generation = ++self.splitAnimation;
         self.animationWidths = [NSMutableSet set];
         // A collapsed sidebar pane is hidden but keeps its last frame width: it starts at 0.
@@ -603,8 +607,14 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
           context.allowsImplicitAnimation = YES;
           sidebarItem.animator.collapsed = collapsed;
         } completionHandler:^{
-          TRNode *node = weakSelf; if (!node || node.splitAnimation != generation) return;
-          node.animatingSplit = NO; node.animationsCompleted++; [node reconcileWindowSplit];
+          TRNode *node = weakSelf; if (!node) return;
+          if (node.splitAnimation == generation) { node.animatingSplit = NO; node.animationsCompleted++; }
+          if (node.animatingSplit) return;
+          if (sidebarItem.collapsed != node.splitTarget) {
+            sidebarItem.collapsed = node.splitTarget; [node.splitController.view layoutSubtreeIfNeeded];
+          }
+          // A finished show or hide earns a fresh attempt to restore the saved width.
+          node.reconcileAttempt = 0; [node reconcileWindowSplit];
         }];
       } else { ++self.splitAnimation; self.animatingSplit = NO; sidebarItem.collapsed = collapsed; }
     }

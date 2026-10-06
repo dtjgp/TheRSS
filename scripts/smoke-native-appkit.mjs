@@ -574,9 +574,43 @@ try {
     const reversed = await sample(
       (state) => Math.abs(state.divider - widthBefore) <= 1 && !state.animating
     )
-    assert(Math.abs(reversed.at(-1).divider - widthBefore) <= 1, 'A reversed toggle ends shown')
+    assert(
+      Math.abs(reversed.at(-1).divider - widthBefore) <= 1,
+      `A reversed toggle ends shown: ${JSON.stringify(reversed.slice(-3))}`
+    )
     await delay(300)
     assert(Math.abs((await sidebarState()).divider - widthBefore) <= 1, 'The width stays settled')
+    // A loaded runner can deliver the second toggle before the run loop turns, while the split
+    // item still reports its old state; the sidebar must still end shown at the saved width.
+    for (const stall of [0, 60]) {
+      await application.evaluate(
+        (_, stall) =>
+          new Promise((resolve) => {
+            const press = () =>
+              globalThis.__nativeBridge.interactFixture(
+                globalThis.__nativeWindow.getNativeWindowHandle(),
+                JSON.stringify({ id: 'sidebar-toggle', action: 'click' })
+              )
+            press()
+            globalThis.setImmediate(() => {
+              const end = Date.now() + stall
+              while (Date.now() < end);
+              press()
+              resolve()
+            })
+          }),
+        stall
+      )
+      const settled = await sample(
+        (state) => Math.abs(state.divider - widthBefore) <= 1 && !state.animating
+      )
+      await delay(300)
+      const after = await sidebarState()
+      assert(
+        Math.abs(after.divider - widthBefore) <= 1 && !after.animating,
+        `Two toggles in one main-thread turn end shown at the saved width: ${JSON.stringify({ stall, settled: settled.at(-1), after })}`
+      )
+    }
     assert.equal(await widthEvents(), eventsBefore, 'Animations emit no sidebar width')
     assert.equal(await savedWidth(), preferenceBefore, 'The animation writes no width preference')
     await act('native-workspace', 'reduce-motion', true)
