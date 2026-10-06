@@ -30,7 +30,11 @@ import {
 } from './researchMetadata'
 import { ReadingWorkspace } from './readingWorkspace'
 import { discoverSources } from './discoverSources'
-import { describeDiscoverRun } from '../../shared/discoverRunProgress'
+import {
+  describeDiscoverRun,
+  discoverOutcomeLabel,
+  discoverResultCountLabel
+} from '../../shared/discoverRunProgress'
 
 type Filter = 'all' | 'paper' | 'repository' | 'other'
 const KIND_NAMES: Record<Exclude<Filter, 'all'>, string> = {
@@ -56,7 +60,7 @@ function resultStatus(snapshot: DiscoverSnapshot, locale: string): string {
   const complete = searched.filter(
     (outcome) => outcome.status === 'healthy' || outcome.status === 'no_results'
   ).length
-  return `${statusTitles[snapshot.status]} · ${complete} of ${searched.length} sources complete · ${formatDisplayDate(snapshot.createdAt, locale)}`
+  return `${statusTitles[snapshot.status]} · ${complete} of ${searched.length} sources succeeded · ${formatDisplayDate(snapshot.createdAt, locale)}`
 }
 
 export class DiscoverScreen implements NativeScreen {
@@ -464,6 +468,8 @@ export class DiscoverScreen implements NativeScreen {
     const queryMissing = !this.query.trim()
     const sourcesMissing = !this.sources.size
     const runnerReason = runnerUnavailableReason(this.context, this.runner)
+    // Before the first search the empty state already explains what to do.
+    if (queryMissing && !this.snapshot) return []
     const reason = queryMissing
       ? 'Enter a research question to start a search.'
       : sourcesMissing
@@ -623,16 +629,31 @@ export class DiscoverScreen implements NativeScreen {
   private details(): void {
     const s = this.snapshot
     if (!s) return
+    // Plain-language outcomes; the recorded time and planner provenance stay as stored.
+    const plan = [
+      ['arXiv categories', s.plan.arxiv.categories],
+      ['arXiv keywords', s.plan.arxiv.keywords],
+      ['Excluded keywords', s.plan.arxiv.excludeKeywords],
+      ['GitHub keywords', s.plan.github.keywords],
+      ['Topics', s.plan.github.topics],
+      ['Languages', s.plan.github.languages]
+    ] as const
+    const outcomes = DISCOVER_SOURCE_IDS.map((source) => {
+      const outcome = s.sourceOutcomes[source]
+      const status = outcome?.status ?? 'not_searched'
+      // A source that was not searched has no observed count.
+      const count =
+        status === 'not_searched' ? '' : ` · ${discoverResultCountLabel(outcome?.resultCount ?? 0)}`
+      return `### ${sourceDisplayName(source)}\n${discoverOutcomeLabel(status)}${count}${outcome?.error ? `\n${outcome.error}` : ''}`
+    })
     this.context.showDocument(
       'Search details',
-      `# Search outcome\n\n${s.status} · ${s.createdAt}\n\n${s.intent}\n\n## Search plan\n\n${s.plan.intentSummary}\n\n${s.plan.rationale}\n\narXiv categories: ${s.plan.arxiv.categories.join(', ')}\narXiv keywords: ${s.plan.arxiv.keywords.join(', ')}\nExcluded keywords: ${s.plan.arxiv.excludeKeywords.join(', ')}\nGitHub keywords: ${s.plan.github.keywords.join(', ')}\nTopics: ${s.plan.github.topics.join(', ')}\nLanguages: ${s.plan.github.languages.join(', ')}\n\n## All source outcomes\n\n${DISCOVER_SOURCE_IDS.map(
-        (source) => {
-          const outcome = s.sourceOutcomes[source]
-          return `### ${sourceDisplayName(source)}\n${outcome?.status ?? 'not_searched'} · ${outcome?.resultCount ?? 0} results${outcome?.error ? `\n${outcome.error}` : ''}`
-        }
-      ).join(
-        '\n\n'
-      )}\n\n## Planner provenance\nProvider: ${s.provenance.providerName}\nModel: ${s.provenance.model}\nPrompt: ${s.provenance.promptVersion}\nInput hash: ${s.provenance.inputHash}\nPersonal context applied: ${s.provenance.personalizationApplied ? 'Yes' : 'No'}\nCreated: ${s.provenance.createdAt}`
+      `# Search outcome\n\n${statusTitles[s.status]}\nRecorded: ${s.createdAt}\n\n${s.intent}\n\n## Search plan\n\n${s.plan.intentSummary}\n\n${s.plan.rationale}\n\n${plan
+        .filter(([, values]) => values.length)
+        .map(([title, values]) => `${title}: ${values.join(', ')}`)
+        .join(
+          '\n'
+        )}\n\n## All source outcomes\n\n${outcomes.join('\n\n')}\n\n## Planner provenance\nProvider: ${s.provenance.providerName}\nModel: ${s.provenance.model}\nPrompt: ${s.provenance.promptVersion}\nInput hash: ${s.provenance.inputHash}\nPersonal context applied: ${s.provenance.personalizationApplied ? 'Yes' : 'No'}\nCreated: ${s.provenance.createdAt}`
     )
   }
 }

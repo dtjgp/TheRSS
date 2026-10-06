@@ -70,7 +70,16 @@ from window" for `search-details`, `promotion-preview` and the unchecked source 
 runs. This matches the known off-Space capture limit recorded in
 [native-smoke-reliability](../2026-09-24-native-smoke-reliability/CHANGE_CONTRACT.md).
 
-Decision needed for R1. Options:
+**R2 follow-up (2026-10-06, time-boxed).** At the failing sheet captures the inspect JSON
+reported `onActiveSpace=false` and the app inactive; the preceding normal capture reported
+`true`. A standalone probe (Discover run, search-details sheet, source popover, with and without
+`showInactive`/`moveTop`) captured every state, and the window stayed on the active Space. In 2
+of 3 observations the app lost activation when the sheet opened or was presented; the third did
+not. On a Mac in active use this is not separable from the user's own activity, so no cause is
+established. Next verifier: the same probe on an idle Mac or CI runner. The capture matrix now
+retries a failed capture four times, as the smoke does.
+
+Decision for R1 (user, 2026-10-06): option 1, implemented in [rows-settings-fit](../2026-10-06-rows-settings-fit/CHANGE_CONTRACT.md) (K1). Options were:
 
 1. Fixture `key` action fails with an explicit reason when the target window is not key
    (diagnostic only; the step still fails on a busy Mac).
@@ -83,3 +92,13 @@ Decision needed for R1. Options:
 VoiceOver speech; real mouse and keyboard input; install over the existing app; Web fallback
 appearance; Increase Contrast and Reduce Transparency beyond the existing smoke cases; locales
 other than `en-US`.
+
+## Status after follow-up (2026-10-06)
+
+| ID     | Status                                                                                                                   |
+| ------ | ------------------------------------------------------------------------------------------------------------------------ |
+| A1, A2 | Fixed: [rows-settings-fit](../2026-10-06-rows-settings-fit/CHANGE_CONTRACT.md)                                           |
+| A3-A7  | Fixed: [ui-polish-a3-a8](../2026-10-06-ui-polish-a3-a8/CHANGE_CONTRACT.md)                                               |
+| A8     | Open, investigated: the warnings follow only the full capture matrix; no user-visible effect; see the A3-A8 contract log |
+| R1     | Option 1 implemented (explicit reason); a Space press still fails while another app is active                            |
+| R2     | Open, not reproduced in a probe; see the R2 follow-up above                                                              |

@@ -292,6 +292,8 @@ export class SourcesScreen implements NativeScreen {
       source = discoverySourceFromCatalogId(entry.id),
       snapshot = this.snapshot
     const health = this.healthDetail(entry)
+    const observed = this.health(entry),
+      recorded = observed === 'idle' ? null : observed
     const item = snapshot?.items.find((item) => item.id === this.selectedItem) ?? snapshot?.items[0]
     const status = snapshot
       ? {
@@ -309,15 +311,21 @@ export class SourcesScreen implements NativeScreen {
           heading('source-detail-title', entry.name),
           label(
             'source-detail-health',
-            `${sourceHealthLabel(this.health(entry), health?.context)} · ${sourceObservationLabel(health)}`,
+            recorded
+              ? `${sourceHealthLabel(recorded, health?.context)} · ${sourceObservationLabel(health)}`
+              : 'No outcome recorded yet.',
             { weight: 'secondary' }
           ),
           ...(health?.errorMessage ? [label('source-health-error', health.errorMessage)] : []),
-          label(
-            'source-observation-boundary',
-            'Last recorded outcome; cached content below is separate from this observation.',
-            { weight: 'secondary' }
-          ),
+          ...(recorded
+            ? [
+                label(
+                  'source-observation-boundary',
+                  'Last recorded outcome; cached content below is separate from this observation.',
+                  { weight: 'secondary' }
+                )
+              ]
+            : []),
           b.rich(
             'source-detail-description',
             `${entry.role}\n\n${entry.reason}\n\nPriority: ${entry.priority}\n\nResearch axes: ${entry.researchAxes.map((axis) => RESEARCH_AXIS_LABELS[axis]).join(', ')}\n\nOrigin: ${entry.origin}\n\nAccess: ${entry.accessNote}`

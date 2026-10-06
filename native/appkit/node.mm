@@ -515,7 +515,11 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     if (table.rowHeight != rowHeight || ![old[@"rows"] isEqual:spec[@"rows"]]) { table.rowHeight = rowHeight; [table reloadData]; }
     NSInteger selected = -1, row = 0;
     for (NSDictionary *item in spec[@"rows"]) { if ([item[@"id"] isEqual:spec[@"selected"]]) selected = row; row++; }
+    // A source list keeps one row selected; it shows none only when the scene selects none (a
+    // local search covers every workspace), so a click in empty space never clears it.
+    table.allowsEmptySelection = selected < 0;
     if (selected >= 0 && table.selectedRow != selected) [table selectRowIndexes:[NSIndexSet indexSetWithIndex:selected] byExtendingSelection:NO];
+    else if (selected < 0 && table.selectedRow >= 0) [table deselectAll:nil];
   } else if ([kind isEqual:@"table"]) {
     NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
     NSArray *columns = spec[@"columns"];
@@ -634,18 +638,25 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   else if ([kind isEqual:@"symbol"] || [kind isEqual:@"button"]) width = MIN(width,child.preferredWidth);
   return MAX(0,width);
 }
+// A nested row (a group that wraps as one unit) needs its children side by side.
+- (CGFloat)wrapWidthOf:(TRNode *)child {
+  return [child.spec[@"kind"] isEqual:@"row"] ? [child naturalRowWidth] : child.preferredWidth;
+}
 - (BOOL)wrapsRowAtWidth:(CGFloat)width {
   if (self.spec[@"wrap"] && ![self.spec[@"wrap"] boolValue]) return NO;
   CGFloat padding = TRNumber(self.spec,@"padding",0) * self.host.zoom, gap = TRNumber(self.spec,@"gap",10) * self.host.zoom;
   CGFloat fixed = MAX(0,(NSInteger)self.nodes.count-1)*gap;
-  for (TRNode *child in self.nodes) fixed += [child.spec[@"flex"] doubleValue] > 0 ? MIN(180*self.host.zoom,child.preferredWidth) : child.preferredWidth;
+  for (TRNode *child in self.nodes) {
+    BOOL group = [child.spec[@"kind"] isEqual:@"row"];
+    fixed += [child.spec[@"flex"] doubleValue] > 0 && !group ? MIN(180*self.host.zoom,child.preferredWidth) : [self wrapWidthOf:child];
+  }
   return fixed > width - 2*padding;
 }
 - (CGFloat)wrappedRowAtWidth:(CGFloat)width apply:(BOOL)apply {
   CGFloat padding = TRNumber(self.spec,@"padding",0) * self.host.zoom, gap = TRNumber(self.spec,@"gap",10) * self.host.zoom;
   CGFloat x = padding, y = padding, lineHeight = 0, available = MAX(20,width-2*padding);
   for (TRNode *child in self.nodes) {
-    CGFloat childWidth = MIN(available,child.preferredWidth), childHeight = [child heightForWidth:childWidth];
+    CGFloat childWidth = MIN(available,[self wrapWidthOf:child]), childHeight = [child heightForWidth:childWidth];
     if (x > padding && x+childWidth > width-padding) { x = padding; y += lineHeight+gap; lineHeight = 0; }
     if (apply) child.frame = NSMakeRect(x,y,childWidth,childHeight);
     x += childWidth+gap; lineHeight = MAX(lineHeight,childHeight);

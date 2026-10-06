@@ -13,7 +13,8 @@ import {
   row,
   scroll,
   type NativeContext,
-  type NativeScreen
+  type NativeScreen,
+  emptyState
 } from './common'
 import type { NativeNode } from './presentation'
 import { ReadingWorkspace } from './readingWorkspace'
@@ -140,19 +141,32 @@ export class AnalyticsScreen implements NativeScreen {
           ? [
               ...(!this.workspace.focused
                 ? [
+                    // Two pairs: a narrow window wraps them 2 + 2 instead of 3 + 1.
                     row('analytics-metrics', [
-                      metric(
-                        'analytics-searches',
-                        'Lifetime returned records',
-                        s.totals.searchResults
+                      row(
+                        'analytics-metrics-records',
+                        [
+                          metric(
+                            'analytics-searches',
+                            'Lifetime returned records',
+                            s.totals.searchResults
+                          ),
+                          metric(
+                            'analytics-window',
+                            `Last ${s.windowDays} local days`,
+                            s.daily.reduce((sum, day) => sum + day.searchResults, 0)
+                          )
+                        ],
+                        { flex: 1, wrap: false }
                       ),
-                      metric(
-                        'analytics-window',
-                        `Last ${s.windowDays} local days`,
-                        s.daily.reduce((sum, day) => sum + day.searchResults, 0)
-                      ),
-                      metric('analytics-completed', 'Deep analyses', s.totals.deepAnalyses),
-                      metric('analytics-papers', 'Analyzed papers', s.totals.analyzedPapers)
+                      row(
+                        'analytics-metrics-analyses',
+                        [
+                          metric('analytics-completed', 'Deep analyses', s.totals.deepAnalyses),
+                          metric('analytics-papers', 'Analyzed papers', s.totals.analyzedPapers)
+                        ],
+                        { flex: 1, wrap: false }
+                      )
                     ]),
                     this.trend(s),
                     label(
@@ -163,35 +177,42 @@ export class AnalyticsScreen implements NativeScreen {
                   ]
                 : []),
               ...(s.analyzedItems.length ? this.workspace.navigation('Back to history') : []),
-              this.workspace.apply({
-                id: 'analytics-artifacts',
-                kind: 'split' as const,
-                flex: 1,
-                width: 320,
-                minWidth: 260,
-                maxWidth: 520,
-                collapseAt: 700,
-                children: [
-                  b.table(
-                    'analytics-analyses',
-                    'Persisted analyses',
-                    s.analyzedItems.slice(0, 50).map((item) => ({
-                      id: item.analysisId,
-                      title: item.title,
-                      subtitle: `${item.providerName} · ${item.model} · ${formatDisplayDate(item.createdAt, this.context.locale)}`
-                    })),
-                    this.selected,
-                    (id) => this.select(id),
-                    {
-                      activate: (id) => {
-                        this.workspace.open()
-                        return this.select(id)
-                      }
-                    }
-                  ),
-                  this.reading()
-                ]
-              })
+              s.analyzedItems.length
+                ? this.workspace.apply({
+                    id: 'analytics-artifacts',
+                    kind: 'split' as const,
+                    flex: 1,
+                    width: 320,
+                    minWidth: 260,
+                    maxWidth: 520,
+                    collapseAt: 700,
+                    children: [
+                      b.table(
+                        'analytics-analyses',
+                        'Persisted analyses',
+                        s.analyzedItems.slice(0, 50).map((item) => ({
+                          id: item.analysisId,
+                          title: item.title,
+                          subtitle: `${item.providerName} · ${item.model} · ${formatDisplayDate(item.createdAt, this.context.locale)}`
+                        })),
+                        this.selected,
+                        (id) => this.select(id),
+                        {
+                          activate: (id) => {
+                            this.workspace.open()
+                            return this.select(id)
+                          }
+                        }
+                      ),
+                      this.reading()
+                    ]
+                  })
+                : emptyState(
+                    'analytics-analyses-empty',
+                    'sparkles',
+                    'No stored analyses',
+                    'Analyze a Saved or Discover result to keep its complete analysis and provenance here.'
+                  )
             ]
           : [
               column(

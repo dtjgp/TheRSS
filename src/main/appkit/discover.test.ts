@@ -106,7 +106,7 @@ describe('AppKit Discover', () => {
     const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
     await screen.load()
     expect(h.find(h.render(screen), 'discover-result-status')?.text).toBe(
-      'Partial results · 20 of 21 sources complete · Sep 6, 2026'
+      'Partial results · 20 of 21 sources succeeded · Sep 6, 2026'
     )
   })
 

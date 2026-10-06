@@ -422,7 +422,7 @@ try {
     assert(!find(result.root, 'discover-expand'))
     assert.match(
       find(result.root, 'discover-result-status').text,
-      /^Complete · \d+ of \d+ sources complete · [A-Z][a-z]{2} \d{1,2}, \d{4}$/u
+      /^Complete · \d+ of \d+ sources succeeded · [A-Z][a-z]{2} \d{1,2}, \d{4}$/u
     )
     // Rows drag their https link out; the reading Share button hands the link to the picker.
     const drag = find(result.root, 'discover-results').dragItem
@@ -963,6 +963,25 @@ try {
   await step('Persisted Analytics metrics and complete analysis artifact', async () => {
     await go('analytics')
     await wait('analytics-analyses')
+    // At the minimum window the metrics wrap as two pairs, so no metric is squeezed below its
+    // label width (the pairs are laid out at their natural width).
+    const wide = await application.evaluate(() => globalThis.__nativeWindow.getBounds())
+    await application.evaluate(() =>
+      globalThis.__nativeWindow.setBounds({ width: 820, height: 720 })
+    )
+    await delay(200)
+    const narrowMetrics = await inspect()
+    for (const id of [
+      'analytics-searches',
+      'analytics-window',
+      'analytics-completed',
+      'analytics-papers'
+    ]) {
+      const width = Number(find(narrowMetrics.root, id).frame.match(/-?\d+(?:\.\d+)?/gu)[2])
+      assert(width >= 170, `Metric ${id} keeps its label width at 820 pt: ${width} pt`)
+    }
+    await application.evaluate((_, bounds) => globalThis.__nativeWindow.setBounds(bounds), wide)
+    await delay(200)
     const trend = find((await inspect()).root, 'analytics-trend')
     assert.equal(trend.class, 'TRChart')
     assert.equal(trend.points.length, 7)
@@ -1052,6 +1071,11 @@ try {
     assert(!find(state.root, 'local-search-open-in-app'))
     assert(find(state.root, 'local-search-results').rows.length > 0)
     assert.equal(state.toolbar.title, 'Search')
+    assert.equal(
+      find(state.root, 'native-navigation').selected,
+      '',
+      'No workspace is selected while a local search shows'
+    )
     await click('local-search-open')
     const opened = await application.evaluate(() => globalThis.__nativeOpened)
     assert(opened.every((url) => new URL(url).protocol === 'https:'))

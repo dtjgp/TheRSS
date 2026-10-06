@@ -201,7 +201,7 @@ export class NativePresenter {
     try {
       await this.modals.close()
       this.screens[this.route].closePopover?.()
-      this.route = route
+      this.changeRoute(route)
       this.renderNow()
       await this.screens[route].load?.()
     } finally {
@@ -282,7 +282,7 @@ export class NativePresenter {
           ? (this.screens.saved as SavedScreen).openLocal(record.item)
           : (this.screens.analytics as AnalyticsScreen).openLocal(record)
     this.localReturn = { route: origin, restore }
-    this.route = route
+    this.changeRoute(route)
     await this.modals.close()
     this.localSearch.suspend()
     this.redraw()
@@ -300,7 +300,7 @@ export class NativePresenter {
       const previous = this.localReturn
       this.localReturn = null
       previous.restore()
-      this.route = previous.route
+      this.changeRoute(previous.route)
     }
     await this.modals.close()
     this.localSearch.resume()
@@ -343,6 +343,15 @@ export class NativePresenter {
     this.preferenceWork = this.preferenceWork
       .then(() => this.port.persist(snapshot))
       .catch(() => this.notify('Window layout preferences could not be saved.', 'error'))
+  }
+  /** A success notice belongs to the workspace it came from; errors stay until dismissed. */
+  private changeRoute(route: Route): void {
+    if (route !== this.route && this.notice && this.noticeKind === 'success') {
+      if (this.noticeTimer) clearTimeout(this.noticeTimer)
+      this.noticeTimer = null
+      this.notice = ''
+    }
+    this.route = route
   }
   private notify(message: string, kind: 'success' | 'error' = 'success'): void {
     this.notice = message.slice(0, 2000)
@@ -399,7 +408,8 @@ export class NativePresenter {
               id: 'native-navigation',
               kind: 'sidebar' as const,
               title: 'Workspaces',
-              selected: this.route,
+              // A local search covers every workspace, so none is selected while it shows.
+              selected: this.localSearch.showing ? undefined : this.route,
               enabled: this.ready,
               flex: 1,
               rows: routes.map((route) => ({
