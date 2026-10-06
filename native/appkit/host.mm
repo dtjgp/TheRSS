@@ -101,7 +101,10 @@ static TRNode *TRFitWindowNode(TRNode *node) {
   TRNode *scroll = TRFitWindowNode(self.root);
   if (!scroll || ![scroll.control isKindOfClass:NSScrollView.class]) return;
   NSScrollView *view = (NSScrollView *)scroll.control;
-  CGFloat width = view.contentSize.width, viewport = view.contentSize.height;
+  // Measure at the width without a vertical scroller: a fitted pane does not scroll, and a legacy
+  // scroller (no trackpad, as on CI runners) that shows or hides is not a width change.
+  CGFloat width = [NSScrollView contentSizeForFrameSize:view.frame.size horizontalScrollerClass:nil verticalScrollerClass:nil borderType:view.borderType controlSize:NSControlSizeRegular scrollerStyle:view.scrollerStyle].width;
+  CGFloat viewport = view.contentSize.height;
   CGFloat natural = [scroll scrollContentHeightForWidth:width], chrome = self.canvas.bounds.size.height - viewport;
   BOOL samePane = [pane isEqual:self.fittedPane], widthChanged = samePane && fabs(width-self.fittedWidth) >= 1;
   if (!samePane) self.fitUserResized = NO;

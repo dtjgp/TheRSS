@@ -84,3 +84,16 @@ Scope: CI failures reported by Auto-fix on PR #58 and the user's request "排查
 - Change: every native window guards `page-title-updated` when it is created, before the host
   page loads, so no host-page title event can precede the guard. If the smoke sees a wrong title
   again, it now records the Electron and native titles of every window, then again after 1 s.
+
+## Settings pane fit with legacy scroll bars (head 64b855b)
+
+- CI evidence: "The Personal Context pane fits its window: 404 pt of content in 374 pt".
+- Local reproduction: the same numbers when the app alone runs with `-AppleShowScrollBars Always`
+  (argument domain only; no system setting changed). CI runners have no trackpad, so they show
+  legacy scroll bars.
+- Cause: the fit measured the pane at the visible width. The visible scroller made it 583 pt
+  instead of 600 pt; the form wrapped to 404 pt, and each later fit saw a width change and
+  only recorded it.
+- Fix: the fit measures at the width without a vertical scroller. With legacy scroll bars the
+  workflow smoke failed before the fix and passed 16/16 after it; with overlay scroll bars it
+  also passed 16/16, and the controls smoke passed 20/20.
