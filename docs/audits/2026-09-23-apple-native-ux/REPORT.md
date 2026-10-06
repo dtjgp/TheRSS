@@ -146,3 +146,7 @@ Each slice has its own change contract and verification record.
 | F12 / S4       | D5 decided 2026-10-05: Settings is a separate window (Command-comma) with a preference toolbar of two panes; it left the sidebar; saves reload the workspace. | [settings-window](../2026-10-05-settings-window/CHANGE_CONTRACT.md)                   |
 
 All audit findings F1-F14 and slices S0-S4 are closed.
+
+Follow-up (2026-10-06): the [appearance, window-size and package acceptance](../2026-10-06-appearance-acceptance/REPORT.md)
+covered the states this audit did not assess (dark mode, minimum windows, the packaged app). Its
+findings A1-A7 are fixed; A8, R1 and R2 stay recorded there.
