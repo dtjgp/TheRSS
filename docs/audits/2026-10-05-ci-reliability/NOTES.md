@@ -128,3 +128,16 @@ Scope: CI failures reported by Auto-fix on PR #58 and the user's request "排查
 - Regression check: the workflow smoke sends both toggles in one task (0 and 60 ms stall). Before
   the fix it failed with the sidebar hidden; after it, the workflow smoke passed twice (16/16) and
   the controls smoke passed 20/20.
+
+## Settings window moves up on a small display (head a3ab86e)
+
+- CI evidence: "Fitting keeps the top edge" failed with y 31 instead of 68 after the Model
+  Provider pane fitted. The capped-pane check before it passed, which supports the earlier
+  inference that the runner's display is small.
+- Behavior: when a pane needs more height than remains below the window's top edge, the fit
+  keeps the window on the work area, so its bottom sits on the work-area bottom and the top moves
+  up. That is the intended rule; the smoke assumed the top never moves.
+- Change: the smoke accepts a moved top only when the window bottom is on the work-area bottom,
+  and later checks use the new top. A local probe that placed the window low on a 1194 pt work
+  area moved it from y 651 to 415 with its bottom at 1233 (the work-area bottom), and the check
+  accepted it. The workflow smoke passed 16/16 with legacy scroll bars.

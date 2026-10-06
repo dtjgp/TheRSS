@@ -894,15 +894,31 @@ try {
         )
         return state
       }
-      const top = (await settingsBounds()).y
+      // Fitting keeps the top edge, unless the pane needs more height than remains below it: then
+      // the window moves up so its bottom stays on the work area (small CI displays). Returns the
+      // top edge after the fit.
+      const keepsTop = async (top) => {
+        const { bounds, workArea } = await application.evaluate(({ screen }) => {
+          const bounds = globalThis.__nativeWindow.getBounds()
+          return { bounds, workArea: screen.getDisplayMatching(bounds).workArea }
+        })
+        const workBottom = workArea.y + workArea.height
+        assert(
+          bounds.y === top ||
+            (bounds.y < top && Math.abs(bounds.y + bounds.height - workBottom) <= 1),
+          `Fitting keeps the top edge: ${JSON.stringify({ top, bounds, workArea })}`
+        )
+        return bounds.y
+      }
+      let top = (await settingsBounds()).y
       await paneFits('Personal Context', 'personal-form')
       await click('settings-provider')
       const provider = await paneFits('Model Provider', 'provider-form')
       assert(find(provider.root, 'agent-status-claude'), 'Local agents are part of the fitted pane')
-      assert.equal((await settingsBounds()).y, top, 'Fitting keeps the top edge')
+      top = await keepsTop(top)
       await click('settings-personal')
       await paneFits('Personal Context', 'personal-form')
-      assert.equal((await settingsBounds()).y, top, 'Fitting keeps the top edge')
+      await keepsTop(top)
       // A user resize is kept: a status-line change never shrinks it and a width change does not
       // refit the height.
       const fitted = await settingsBounds()
