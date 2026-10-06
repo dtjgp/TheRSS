@@ -7,12 +7,14 @@ import { join, resolve } from 'node:path'
 import process from 'node:process'
 import { setTimeout as delay } from 'node:timers/promises'
 import { _electron as electron } from '@playwright/test'
+import { nativeSmokeAppKitOptions } from './native-smoke-options.mjs'
 
 const output = resolve(process.env.THERSS_NATIVE_EVIDENCE_DIR || 'test-results/appkit-controls')
 await mkdir(output, { recursive: true })
 const profile = await mkdtemp(join(tmpdir(), 'therss-appkit-controls-'))
+const appKitOptions = nativeSmokeAppKitOptions(process.env)
 const application = await electron.launch({
-  args: [`--user-data-dir=${profile}`, '.'],
+  args: [`--user-data-dir=${profile}`, '.', ...appKitOptions.args],
   env: { ...process.env, THERSS_E2E_FIXTURES: '1', THERSS_UI: 'appkit' }
 })
 const checks = []
@@ -1275,7 +1277,13 @@ try {
   await writeFile(
     join(output, 'result.json'),
     JSON.stringify(
-      { passed: true, screenshots: process.env.THERSS_NATIVE_SCREENSHOTS !== '0', checks, state },
+      {
+        passed: true,
+        screenshots: process.env.THERSS_NATIVE_SCREENSHOTS !== '0',
+        legacyScrollers: appKitOptions.legacyScrollers,
+        checks,
+        state
+      },
       null,
       2
     )

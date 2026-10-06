@@ -10,6 +10,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { fileURLToPath, URL } from 'node:url'
 import { _electron as electron } from '@playwright/test'
 import { classifyNativeSmokeStderr } from './native-smoke-diagnostics.mjs'
+import { nativeSmokeAppKitOptions } from './native-smoke-options.mjs'
 import { sourceHealthFixture } from './source-health-fixture.mjs'
 import { savedSourceUpdateFixture } from './saved-source-update-fixture.mjs'
 
@@ -20,6 +21,7 @@ const output = resolve(
 await mkdir(output, { recursive: true })
 const profile = await mkdtemp(join(tmpdir(), 'therss-appkit-acceptance-'))
 const screenshots = process.env.THERSS_NATIVE_SCREENSHOTS !== '0'
+const appKitOptions = nativeSmokeAppKitOptions(process.env)
 const checks = [],
   errors = [],
   captureFailures = []
@@ -38,7 +40,8 @@ const application = await electron.launch({
     : {}),
   args: [
     `--user-data-dir=${profile}`,
-    ...(process.env.THERSS_NATIVE_APP_EXECUTABLE ? [] : [project])
+    ...(process.env.THERSS_NATIVE_APP_EXECUTABLE ? [] : [project]),
+    ...appKitOptions.args
   ],
   env: launchEnvironment,
   timeout: 30000
@@ -1529,6 +1532,7 @@ try {
       {
         passed: true,
         screenshots,
+        legacyScrollers: appKitOptions.legacyScrollers,
         dialogs: await application.evaluate(() => globalThis.__fixtureDialogs),
         profile,
         checks,
