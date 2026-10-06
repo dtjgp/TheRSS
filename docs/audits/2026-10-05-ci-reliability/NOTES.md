@@ -73,3 +73,14 @@ Scope: CI failures reported by Auto-fix on PR #58 and the user's request "排查
   hide/show cycles. The cycle record is in `sidebar-motion.json`.
 - Discrimination: with fixture animations left off, the smoke fails at "Hiding the sidebar runs
   the animated path". With animations on, it passed locally (cycles `[{hideSteps: 6, showSteps: 8}]`).
+
+## Record window titled "TheRSS" (head 78bc013)
+
+- CI evidence: "A double-clicked result opens read-only in its own window" read the record
+  window title as "TheRSS" instead of the record title. The run before (f4e413a) passed.
+- Local reproduction: none. 25 open/close cycles showed the record title at once and after
+  400 ms. The traced order (guard, then first present) should always end on the record title,
+  so the cause is not confirmed.
+- Change: every native window guards `page-title-updated` when it is created, before the host
+  page loads, so no host-page title event can precede the guard. If the smoke sees a wrong title
+  again, it now records the Electron and native titles of every window, then again after 1 s.

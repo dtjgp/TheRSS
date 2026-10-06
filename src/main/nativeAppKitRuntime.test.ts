@@ -91,6 +91,7 @@ import {
   displayLocale,
   drainNativePreferences,
   flushNativeInterface,
+  keepNativeWindowTitle,
   shouldUseAppKit
 } from './nativeAppKitRuntime'
 
@@ -205,6 +206,13 @@ describe('AppKit runtime wiring', () => {
     const preventDefault = vi.fn()
     ;(registration![1] as (event: { preventDefault(): void }) => void)({ preventDefault })
     expect(preventDefault).toHaveBeenCalled()
+  })
+  it('guards the title once, before the host page loads', async () => {
+    const w = windowFixture()
+    keepNativeWindowTitle(w.window)
+    await attachAppKit(w.window, { api: {} } as WindowApplication)
+    const calls = vi.mocked(w.window.on).mock.calls as unknown as [string, unknown][]
+    expect(calls.filter(([event]) => event === 'page-title-updated')).toHaveLength(1)
   })
   it('uses the system locale for dates; only fixture runs may pin another', () => {
     const saved = {

@@ -6,7 +6,8 @@ import {
   shouldUseAppKit,
   flushNativeInterface,
   dispatchNativeMenu,
-  drainNativePreferences
+  drainNativePreferences,
+  keepNativeWindowTitle
 } from './nativeAppKitRuntime'
 import type { NativeRecord, SettingsSection } from './appkit/common'
 import { routeAppCommand } from './recordWindowRouting'
@@ -135,6 +136,7 @@ async function openRecordWindow(
   })
   try {
     const application = applicationRuntime.bind(window)
+    keepNativeWindowTitle(window)
     await window.loadFile(join(__dirname, '../renderer/native-host.html'))
     await attachRecordAppKit(window, application, record)
     window.show()
@@ -222,6 +224,7 @@ async function openSettingsWindow(
   guardUnsavedSettings(window, useE2eFixtures)
   try {
     const application = applicationRuntime.bind(window)
+    keepNativeWindowTitle(window)
     await window.loadFile(join(__dirname, '../renderer/native-host.html'))
     await attachSettingsAppKit(window, application, section)
     if (entry.section && entry.section !== section) selectSettingsPane(window, entry.section)
@@ -285,6 +288,7 @@ async function createWindow(
   })
 
   if (nativeUi) {
+    keepNativeWindowTitle(window)
     await window.loadFile(join(__dirname, '../renderer/native-host.html'))
     await attachAppKit(window, application, {
       openRecord: (record) => {

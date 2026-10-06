@@ -723,7 +723,24 @@ try {
       opened = await recordWindow()
     }
     assert.equal(opened.count, 2, 'The record opens in a second window')
-    assert.equal(opened.record.toolbar.title, row.title.slice(0, 200))
+    if (opened.record.toolbar.title !== row.title.slice(0, 200)) {
+      // CI once saw "TheRSS" here; record what owns the title, and whether it settles.
+      const titles = () =>
+        application.evaluate(({ BrowserWindow }) =>
+          BrowserWindow.getAllWindows().map((window) => ({
+            main: window === globalThis.__nativeWindow,
+            electron: window.getTitle(),
+            visible: window.isVisible()
+          }))
+        )
+      const first = { native: opened.record.toolbar.title, windows: await titles() }
+      await delay(1000)
+      const settled = {
+        native: (await recordWindow()).record?.toolbar?.title,
+        windows: await titles()
+      }
+      assert.fail(`The record window shows the record title: ${JSON.stringify({ first, settled })}`)
+    }
     assert.equal(find(opened.record.root, 'discover-reading-title').text, row.title)
     assert(find(opened.record.root, 'discover-open'), 'The record window opens the original')
     assert(!find(opened.record.root, 'discover-save'), 'The record window is read-only')

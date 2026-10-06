@@ -149,6 +149,18 @@ export function selectSettingsPane(window: BrowserWindow, section: SettingsSecti
   sessions.get(window)?.presenter.select?.(section)
 }
 
+const titleGuarded = new WeakSet<BrowserWindow>()
+/**
+ * The AppKit toolbar owns the window title; the empty host page's <title> must not replace it
+ * (a record window redraws rarely and kept "TheRSS"). Call before the host page loads, so no
+ * title event can arrive before the guard.
+ */
+export function keepNativeWindowTitle(window: BrowserWindow): void {
+  if (titleGuarded.has(window)) return
+  titleGuarded.add(window)
+  window.on('page-title-updated', (event) => event.preventDefault())
+}
+
 async function bindSession(
   window: BrowserWindow,
   bridge: NativeBridge,
@@ -161,9 +173,7 @@ async function bindSession(
     (json) => presenter.receive(json, true)
   )
   sessions.set(window, { presenter, bridge, handle })
-  // The AppKit toolbar owns the window title; the empty host page's <title> must not replace it
-  // (a record window redraws rarely and kept "TheRSS").
-  window.on('page-title-updated', (event) => event.preventDefault())
+  keepNativeWindowTitle(window)
   const resize = () => presenter.layoutChanged()
   window.on('resize', resize)
   window.once('closed', () => {
