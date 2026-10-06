@@ -243,6 +243,12 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     NSNumber *code = codes[input[@"value"]]; if (!code) return fail(env,"Unsupported fixture key");
     NSView *control = [node splitView] ?: node.control ?: node; if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
     if ([control isKindOfClass:NSControl.class] && !((NSControl *)control).enabled) return fail(env,"Fixture control is disabled");
+    // AppKit drops a synthetic Space press on a button whose window is not key (for example while
+    // another app is active); report that instead of letting a later state check time out.
+    if ([input[@"value"] isEqual:@"space"] && [control isKindOfClass:NSButton.class] && !control.window.isKeyWindow) {
+      NSString *reason = control.window ? [NSString stringWithFormat:@"Fixture button window is not the key window; AppKit drops the key press (visible=%d appActive=%d)",control.window.visible,NSApp.isActive] : @"Fixture button has no window";
+      return fail(env,reason.UTF8String);
+    }
     BOOL focused = [control.window makeFirstResponder:control];
     NSResponder *responder = control.window.firstResponder;
     // A focused NSTextField hands first responder to its field editor.

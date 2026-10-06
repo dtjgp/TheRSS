@@ -84,6 +84,52 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
   for (NSUInteger i = 0; i < queue.count; i++) { [queue[i] updateMaterial]; [queue[i] update:queue[i].spec]; [queue addObjectsFromArray:queue[i].nodes]; }
   [self.root layoutSubtreeIfNeeded]; [self.modal layoutSubtreeIfNeeded];
 }
+static TRNode *TRFitWindowNode(TRNode *node) {
+  if ([node.spec[@"kind"] isEqual:@"scroll"] && [node.spec[@"fitWindow"] boolValue]) return node;
+  for (TRNode *child in node.nodes) { TRNode *found = TRFitWindowNode(child); if (found) return found; }
+  return nil;
+}
+// A Settings window takes the height of the selected pane's content, as first-party Settings
+// windows do. A pane change fits the height exactly, and so does a content or status-line change
+// until the user resizes the window. After a user resize, a width change only updates the record
+// and a content change may grow the window so nothing is cut off, never shrink it. Nothing
+// happens during a live resize or the fit animation. The top edge stays put and the height stays
+// between the window minimum and the screen's visible height.
+- (void)fitWindowToPane:(id)pane {
+  NSWindow *window = self.window;
+  if (![pane isKindOfClass:NSString.class] || window.inLiveResize || self.fitAnimating) return;
+  TRNode *scroll = TRFitWindowNode(self.root);
+  if (!scroll || ![scroll.control isKindOfClass:NSScrollView.class]) return;
+  NSScrollView *view = (NSScrollView *)scroll.control;
+  CGFloat width = view.contentSize.width, viewport = view.contentSize.height;
+  CGFloat natural = [scroll scrollContentHeightForWidth:width], chrome = self.canvas.bounds.size.height - viewport;
+  BOOL samePane = [pane isEqual:self.fittedPane], widthChanged = samePane && fabs(width-self.fittedWidth) >= 1;
+  if (!samePane) self.fitUserResized = NO;
+  else if (widthChanged || fabs(window.frame.size.height-self.fittedFrameHeight) >= 1) self.fitUserResized = YES;
+  BOOL contentChanged = fabs(natural-self.fittedContent) >= 1 || fabs(chrome-self.fittedChrome) >= 1;
+  self.fittedPane = pane; self.fittedContent = natural; self.fittedChrome = chrome; self.fittedWidth = width;
+  self.fittedFrameHeight = window.frame.size.height;
+  if (widthChanged || (samePane && !contentChanged)) return;
+  CGFloat delta = ceil(natural - viewport);
+  if (self.fitUserResized) delta = MAX(0,delta);
+  if (fabs(delta) < 1) return;
+  NSRect frame = window.frame, visible = (window.screen ?: NSScreen.mainScreen).visibleFrame;
+  CGFloat minimum = MAX(window.minSize.height,[window frameRectForContentRect:NSMakeRect(0,0,1,window.contentMinSize.height)].size.height);
+  CGFloat height = MAX(minimum,MIN(frame.size.height+delta,visible.size.height));
+  CGFloat top = MIN(NSMaxY(frame),NSMaxY(visible));
+  frame = NSMakeRect(frame.origin.x,MAX(NSMinY(visible),top-height),frame.size.width,height);
+  self.fittedFrameHeight = height;
+  if (window.visible && [self animatesTransitions]) {
+    // The animator does not block the caller while the window slides to its new height.
+    self.fitAnimating = YES;
+    __weak TRHost *weakSelf = self;
+    [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) { [window.animator setFrame:frame display:YES]; }
+      completionHandler:^{ weakSelf.fitAnimating = NO; }];
+  } else {
+    [window setFrame:frame display:YES];
+    [self.root layoutSubtreeIfNeeded];
+  }
+}
 - (void)present:(NSDictionary *)scene {
   if (self.disposed) return;
   self.zoom = [scene[@"zoom"] doubleValue];
@@ -105,6 +151,7 @@ static NSString *TRFocusOwner(TRNode *node, NSResponder *responder) {
   }
   self.root.frame = self.canvas.bounds; self.root.needsLayout = YES;
   [self.root layoutSubtreeIfNeeded];
+  if ([scene[@"toolbar"] isKindOfClass:NSDictionary.class] && [scene[@"toolbar"][@"style"] isEqual:@"preference"]) [self fitWindowToPane:scene[@"toolbar"][@"selected"]];
   NSDictionary *modal = scene[@"modal"];
   if (modal) {
     if (self.sheet && ![self.modal.identifier isEqual:modal[@"id"]]) { [self.window endSheet:self.sheet]; [self.sheet orderOut:nil]; self.sheet = nil; self.modal = nil; }

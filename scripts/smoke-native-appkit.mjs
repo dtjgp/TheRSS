@@ -661,6 +661,12 @@ try {
       rowGlyphs.every((row) => row.symbol),
       'Every Discover row shows its kind glyph'
     )
+    // A title that wraps keeps both lines: the frame matches the lines it needs at its width.
+    for (const row of rowGlyphs)
+      assert(
+        Math.abs(Number(row.titleFrame.match(/-?\d+(?:\.\d+)?/gu)[3]) - row.titleTextHeight) <= 3,
+        `A Discover row title keeps its lines: ${JSON.stringify(row)}`
+      )
     assert.match(rowGlyphs[rowIndex].accessibilityLabel, /\. Saved\.$/u)
     assert(!/Saved/u.test(find(savedRow.root, 'discover-results').rows[rowIndex].subtitle))
     await capture('discover-saved-feedback')
@@ -812,6 +818,56 @@ try {
       await act('personal-prompt', 'fill', '资源高效 AI 与边缘智能')
       await click('personal-save')
       await wait('settings-status', (node) => /context saved/.test(node?.text || ''))
+      // Each pane opens at its content height (the top edge stays put), as in Mail and Notes:
+      // the pane's form neither overflows the viewport nor leaves an empty tail under it.
+      const numbers = (frame) => frame.match(/-?\d+(?:\.\d+)?/gu).map(Number)
+      const settingsBounds = () => application.evaluate(() => globalThis.__nativeWindow.getBounds())
+      const paneFits = async (pane, form) => {
+        const state = await wait(form)
+        const viewport = numbers(find(state.root, 'settings-scroll').viewportSize)[1]
+        const content = numbers(find(state.root, form).frame)[3]
+        assert(
+          Math.abs(content - viewport) <= 1,
+          `The ${pane} pane fits its window: ${content} pt of content in ${viewport} pt`
+        )
+        return state
+      }
+      const top = (await settingsBounds()).y
+      await paneFits('Personal Context', 'personal-form')
+      await click('settings-provider')
+      const provider = await paneFits('Model Provider', 'provider-form')
+      assert(find(provider.root, 'agent-status-claude'), 'Local agents are part of the fitted pane')
+      assert.equal((await settingsBounds()).y, top, 'Fitting keeps the top edge')
+      await click('settings-personal')
+      await paneFits('Personal Context', 'personal-form')
+      assert.equal((await settingsBounds()).y, top, 'Fitting keeps the top edge')
+      // A user resize is kept: a status-line change never shrinks it and a width change does not
+      // refit the height.
+      const fitted = await settingsBounds()
+      await application.evaluate((_, bounds) => globalThis.__nativeWindow.setBounds(bounds), {
+        ...fitted,
+        height: fitted.height + 80
+      })
+      await delay(200)
+      await act('personal-prompt', 'type', ' ')
+      await wait('settings-status', (node) => !node)
+      assert.equal(
+        (await settingsBounds()).height,
+        fitted.height + 80,
+        'A status change keeps a user resize'
+      )
+      await application.evaluate((_, bounds) => globalThis.__nativeWindow.setBounds(bounds), {
+        ...fitted,
+        width: fitted.width - 60,
+        height: fitted.height + 80
+      })
+      await delay(200)
+      assert.equal(
+        (await settingsBounds()).height,
+        fitted.height + 80,
+        'A width change keeps the height'
+      )
+      await act('personal-prompt', 'fill', '资源高效 AI 与边缘智能')
       await capture('settings-personal')
       // Command-comma again focuses the same window.
       await menu('Settings…')

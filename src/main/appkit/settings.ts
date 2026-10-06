@@ -132,7 +132,7 @@ export class SettingsScreen implements NativeScreen {
               )
             ]
           : []),
-        scroll('settings-scroll', content)
+        scroll('settings-scroll', content, { fitWindow: true })
       ],
       { flex: 1 }
     )

@@ -38,6 +38,15 @@ describe('AppKit Settings', () => {
     }
     expect(headings(h.render(screen))).toContain('Local agents')
   })
+  it('asks the window to fit each pane to its content', async () => {
+    const h = nativeHarness()
+    const screen = new SettingsScreen(h.context)
+    await screen.load()
+    for (const section of ['personal', 'provider'] as const) {
+      screen.select(section)
+      expect(h.find(h.render(screen), 'settings-scroll')?.fitWindow).toBe(true)
+    }
+  })
   it('reports a successful save, credential clear and prompt save to its window', async () => {
     const changed = vi.fn()
     const h = nativeHarness({

@@ -263,6 +263,20 @@ describe('native presentation boundary', () => {
       view.finish({ id: 'column', kind: 'column', windowSidebar: true } as NativeNode)
     ).toThrow()
   })
+  it('fits the window to scroll content only from a scroll node', () => {
+    const view = new NativePresentation()
+    const content: NativeNode = { id: 'content', kind: 'column', children: [] }
+    const scroll = {
+      id: 'pane',
+      kind: 'scroll',
+      fitWindow: true,
+      children: [content]
+    } as NativeNode
+    expect(JSON.parse(view.finish(scroll)).root.fitWindow).toBe(true)
+    expect(() =>
+      view.finish({ id: 'column', kind: 'column', fitWindow: true } as NativeNode)
+    ).toThrow()
+  })
   it('accepts keyboard shortcuts on buttons only', () => {
     const view = new NativePresentation()
     const button = {

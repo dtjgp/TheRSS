@@ -148,6 +148,8 @@ export interface NativeNode {
     | undefined
   readonly glass?: boolean | undefined
   readonly adaptiveScroll?: boolean | undefined
+  /** A scroll node whose content height a preference window takes when its pane changes. */
+  readonly fitWindow?: boolean | undefined
   readonly multiline?: boolean | undefined
   readonly maxLength?: number | undefined
   readonly clearRevision?: number | undefined
@@ -297,6 +299,7 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
         .optional(),
       glass: z.boolean().optional(),
       adaptiveScroll: z.boolean().optional(),
+      fitWindow: z.boolean().optional(),
       multiline: z.boolean().optional(),
       maxLength: z.number().int().min(1).max(20000).optional(),
       clearRevision: z.number().int().nonnegative().optional(),
@@ -362,6 +365,8 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
         })
       if (node.share !== undefined && node.kind !== 'button')
         context.addIssue({ code: 'custom', message: 'Only native buttons share a link' })
+      if (node.fitWindow !== undefined && node.kind !== 'scroll')
+        context.addIssue({ code: 'custom', message: 'Only a scroll node fits its window' })
       if (node.windowSidebar !== undefined && node.kind !== 'split')
         context.addIssue({ code: 'custom', message: 'Only a split hosts the window sidebar' })
       if (node.align !== undefined && node.kind !== 'column' && node.kind !== 'label')

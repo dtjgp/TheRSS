@@ -87,11 +87,18 @@ static NSColor *TRSavedColor(BOOL highContrast) {
   CGFloat leading = self.kindView ? inset + glyph + gap : inset;
   CGFloat trailing = self.savedView.hidden || !self.savedView ? inset : inset + glyph + 6*zoom;
   CGFloat width = MAX(20,self.bounds.size.width-leading-trailing);
-  self.textField.frame = NSMakeRect(leading,27*zoom,width,35*zoom);
   self.textField.preferredMaxLayoutWidth = width;
-  self.detailField.frame = NSMakeRect(leading,7*zoom,MAX(20,self.bounds.size.width-leading-inset),16*zoom);
+  // The subtitle sits under the title's measured lines (one or two), and the block is centred in
+  // the fixed-height row, so a one-line title does not leave its subtitle nearer the next row.
+  // Measure through the cell at the final width: its insets decide whether the title wraps.
+  CGFloat titleHeight = MIN(35*zoom,ceil([self.textField.cell cellSizeForBounds:NSMakeRect(0,0,width,CGFLOAT_MAX)].height));
+  BOOL detail = self.detailField.stringValue.length > 0;
+  CGFloat detailHeight = detail ? 16*zoom : 0, spacing = detail ? 4*zoom : 0;
+  CGFloat bottom = floor((self.bounds.size.height-titleHeight-spacing-detailHeight)/2);
+  self.detailField.frame = NSMakeRect(leading,bottom,MAX(20,self.bounds.size.width-leading-inset),detailHeight);
+  self.textField.frame = NSMakeRect(leading,bottom+detailHeight+spacing,width,titleHeight);
   // Glyphs sit on the first title line, as in Mail and Finder lists.
-  CGFloat top = 62*zoom - glyph - 2*zoom;
+  CGFloat top = NSMaxY(self.textField.frame) - glyph;
   self.kindView.frame = NSMakeRect(inset,top,glyph,glyph);
   self.savedView.frame = NSMakeRect(self.bounds.size.width-inset-glyph,top,glyph,glyph);
 }
@@ -645,6 +652,13 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   }
   return y+lineHeight+padding;
 }
+- (CGFloat)scrollChildWidth:(TRNode *)child within:(CGFloat)contentWidth {
+  return MIN(contentWidth,TRNumber(child.spec,@"maxWidth",contentWidth/self.host.zoom)*self.host.zoom);
+}
+- (CGFloat)scrollContentHeightForWidth:(CGFloat)contentWidth {
+  CGFloat y = 0; for (TRNode *child in self.nodes) y += [child heightForWidth:[self scrollChildWidth:child within:contentWidth]];
+  return y;
+}
 - (CGFloat)heightForWidth:(CGFloat)width {
   CGFloat zoom = self.host.zoom, padding = TRNumber(self.spec, @"padding", 0) * zoom, gap = TRNumber(self.spec,@"gap",10) * zoom;
   if (self.spec[@"height"]) return [self.spec[@"height"] doubleValue] * zoom;
@@ -700,7 +714,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     NSScrollView *scroll = (NSScrollView *)self.control;
     CGFloat contentWidth = scroll.contentSize.width, y = 0;
     for (TRNode *child in self.nodes) {
-      CGFloat childWidth = MIN(contentWidth,TRNumber(child.spec,@"maxWidth",contentWidth/self.host.zoom)*self.host.zoom);
+      CGFloat childWidth = [self scrollChildWidth:child within:contentWidth];
       CGFloat h = [child heightForWidth:childWidth]; child.frame = NSMakeRect(0,y,childWidth,h); y += h;
     }
     self.container.frame = NSMakeRect(0,0,contentWidth,MAX(y,scroll.contentSize.height));
@@ -1143,7 +1157,10 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
           contrast = TRContrast(tint,NSColor.textBackgroundColor);
           selectedContrast = TRContrast(tint,NSColor.unemphasizedSelectedContentBackgroundColor);
         }];
+        // What the title cell needs at its frame width (cell insets included), up to two lines.
+        NSSize needed = [research.textField.cell cellSizeForBounds:NSMakeRect(0,0,research.textField.frame.size.width,CGFLOAT_MAX)];
         [glyphs addObject:@{@"symbol":research.symbolName ?: @"",@"saved":@(research.savedView != nil),@"titleFrame":NSStringFromRect(research.textField.frame),
+          @"detailFrame":NSStringFromRect(research.detailField.frame),@"titleTextHeight":@(MIN(ceil(needed.height),35*self.host.zoom)),@"rowHeight":@(research.bounds.size.height),
           @"kindFrame":research.kindView ? NSStringFromRect(research.kindView.frame) : @"",@"savedFrame":research.savedView ? NSStringFromRect(research.savedView.frame) : @"",
           @"savedContrast":@(contrast),@"savedSelectedContrast":@(selectedContrast),@"highContrast":@(research.highContrast),
           @"emphasized":@(research.backgroundStyle == NSBackgroundStyleEmphasized),

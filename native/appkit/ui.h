@@ -65,6 +65,14 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 /** Fixtures are instant unless a test enables animations or simulates Reduce Motion. */
 @property(nonatomic) BOOL fixtureAnimations;
 @property(nonatomic) BOOL fixtureReduceMotion;
+/** The preference pane and heights the window was last fitted to; a user resize keeps its size. */
+@property(nonatomic, copy) NSString *fittedPane;
+@property(nonatomic) CGFloat fittedContent;
+@property(nonatomic) CGFloat fittedChrome;
+@property(nonatomic) CGFloat fittedWidth;
+@property(nonatomic) CGFloat fittedFrameHeight;
+@property(nonatomic) BOOL fitUserResized;
+@property(nonatomic) BOOL fitAnimating;
 @property(nonatomic, strong) NSColor *fixtureAccent;
 @property(nonatomic) CGFloat zoom;
 @property(nonatomic) BOOL fixture;
@@ -124,6 +132,8 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 - (instancetype)initWithHost:(TRHost *)host spec:(NSDictionary *)spec;
 - (void)update:(NSDictionary *)spec;
 - (CGFloat)heightForWidth:(CGFloat)width;
+/** A scroll node's document height for a content width: its children stacked, each clamped to its maxWidth. */
+- (CGFloat)scrollContentHeightForWidth:(CGFloat)contentWidth;
 - (CGFloat)preferredWidth;
 - (TRNode *)find:(NSString *)identifier;
 - (NSSplitView *)splitView;

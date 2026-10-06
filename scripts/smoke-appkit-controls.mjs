@@ -661,6 +661,12 @@ try {
               subtitle: 'GitHub · 2026-08-13',
               symbol: 'chevron.left.forwardslash.chevron.right',
               symbolLabel: 'Repository'
+            },
+            {
+              id: 'no-subtitle',
+              title: 'Row without a subtitle',
+              symbol: 'doc.text',
+              symbolLabel: 'Paper'
             }
           ]
         }
@@ -674,7 +680,8 @@ try {
     glyphs.map((row) => [row.symbol, row.saved]),
     [
       ['doc.text', true],
-      ['chevron.left.forwardslash.chevron.right', false]
+      ['chevron.left.forwardslash.chevron.right', false],
+      ['doc.text', false]
     ]
   )
   for (const row of glyphs) {
@@ -687,6 +694,34 @@ try {
         'The title stays clear of the Saved star'
       )
   }
+  // Each subtitle sits under its own title's measured lines; the block is centred in the row.
+  const glyphList = find((await inspect()).root, 'glyph-list')
+  const line = glyphList.titleLineHeight
+  assert.equal(glyphList.rowHeight, 70, 'Rows keep their fixed height')
+  for (const row of glyphs) {
+    const [, titleY, , titleHeight] = frameNumbers(row.titleFrame)
+    const [, detailY, , detailHeight] = frameNumbers(row.detailFrame)
+    const [, kindY, , kindHeight] = frameNumbers(row.kindFrame)
+    const summary = JSON.stringify(row)
+    assert(
+      Math.abs(titleHeight - row.titleTextHeight) <= 3,
+      `The title frame hugs its measured lines: ${summary}`
+    )
+    const above = row.rowHeight - (titleY + titleHeight)
+    if (detailHeight) {
+      const gap = titleY - (detailY + detailHeight)
+      assert(gap >= 2 && gap <= 6, `The subtitle sits under its title: ${summary}`)
+      assert(Math.abs(above - detailY) <= 2, `The row text is centred: ${summary}`)
+    } else
+      assert(Math.abs(above - titleY) <= 2, `A title without a subtitle is centred: ${summary}`)
+    assert(
+      Math.abs(titleY + titleHeight - (kindY + kindHeight)) <= 4,
+      `The kind glyph stays on the first title line: ${summary}`
+    )
+  }
+  // Independent of the cell's own measurement: the long title keeps two lines, the short one one.
+  assert(frameNumbers(glyphs[0].titleFrame)[3] >= 2 * line - 1, 'A long title keeps two lines')
+  assert(frameNumbers(glyphs[1].titleFrame)[3] <= line + 2, 'A short title takes one line')
   assert.equal(
     glyphs[0].accessibilityLabel,
     'Energy-Aware Compression-Computation Co-Adaptation for Latency Minimization in Multi-User Semantic Communication. Paper. arXiv · 2026-08-13. Saved.'
@@ -724,6 +759,35 @@ try {
   if (focusedList.keyWindow)
     assert.equal(glyphs[0].emphasized, true, 'A focused list draws an emphasized selection')
   checks.push('Research rows show kind glyphs, a readable Saved star and a complete spoken label')
+  // AppKit drops a synthetic Space press on a button whose window is not key; the fixture says so.
+  await application.evaluate(() => {
+    const f = globalThis.__controls
+    f.events.length = 0
+    f.scene.root = {
+      id: 'key-root',
+      kind: 'column',
+      padding: 20,
+      children: [{ id: 'key-button', kind: 'button', title: 'Press', action: 'key-press' }]
+    }
+    f.bridge.present(f.handle, JSON.stringify(f.scene))
+    f.window.hide()
+  })
+  await assert.rejects(
+    act('key-button', 'key', 'space'),
+    /not the key window/u,
+    'A key press on a button in a window that is not key fails with its reason'
+  )
+  assert.deepEqual(
+    await application.evaluate(() => globalThis.__controls.events),
+    [],
+    'The dropped key press runs no action'
+  )
+  await application.evaluate(({ app }) => {
+    globalThis.__controls.window.show()
+    globalThis.__controls.window.focus()
+    app.focus({ steal: true })
+  })
+  checks.push('A synthetic key press on a button outside the key window fails with its reason')
   const popoverScene = (checked, focus) =>
     application.evaluate(
       (_, data) => {
