@@ -73,6 +73,11 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 @property(nonatomic) CGFloat fittedFrameHeight;
 @property(nonatomic) BOOL fitUserResized;
 @property(nonatomic) BOOL fitAnimating;
+/** The zoom the window was last fitted at, and a fit asked for while the fit animation ran. */
+@property(nonatomic) double fittedZoom;
+@property(nonatomic, copy) NSString *pendingFitPane;
+/** Inspection only: fits at a new zoom asked for during the fit animation. */
+@property(nonatomic) NSUInteger deferredZoomFits;
 @property(nonatomic, strong) NSColor *fixtureAccent;
 @property(nonatomic) CGFloat zoom;
 @property(nonatomic) BOOL fixture;

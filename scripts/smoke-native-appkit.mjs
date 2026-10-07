@@ -918,7 +918,7 @@ try {
       top = await keepsTop(top)
       await click('settings-personal')
       await paneFits('Personal Context', 'personal-form')
-      await keepsTop(top)
+      top = await keepsTop(top)
       // A user resize is kept: a status-line change never shrinks it and a width change does not
       // refit the height.
       const fitted = await settingsBounds()
@@ -945,6 +945,59 @@ try {
         fitted.height + 80,
         'A width change keeps the height'
       )
+      // A zoom change refits like a pane change, even after a user resize; a second zoom during
+      // the fit animation is not lost.
+      const zoomFits = async (label, zoom) => {
+        // Wait until the fit animation has ended and the window bounds are stable.
+        let state, previous
+        for (let attempt = 0; attempt < 40; attempt++) {
+          await delay(100)
+          state = await inspect()
+          const bounds = JSON.stringify(await settingsBounds())
+          const viewport = numbers(find(state.root, 'settings-scroll').viewportSize)[1]
+          const content = numbers(find(state.root, 'personal-form').frame)[3]
+          const settled = state.zoom === zoom && !state.fitAnimating && bounds === previous
+          previous = bounds
+          if (settled && Math.abs(content - viewport) <= 1) break
+        }
+        assert.equal(state.zoom, zoom, `${label} reaches zoom ${zoom}`)
+        await paneFits(`Personal Context after ${label}`, 'personal-form')
+        top = await keepsTop(top)
+      }
+      for (let count = 0; count < 5; count++) await menu('Zoom In')
+      await zoomFits('Zoom In', 1.5)
+      await menu('Actual Size')
+      await zoomFits('Actual Size', 1)
+      await act('personal-form', 'animations', true)
+      // The second command comes 40 ms after the first, during the first fit's animation, so its
+      // fit must be deferred, not dropped.
+      const deferredBefore = (await inspect()).deferredZoomFits
+      await application.evaluate(({ Menu }) => {
+        const find = (items) => {
+          for (const item of items) {
+            if (item.label === 'Zoom In') return item
+            const found = item.submenu && find(item.submenu.items)
+            if (found) return found
+          }
+        }
+        const item = find(Menu.getApplicationMenu().items)
+        item.click()
+        // A later task: the presenter merges redraws within one task.
+        return new Promise((resolve) =>
+          globalThis.setTimeout(() => {
+            item.click()
+            resolve()
+          }, 40)
+        )
+      })
+      await zoomFits('two quick Zoom In commands', 1.2)
+      assert(
+        (await inspect()).deferredZoomFits > deferredBefore,
+        'The second zoom arrived during the fit animation'
+      )
+      await act('personal-form', 'animations', false)
+      await menu('Actual Size')
+      await zoomFits('Actual Size', 1)
       await act('personal-prompt', 'fill', '资源高效 AI 与边缘智能')
       await capture('settings-personal')
       // Command-comma again focuses the same window.

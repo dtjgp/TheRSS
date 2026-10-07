@@ -90,14 +90,21 @@ static TRNode *TRFitWindowNode(TRNode *node) {
   return nil;
 }
 // A Settings window takes the height of the selected pane's content, as first-party Settings
-// windows do. A pane change fits the height exactly, and so does a content or status-line change
-// until the user resizes the window. After a user resize, a width change only updates the record
-// and a content change may grow the window so nothing is cut off, never shrink it. Nothing
-// happens during a live resize or the fit animation. The top edge stays put and the height stays
-// between the window minimum and the screen's visible height.
+// windows do. A pane or zoom change fits the height exactly, and so does a content or status-line
+// change until the user resizes the window. After a user resize, a width change only updates the
+// record and a content change may grow the window so nothing is cut off, never shrink it. Nothing
+// happens during a live resize; a fit asked for during the fit animation runs when it ends. The
+// top edge stays put and the height stays between the window minimum and the screen's visible
+// height.
 - (void)fitWindowToPane:(id)pane {
   NSWindow *window = self.window;
-  if (![pane isKindOfClass:NSString.class] || window.inLiveResize || self.fitAnimating) return;
+  if (![pane isKindOfClass:NSString.class]) return;
+  // The fit animation itself reports a live resize, so keep its requests before that check.
+  if (self.fitAnimating) {
+    self.pendingFitPane = pane; if (fabs(self.zoom-self.fittedZoom) >= 0.001) self.deferredZoomFits++;
+    return;
+  }
+  if (window.inLiveResize) return;
   TRNode *scroll = TRFitWindowNode(self.root);
   if (!scroll || ![scroll.control isKindOfClass:NSScrollView.class]) return;
   NSScrollView *view = (NSScrollView *)scroll.control;
@@ -106,11 +113,14 @@ static TRNode *TRFitWindowNode(TRNode *node) {
   CGFloat width = [NSScrollView contentSizeForFrameSize:view.frame.size horizontalScrollerClass:nil verticalScrollerClass:nil borderType:view.borderType controlSize:NSControlSizeRegular scrollerStyle:view.scrollerStyle].width;
   CGFloat viewport = view.contentSize.height;
   CGFloat natural = [scroll scrollContentHeightForWidth:width], chrome = self.canvas.bounds.size.height - viewport;
-  BOOL samePane = [pane isEqual:self.fittedPane], widthChanged = samePane && fabs(width-self.fittedWidth) >= 1;
+  // Zoom scales the padding around the scroll view, so its width changes too: a new zoom is a new
+  // fit, like a new pane, not a user resize.
+  BOOL samePane = [pane isEqual:self.fittedPane] && fabs(self.zoom-self.fittedZoom) < 0.001;
+  BOOL widthChanged = samePane && fabs(width-self.fittedWidth) >= 1;
   if (!samePane) self.fitUserResized = NO;
   else if (widthChanged || fabs(window.frame.size.height-self.fittedFrameHeight) >= 1) self.fitUserResized = YES;
   BOOL contentChanged = fabs(natural-self.fittedContent) >= 1 || fabs(chrome-self.fittedChrome) >= 1;
-  self.fittedPane = pane; self.fittedContent = natural; self.fittedChrome = chrome; self.fittedWidth = width;
+  self.fittedPane = pane; self.fittedZoom = self.zoom; self.fittedContent = natural; self.fittedChrome = chrome; self.fittedWidth = width;
   self.fittedFrameHeight = window.frame.size.height;
   if (widthChanged || (samePane && !contentChanged)) return;
   CGFloat delta = ceil(natural - viewport);
@@ -127,7 +137,12 @@ static TRNode *TRFitWindowNode(TRNode *node) {
     self.fitAnimating = YES;
     __weak TRHost *weakSelf = self;
     [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) { [window.animator setFrame:frame display:YES]; }
-      completionHandler:^{ weakSelf.fitAnimating = NO; }];
+      completionHandler:^{
+        TRHost *host = weakSelf; if (!host) return;
+        host.fitAnimating = NO;
+        NSString *pending = host.pendingFitPane; host.pendingFitPane = nil;
+        if (pending && !host.disposed) { [host.root layoutSubtreeIfNeeded]; [host fitWindowToPane:pending]; }
+      }];
   } else {
     [window setFrame:frame display:YES];
     [self.root layoutSubtreeIfNeeded];
@@ -273,6 +288,6 @@ static TRNode *TRFitWindowNode(TRNode *node) {
   NSMutableArray *ownedWindows = [NSMutableArray array];
   NSArray *windows = CFBridgingRelease(CGWindowListCopyWindowInfo(kCGWindowListOptionAll,kCGNullWindowID));
   for (NSDictionary *window in windows) if ([window[(id)kCGWindowOwnerPID] intValue] == NSProcessInfo.processInfo.processIdentifier) [ownedWindows addObject:window];
-  return @{@"announcementCount":@(self.announcementCount),@"announcementId":@(self.announcementId),@"alerts":TRFixtureAlerts(self),@"firstResponderId":TRFocusOwner(self.modal ?: self.root,(self.sheet ?: self.window).firstResponder) ?: @"",@"windowAppearance":self.window.appearance.name ?: @"automatic",@"windowEffectiveAppearance":self.window.effectiveAppearance.name,@"nativeRoot":NSStringFromClass(self.window.contentView.class),@"webHidden":@(self.original.hidden),@"windowNumber":@(self.window.windowNumber),@"visible":@(self.window.visible),@"onActiveSpace":@(self.window.onActiveSpace),@"miniaturized":@(self.window.miniaturized),@"zoom":@(self.zoom),@"root":[self.root inspect] ?: @{},@"modal":self.modal ? [self.modal inspect] : NSNull.null,@"toolbar":self.chrome ? [self.chrome inspect] : NSNull.null,@"popover":[self.popover inspect] ?: NSNull.null,@"keyWindow":@((self.sheet ?: self.window).isKeyWindow),@"appActive":@(NSApp.isActive),@"firstResponder":NSStringFromClass((self.sheet ?: self.window).firstResponder.class),@"disposed":@(self.disposed),@"secureDrafts":secure,@"ownedWindowServerEntries":ownedWindows};
+  return @{@"announcementCount":@(self.announcementCount),@"announcementId":@(self.announcementId),@"alerts":TRFixtureAlerts(self),@"firstResponderId":TRFocusOwner(self.modal ?: self.root,(self.sheet ?: self.window).firstResponder) ?: @"",@"windowAppearance":self.window.appearance.name ?: @"automatic",@"windowEffectiveAppearance":self.window.effectiveAppearance.name,@"nativeRoot":NSStringFromClass(self.window.contentView.class),@"webHidden":@(self.original.hidden),@"windowNumber":@(self.window.windowNumber),@"visible":@(self.window.visible),@"onActiveSpace":@(self.window.onActiveSpace),@"miniaturized":@(self.window.miniaturized),@"zoom":@(self.zoom),@"fitAnimating":@(self.fitAnimating),@"deferredZoomFits":@(self.deferredZoomFits),@"root":[self.root inspect] ?: @{},@"modal":self.modal ? [self.modal inspect] : NSNull.null,@"toolbar":self.chrome ? [self.chrome inspect] : NSNull.null,@"popover":[self.popover inspect] ?: NSNull.null,@"keyWindow":@((self.sheet ?: self.window).isKeyWindow),@"appActive":@(NSApp.isActive),@"firstResponder":NSStringFromClass((self.sheet ?: self.window).firstResponder.class),@"disposed":@(self.disposed),@"secureDrafts":secure,@"ownedWindowServerEntries":ownedWindows};
 }
 @end
