@@ -46,6 +46,13 @@ function contextMenu(
     let outcome: ContextMenuOutcome = { action: 'none' }
     const template = buildContextMenuTemplate(target).map((entry) => {
       if (entry.type === 'separator') return { type: 'separator' as const }
+      // macOS Share submenu (NSSharingServicePicker items); only https links reach it.
+      if (entry.type === 'share')
+        return {
+          role: 'shareMenu' as const,
+          label: 'Share',
+          sharingItem: { urls: [entry.url], texts: [entry.title] }
+        }
       return {
         label: entry.label,
         click: () => {

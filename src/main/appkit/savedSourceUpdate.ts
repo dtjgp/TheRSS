@@ -1,4 +1,5 @@
 import type { DashboardItem } from '../../shared/api'
+import { formatDisplayDate } from '../../shared/sourceDate'
 import type { SavedSourceUpdateCandidate } from '../../shared/savedSourceUpdate'
 import { hashAnalysisSource } from '../../core/analysis/sourceSnapshot'
 import { Controls, column, label, readableError, row, type NativeContext } from './common'
@@ -121,7 +122,7 @@ export class SavedSourceUpdateControls {
             : this.loading
               ? 'Checking newer local snapshots…'
               : this.candidate
-                ? `Local retrieval: ${this.candidate.retrievedAt.slice(0, 10)}. Updates metadata and match reasons; keeps analysis history.`
+                ? `Local retrieval: ${formatDisplayDate(this.candidate.retrievedAt, this.context.locale)}. Updates metadata and match reasons; keeps analysis history.`
                 : 'No newer local snapshot. Search again to retrieve fresh metadata.',
           { weight: 'secondary' }
         )

@@ -17,6 +17,10 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Status
 
+**Apple-native UX (PR #58) ready to merge.** The user authorized the merge on 2026-10-06 after
+the follow-up acceptance. GOALS.md records the closed findings, the open items (A8, R1, R2) and
+the next branch (search scopes, window restoration, Web fallback alignment).
+
 **Merge and unsigned pre-release authorized.** The user requested PR #49 merge and GitHub
 publication. `v0.3.0` ships an arm64/macOS 26+ preview ZIP and verification assets; Developer ID,
 notarization and production automatic updates remain deferred. The

@@ -1,4 +1,5 @@
 import type { AnalyticsSnapshot } from '../../shared/analytics'
+import { formatDisplayDate } from '../../shared/sourceDate'
 import type { AnalysisArtifactState } from '../../shared/models'
 import type { LocalResearchRecord } from '../../shared/localResearch'
 import {
@@ -12,7 +13,8 @@ import {
   row,
   scroll,
   type NativeContext,
-  type NativeScreen
+  type NativeScreen,
+  emptyState
 } from './common'
 import type { NativeNode } from './presentation'
 import { ReadingWorkspace } from './readingWorkspace'
@@ -115,7 +117,6 @@ export class AnalyticsScreen implements NativeScreen {
     return column(
       'analytics-page',
       [
-        ...(!this.workspace.focused ? [heading('analytics-title', 'Data Analytics')] : []),
         ...(!this.workspace.focused
           ? [
               row('analytics-header', [
@@ -140,75 +141,34 @@ export class AnalyticsScreen implements NativeScreen {
           ? [
               ...(!this.workspace.focused
                 ? [
+                    // Two pairs: a narrow window wraps them 2 + 2 instead of 3 + 1.
                     row('analytics-metrics', [
-                      metric(
-                        'analytics-searches',
-                        'Lifetime returned records',
-                        s.totals.searchResults
+                      row(
+                        'analytics-metrics-records',
+                        [
+                          metric(
+                            'analytics-searches',
+                            'Lifetime returned records',
+                            s.totals.searchResults
+                          ),
+                          metric(
+                            'analytics-window',
+                            `Last ${s.windowDays} local days`,
+                            s.daily.reduce((sum, day) => sum + day.searchResults, 0)
+                          )
+                        ],
+                        { flex: 1, wrap: false }
                       ),
-                      metric(
-                        'analytics-window',
-                        `Last ${s.windowDays} local days`,
-                        s.daily.reduce((sum, day) => sum + day.searchResults, 0)
-                      ),
-                      metric('analytics-completed', 'Deep analyses', s.totals.deepAnalyses),
-                      metric('analytics-papers', 'Analyzed papers', s.totals.analyzedPapers)
+                      row(
+                        'analytics-metrics-analyses',
+                        [
+                          metric('analytics-completed', 'Deep analyses', s.totals.deepAnalyses),
+                          metric('analytics-papers', 'Analyzed papers', s.totals.analyzedPapers)
+                        ],
+                        { flex: 1, wrap: false }
+                      )
                     ]),
                     this.trend(s),
-                    ...(this.showValues
-                      ? [
-                          {
-                            ...b.table(
-                              'analytics-daily',
-                              'Daily activity',
-                              s.daily.map((day) => ({
-                                id: day.date,
-                                title: day.date,
-                                subtitle: `Search ${day.searchResults} · Source ${day.todayResults} · Discover ${day.discoverResults} · Analysis ${day.deepAnalyses}`,
-                                cells: {
-                                  date: day.date,
-                                  returned: String(day.searchResults),
-                                  discover: String(day.discoverResults),
-                                  legacy: String(day.todayResults),
-                                  analyses: String(day.deepAnalyses)
-                                }
-                              })),
-                              '',
-                              () => undefined
-                            ),
-                            flex: 0,
-                            height: 220,
-                            maxWidth: 800,
-                            columns: [
-                              { id: 'date', title: 'Date', width: 110 },
-                              {
-                                id: 'returned',
-                                title: 'Returned',
-                                width: 85,
-                                alignment: 'right' as const
-                              },
-                              {
-                                id: 'discover',
-                                title: 'Discover',
-                                width: 85,
-                                alignment: 'right' as const
-                              },
-                              {
-                                id: 'legacy',
-                                title: 'Legacy',
-                                width: 75,
-                                alignment: 'right' as const
-                              },
-                              {
-                                id: 'analyses',
-                                title: 'Analyses',
-                                width: 85,
-                                alignment: 'right' as const
-                              }
-                            ]
-                          }
-                        ]
-                      : []),
                     label(
                       'analytics-analysis-heading',
                       `Latest ${Math.min(50, s.analyzedItems.length)} analyses · ${s.totals.analyzedPapers} unique analyzed papers`,
@@ -217,35 +177,42 @@ export class AnalyticsScreen implements NativeScreen {
                   ]
                 : []),
               ...(s.analyzedItems.length ? this.workspace.navigation('Back to history') : []),
-              this.workspace.apply({
-                id: 'analytics-artifacts',
-                kind: 'split' as const,
-                flex: 1,
-                width: 320,
-                minWidth: 260,
-                maxWidth: 520,
-                collapseAt: 700,
-                children: [
-                  b.table(
-                    'analytics-analyses',
-                    'Persisted analyses',
-                    s.analyzedItems.slice(0, 50).map((item) => ({
-                      id: item.analysisId,
-                      title: item.title,
-                      subtitle: `${item.providerName} · ${item.model} · ${item.createdAt.slice(0, 10)}`
-                    })),
-                    this.selected,
-                    (id) => this.select(id),
-                    {
-                      activate: (id) => {
-                        this.workspace.open()
-                        return this.select(id)
-                      }
-                    }
-                  ),
-                  this.reading()
-                ]
-              })
+              s.analyzedItems.length
+                ? this.workspace.apply({
+                    id: 'analytics-artifacts',
+                    kind: 'split' as const,
+                    flex: 1,
+                    width: 320,
+                    minWidth: 260,
+                    maxWidth: 520,
+                    collapseAt: 700,
+                    children: [
+                      b.table(
+                        'analytics-analyses',
+                        'Persisted analyses',
+                        s.analyzedItems.slice(0, 50).map((item) => ({
+                          id: item.analysisId,
+                          title: item.title,
+                          subtitle: `${item.providerName} · ${item.model} · ${formatDisplayDate(item.createdAt, this.context.locale)}`
+                        })),
+                        this.selected,
+                        (id) => this.select(id),
+                        {
+                          activate: (id) => {
+                            this.workspace.open()
+                            return this.select(id)
+                          }
+                        }
+                      ),
+                      this.reading()
+                    ]
+                  })
+                : emptyState(
+                    'analytics-analyses-empty',
+                    'sparkles',
+                    'No stored analyses',
+                    'Analyze a Saved or Discover result to keep its complete analysis and provenance here.'
+                  )
             ]
           : [
               column(
@@ -265,6 +232,61 @@ export class AnalyticsScreen implements NativeScreen {
       { flex: 1 }
     )
   }
+  /** Exact daily values for every series; shown in place of the chart on request. */
+  private dailyTable(s: AnalyticsSnapshot): NativeNode {
+    const b = this.controls
+    return {
+      ...b.table(
+        'analytics-daily',
+        'Daily activity',
+        s.daily.map((day) => ({
+          id: day.date,
+          title: formatDisplayDate(day.date, this.context.locale),
+          subtitle: `Search ${day.searchResults} · Source ${day.todayResults} · Discover ${day.discoverResults} · Analysis ${day.deepAnalyses}`,
+          cells: {
+            date: formatDisplayDate(day.date, this.context.locale),
+            returned: String(day.searchResults),
+            discover: String(day.discoverResults),
+            legacy: String(day.todayResults),
+            analyses: String(day.deepAnalyses)
+          }
+        })),
+        '',
+        () => undefined
+      ),
+      flex: 0,
+      height: 220,
+      maxWidth: 800,
+      columns: [
+        // Wide enough for long medium-style dates (pt-BR, hu-HU, ru-RU) at minimum width.
+        { id: 'date', title: 'Date', width: 130 },
+        {
+          id: 'returned',
+          title: 'Returned',
+          width: 85,
+          alignment: 'right' as const
+        },
+        {
+          id: 'discover',
+          title: 'Discover',
+          width: 85,
+          alignment: 'right' as const
+        },
+        {
+          id: 'legacy',
+          title: 'Legacy',
+          width: 75,
+          alignment: 'right' as const
+        },
+        {
+          id: 'analyses',
+          title: 'Analyses',
+          width: 85,
+          alignment: 'right' as const
+        }
+      ]
+    }
+  }
   private trend(snapshot: AnalyticsSnapshot): NativeNode {
     const b = this.controls
     const series = {
@@ -279,21 +301,26 @@ export class AnalyticsScreen implements NativeScreen {
       [
         row('analytics-trend-toolbar', [
           label('analytics-trend-title', 'Activity over time', { weight: 'bold', flex: 1 }),
-          b.select(
-            'analytics-trend-kind',
-            'Activity series',
-            this.trendKind,
-            Object.entries(series).map(([id, entry]) => ({ id, title: entry.title })),
-            (value) => {
-              this.trendKind = value as typeof this.trendKind
-              this.context.redraw()
-            },
-            { width: 210 }
-          ),
+          // The value table lists every series, so the series choice applies to the chart only.
+          ...(this.showValues
+            ? []
+            : [
+                b.select(
+                  'analytics-trend-kind',
+                  'Activity series',
+                  this.trendKind,
+                  Object.entries(series).map(([id, entry]) => ({ id, title: entry.title })),
+                  (value) => {
+                    this.trendKind = value as typeof this.trendKind
+                    this.context.redraw()
+                  },
+                  { width: 210 }
+                )
+              ]),
           {
             ...b.button(
               'analytics-toggle-values',
-              this.showValues ? 'Hide daily values' : 'Show daily values',
+              this.showValues ? 'Show chart' : 'Show daily values',
               () => {
                 this.showValues = !this.showValues
                 this.context.redraw()
@@ -302,29 +329,31 @@ export class AnalyticsScreen implements NativeScreen {
             emphasis: 'quiet'
           }
         ]),
-        ...(points.some((point) => point.value > 0)
-          ? [
-              {
-                id: 'analytics-trend',
-                kind: 'chart' as const,
-                title: `${selected.title} by local date`,
-                text: selected.unit,
-                points,
-                height: 156
-              }
-            ]
-          : [
-              label('analytics-trend-empty', `No ${selected.title} recorded in this period.`, {
-                height: 52,
-                weight: 'secondary'
-              })
-            ]),
+        ...(this.showValues
+          ? [this.dailyTable(snapshot)]
+          : points.some((point) => point.value > 0)
+            ? [
+                {
+                  id: 'analytics-trend',
+                  kind: 'chart' as const,
+                  title: `${selected.title} by local date`,
+                  text: selected.unit,
+                  points,
+                  height: 156
+                }
+              ]
+            : [
+                label('analytics-trend-empty', `No ${selected.title} recorded in this period.`, {
+                  height: 52,
+                  weight: 'secondary'
+                })
+              ]),
         label(
           'analytics-trend-definition',
           this.trendKind === 'analysis'
             ? 'Counts stored analysis artifacts, including repeated analyses of the same item.'
             : 'Counts returned records, including repeat searches. Zero means no records stored for that date.',
-          { size: 11, weight: 'secondary', maxLines: 2 }
+          { textStyle: 'subheadline', weight: 'secondary', maxLines: 2 }
         )
       ],
       { surface: 'panel', padding: 12, gap: 6 }

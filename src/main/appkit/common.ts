@@ -1,15 +1,23 @@
 import { createHash } from 'node:crypto'
-import type { DashboardSnapshot, TheRSSApi } from '../../shared/api'
+import type { DashboardItem, DashboardSnapshot, TheRSSApi } from '../../shared/api'
 import type {
   LocalAgentStatus,
   ModelProviderSummary,
   AnalysisRunner,
   AnalysisArtifact
 } from '../../shared/models'
-import type { NativeNode, NativeOption, NativePresentation, NativeRow } from './presentation'
+import type {
+  NativeNode,
+  NativeOption,
+  NativePopover,
+  NativePresentation,
+  NativeRow
+} from './presentation'
 import type { LocalResearchTarget } from '../../shared/localResearch'
 
-export type Route = 'discover' | 'saved' | 'analytics' | 'sources' | 'settings'
+export type Route = 'discover' | 'saved' | 'analytics' | 'sources'
+/** A pane of the separate Settings window. */
+export type SettingsSection = 'personal' | 'provider'
 export const recordViewId = (prefix: string, id: string): string =>
   `${prefix}:${createHash('sha256').update(id).digest('hex').slice(0, 16)}`
 export interface NativeData {
@@ -18,8 +26,18 @@ export interface NativeData {
   agents: readonly LocalAgentStatus[]
   personalPrompt: string
 }
+/** A record opened in its own window (read-only reader). */
+export interface NativeRecord {
+  readonly item: DashboardItem
+  readonly sessionId?: string | undefined
+  readonly scope: 'discover' | 'saved'
+  /** Source details shown with the record (Discover metadata), as in the main reader. */
+  readonly extra?: string | undefined
+}
 export interface NativeContext {
   readonly api: TheRSSApi
+  /** The macOS language and region (BCP 47) for display dates. */
+  readonly locale: string
   readonly presentation: NativePresentation
   readonly data: NativeData
   redraw(): void
@@ -31,11 +49,18 @@ export interface NativeContext {
   openExternal(url: string): void
   showDocument(title: string, content: string): void
   promote(itemId: string, sessionId?: string): Promise<void>
+  openRecord(record: NativeRecord): void
+  /** Opens the Settings window (native route), optionally on one pane. */
+  openSettings(section?: SettingsSection): void
   width(key: 'sidebar' | 'discover' | 'saved'): number
   setWidth(key: 'sidebar' | 'discover' | 'saved', width: number): void
 }
 export interface NativeScreen {
   render(): NativeNode
+  /** Transient content anchored to a node of `render()`; omitted while closed. */
+  popover?(): NativePopover | undefined
+  /** Closes the popover without an event, e.g. when a sheet opens or the workspace changes. */
+  closePopover?(): void
   load?(): Promise<void>
   dispose?(): void
 }
@@ -56,6 +81,33 @@ export const label = (id: string, text: string, extra: Partial<NativeNode> = {})
   text,
   ...extra
 })
+/**
+ * A macOS "content unavailable" composition: a large secondary symbol, a short title, one
+ * explanatory sentence and the actions that recover from the empty state.
+ */
+export const emptyState = (
+  id: string,
+  symbol: NonNullable<NativeNode['symbol']>,
+  title: string,
+  message: string,
+  actions: readonly NativeNode[] = []
+): NativeNode =>
+  column(
+    id,
+    [
+      { id: `${id}-symbol`, kind: 'symbol', symbol, title, size: 40 },
+      // 17 pt is the macOS Title 2 size used by system empty states.
+      label(`${id}-title`, title, {
+        weight: 'bold',
+        textStyle: 'title2',
+        align: 'center',
+        maxWidth: 420
+      }),
+      label(`${id}-message`, message, { weight: 'secondary', align: 'center', maxWidth: 420 }),
+      ...(actions.length ? [row(`${id}-actions`, actions)] : [])
+    ],
+    { flex: 1, gap: 8, align: 'center', padding: 18 }
+  )
 export const text = (id: string, content: string, extra: Partial<NativeNode> = {}): NativeNode => ({
   id,
   kind: 'text',
@@ -141,6 +193,17 @@ export class Controls {
       ...extra
     }
   }
+  /** A select-one segmented control for a few short choices that should stay visible. */
+  segmented(
+    id: string,
+    title: string,
+    selected: string,
+    options: readonly NativeOption[],
+    receive: (value: string) => void,
+    extra: Partial<NativeNode> = {}
+  ): NativeNode {
+    return { ...this.select(id, title, selected, options, receive, extra), kind: 'segmented' }
+  }
   check(
     id: string,
     title: string,
@@ -172,6 +235,7 @@ export class Controls {
     options: {
       activate?: (id: string) => void | Promise<void>
       context?: (id: string) => void | Promise<void>
+      openWindow?: (id: string) => void
     } = {}
   ): NativeNode {
     const rule = { type: 'choice' as const, values: rows.map((item) => item.id) }
@@ -197,6 +261,15 @@ export class Controls {
             context: this.context.presentation.action(
               `${id}:context`,
               (value) => options.context!(value as string),
+              rule
+            )
+          }
+        : {}),
+      ...(options.openWindow
+        ? {
+            openWindow: this.context.presentation.action(
+              `${id}:open-window`,
+              (value) => options.openWindow!(value as string),
               rule
             )
           }

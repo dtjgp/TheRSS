@@ -1,18 +1,11 @@
 import type { AnalysisRunner } from '../../shared/models'
 import type { DashboardItem } from '../../shared/api'
+import type { DiscoverySource } from '../../shared/discovery'
 import { ACTIVE_TODAY_SOURCE_IDS, sourceDisplayName } from '../../shared/sourceIdentity'
-import {
-  column,
-  Controls,
-  heading,
-  label,
-  row,
-  type NativeContext,
-  type NativeScreen
-} from './common'
+import { column, Controls, emptyState, row, type NativeContext, type NativeScreen } from './common'
 import type { NativeNode } from './presentation'
 import { ResearchReader, type TriageHistory } from './reading'
-import { researchSubtitle } from './researchMetadata'
+import { researchRowDrag, researchRowGlyph, researchSubtitle } from './researchMetadata'
 import { ReadingWorkspace } from './readingWorkspace'
 import { SavedSourceUpdateControls } from './savedSourceUpdate'
 
@@ -73,7 +66,6 @@ export class SavedScreen implements NativeScreen {
     return column(
       'saved-page',
       [
-        ...(!this.workspace.focused ? [heading('saved-title', 'Saved')] : []),
         row('saved-toolbar', [
           ...(!this.workspace.focused
             ? [
@@ -111,10 +103,13 @@ export class SavedScreen implements NativeScreen {
                   b.table(
                     'saved-items',
                     'Saved research',
+                    // Every row here is saved: the workspace, not a star, carries that state.
                     items.map((item) => ({
                       id: item.id,
                       title: item.title,
-                      subtitle: researchSubtitle(item, true)
+                      subtitle: researchSubtitle(item, this.context.locale),
+                      ...researchRowGlyph(item.kind),
+                      ...researchRowDrag(item)
                     })),
                     this.selected,
                     (id) => this.select(id),
@@ -122,6 +117,10 @@ export class SavedScreen implements NativeScreen {
                       activate: (id) => {
                         this.select(id)
                         this.workspace.open()
+                      },
+                      openWindow: (id) => {
+                        this.select(id)
+                        this.reader.openWindow()
                       },
                       context: async (id) => {
                         this.select(id)
@@ -134,28 +133,30 @@ export class SavedScreen implements NativeScreen {
               )
             ]
           : [
-              column(
-                'saved-empty',
-                [
-                  label(
-                    'saved-empty-message',
-                    all.length
-                      ? 'No saved items from this source.'
-                      : 'Save papers and repositories from Discover to build your local reading list.'
-                  ),
-                  row('saved-empty-actions', [
-                    all.length
-                      ? b.button('saved-reset-filter', 'Show all Saved', () => {
-                          this.filter = 'all'
-                          this.workspace.back()
-                        })
-                      : b.button('saved-open-discover', 'Open Discover', () =>
-                          this.context.navigate('discover')
-                        )
-                  ])
-                ],
-                { flex: 1 }
-              )
+              all.length
+                ? emptyState(
+                    'saved-empty',
+                    'star',
+                    `No items from ${sourceDisplayName(this.filter as DiscoverySource)}`,
+                    'No saved items from this source. Your other saved research is unchanged.',
+                    [
+                      b.button('saved-reset-filter', 'Show all Saved', () => {
+                        this.filter = 'all'
+                        this.workspace.back()
+                      })
+                    ]
+                  )
+                : emptyState(
+                    'saved-empty',
+                    'star',
+                    'No saved research',
+                    'Save papers and repositories from Discover to build your local reading list.',
+                    [
+                      b.button('saved-open-discover', 'Open Discover', () =>
+                        this.context.navigate('discover')
+                      )
+                    ]
+                  )
             ])
       ],
       { flex: 1 }

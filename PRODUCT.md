@@ -72,7 +72,9 @@ freshness from a verified empty result. Public signing and distribution remain s
    Saved time and immutable analysis history. It performs no network or model call; changed
    source content makes prior analysis stale.
 3. **Settings** — two focused panes for Personal Prompt and one model provider profile, plus local
-   Codex/Claude availability. Provider drafts can be tested explicitly before saving; connection
+   Codex/Claude availability. On the native route Settings is a separate window (Command-comma),
+   not a sidebar workspace: a preference toolbar selects the pane, unsaved edits are confirmed
+   before the window closes, and a save there updates the workspace window. Provider drafts can be tested explicitly before saving; connection
    results are classified without returning credentials, and a saved credential can be replaced or
    cleared explicitly.
 4. **Data Analytics** — a secondary local utility for Discover result-volume reporting, preserved

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { NativePresentation, type NativeNode } from './presentation'
+import { NativePresentation, type NativeNode, type NativeToolbar } from './presentation'
 import { Controls } from './common'
 import { nativeHarness } from './testSupport'
 
@@ -38,6 +38,259 @@ describe('native presentation boundary', () => {
     ).toThrow()
     expect(() =>
       view.finish({ ...node, surface: 'arbitrary-css' } as unknown as NativeNode)
+    ).toThrow()
+  })
+  it('validates the window toolbar and source-list sidebar and binds only their live actions', async () => {
+    const view = new NativePresentation(),
+      toggled = vi.fn(),
+      chosen = vi.fn()
+    view.begin()
+    const toolbar: NativeToolbar = {
+      title: 'Discover',
+      items: [
+        {
+          id: 'sidebar-toggle',
+          title: 'Hide Sidebar',
+          symbol: 'sidebar.left',
+          action: view.action('toggle', toggled)
+        }
+      ]
+    }
+    const sidebar: NativeNode = {
+      id: 'native-navigation',
+      kind: 'sidebar',
+      title: 'Workspaces',
+      selected: 'discover',
+      rows: [
+        { id: 'discover', title: 'Discover', symbol: 'sparkle.magnifyingglass' },
+        { id: 'saved', title: 'Saved', symbol: 'star' }
+      ],
+      action: view.action('navigate', chosen, { type: 'choice', values: ['discover', 'saved'] })
+    }
+    const scene = JSON.parse(view.finish(sidebar, undefined, undefined, 1, undefined, toolbar))
+    expect(scene.toolbar).toEqual(toolbar)
+    expect(scene.root.rows[1].symbol).toBe('star')
+    await view.dispatch(JSON.stringify({ action: toolbar.items[0]!.action }))
+    await view.dispatch(JSON.stringify({ action: sidebar.action, value: 'saved' }))
+    expect(toggled).toHaveBeenCalledOnce()
+    expect(chosen).toHaveBeenCalledWith('saved')
+    expect(() =>
+      view.finish(sidebar, undefined, undefined, 1, undefined, {
+        ...toolbar,
+        items: [{ ...toolbar.items[0]!, symbol: 'file:///icon' }]
+      } as unknown as NativeToolbar)
+    ).toThrow()
+    expect(() =>
+      view.finish({
+        ...sidebar,
+        rows: [{ id: 'x', title: 'X', symbol: 'https://example.com/icon' }]
+      } as unknown as NativeNode)
+    ).toThrow()
+  })
+  it('accepts a selected pane only on a preference toolbar that contains it', () => {
+    const view = new NativePresentation()
+    const root: NativeNode = { id: 'settings-window', kind: 'column' }
+    const panes: NativeToolbar = {
+      title: 'Personal Context',
+      style: 'preference',
+      selected: 'settings-personal',
+      items: [
+        { id: 'settings-personal', title: 'Personal Context', symbol: 'person.crop.circle' },
+        { id: 'settings-provider', title: 'Model Provider', symbol: 'cpu' }
+      ]
+    }
+    expect(
+      JSON.parse(view.finish(root, undefined, undefined, 1, undefined, panes)).toolbar
+    ).toEqual(panes)
+    for (const invalid of [
+      { ...panes, selected: 'settings-missing' },
+      { ...panes, style: undefined },
+      { ...panes, style: 'unified' },
+      {
+        ...panes,
+        selected: 'find',
+        items: [{ id: 'find', title: 'Find', symbol: 'magnifyingglass', kind: 'search' }]
+      },
+      // Preference panes are plain selectable items: no search field or sidebar placement.
+      {
+        ...panes,
+        items: [
+          ...panes.items,
+          { id: 'find', title: 'Find', symbol: 'magnifyingglass', kind: 'search' }
+        ]
+      },
+      {
+        ...panes,
+        items: [
+          ...panes.items,
+          { id: 'toggle', title: 'Toggle', symbol: 'sidebar.left', placement: 'sidebar' }
+        ]
+      }
+    ])
+      expect(() =>
+        view.finish(root, undefined, undefined, 1, undefined, invalid as NativeToolbar)
+      ).toThrow()
+  })
+  it('bounds native progress to integer completed-of-total values on progress nodes', () => {
+    const view = new NativePresentation()
+    const node: NativeNode = {
+      id: 'run',
+      kind: 'progress',
+      title: 'Discover run progress',
+      completed: 3,
+      total: 22
+    }
+    expect(JSON.parse(view.finish(node)).root).toMatchObject(node)
+    const indeterminate = { id: 'run', kind: 'progress', title: 'Planning' } as NativeNode
+    expect(JSON.parse(view.finish(indeterminate)).root.total).toBeUndefined()
+    for (const invalid of [
+      { ...node, completed: 23 },
+      { ...node, completed: 1.5 },
+      { ...node, completed: 0, total: 0 },
+      { ...node, total: undefined },
+      { id: 'label', kind: 'label', completed: 1, total: 2 }
+    ])
+      expect(() => view.finish(invalid as NativeNode)).toThrow()
+  })
+  it('bounds segmented controls to 2-6 options with a listed selection', () => {
+    const view = new NativePresentation()
+    const options = [
+      { id: 'all', title: 'All (3)' },
+      { id: 'paper', title: 'Papers (1)' },
+      { id: 'other', title: 'Other (0)', enabled: false }
+    ]
+    const node: NativeNode = {
+      id: 'kind',
+      kind: 'segmented',
+      title: 'Result kind',
+      selected: 'all',
+      options
+    }
+    expect(JSON.parse(view.finish(node)).root).toMatchObject(node)
+    const many = Array.from({ length: 7 }, (_, index) => ({ id: `o${index}`, title: `${index}` }))
+    for (const invalid of [
+      { ...node, options: options.slice(0, 1) },
+      { ...node, options: many, selected: 'o0' },
+      { ...node, selected: 'repository' },
+      { ...node, selected: undefined },
+      { id: 'label', kind: 'label', options }
+    ])
+      expect(() => view.finish(invalid as NativeNode)).toThrow()
+  })
+  it('anchors a popover to a root node with unique ids and keeps its actions live', async () => {
+    const view = new NativePresentation()
+    const received: string[] = []
+    view.begin()
+    const close = view.action('popover:close', () => {
+      received.push('close')
+    })
+    const toggle = view.action('popover:toggle', () => {
+      received.push('toggle')
+    })
+    const opener = view.action('popover:open', () => {
+      received.push('root')
+    })
+    const root: NativeNode = {
+      id: 'page',
+      kind: 'column',
+      children: [{ id: 'open', kind: 'button', title: 'Sources', action: opener }]
+    }
+    const content: NativeNode = {
+      id: 'picker',
+      kind: 'column',
+      children: [{ id: 'all', kind: 'button', title: 'Select all', action: toggle }]
+    }
+    const scene = JSON.parse(
+      view.finish(root, undefined, undefined, 1, undefined, undefined, {
+        anchor: 'open',
+        close,
+        root: content
+      })
+    )
+    expect(scene.popover).toMatchObject({ anchor: 'open', close, root: { id: 'picker' } })
+    await view.dispatch(JSON.stringify({ action: toggle }))
+    await view.dispatch(JSON.stringify({ action: close }))
+    // The window stays interactive: root actions remain live while the popover is open.
+    await view.dispatch(JSON.stringify({ action: opener }))
+    expect(received).toEqual(['toggle', 'close', 'root'])
+    for (const popover of [
+      { anchor: 'missing', close, root: content },
+      { anchor: 'open', close, root: { ...content, id: 'open' } },
+      { anchor: 'open', close: '', root: content }
+    ])
+      expect(() =>
+        view.finish(root, undefined, undefined, 1, undefined, undefined, popover)
+      ).toThrow()
+    const sheet: NativeNode = { id: 'sheet', kind: 'column', children: [] }
+    expect(() =>
+      view.finish(root, sheet, undefined, 1, undefined, undefined, {
+        anchor: 'open',
+        close,
+        root: content
+      })
+    ).toThrow()
+  })
+  it('accepts kind glyphs, accessible kind names and the Saved marker on research rows', () => {
+    const view = new NativePresentation()
+    const table = {
+      id: 'results',
+      kind: 'table',
+      title: 'Results',
+      rows: [
+        { id: 'a', title: 'A', symbol: 'doc.text', symbolLabel: 'Paper', saved: true },
+        { id: 'b', title: 'B', symbol: 'chevron.left.forwardslash.chevron.right' }
+      ]
+    } as NativeNode
+    expect(JSON.parse(view.finish(table)).root.rows[0]).toMatchObject({ saved: true })
+    for (const row of [
+      { id: 'a', title: 'A', saved: 'yes' },
+      { id: 'a', title: 'A', symbolLabel: 'x'.repeat(41) },
+      { id: 'a', title: 'A', symbol: 'flag' }
+    ])
+      expect(() => view.finish({ ...table, rows: [row] } as unknown as NativeNode)).toThrow()
+  })
+  it('marks only a split as the window sidebar host', () => {
+    const view = new NativePresentation()
+    const pane = (id: string): NativeNode => ({ id, kind: 'column', children: [] })
+    const split = {
+      id: 'workspace',
+      kind: 'split',
+      windowSidebar: true,
+      children: [pane('sidebar'), pane('main')]
+    } as NativeNode
+    expect(JSON.parse(view.finish(split)).root.windowSidebar).toBe(true)
+    expect(() =>
+      view.finish({ id: 'column', kind: 'column', windowSidebar: true } as NativeNode)
+    ).toThrow()
+  })
+  it('fits the window to scroll content only from a scroll node', () => {
+    const view = new NativePresentation()
+    const content: NativeNode = { id: 'content', kind: 'column', children: [] }
+    const scroll = {
+      id: 'pane',
+      kind: 'scroll',
+      fitWindow: true,
+      children: [content]
+    } as NativeNode
+    expect(JSON.parse(view.finish(scroll)).root.fitWindow).toBe(true)
+    expect(() =>
+      view.finish({ id: 'column', kind: 'column', fitWindow: true } as NativeNode)
+    ).toThrow()
+  })
+  it('accepts keyboard shortcuts on buttons only', () => {
+    const view = new NativePresentation()
+    const button = {
+      id: 'go',
+      kind: 'button',
+      title: 'Search',
+      shortcut: 'command-return'
+    } as NativeNode
+    expect(JSON.parse(view.finish(button)).root.shortcut).toBe('command-return')
+    expect(() =>
+      view.finish({ ...button, shortcut: 'command-q' } as unknown as NativeNode)
+    ).toThrow()
+    expect(() =>
+      view.finish({ id: 'text', kind: 'label', text: 'x', shortcut: 'return' } as NativeNode)
     ).toThrow()
   })
   it('rejects queued input and selection changes after controls become disabled', async () => {

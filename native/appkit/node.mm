@@ -62,17 +62,52 @@ static NSColor *TRChartColor(NSColor *accent) {
 }
 @end
 
+// Saved marker: a darker saved accent in light mode, system yellow in dark mode; both keep at least
+// 3:1 against the list and the unfocused selection backgrounds. Increase Contrast uses the label colour.
+static NSColor *TRSavedColor(BOOL highContrast) {
+  if (highContrast) return NSColor.labelColor;
+  return [NSColor colorWithName:@"TRSaved" dynamicProvider:^NSColor *(NSAppearance *appearance) {
+    BOOL dark = [[appearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua,NSAppearanceNameDarkAqua]] isEqual:NSAppearanceNameDarkAqua];
+    return dark ? NSColor.systemYellowColor : [NSColor colorWithSRGBRed:0xa8/255.0 green:0x6f/255.0 blue:0 alpha:1];
+  }];
+}
+
 @interface TRResearchCell : NSTableCellView
 @property(nonatomic, strong) NSTextField *detailField;
+@property(nonatomic, strong) NSImageView *kindView;
+@property(nonatomic, strong) NSImageView *savedView;
+@property(nonatomic, copy) NSString *symbolName;
+@property(nonatomic) BOOL highContrast;
 @property(nonatomic) CGFloat zoom;
 @end
 @implementation TRResearchCell
 - (void)layout {
   [super layout];
-  CGFloat inset = 12*self.zoom, width = MAX(20,self.bounds.size.width-2*inset);
-  self.textField.frame = NSMakeRect(inset,27*self.zoom,width,35*self.zoom);
+  CGFloat zoom = self.zoom, inset = 12*zoom, glyph = 16*zoom, gap = 8*zoom;
+  CGFloat leading = self.kindView ? inset + glyph + gap : inset;
+  CGFloat trailing = self.savedView.hidden || !self.savedView ? inset : inset + glyph + 6*zoom;
+  CGFloat width = MAX(20,self.bounds.size.width-leading-trailing);
   self.textField.preferredMaxLayoutWidth = width;
-  self.detailField.frame = NSMakeRect(inset,7*self.zoom,width,16*self.zoom);
+  // The subtitle sits under the title's measured lines (one or two), and the block is centred in
+  // the fixed-height row, so a one-line title does not leave its subtitle nearer the next row.
+  // Measure through the cell at the final width: its insets decide whether the title wraps.
+  CGFloat titleHeight = MIN(35*zoom,ceil([self.textField.cell cellSizeForBounds:NSMakeRect(0,0,width,CGFLOAT_MAX)].height));
+  BOOL detail = self.detailField.stringValue.length > 0;
+  CGFloat detailHeight = detail ? 16*zoom : 0, spacing = detail ? 4*zoom : 0;
+  CGFloat bottom = floor((self.bounds.size.height-titleHeight-spacing-detailHeight)/2);
+  self.detailField.frame = NSMakeRect(leading,bottom,MAX(20,self.bounds.size.width-leading-inset),detailHeight);
+  self.textField.frame = NSMakeRect(leading,bottom+detailHeight+spacing,width,titleHeight);
+  // Glyphs sit on the first title line, as in Mail and Finder lists.
+  CGFloat top = NSMaxY(self.textField.frame) - glyph;
+  self.kindView.frame = NSMakeRect(inset,top,glyph,glyph);
+  self.savedView.frame = NSMakeRect(self.bounds.size.width-inset-glyph,top,glyph,glyph);
+}
+- (void)setBackgroundStyle:(NSBackgroundStyle)style {
+  [super setBackgroundStyle:style];
+  // A selected row in a focused list is drawn on the accent colour; glyphs follow the text.
+  BOOL emphasized = style == NSBackgroundStyleEmphasized;
+  self.kindView.contentTintColor = emphasized ? NSColor.alternateSelectedControlTextColor : self.highContrast ? NSColor.labelColor : NSColor.secondaryLabelColor;
+  self.savedView.contentTintColor = emphasized ? NSColor.alternateSelectedControlTextColor : TRSavedColor(self.highContrast);
 }
 @end
 
@@ -88,9 +123,14 @@ static NSColor *TRChartColor(NSColor *accent) {
 
 @interface TRTable : NSTableView
 @property(nonatomic, weak) TRNode *node;
+@property(nonatomic) BOOL dragged;
 @end
 @implementation TRTable
-- (void)mouseDown:(NSEvent *)event { [super mouseDown:event]; [self.node activateRow]; }
+- (void)mouseDown:(NSEvent *)event {
+  // A drag to another app runs inside mouseDown; finishing it must not also open the row.
+  self.dragged = NO; [super mouseDown:event];
+  if (!self.dragged) [self.node activateRow];
+}
 - (void)keyDown:(NSEvent *)event {
   if (event.keyCode == 36 || event.keyCode == 76) { [self.node activateRow]; return; }
   [super keyDown:event];
@@ -108,10 +148,16 @@ static NSColor *TRChartColor(NSColor *accent) {
 @implementation TRSplit
 - (BOOL)acceptsFirstResponder { return !self.node.spec[@"compactPane"]; }
 - (CGFloat)dividerThickness { return self.node.spec[@"compactPane"] ? 0 : [super dividerThickness]; }
-- (BOOL)becomeFirstResponder { self.initialPosition = self.vertical ? self.subviews.firstObject.frame.size.width : self.subviews.firstObject.frame.size.height; return YES; }
+- (void)mouseDown:(NSEvent *)event {
+  // NSSplitView tracks a divider drag inside mouseDown; mark it as a user resize.
+  self.node.userResizing = YES; [super mouseDown:event]; self.node.userResizing = NO;
+}
+- (BOOL)becomeFirstResponder { self.initialPosition = self.vertical ? self.arrangedSubviews.firstObject.frame.size.width : self.arrangedSubviews.firstObject.frame.size.height; return YES; }
 - (void)keyDown:(NSEvent *)event {
-  if (self.node.spec[@"compactPane"]) { [super keyDown:event]; return; }
-  CGFloat position = self.vertical ? self.subviews.firstObject.frame.size.width : self.subviews.firstObject.frame.size.height;
+  // Only a focused divider handles arrow keys. Keys a focused descendant ignores travel up the
+  // responder chain; an outer split must not treat them as divider moves (and save a width).
+  if (self.node.spec[@"compactPane"] || self.window.firstResponder != self) { [super keyDown:event]; return; }
+  CGFloat position = self.vertical ? self.arrangedSubviews.firstObject.frame.size.width : self.arrangedSubviews.firstObject.frame.size.height;
   CGFloat step = (event.modifierFlags & NSEventModifierFlagShift) ? 32 : 8;
   CGFloat minimum = [self.node splitView:self constrainMinCoordinate:0 ofSubviewAt:0];
   CGFloat maximum = [self.node splitView:self constrainMaxCoordinate:0 ofSubviewAt:0];
@@ -122,7 +168,25 @@ static NSColor *TRChartColor(NSColor *accent) {
   else if (event.keyCode == 53) position = self.initialPosition;
   else { [super keyDown:event]; return; }
   position = MIN(MAX(position,minimum),maximum);
-  [self setPosition:position ofDividerAtIndex:0];
+  self.node.userResizing = YES; [self setPosition:position ofDividerAtIndex:0]; [self layoutSubtreeIfNeeded]; self.node.userResizing = NO;
+}
+@end
+
+// The window's sidebar/content split is hosted by a split view controller so AppKit can place
+// the toolbar's tracking separator, and with it the window title, over the content column.
+@interface TRWindowSplitController : NSSplitViewController
+@property(nonatomic, weak) TRNode *node;
+@end
+@implementation TRWindowSplitController
+- (void)viewDidLayout { [super viewDidLayout]; [self.node reconcileWindowSplit]; }
+- (void)splitViewDidResizeSubviews:(NSNotification *)notification {
+  if (self.node.animatingSplit) {
+    NSView *pane = self.splitView.arrangedSubviews.firstObject;
+    [self.node.animationWidths addObject:@(round(pane.isHidden ? 0 : pane.frame.size.width))];
+  }
+  if ([NSSplitViewController instancesRespondToSelector:@selector(splitViewDidResizeSubviews:)]) [super splitViewDidResizeSubviews:notification];
+  [self.node splitViewDidResizeSubviews:notification];
+  for (NSSplitViewItem *item in self.splitViewItems) item.viewController.view.needsLayout = YES;
 }
 @end
 
@@ -131,6 +195,20 @@ static NSColor *TRChartColor(NSColor *accent) {
 - (void)drawRect:(NSRect)rect { if (self.paintsBackground) { [NSColor.windowBackgroundColor setFill]; NSRectFill(rect); } }
 @end
 
+/** The system point size of a macOS text style (Body when unknown). */
+static CGFloat TRTextStyleSize(NSString *style) {
+  // Layout asks for fonts often; the system sizes are fixed per process, so look them up once.
+  static NSDictionary<NSString *, NSNumber *> *sizes;
+  static dispatch_once_t once;
+  dispatch_once(&once, ^{
+    NSDictionary<NSString *, NSFontTextStyle> *styles = @{@"title1":NSFontTextStyleTitle1,@"title2":NSFontTextStyleTitle2,@"title3":NSFontTextStyleTitle3,
+      @"headline":NSFontTextStyleHeadline,@"body":NSFontTextStyleBody,@"callout":NSFontTextStyleCallout,@"subheadline":NSFontTextStyleSubheadline,@"footnote":NSFontTextStyleFootnote};
+    NSMutableDictionary *measured = [NSMutableDictionary dictionary];
+    for (NSString *name in styles) measured[name] = @([NSFont preferredFontForTextStyle:styles[name] options:@{}].pointSize);
+    sizes = measured;
+  });
+  return (sizes[style] ?: sizes[@"body"]).doubleValue;
+}
 static NSString *TRString(id value) { return [value isKindOfClass:NSString.class] ? value : @""; }
 static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { return spec[key] ? [spec[key] doubleValue] : fallback; }
 
@@ -181,7 +259,12 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       NSRange visible = [table rowsInRect:table.visibleRect];
       if (visible.location != NSNotFound) for (NSUInteger i = visible.location; i < NSMaxRange(visible); i++) {
         NSTableCellView *cell = [table viewAtColumn:0 row:i makeIfNecessary:NO];
-        if ([cell isKindOfClass:TRResearchCell.class]) ((TRResearchCell *)cell).detailField.textColor = self.host.increaseContrast ? NSColor.labelColor : NSColor.secondaryLabelColor;
+        if ([cell isKindOfClass:TRResearchCell.class]) {
+          TRResearchCell *research = (TRResearchCell *)cell;
+          research.detailField.textColor = self.host.increaseContrast ? NSColor.labelColor : NSColor.secondaryLabelColor;
+          // Glyph tints follow a live Increase Contrast change, keeping the selection style.
+          research.highContrast = self.host.increaseContrast; research.backgroundStyle = research.backgroundStyle;
+        }
       }
     }
     if ([spec[@"kind"] isEqual:@"button"]) {
@@ -215,6 +298,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
     table.backgroundColor = NSColor.textBackgroundColor;
   }
+  if ([self.spec[@"kind"] isEqual:@"sidebar"]) ((NSTableView *)((NSScrollView *)self.control).documentView).backgroundColor = NSColor.clearColor;
   [self updateControlAppearance];
   self.needsDisplay = YES;
 }
@@ -224,16 +308,26 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   return self;
 }
 - (NSFont *)font {
-  CGFloat size = TRNumber(self.spec, @"size", [self.spec[@"weight"] isEqual:@"title"] ? 23 : 13) * self.host.zoom;
-  return ([self.spec[@"weight"] isEqual:@"bold"] || [self.spec[@"weight"] isEqual:@"title"]) ? [NSFont boldSystemFontOfSize:size] : [NSFont systemFontOfSize:size];
+  // macOS text styles at system sizes, scaled by the window zoom. Headings are Title 1; a point
+  // size is kept only where a node sets one (reading text, symbols).
+  NSString *style = self.spec[@"textStyle"] ?: ([self.spec[@"weight"] isEqual:@"title"] ? @"title1" : @"body");
+  CGFloat size = (self.spec[@"size"] ? [self.spec[@"size"] doubleValue] : TRTextStyleSize(style)) * self.host.zoom;
+  // Headline is bold by definition, as the system style is.
+  BOOL bold = [self.spec[@"weight"] isEqual:@"bold"] || [self.spec[@"weight"] isEqual:@"title"] || [style isEqual:@"headline"];
+  return bold ? [NSFont boldSystemFontOfSize:size] : [NSFont systemFontOfSize:size];
 }
 - (void)createControl {
   NSString *kind = self.spec[@"kind"];
   if ([kind isEqual:@"column"] || [kind isEqual:@"row"]) {
     if ([self.spec[@"adaptiveScroll"] boolValue]) {
       NSScrollView *scroll = [NSScrollView new]; scroll.hasVerticalScroller = YES; scroll.drawsBackground = NO; scroll.autohidesScrollers = YES;
+      scroll.automaticallyAdjustsContentInsets = NO;
       self.container = [TRCanvas new]; scroll.documentView = self.container; self.control = scroll;
     } else [self updateMaterial];
+  } else if ([kind isEqual:@"split"] && [self.spec[@"windowSidebar"] boolValue]) {
+    TRSplit *split = [TRSplit new]; split.node = self; split.vertical = YES; split.dividerStyle = NSSplitViewDividerStyleThin;
+    TRWindowSplitController *controller = [TRWindowSplitController new]; controller.node = self;
+    controller.splitView = split; self.splitController = controller; self.control = controller.view;
   } else if ([kind isEqual:@"split"]) {
     TRSplit *split = [TRSplit new]; split.node = self; split.delegate = self; split.vertical = YES; split.dividerStyle = NSSplitViewDividerStyleThin;
     split.accessibilityLabel = self.spec[@"title"] ?: @"Resize panes with arrow keys";
@@ -246,10 +340,16 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   } else if ([kind isEqual:@"chart"]) {
     TRChart *chart = [TRChart new]; chart.accessibilityElement = YES; chart.accessibilityRole = NSAccessibilityImageRole; self.control = chart;
   } else if ([kind isEqual:@"text"]) {
-    NSTextView *text = [[NSTextView alloc] initWithFrame:NSMakeRect(0,0,500,100)];
+    // TextKit 1 from the start: heightForWidth measures through the layout manager. A default
+    // (TextKit 2) view switches to TextKit 1 on first access and could report an empty layout
+    // (8 pt) for that measurement, leaving a long reading pane unscrollable.
+    NSTextView *text = [NSTextView textViewUsingTextLayoutManager:NO]; text.frame = NSMakeRect(0,0,500,100);
     text.editable = NO; text.selectable = YES; text.drawsBackground = NO; text.delegate = self;
     text.textContainerInset = NSMakeSize(0, 4); text.textContainer.lineFragmentPadding = 0;
-    text.textContainer.widthTracksTextView = YES; text.verticallyResizable = YES; text.horizontallyResizable = NO;
+    // heightForWidth sets the container width explicitly. Tracking the view width would reset it
+    // to a stale view frame right after the measurement and invalidate the layout just made
+    // (an intermittently empty 8 pt reading pane: asked 1000, view 500, laid-out height 0).
+    text.textContainer.widthTracksTextView = NO; text.verticallyResizable = YES; text.horizontallyResizable = NO;
     text.automaticLinkDetectionEnabled = NO; self.control = text;
   } else if ([kind isEqual:@"input"] && [self.spec[@"multiline"] boolValue]) {
     NSScrollView *scroll = [NSScrollView new]; scroll.hasVerticalScroller = YES; scroll.autohidesScrollers = YES; scroll.borderType = NSBezelBorder;
@@ -268,9 +368,35 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     self.control = button;
   } else if ([kind isEqual:@"select"]) {
     NSPopUpButton *select = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO]; select.target = self; select.action = @selector(trigger:); self.control = select;
+  } else if ([kind isEqual:@"symbol"]) {
+    NSImageView *image = [NSImageView new]; image.imageScaling = NSImageScaleProportionallyDown;
+    // Decorative: the adjacent title carries the meaning for VoiceOver.
+    image.accessibilityElement = NO; self.control = image;
+  } else if ([kind isEqual:@"segmented"]) {
+    NSSegmentedControl *segmented = [NSSegmentedControl new];
+    segmented.trackingMode = NSSegmentSwitchTrackingSelectOne; segmented.segmentStyle = NSSegmentStyleAutomatic;
+    segmented.target = self; segmented.action = @selector(trigger:); self.control = segmented;
+  } else if ([kind isEqual:@"progress"]) {
+    NSProgressIndicator *progress = [NSProgressIndicator new];
+    progress.style = NSProgressIndicatorStyleBar; progress.displayedWhenStopped = YES; progress.minValue = 0;
+    self.control = progress;
+  } else if ([kind isEqual:@"sidebar"]) {
+    NSScrollView *scroll = [NSScrollView new]; scroll.hasVerticalScroller = YES; scroll.autohidesScrollers = YES; scroll.drawsBackground = NO;
+    scroll.automaticallyAdjustsContentInsets = NO;
+    TRTable *table = [TRTable new]; table.node = self; table.delegate = self; table.dataSource = self;
+    table.headerView = nil; table.style = NSTableViewStyleSourceList; table.backgroundColor = NSColor.clearColor;
+    table.allowsEmptySelection = NO; table.rowSizeStyle = NSTableViewRowSizeStyleCustom;
+    NSTableColumn *column = [[NSTableColumn alloc] initWithIdentifier:@"workspace"]; [table addTableColumn:column];
+    table.columnAutoresizingStyle = NSTableViewLastColumnOnlyAutoresizingStyle;
+    scroll.documentView = table; self.control = scroll;
   } else if ([kind isEqual:@"table"]) {
     NSScrollView *scroll = [NSScrollView new]; scroll.hasVerticalScroller = YES; scroll.autohidesScrollers = YES; scroll.drawsBackground = NO;
     TRTable *table = [TRTable new]; table.node = self; table.delegate = self; table.dataSource = self;
+    // Rows with a link can be dragged as a copy to other apps (Zotero, Obsidian, Mail, Finder).
+    [table setDraggingSourceOperationMask:NSDragOperationCopy forLocal:NO];
+    [table setDraggingSourceOperationMask:NSDragOperationNone forLocal:YES];
+    // Double-click opens the row in its own window when the scene offers it (Mail pattern).
+    table.target = self; table.doubleAction = @selector(openRowWindow:);
     table.headerView = nil; table.rowHeight = 70 * self.host.zoom; table.intercellSpacing = NSMakeSize(0, 2);
     table.style = NSTableViewStyleInset; table.backgroundColor = NSColor.textBackgroundColor;
     NSTableColumn *column = [[NSTableColumn alloc] initWithIdentifier:@"item"]; [table addTableColumn:column];
@@ -299,6 +425,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     label.lineBreakMode = spec[@"maxLines"] ? NSLineBreakByTruncatingTail : NSLineBreakByWordWrapping;
     label.toolTip = spec[@"maxLines"] ? label.stringValue : nil;
     label.textColor = [spec[@"weight"] isEqual:@"secondary"] && ![self.host increaseContrast] ? NSColor.secondaryLabelColor : NSColor.labelColor;
+    label.alignment = [spec[@"align"] isEqual:@"center"] ? NSTextAlignmentCenter : NSTextAlignmentNatural;
   } else if ([kind isEqual:@"chart"]) {
     TRChart *chart = (TRChart *)self.control;
     chart.points = spec[@"points"] ?: @[]; chart.zoom = self.host.zoom; chart.highContrast = self.host.increaseContrast;
@@ -332,6 +459,13 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   } else if ([kind isEqual:@"button"] || [kind isEqual:@"check"]) {
     TRButton *button = (TRButton *)self.control; button.title = TRString(spec[@"title"]);
     if ([kind isEqual:@"button"] && spec[@"checked"]) [button setButtonType:NSButtonTypePushOnPushOff];
+    if ([kind isEqual:@"button"]) {
+      // Return makes a default button; Command-Return submits without taking plain Return
+      // from multiline text.
+      NSString *shortcut = spec[@"shortcut"];
+      button.keyEquivalent = shortcut ? @"\r" : @"";
+      button.keyEquivalentModifierMask = [shortcut isEqual:@"command-return"] ? NSEventModifierFlagCommand : 0;
+    }
     button.state = [spec[@"checked"] boolValue] ? NSControlStateValueOn : NSControlStateValueOff;
     button.needsDisplay = YES;
   } else if ([kind isEqual:@"select"]) {
@@ -342,6 +476,50 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       select.autoenablesItems = NO;
     }
     for (NSMenuItem *item in select.itemArray) if ([item.representedObject isEqual:spec[@"selected"]]) [select selectItem:item];
+  } else if ([kind isEqual:@"symbol"]) {
+    NSImageView *image = (NSImageView *)self.control;
+    image.image = [NSImage imageWithSystemSymbolName:spec[@"symbol"] accessibilityDescription:spec[@"title"]];
+    image.symbolConfiguration = [NSImageSymbolConfiguration configurationWithPointSize:TRNumber(spec,@"size",40)*self.host.zoom weight:NSFontWeightLight];
+    image.contentTintColor = self.host.increaseContrast ? NSColor.secondaryLabelColor : NSColor.tertiaryLabelColor;
+  } else if ([kind isEqual:@"segmented"]) {
+    NSSegmentedControl *segmented = (NSSegmentedControl *)self.control;
+    NSArray *options = spec[@"options"];
+    if (![old[@"options"] isEqual:options]) {
+      segmented.segmentCount = (NSInteger)options.count;
+      [options enumerateObjectsUsingBlock:^(NSDictionary *option, NSUInteger index, BOOL *stop) {
+        [segmented setLabel:option[@"title"] forSegment:(NSInteger)index]; [segmented setWidth:0 forSegment:(NSInteger)index];
+        [segmented setEnabled:option[@"enabled"] ? [option[@"enabled"] boolValue] : YES forSegment:(NSInteger)index];
+      }];
+    }
+    NSUInteger index = [options indexOfObjectPassingTest:^BOOL(NSDictionary *option, NSUInteger i, BOOL *stop) { return [option[@"id"] isEqual:spec[@"selected"]]; }];
+    if (index != NSNotFound) segmented.selectedSegment = (NSInteger)index;
+  } else if ([kind isEqual:@"progress"]) {
+    NSProgressIndicator *progress = (NSProgressIndicator *)self.control;
+    BOOL determinate = spec[@"completed"] && spec[@"total"];
+    progress.indeterminate = !determinate;
+    if (determinate) {
+      progress.maxValue = [spec[@"total"] doubleValue]; progress.doubleValue = [spec[@"completed"] doubleValue];
+      progress.accessibilityValueDescription = [NSString stringWithFormat:@"%@ of %@",spec[@"completed"],spec[@"total"]];
+      [progress stopAnimation:nil];
+    } else {
+      progress.accessibilityValueDescription = nil;
+      // Honour Reduce Motion: an indeterminate bar stays static instead of animating.
+      if (NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion) [progress stopAnimation:nil];
+      else [progress startAnimation:nil];
+    }
+  } else if ([kind isEqual:@"sidebar"]) {
+    NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
+    table.accessibilityLabel = spec[@"title"];
+    table.enabled = spec[@"enabled"] ? [spec[@"enabled"] boolValue] : YES;
+    CGFloat rowHeight = 30*self.host.zoom;
+    if (table.rowHeight != rowHeight || ![old[@"rows"] isEqual:spec[@"rows"]]) { table.rowHeight = rowHeight; [table reloadData]; }
+    NSInteger selected = -1, row = 0;
+    for (NSDictionary *item in spec[@"rows"]) { if ([item[@"id"] isEqual:spec[@"selected"]]) selected = row; row++; }
+    // A source list keeps one row selected; it shows none only when the scene selects none (a
+    // local search covers every workspace), so a click in empty space never clears it.
+    table.allowsEmptySelection = selected < 0;
+    if (selected >= 0 && table.selectedRow != selected) [table selectRowIndexes:[NSIndexSet indexSetWithIndex:selected] byExtendingSelection:NO];
+    else if (selected < 0 && table.selectedRow >= 0) [table deselectAll:nil];
   } else if ([kind isEqual:@"table"]) {
     NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
     NSArray *columns = spec[@"columns"];
@@ -361,7 +539,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     table.style = columns ? NSTableViewStylePlain : NSTableViewStyleInset;
     BOOL fontChanged = table.rowHeight != rowHeight;
     table.rowHeight = rowHeight;
-    for (NSTableColumn *column in table.tableColumns) column.headerCell.font = [NSFont systemFontOfSize:12*self.host.zoom weight:NSFontWeightMedium];
+    for (NSTableColumn *column in table.tableColumns) column.headerCell.font = [NSFont systemFontOfSize:TRTextStyleSize(@"callout")*self.host.zoom weight:NSFontWeightMedium];
     table.backgroundColor = NSColor.textBackgroundColor;
     NSPoint origin = ((NSScrollView *)self.control).contentView.bounds.origin;
     if (fontChanged || columnsChanged || ![old[@"rows"] isEqual:spec[@"rows"]]) [table reloadData];
@@ -383,10 +561,64 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     if (node) [node update:child]; else node = [[TRNode alloc] initWithHost:self.host spec:child];
     if ([child[@"kind"] isEqual:@"secure"]) self.host.secureFields[child[@"id"]] = node;
     [existing removeObjectForKey:child[@"id"]]; [children addObject:node];
-    if (node.superview != parent) [parent addSubview:node];
+    if (node.superview != parent && !self.splitController) [parent addSubview:node];
   }
   for (TRNode *node in existing.allValues) [node removeFromSuperview];
   self.nodes = children;
+  if (self.splitController && children.count == 2) {
+    NSArray<NSSplitViewItem *> *items = self.splitController.splitViewItems;
+    if (items.count != 2 || items[0].viewController.view != children[0] || items[1].viewController.view != children[1]) {
+      for (NSSplitViewItem *item in items.copy) [self.splitController removeSplitViewItem:item];
+      NSViewController *sidebar = [NSViewController new], *content = [NSViewController new];
+      sidebar.view = children[0]; content.view = children[1];
+      NSSplitViewItem *sidebarItem = [NSSplitViewItem sidebarWithViewController:sidebar];
+      // Only the scene collapses the sidebar (toolbar toggle): neither a drag nor a narrow window
+      // may collapse it without the presenter knowing.
+      sidebarItem.canCollapse = NO; sidebarItem.holdingPriority = NSLayoutPriorityDefaultLow + 10;
+      [self.splitController addSplitViewItem:sidebarItem];
+      [self.splitController addSplitViewItem:[NSSplitViewItem splitViewItemWithViewController:content]];
+    }
+    NSSplitViewItem *sidebarItem = self.splitController.splitViewItems[0];
+    // Unscaled points, as the saved preference and the other splits use: the drag and save
+    // limits agree at every zoom.
+    sidebarItem.minimumThickness = TRNumber(spec,@"minWidth",180);
+    sidebarItem.maximumThickness = TRNumber(spec,@"maxWidth",360);
+    // The divider counts against the content minimum so both minimums fit the 820 pt window.
+    self.splitController.splitViewItems[1].minimumThickness = TRNumber(spec,@"minContentWidth",200) - [self splitView].dividerThickness;
+    [self splitView].accessibilityLabel = spec[@"title"]; [self splitView].accessibilityHelp = spec[@"help"];
+    // Collapse here, outside layout: it changes the split view controller's constraints. The
+    // split item's own animator slides the sidebar (Finder, Mail); Reduce Motion is instant.
+    BOOL collapsed = [spec[@"compactPane"] isEqual:@"detail"];
+    // While an animation runs, the item can still report its old state (a second toggle before
+    // the run loop turns), so compare with the requested state.
+    if ((self.animatingSplit ? self.splitTarget : sidebarItem.collapsed) != collapsed) {
+      self.splitTarget = collapsed;
+      if (old && [self.host animatesTransitions]) {
+        // A toggle during a running animation starts a newer one; only the latest completion
+        // ends the pause. An older animation can finish after it, so whichever completion comes
+        // once no animation is pending puts the item in the requested state, then reconciles.
+        self.animatingSplit = YES; NSUInteger generation = ++self.splitAnimation;
+        self.animationWidths = [NSMutableSet set];
+        // A collapsed sidebar pane is hidden but keeps its last frame width: it starts at 0.
+        NSView *pane = self.splitController.splitView.arrangedSubviews.firstObject;
+        self.animationFrom = pane.isHidden ? 0 : pane.frame.size.width;
+        __weak TRNode *weakSelf = self;
+        [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
+          context.allowsImplicitAnimation = YES;
+          sidebarItem.animator.collapsed = collapsed;
+        } completionHandler:^{
+          TRNode *node = weakSelf; if (!node) return;
+          if (node.splitAnimation == generation) { node.animatingSplit = NO; node.animationsCompleted++; }
+          if (node.animatingSplit) return;
+          if (sidebarItem.collapsed != node.splitTarget) {
+            sidebarItem.collapsed = node.splitTarget; [node.splitController.view layoutSubtreeIfNeeded];
+          }
+          // A finished show or hide earns a fresh attempt to restore the saved width.
+          node.reconcileAttempt = 0; [node reconcileWindowSplit];
+        }];
+      } else { ++self.splitAnimation; self.animatingSplit = NO; sidebarItem.collapsed = collapsed; }
+    }
+  }
   if ([kind isEqual:@"scroll"] && old && (![old[@"clearRevision"] ?: @0 isEqual:spec[@"clearRevision"] ?: @0] || ![[old[@"children"] firstObject][@"id"] isEqual:[spec[@"children"] firstObject][@"id"]])) {
     self.resetScrollAfterLayout = YES;
   }
@@ -394,36 +626,69 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   [self updateControlAppearance];
   self.applying = NO; self.needsLayout = YES;
 }
+- (CGFloat)safeInset { return [self.spec[@"safeArea"] boolValue] ? [self.host safeTop] : 0; }
 - (CGFloat)preferredWidth {
   if (self.spec[@"width"]) return [self.spec[@"width"] doubleValue] * self.host.zoom;
+  if ([self.spec[@"kind"] isEqual:@"symbol"]) return ceil(TRNumber(self.spec,@"size",40) * 1.3 * self.host.zoom);
   if ([self.control isKindOfClass:NSControl.class]) return MAX(60, self.control.intrinsicContentSize.width + 8);
   return 180 * self.host.zoom;
+}
+// A row's natural width: its children side by side. Used only by centered columns, so other
+// rows keep their existing preferred width.
+- (CGFloat)naturalRowWidth {
+  CGFloat gap = TRNumber(self.spec,@"gap",10) * self.host.zoom, width = 2 * TRNumber(self.spec,@"padding",0) * self.host.zoom + MAX(0,(NSInteger)self.nodes.count-1) * gap;
+  for (TRNode *child in self.nodes) width += child.preferredWidth;
+  return width;
+}
+// Width of a child in a centered column: its own natural or maximum width, never the column's.
+- (CGFloat)centeredWidthFor:(TRNode *)child within:(CGFloat)available {
+  CGFloat width = available, zoom = self.host.zoom; NSString *kind = child.spec[@"kind"];
+  if (child.spec[@"maxWidth"]) width = MIN(width,[child.spec[@"maxWidth"] doubleValue]*zoom);
+  if ([kind isEqual:@"row"]) width = MIN(width,[child naturalRowWidth]);
+  else if ([kind isEqual:@"symbol"] || [kind isEqual:@"button"]) width = MIN(width,child.preferredWidth);
+  return MAX(0,width);
+}
+// A nested row (a group that wraps as one unit) needs its children side by side.
+- (CGFloat)wrapWidthOf:(TRNode *)child {
+  return [child.spec[@"kind"] isEqual:@"row"] ? [child naturalRowWidth] : child.preferredWidth;
 }
 - (BOOL)wrapsRowAtWidth:(CGFloat)width {
   if (self.spec[@"wrap"] && ![self.spec[@"wrap"] boolValue]) return NO;
   CGFloat padding = TRNumber(self.spec,@"padding",0) * self.host.zoom, gap = TRNumber(self.spec,@"gap",10) * self.host.zoom;
   CGFloat fixed = MAX(0,(NSInteger)self.nodes.count-1)*gap;
-  for (TRNode *child in self.nodes) fixed += [child.spec[@"flex"] doubleValue] > 0 ? MIN(180*self.host.zoom,child.preferredWidth) : child.preferredWidth;
+  for (TRNode *child in self.nodes) {
+    BOOL group = [child.spec[@"kind"] isEqual:@"row"];
+    fixed += [child.spec[@"flex"] doubleValue] > 0 && !group ? MIN(180*self.host.zoom,child.preferredWidth) : [self wrapWidthOf:child];
+  }
   return fixed > width - 2*padding;
 }
 - (CGFloat)wrappedRowAtWidth:(CGFloat)width apply:(BOOL)apply {
   CGFloat padding = TRNumber(self.spec,@"padding",0) * self.host.zoom, gap = TRNumber(self.spec,@"gap",10) * self.host.zoom;
   CGFloat x = padding, y = padding, lineHeight = 0, available = MAX(20,width-2*padding);
   for (TRNode *child in self.nodes) {
-    CGFloat childWidth = MIN(available,child.preferredWidth), childHeight = [child heightForWidth:childWidth];
+    CGFloat childWidth = MIN(available,[self wrapWidthOf:child]), childHeight = [child heightForWidth:childWidth];
     if (x > padding && x+childWidth > width-padding) { x = padding; y += lineHeight+gap; lineHeight = 0; }
     if (apply) child.frame = NSMakeRect(x,y,childWidth,childHeight);
     x += childWidth+gap; lineHeight = MAX(lineHeight,childHeight);
   }
   return y+lineHeight+padding;
 }
+- (CGFloat)scrollChildWidth:(TRNode *)child within:(CGFloat)contentWidth {
+  return MIN(contentWidth,TRNumber(child.spec,@"maxWidth",contentWidth/self.host.zoom)*self.host.zoom);
+}
+- (CGFloat)scrollContentHeightForWidth:(CGFloat)contentWidth {
+  CGFloat y = 0; for (TRNode *child in self.nodes) y += [child heightForWidth:[self scrollChildWidth:child within:contentWidth]];
+  return y;
+}
 - (CGFloat)heightForWidth:(CGFloat)width {
   CGFloat zoom = self.host.zoom, padding = TRNumber(self.spec, @"padding", 0) * zoom, gap = TRNumber(self.spec,@"gap",10) * zoom;
   if (self.spec[@"height"]) return [self.spec[@"height"] doubleValue] * zoom;
   NSString *kind = self.spec[@"kind"];
+  if ([kind isEqual:@"symbol"]) return ceil(TRNumber(self.spec,@"size",40) * 1.2 * zoom);
   if ([kind isEqual:@"column"]) {
-    CGFloat height = 2 * padding + MAX(0, (NSInteger)self.nodes.count - 1) * gap;
-    for (TRNode *child in self.nodes) height += [child heightForWidth:MAX(20,width-2*padding)];
+    BOOL centered = [self.spec[@"align"] isEqual:@"center"];
+    CGFloat height = 2 * padding + [self safeInset] + MAX(0, (NSInteger)self.nodes.count - 1) * gap;
+    for (TRNode *child in self.nodes) height += [child heightForWidth:centered ? MAX(20,[self centeredWidthFor:child within:width-2*padding]) : MAX(20,width-2*padding)];
     return MAX(height, TRNumber(self.spec,@"minHeight",0) * zoom);
   }
   if ([kind isEqual:@"row"]) {
@@ -437,13 +702,14 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   }
   if ([kind isEqual:@"text"]) {
     NSTextView *text = (NSTextView *)self.control;
-    text.textContainer.containerSize = NSMakeSize(MAX(20,width),CGFLOAT_MAX);
+    if (fabs(text.textContainer.containerSize.width - MAX(20,width)) > 0.5) text.textContainer.containerSize = NSMakeSize(MAX(20,width),CGFLOAT_MAX);
     [text.layoutManager ensureLayoutForTextContainer:text.textContainer];
     NSRect rect = [text.layoutManager usedRectForTextContainer:text.textContainer];
     return ceil(rect.size.height) + 2*text.textContainerInset.height;
   }
   if ([kind isEqual:@"split"]) return TRNumber(self.spec,@"minHeight",!self.spec[@"compactPane"] && self.spec[@"collapseAt"] && width < [self.spec[@"collapseAt"] doubleValue] ? 340 : 200) * zoom;
-  if ([kind isEqual:@"scroll"] || [kind isEqual:@"table"]) return TRNumber(self.spec,@"minHeight",200) * zoom;
+  if ([kind isEqual:@"scroll"] || [kind isEqual:@"table"] || [kind isEqual:@"sidebar"]) return TRNumber(self.spec,@"minHeight",200) * zoom;
+  if ([kind isEqual:@"progress"]) return 16 * zoom;
   if ([kind isEqual:@"input"] && [self.spec[@"multiline"] boolValue]) return 120 * zoom;
   return 32 * zoom;
 }
@@ -455,6 +721,11 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   if (splitLayout) self.applying = YES;
   self.control.frame = self.bounds;
   NSString *kind = self.spec[@"kind"];
+  if ([kind isEqual:@"segmented"]) {
+    // Segments keep their natural height, centred in the row like the adjacent buttons.
+    CGFloat natural = MIN(height,self.control.intrinsicContentSize.height);
+    self.control.frame = NSMakeRect(0,floor((height-natural)/2),width,natural);
+  }
   if ([self.spec[@"adaptiveScroll"] boolValue]) {
     NSScrollView *scroll = (NSScrollView *)self.control;
     width = scroll.contentSize.width; height = MAX(scroll.contentSize.height,[self heightForWidth:width]);
@@ -464,10 +735,12 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     NSScrollView *scroll = (NSScrollView *)self.control;
     CGFloat contentWidth = scroll.contentSize.width, y = 0;
     for (TRNode *child in self.nodes) {
-      CGFloat childWidth = MIN(contentWidth,TRNumber(child.spec,@"maxWidth",contentWidth/self.host.zoom)*self.host.zoom);
+      CGFloat childWidth = [self scrollChildWidth:child within:contentWidth];
       CGFloat h = [child heightForWidth:childWidth]; child.frame = NSMakeRect(0,y,childWidth,h); y += h;
     }
     self.container.frame = NSMakeRect(0,0,contentWidth,MAX(y,scroll.contentSize.height));
+  } else if (self.splitController && self.nodes.count == 2) {
+    [self reconcileWindowSplit];
   } else if ([kind isEqual:@"split"] && self.nodes.count == 2) {
     NSSplitView *split = (NSSplitView *)self.control;
     NSString *pane = self.spec[@"compactPane"];
@@ -502,18 +775,44 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       return;
     }
     CGFloat total = MAX(0,(NSInteger)self.nodes.count-1) * gap, flex = 0;
+    if (!row && [self.spec[@"align"] isEqual:@"center"]) {
+      // Centered stack (macOS empty states): natural sizes, centered both ways.
+      CGFloat inner = MAX(20,width-2*padding), safe = [self safeInset];
+      for (TRNode *child in self.nodes) total += [child heightForWidth:MAX(20,[self centeredWidthFor:child within:inner])];
+      CGFloat position = padding + safe + MAX(0,floor((height - 2*padding - safe - total)/2));
+      for (TRNode *child in self.nodes) {
+        CGFloat childWidth = MAX(20,[self centeredWidthFor:child within:inner]), extent = [child heightForWidth:childWidth];
+        child.frame = NSMakeRect(floor((width-childWidth)/2),position,childWidth,extent); position += extent + gap;
+      }
+      for (TRNode *child in self.nodes) { child.needsLayout = YES; [child layoutSubtreeIfNeeded]; }
+      return;
+    }
     for (TRNode *child in self.nodes) { if ([child.spec[@"flex"] doubleValue] > 0) flex += [child.spec[@"flex"] doubleValue]; else total += row ? child.preferredWidth : [child heightForWidth:MAX(20,width-2*padding)]; }
-    CGFloat available = MAX(0, (row ? width : height) - 2*padding - total), position = padding;
+    CGFloat safe = row ? 0 : [self safeInset];
+    CGFloat available = MAX(0, (row ? width : height) - 2*padding - safe - total), position = padding + safe;
     for (TRNode *child in self.nodes) {
       CGFloat extent = [child.spec[@"flex"] doubleValue] > 0 && flex ? available * [child.spec[@"flex"] doubleValue] / flex : (row ? child.preferredWidth : [child heightForWidth:MAX(20,width-2*padding)]);
       CGFloat childWidth = MAX(0,width-2*padding);
       if (!row && ![child.spec[@"kind"] isEqual:@"split"]) {
         if (child.spec[@"width"]) childWidth = MIN(childWidth,[child.spec[@"width"] doubleValue]*self.host.zoom);
         if (child.spec[@"maxWidth"]) childWidth = MIN(childWidth,[child.spec[@"maxWidth"] doubleValue]*self.host.zoom);
+        // AppKit push buttons in a vertical stack keep their intrinsic width and
+        // align leading; only sidebar navigation rows span the column.
+        if ([child.spec[@"kind"] isEqual:@"button"] && ![child.spec[@"emphasis"] isEqual:@"navigation"]) childWidth = MIN(childWidth,child.preferredWidth);
       }
-      child.frame = row ? NSMakeRect(position,padding,extent,MAX(0,height-2*padding)) : NSMakeRect(padding,position,childWidth,extent);
+      CGFloat rowHeight = MAX(0,height-2*padding), rowY = padding;
+      if (row && [child.spec[@"kind"] isEqual:@"label"]) {
+        // Labels draw from the top of their frame; a text-height frame centered in
+        // the row shares the vertical center of adjacent bezeled controls.
+        CGFloat textHeight = MIN(rowHeight,[child heightForWidth:extent]);
+        rowY = padding + floor((rowHeight-textHeight)/2); rowHeight = textHeight;
+      }
+      child.frame = row ? NSMakeRect(position,rowY,extent,rowHeight) : NSMakeRect(padding,position,childWidth,extent);
       position += extent + gap;
     }
+  } else if ([kind isEqual:@"sidebar"]) {
+    NSScrollView *scroll = (NSScrollView *)self.control; NSTableView *table = (NSTableView *)scroll.documentView;
+    [scroll tile]; table.tableColumns.firstObject.width = MAX(60,scroll.contentView.bounds.size.width-2*MAX(0,[table rectOfColumn:0].origin.x));
   } else if ([kind isEqual:@"table"]) {
     NSScrollView *scroll = (NSScrollView *)self.control;
     NSTableView *table = (NSTableView *)scroll.documentView;
@@ -550,6 +849,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
 - (NSView *)tableView:(NSTableView *)table viewForTableColumn:(NSTableColumn *)column row:(NSInteger)row {
   NSArray *rows = self.spec[@"rows"]; if (row < 0 || row >= (NSInteger)rows.count) return nil;
   NSDictionary *item = rows[row];
+  if ([self.spec[@"kind"] isEqual:@"sidebar"]) return TRSidebarCellView(item,self.host.zoom);
   if (self.spec[@"columns"]) {
     NSDictionary *definition = nil; for (NSDictionary *entry in self.spec[@"columns"]) if ([entry[@"id"] isEqual:column.identifier]) definition = entry;
     TRDataCell *cell = [TRDataCell new]; cell.zoom = self.host.zoom;
@@ -564,13 +864,31 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   TRResearchCell *cell = [TRResearchCell new]; cell.zoom = self.host.zoom;
   NSTextField *label = [NSTextField wrappingLabelWithString:item[@"title"]];
   label.font = [NSFont systemFontOfSize:self.font.pointSize weight:NSFontWeightMedium]; label.maximumNumberOfLines = 2; label.lineBreakMode = NSLineBreakByWordWrapping;
-  label.cell.wraps = YES; label.cell.usesSingleLineMode = NO;
+  label.cell.wraps = YES; label.cell.usesSingleLineMode = NO; label.cell.truncatesLastVisibleLine = YES;
   label.preferredMaxLayoutWidth = MAX(30,column.width-24*self.host.zoom);
   [cell addSubview:label]; cell.textField = label;
-  NSTextField *detail = [NSTextField labelWithString:TRString(item[@"subtitle"])]; detail.font = [NSFont systemFontOfSize:12*self.host.zoom]; detail.textColor = self.host.increaseContrast ? NSColor.labelColor : NSColor.secondaryLabelColor;
+  NSTextField *detail = [NSTextField labelWithString:TRString(item[@"subtitle"])]; detail.font = [NSFont systemFontOfSize:TRTextStyleSize(@"callout")*self.host.zoom]; detail.textColor = self.host.increaseContrast ? NSColor.labelColor : NSColor.secondaryLabelColor;
   detail.lineBreakMode = NSLineBreakByTruncatingTail;
   [cell addSubview:detail]; cell.detailField = detail; cell.toolTip = item[@"title"];
-  cell.accessibilityLabel = [NSString stringWithFormat:@"%@. %@",item[@"title"],TRString(item[@"subtitle"])];
+  cell.highContrast = self.host.increaseContrast;
+  NSImage *kind = [item[@"symbol"] isKindOfClass:NSString.class] ? [NSImage imageWithSystemSymbolName:item[@"symbol"] accessibilityDescription:item[@"symbolLabel"]] : nil;
+  if (kind) {
+    NSImageView *view = [NSImageView imageViewWithImage:kind]; view.accessibilityElement = NO;
+    view.symbolConfiguration = [NSImageSymbolConfiguration configurationWithPointSize:13*self.host.zoom weight:NSFontWeightRegular];
+    [cell addSubview:view]; cell.kindView = view; cell.symbolName = item[@"symbol"];
+  }
+  if ([item[@"saved"] boolValue]) {
+    NSImageView *view = [NSImageView imageViewWithImage:[NSImage imageWithSystemSymbolName:@"star.fill" accessibilityDescription:@"Saved"]];
+    view.accessibilityElement = NO;
+    view.symbolConfiguration = [NSImageSymbolConfiguration configurationWithPointSize:12*self.host.zoom weight:NSFontWeightRegular];
+    [cell addSubview:view]; cell.savedView = view;
+  }
+  cell.backgroundStyle = NSBackgroundStyleNormal;
+  NSMutableArray *spoken = [NSMutableArray arrayWithObject:item[@"title"]];
+  if ([item[@"symbolLabel"] isKindOfClass:NSString.class] && kind) [spoken addObject:item[@"symbolLabel"]];
+  if (TRString(item[@"subtitle"]).length) [spoken addObject:item[@"subtitle"]];
+  if (cell.savedView) [spoken addObject:@"Saved"];
+  cell.accessibilityLabel = [[spoken componentsJoinedByString:@". "] stringByAppendingString:@"."];
   return cell;
 }
 - (NSString *)selectedRowId {
@@ -581,12 +899,58 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   if (!self.applying) [self.host emit:self.spec[@"action"] value:[self selectedRowId] secret:NO];
 }
 - (void)activateRow { [self.host emit:self.spec[@"activate"] value:[self selectedRowId] secret:NO]; }
+- (void)openRowWindow:(id)sender {
+  NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
+  // A real double-click acts on the clicked row only (not empty space); the fixture path (nil
+  // sender) uses the selection it just made.
+  NSArray *rows = self.spec[@"rows"]; NSInteger row = sender ? table.clickedRow : table.selectedRow;
+  if (!self.spec[@"openWindow"] || row < 0 || row >= (NSInteger)rows.count) return;
+  [self.host emit:self.spec[@"openWindow"] value:rows[(NSUInteger)row][@"id"] secret:NO];
+}
 - (void)contextRow { [self.host emit:self.spec[@"context"] value:[self selectedRowId] secret:NO]; }
+- (NSPasteboardItem *)pasteboardItemForRow:(NSInteger)row {
+  NSArray *rows = self.spec[@"rows"]; if (row < 0 || row >= (NSInteger)rows.count) return nil;
+  NSDictionary *drag = rows[(NSUInteger)row][@"drag"]; if (![drag isKindOfClass:NSDictionary.class]) return nil;
+  NSURL *url = [NSURL URLWithString:TRString(drag[@"url"])];
+  // The scene already admits only https links; check again before anything leaves the app.
+  if (![url.scheme.lowercaseString isEqual:@"https"]) return nil;
+  NSPasteboardItem *item = [NSPasteboardItem new];
+  [item setString:url.absoluteString forType:NSPasteboardTypeURL];
+  [item setString:TRString(drag[@"title"]) forType:@"public.url-name"];
+  [item setString:TRString(drag[@"text"]) forType:NSPasteboardTypeString];
+  return item;
+}
+- (id<NSPasteboardWriting>)tableView:(NSTableView *)table pasteboardWriterForRow:(NSInteger)row {
+  NSPasteboardItem *item = [self.spec[@"kind"] isEqual:@"table"] ? [self pasteboardItemForRow:row] : nil;
+  // AppKit asks for the writer synchronously when a drag starts inside mouseDown; the session
+  // itself may run later, so mark the drag here, before mouseDown would open the row.
+  if (item && [table isKindOfClass:TRTable.class]) ((TRTable *)table).dragged = YES;
+  return item;
+}
+- (void)tableView:(NSTableView *)table draggingSession:(NSDraggingSession *)session willBeginAtPoint:(NSPoint)point forRowIndexes:(NSIndexSet *)rows {
+  if ([table isKindOfClass:TRTable.class]) ((TRTable *)table).dragged = YES;
+}
+- (void)tableView:(NSTableView *)table draggingSession:(NSDraggingSession *)session endedAtPoint:(NSPoint)point operation:(NSDragOperation)operation {
+  if ([table isKindOfClass:TRTable.class]) ((TRTable *)table).dragged = YES;
+}
+- (void)share {
+  NSURL *url = [NSURL URLWithString:TRString(self.spec[@"share"][@"url"])];
+  if (![url.scheme.lowercaseString isEqual:@"https"]) return;
+  // Fixtures record the request; opening system sharing UI would block an unattended run.
+  if (self.host.fixture) { self.sharedURL = url.absoluteString; return; }
+  NSSharingServicePicker *picker = [[NSSharingServicePicker alloc] initWithItems:@[url]];
+  [picker showRelativeToRect:self.control.bounds ofView:self.control preferredEdge:NSRectEdgeMinY];
+}
 - (void)trigger:(id)sender {
-  if (self.applying) return;
+  if (self.applying || [self.host.popover suppressesTriggerFrom:self.identifier]) return;
   if ([self.control isKindOfClass:NSControl.class] && !((NSControl *)self.control).enabled) return;
+  if ([self.spec[@"share"] isKindOfClass:NSDictionary.class]) { [self share]; return; }
   NSString *kind = self.spec[@"kind"];
   if ([kind isEqual:@"select"]) [self.host emit:self.spec[@"action"] value:((NSPopUpButton *)self.control).selectedItem.representedObject secret:NO];
+  else if ([kind isEqual:@"segmented"]) {
+    NSInteger index = ((NSSegmentedControl *)self.control).selectedSegment; NSArray *options = self.spec[@"options"];
+    if (index >= 0 && index < (NSInteger)options.count) [self.host emit:self.spec[@"action"] value:options[(NSUInteger)index][@"id"] secret:NO];
+  }
   else if ([kind isEqual:@"check"]) [self.host emit:self.spec[@"action"] value:@(((NSButton *)self.control).state == NSControlStateValueOn) secret:NO];
   else if ([kind isEqual:@"input"] || [kind isEqual:@"secure"]) [self.host emit:self.spec[@"activate"] value:nil secret:NO];
   else [self.host emit:self.spec[@"action"] value:nil secret:NO];
@@ -629,12 +993,48 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
 - (CGFloat)splitView:(NSSplitView *)split constrainMaxCoordinate:(CGFloat)proposed ofSubviewAt:(NSInteger)index { return split.vertical ? MAX(TRNumber(self.spec,@"minWidth",180),MIN(TRNumber(self.spec,@"maxWidth",520),split.bounds.size.width-TRNumber(self.spec,@"minContentWidth",200))) : split.bounds.size.height-160; }
 - (void)splitViewDidResizeSubviews:(NSNotification *)notification {
   if (self.spec[@"compactPane"]) return;
-  NSSplitView *split = (NSSplitView *)self.control;
-  if (!self.applying && !split.vertical && self.window && split.bounds.size.height > 0) self.stackedFraction = split.subviews.firstObject.frame.size.height/split.bounds.size.height;
-  if (!self.applying && split.vertical && self.lastWidth && self.window) {
-    CGFloat value = split.subviews.firstObject.frame.size.width;
-    if (value >= TRNumber(self.spec,@"minWidth",180) && value <= TRNumber(self.spec,@"maxWidth",520)) { self.preferredSplit = value; [self.host emit:self.spec[@"action"] value:@(value) secret:NO]; }
+  NSSplitView *split = [self splitView];
+  if (!self.applying && !split.vertical && self.window && split.bounds.size.height > 0) self.stackedFraction = split.arrangedSubviews.firstObject.frame.size.height/split.bounds.size.height;
+  // A controller-hosted split also resizes for window changes; only user resizes are preferences.
+  if (!self.applying && split.vertical && self.lastWidth && self.window && (!self.splitController || self.userResizing)) {
+    CGFloat value = split.arrangedSubviews.firstObject.frame.size.width;
+    if (value >= TRNumber(self.spec,@"minWidth",180) && value <= TRNumber(self.spec,@"maxWidth",520)) { self.preferredSplit = value; self.widthEvents++; [self.host emit:self.spec[@"action"] value:@(value) secret:NO]; }
   }
+}
+// Keep the window sidebar at its preferred width whenever the window has room (a narrow window
+// squeezes it; widening restores it). Called after node and split view controller layouts.
+- (void)reconcileWindowSplit {
+  // Wait for a running show/hide animation; its completion reconciles once.
+  if (!self.splitController || self.nodes.count != 2 || self.animatingSplit || [self.spec[@"compactPane"] isEqual:@"detail"]) return;
+  // Moving the divider changes Auto Layout constraints, which AppKit forbids inside a layout
+  // pass, so it runs right after.
+  NSSplitView *split = self.splitController.splitView;
+  CGFloat room = split.bounds.size.width - TRNumber(self.spec,@"minContentWidth",200) - split.dividerThickness;
+  CGFloat desired = MAX(TRNumber(self.spec,@"minWidth",180), MIN(self.preferredSplit, room));
+  CGFloat actual = split.arrangedSubviews.firstObject.frame.size.width;
+  if (!self.lastWidth && split.bounds.size.width > 0) self.lastWidth = desired;
+  // One attempt per split width and target: when the window cannot fit the target, AppKit keeps
+  // its own width and the next layout must not schedule the same move again.
+  CGFloat attempt = split.bounds.size.width * 4096 + desired;
+  if (room > 0 && fabs(actual - desired) > 0.5 && !self.reconcilePending && attempt != self.reconcileAttempt) {
+    self.reconcilePending = YES; self.reconcileAttempt = attempt;
+    __weak TRNode *weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+      TRNode *node = weakSelf; if (!node) return;
+      node.reconcilePending = NO;
+      if (!node.splitController || node.splitController.splitViewItems.firstObject.collapsed) return;
+      // Re-read the target: the window or preference may have changed since scheduling.
+      NSSplitView *current = node.splitController.splitView;
+      CGFloat space = current.bounds.size.width - TRNumber(node.spec,@"minContentWidth",200) - current.dividerThickness;
+      CGFloat target = MAX(TRNumber(node.spec,@"minWidth",180), MIN(node.preferredSplit, space));
+      node.lastWidth = target; node.applying = YES; [current setPosition:target ofDividerAtIndex:0]; node.applying = NO;
+    });
+  }
+}
+- (NSSplitView *)splitView {
+  // A controller-hosted split view sits inside the controller's container view.
+  if (self.splitController) return self.splitController.splitView;
+  return [self.control isKindOfClass:NSSplitView.class] ? (NSSplitView *)self.control : nil;
 }
 - (TRNode *)find:(NSString *)identifier {
   if ([self.identifier isEqual:identifier]) return self;
@@ -678,7 +1078,14 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     }];
     result[@"tableCells"] = cells; result[@"styledRuns"] = runs;
   }
-  if ([self.spec[@"kind"] isEqual:@"label"]) result[@"text"] = ((NSTextField *)self.control).stringValue;
+  if ([self.spec[@"kind"] isEqual:@"label"] || [self.spec[@"kind"] isEqual:@"text"]) {
+    NSFont *font = [self.spec[@"kind"] isEqual:@"text"] ? ((NSTextView *)self.control).font : ((NSTextField *)self.control).font;
+    result[@"fontSize"] = @(font.pointSize); result[@"fontBold"] = @((font.fontDescriptor.symbolicTraits & NSFontDescriptorTraitBold) != 0);
+    NSString *style = self.spec[@"textStyle"] ?: ([self.spec[@"weight"] isEqual:@"title"] ? @"title1" : @"body");
+    result[@"styleSize"] = @(TRTextStyleSize(style));
+  }
+  if ([self.spec[@"kind"] isEqual:@"label"]) { result[@"text"] = ((NSTextField *)self.control).stringValue; result[@"centered"] = @(((NSTextField *)self.control).alignment == NSTextAlignmentCenter); }
+  if ([self.spec[@"kind"] isEqual:@"symbol"]) { NSImageView *image = (NSImageView *)self.control; result[@"hasImage"] = @(image.image != nil); result[@"exposed"] = @(image.isAccessibilityElement); }
   if ([self.spec[@"kind"] isEqual:@"chart"]) {
     result[@"points"] = ((TRChart *)self.control).points;
     result[@"bars"] = [(TRChart *)self.control geometry];
@@ -687,12 +1094,55 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       result[@"graphicContrast"] = @(TRContrast(((TRChart *)self.control).accent,NSColor.textBackgroundColor));
     }];
   }
+  if ([self.spec[@"share"] isKindOfClass:NSDictionary.class]) result[@"sharedURL"] = self.sharedURL ?: @"";
+  if ([self.spec[@"kind"] isEqual:@"table"] && [self.spec[@"rows"] count]) {
+    TRTable *table = (TRTable *)((NSScrollView *)self.control).documentView;
+    NSPasteboardItem *item = [self pasteboardItemForRow:0];
+    result[@"dragItem"] = item ? @{@"url":[item stringForType:NSPasteboardTypeURL] ?: @"",@"title":[item stringForType:@"public.url-name"] ?: @"",@"text":[item stringForType:NSPasteboardTypeString] ?: @""} : @{};
+    NSDraggingSession *noSession = nil;
+    result[@"dragOutside"] = @([table draggingSession:noSession sourceOperationMaskForDraggingContext:NSDraggingContextOutsideApplication] == NSDragOperationCopy);
+  }
+  if ([self.spec[@"kind"] isEqual:@"button"]) {
+    NSButton *button = (NSButton *)self.control;
+    result[@"keyEquivalent"] = button.keyEquivalent ?: @"";
+    result[@"keyModifiers"] = (button.keyEquivalentModifierMask & NSEventModifierFlagCommand) ? @"command" : @"";
+  }
   if ([self.control isKindOfClass:NSButton.class]) { result[@"title"] = ((NSButton *)self.control).title; result[@"checked"] = @(((NSButton *)self.control).state == NSControlStateValueOn); }
   if ([self.control isKindOfClass:NSPopUpButton.class]) result[@"selected"] = ((NSPopUpButton *)self.control).selectedItem.representedObject ?: @"";
-  if ([self.control isKindOfClass:NSSplitView.class]) result[@"vertical"] = @(((NSSplitView *)self.control).vertical);
+  if ([self.spec[@"kind"] isEqual:@"segmented"]) {
+    NSSegmentedControl *segmented = (NSSegmentedControl *)self.control; NSMutableArray *segments = [NSMutableArray array];
+    for (NSInteger index = 0; index < segmented.segmentCount; index++)
+      [segments addObject:@{@"label":[segmented labelForSegment:index] ?: @"",@"enabled":@([segmented isEnabledForSegment:index]),@"selected":@([segmented isSelectedForSegment:index])}];
+    NSArray *options = self.spec[@"options"]; NSInteger index = segmented.selectedSegment;
+    result[@"segments"] = segments; result[@"selected"] = index >= 0 && index < (NSInteger)options.count ? options[(NSUInteger)index][@"id"] : @"";
+    result[@"intrinsicWidth"] = @(segmented.intrinsicContentSize.width);
+  }
+  if ([self splitView]) result[@"vertical"] = @([self splitView].vertical);
+  if (self.splitController) {
+    result[@"animating"] = @(self.animatingSplit); result[@"widthEvents"] = @(self.widthEvents);
+    result[@"animationsCompleted"] = @(self.animationsCompleted);
+    // Frames strictly between the start and end widths prove a visible slide, independent of
+    // how often a test can sample from outside the app.
+    NSView *pane = self.splitController.splitView.arrangedSubviews.firstObject;
+    CGFloat to = pane.isHidden ? 0 : pane.frame.size.width;
+    CGFloat low = MIN(self.animationFrom, to) + 0.5, high = MAX(self.animationFrom, to) - 0.5; NSUInteger between = 0;
+    for (NSNumber *width in self.animationWidths) if (width.doubleValue > low && width.doubleValue < high) between++;
+    result[@"animationSteps"] = @(between);
+  }
   if ([self.spec[@"kind"] isEqual:@"input"]) {
     NSTextView *input = [self.control isKindOfClass:NSScrollView.class] ? (NSTextView *)((NSScrollView *)self.control).documentView : (NSTextView *)((NSTextField *)self.control).currentEditor;
     if (input) { result[@"enabled"] = @(input.editable); result[@"selection"] = NSStringFromRange(input.selectedRange); result[@"marked"] = @(input.hasMarkedText); }
+  }
+  if ([self.spec[@"kind"] isEqual:@"progress"]) {
+    NSProgressIndicator *progress = (NSProgressIndicator *)self.control;
+    result[@"indeterminate"] = @(progress.indeterminate); result[@"progressValue"] = @(progress.doubleValue);
+    result[@"progressMaximum"] = @(progress.maxValue); result[@"accessibleValue"] = progress.accessibilityValueDescription ?: @"";
+  }
+  if ([self.spec[@"kind"] isEqual:@"sidebar"]) {
+    NSTableView *table = (NSTableView *)((NSScrollView *)self.control).documentView;
+    result[@"selected"] = [self selectedRowId] ?: @""; result[@"rows"] = self.spec[@"rows"] ?: @[];
+    result[@"rowHeight"] = @(table.rowHeight); result[@"tableStyle"] = @(table.style); result[@"sourceList"] = @(table.style == NSTableViewStyleSourceList);
+    result[@"enabled"] = @(table.enabled); result[@"accessibilityRole"] = table.accessibilityRole ?: @"";
   }
   if ([self.spec[@"kind"] isEqual:@"table"]) {
     if (self.spec[@"columns"]) result[@"columns"] = self.spec[@"columns"];
@@ -711,11 +1161,34 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
     if (table.numberOfRows) {
       TRResearchCell *cell = (TRResearchCell *)[table viewAtColumn:0 row:0 makeIfNecessary:YES];
       result[@"titleLines"] = @(cell.textField.maximumNumberOfLines);
+      result[@"titleTruncates"] = @(cell.textField.cell.truncatesLastVisibleLine);
       result[@"titleFrame"] = NSStringFromRect(cell.textField.frame);
       NSFont *font = cell.textField.font;
       result[@"titleLineHeight"] = @(ceil(font.ascender-font.descender+font.leading));
       NSRect required = [cell.textField.attributedStringValue boundingRectWithSize:NSMakeSize(MAX(20,cell.textField.frame.size.width),100000) options:NSStringDrawingUsesLineFragmentOrigin|NSStringDrawingUsesFontLeading];
       result[@"titleRequiredHeight"] = @(required.size.height);
+      NSMutableArray *glyphs = [NSMutableArray array];
+      for (NSInteger row = 0; row < MIN(table.numberOfRows,(NSInteger)20); row++) {
+        TRResearchCell *research = (TRResearchCell *)[table viewAtColumn:0 row:row makeIfNecessary:YES];
+        if (![research isKindOfClass:TRResearchCell.class]) break;
+        [research layoutSubtreeIfNeeded];
+        __block CGFloat contrast = 0, selectedContrast = 0;
+        if (research.savedView) [research.effectiveAppearance performAsCurrentDrawingAppearance:^{
+          NSColor *tint = TRSavedColor(research.highContrast);
+          contrast = TRContrast(tint,NSColor.textBackgroundColor);
+          selectedContrast = TRContrast(tint,NSColor.unemphasizedSelectedContentBackgroundColor);
+        }];
+        // What the title cell needs at its frame width (cell insets included), up to two lines.
+        NSSize needed = [research.textField.cell cellSizeForBounds:NSMakeRect(0,0,research.textField.frame.size.width,CGFLOAT_MAX)];
+        [glyphs addObject:@{@"symbol":research.symbolName ?: @"",@"saved":@(research.savedView != nil),@"titleFrame":NSStringFromRect(research.textField.frame),
+          @"detailFrame":NSStringFromRect(research.detailField.frame),@"titleTextHeight":@(MIN(ceil(needed.height),35*self.host.zoom)),@"rowHeight":@(research.bounds.size.height),
+          @"kindFrame":research.kindView ? NSStringFromRect(research.kindView.frame) : @"",@"savedFrame":research.savedView ? NSStringFromRect(research.savedView.frame) : @"",
+          @"savedContrast":@(contrast),@"savedSelectedContrast":@(selectedContrast),@"highContrast":@(research.highContrast),
+          @"emphasized":@(research.backgroundStyle == NSBackgroundStyleEmphasized),
+          @"glyphsFollowSelection":@(research.backgroundStyle != NSBackgroundStyleEmphasized || [research.kindView.contentTintColor isEqual:NSColor.alternateSelectedControlTextColor]),
+          @"accessibilityLabel":research.accessibilityLabel ?: @""}];
+      }
+      result[@"rowGlyphs"] = glyphs;
     }
     if (table.numberOfRows) result[@"rowFontSize"] = @(((NSTableCellView *)[table viewAtColumn:0 row:0 makeIfNecessary:YES]).textField.font.pointSize);
   }

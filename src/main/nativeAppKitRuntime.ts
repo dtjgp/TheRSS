@@ -3,6 +3,9 @@ import { join } from 'node:path'
 import { release } from 'node:os'
 import { app, type BrowserWindow, shell } from 'electron'
 import { NativePresenter } from './appkit/presenter'
+import { NativeRecordPresenter } from './appkit/recordPresenter'
+import { NativeSettingsPresenter } from './appkit/settingsPresenter'
+import type { NativeRecord, SettingsSection } from './appkit/common'
 import { readNativePreferences, writeNativePreferences } from './appkit/preferences'
 import type { WindowApplication } from './windowApplication'
 import { isSafeExternalUrl } from './windowApplicationRuntime'
@@ -14,8 +17,27 @@ interface NativeBridge {
   detach(handle: Buffer): void
   edit(handle: Buffer, command: string): boolean
 }
+/** What the runtime and the application menu need from a window's presenter. */
+interface WindowPresenter {
+  receive(json: string, secure?: boolean): void
+  zoom(direction: 'in' | 'out' | 'reset'): void
+  command(command: string): Promise<void>
+  layoutChanged(): void
+  dispose(): void
+  flushPreferences(): Promise<void>
+  start(): Promise<void>
+  /** The main window reloads settings saved in the Settings window. */
+  settingsChanged?(): Promise<void>
+  /** The Settings window shows one pane. */
+  select?(section: SettingsSection): void
+}
+/** Further windows the main window opens (native route only). */
+export interface NativeWindowOpeners {
+  readonly openRecord?: (record: NativeRecord) => void
+  readonly openSettings?: (section?: SettingsSection) => void
+}
 interface NativeSession {
-  readonly presenter: NativePresenter
+  readonly presenter: WindowPresenter
   readonly bridge: NativeBridge
   readonly handle: Buffer
 }
@@ -32,12 +54,23 @@ export function shouldUseAppKit(
   )
 }
 
+/** Display dates follow the macOS language and region; fixture runs may pin a locale. */
+export function displayLocale(): string {
+  const pinned = process.env.THERSS_E2E_FIXTURES === '1' ? process.env.THERSS_E2E_LOCALE : undefined
+  return pinned || app.getSystemLocale() || Intl.DateTimeFormat().resolvedOptions().locale
+}
+
+function loadBridge(): NativeBridge {
+  const require = createRequire(import.meta.url)
+  return require(join(__dirname, '../native-appkit/therss-ui.node')) as NativeBridge
+}
+
 export async function attachAppKit(
   window: BrowserWindow,
-  application: WindowApplication
+  application: WindowApplication,
+  openers: NativeWindowOpeners = {}
 ): Promise<void> {
-  const require = createRequire(import.meta.url)
-  const bridge = require(join(__dirname, '../native-appkit/therss-ui.node')) as NativeBridge
+  const bridge = loadBridge()
   const handle = window.getNativeWindowHandle()
   const path = join(app.getPath('userData'), 'native-ui.json')
   await drainNativePreferences()
@@ -49,6 +82,7 @@ export async function attachAppKit(
   await writeNativePreferences(path, preferences).catch(() => undefined)
   const presenter = new NativePresenter(application.api, {
     preferences,
+    locale: displayLocale(),
     present: (scene) => {
       if (!window.isDestroyed()) bridge.present(handle, scene)
     },
@@ -59,14 +93,87 @@ export async function attachAppKit(
     contentSize: () => {
       const { width, height } = window.getContentBounds()
       return { width, height }
+    },
+    ...(openers.openRecord ? { openRecord: openers.openRecord } : {}),
+    ...(openers.openSettings ? { openSettings: openers.openSettings } : {})
+  })
+  await bindSession(window, bridge, handle, presenter)
+}
+
+/** A record in its own read-only window; it shares the bridge but keeps no preferences. */
+export async function attachRecordAppKit(
+  window: BrowserWindow,
+  application: WindowApplication,
+  record: NativeRecord
+): Promise<void> {
+  const bridge = loadBridge()
+  const handle = window.getNativeWindowHandle()
+  const presenter = new NativeRecordPresenter(application.api, {
+    record,
+    locale: displayLocale(),
+    present: (scene) => {
+      if (!window.isDestroyed()) bridge.present(handle, scene)
+    },
+    openExternal: (url) => {
+      if (isSafeExternalUrl(url)) void shell.openExternal(url)
     }
   })
+  await bindSession(window, bridge, handle, presenter)
+}
+
+/** The single Settings window; a save there reloads settings in every other native window. */
+export async function attachSettingsAppKit(
+  window: BrowserWindow,
+  application: WindowApplication,
+  section?: SettingsSection
+): Promise<void> {
+  const bridge = loadBridge()
+  const handle = window.getNativeWindowHandle()
+  const presenter = new NativeSettingsPresenter(application.api, {
+    locale: displayLocale(),
+    present: (scene) => {
+      if (!window.isDestroyed()) bridge.present(handle, scene)
+    },
+    openExternal: (url) => {
+      if (isSafeExternalUrl(url)) void shell.openExternal(url)
+    },
+    changed: () => {
+      for (const [other, session] of sessions)
+        if (other !== window) void session.presenter.settingsChanged?.().catch(() => undefined)
+    }
+  })
+  if (section) presenter.select(section)
+  await bindSession(window, bridge, handle, presenter)
+}
+export function selectSettingsPane(window: BrowserWindow, section: SettingsSection): void {
+  sessions.get(window)?.presenter.select?.(section)
+}
+
+const titleGuarded = new WeakSet<BrowserWindow>()
+/**
+ * The AppKit toolbar owns the window title; the empty host page's <title> must not replace it
+ * (a record window redraws rarely and kept "TheRSS"). Call before the host page loads, so no
+ * title event can arrive before the guard.
+ */
+export function keepNativeWindowTitle(window: BrowserWindow): void {
+  if (titleGuarded.has(window)) return
+  titleGuarded.add(window)
+  window.on('page-title-updated', (event) => event.preventDefault())
+}
+
+async function bindSession(
+  window: BrowserWindow,
+  bridge: NativeBridge,
+  handle: Buffer,
+  presenter: WindowPresenter
+): Promise<void> {
   bridge.attach(
     handle,
     (json) => presenter.receive(json),
     (json) => presenter.receive(json, true)
   )
   sessions.set(window, { presenter, bridge, handle })
+  keepNativeWindowTitle(window)
   const resize = () => presenter.layoutChanged()
   window.on('resize', resize)
   window.once('closed', () => {

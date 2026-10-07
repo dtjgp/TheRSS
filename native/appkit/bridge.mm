@@ -110,6 +110,10 @@ static napi_value edit(napi_env env, napi_callback_info info) {
     if (!std::strcmp(command,"undo") && manager.canUndo) [manager undo];
     if (!std::strcmp(command,"redo") && manager.canRedo) [manager redo];
     handled = YES;
+  } else if (!std::strcmp(command,"undo") || !std::strcmp(command,"redo")) {
+    // Outside a text view there is no native undo stack: NSWindow would accept undo: and do
+    // nothing, hiding the application's triage undo. Report it as not handled instead.
+    handled = NO;
   } else handled = [responder tryToPerform:selector with:nil];
   napi_value result; napi_get_boolean(env,handled,&result); return result;
 }
@@ -128,7 +132,61 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     if (![input[@"value"] isKindOfClass:NSString.class] || !TRActivateFixtureAlert(host,input[@"value"])) return fail(env,"Fixture alert button is unavailable");
     return nothing(env);
   }
-  TRNode *node = [host find:input[@"id"]]; if (!node) return fail(env,"Fixture control is unavailable");
+  if ([input[@"action"] isEqual:@"shortcut"]) {
+    // AppKit offers key equivalents to the key window's view hierarchy before first-responder
+    // keyDown; exercise that same path for Return and Command-Return.
+    BOOL command = [input[@"value"] isEqual:@"command-return"];
+    if (!command && ![input[@"value"] isEqual:@"return"]) return fail(env,"Unsupported fixture shortcut");
+    NSWindow *target = host.sheet ?: host.window;
+    NSEvent *event = [NSEvent keyEventWithType:NSEventTypeKeyDown location:NSZeroPoint modifierFlags:command ? NSEventModifierFlagCommand : 0 timestamp:0 windowNumber:target.windowNumber context:nil characters:@"\r" charactersIgnoringModifiers:@"\r" isARepeat:NO keyCode:36];
+    if (![target performKeyEquivalent:event]) return fail(env,"No control handled the fixture shortcut");
+    [host flush]; return nothing(env);
+  }
+  if ([input[@"action"] isEqual:@"blur"]) {
+    // Screenshot captures activate the fixture window; park keyboard focus so no text control
+    // can receive real keystrokes from the shared desktop while it is key.
+    [(host.sheet ?: host.window) makeFirstResponder:nil];
+    [host.popover.popover.contentViewController.view.window makeFirstResponder:nil];
+    return nothing(env);
+  }
+  if ([input[@"action"] isEqual:@"dismiss-popover"]) {
+    // Same path as an outside click or Escape: the popover reports its own dismissal.
+    if (![host.popover dismissFixture:[input[@"value"] isEqual:@"anchor"]]) return fail(env,"Fixture popover is not shown");
+    if (![input[@"deferFlush"] boolValue]) [host flush]; return nothing(env);
+  }
+  TRNode *node = [host find:input[@"id"]];
+  NSSearchField *search = node ? nil : [host.chrome searchField:input[@"id"]];
+  if (search) {
+    // Toolbar search fields are chrome, not scene nodes; drive them like native text input.
+    NSString *action = input[@"action"], *value = [input[@"value"] isKindOfClass:NSString.class] ? input[@"value"] : @"";
+    BOOL editing = search.currentEditor != nil;
+    if ([action isEqual:@"focus"]) [search.window makeFirstResponder:search];
+    else if ([action isEqual:@"fill"]) {
+      if (editing) {
+        // Replace the text through the text system, as a user would, so the field's own
+        // change notification reports it.
+        NSTextView *editor = (NSTextView *)search.currentEditor;
+        editor.selectedRange = NSMakeRange(0,editor.string.length);
+        [editor insertText:value replacementRange:NSMakeRange(NSNotFound,0)];
+      } else { search.stringValue = value; [host.chrome searchTextChanged:search]; }
+    } else if ([action isEqual:@"mark"] || [action isEqual:@"type"]) {
+      if (!editing) [search.window makeFirstResponder:search];
+      NSTextView *editor = (NSTextView *)search.currentEditor; if (!editor) return fail(env,"Fixture search field cannot edit");
+      if (!editing) editor.selectedRange = NSMakeRange(editor.string.length,0);
+      if ([action isEqual:@"mark"]) { [editor setMarkedText:value selectedRange:NSMakeRange(value.length,0) replacementRange:NSMakeRange(NSNotFound,0)]; [host.chrome searchTextChanged:search]; }
+      else [editor insertText:value replacementRange:NSMakeRange(NSNotFound,0)];
+    } else if ([action isEqual:@"key"] && ([value isEqual:@"enter"] || [value isEqual:@"escape"])) {
+      if (!editing) [search.window makeFirstResponder:search];
+      [search.currentEditor doCommandBySelector:[value isEqual:@"enter"] ? @selector(insertNewline:) : @selector(cancelOperation:)];
+    } else return fail(env,"Unsupported fixture action for a toolbar search field");
+    [host flush]; return nothing(env);
+  }
+  if (!node && [input[@"action"] isEqual:@"click"] && host.chrome) {
+    // Toolbar items are window chrome, not scene nodes; activate them like a click.
+    if (![host.chrome activateFixture:input[@"id"]]) return fail(env,"Fixture toolbar item is unavailable or disabled");
+    [host flush]; return nothing(env);
+  }
+  if (!node) return fail(env,"Fixture control is unavailable");
   NSString *action = input[@"action"];
   if ([action isEqual:@"fill"] && ([node.spec[@"kind"] isEqual:@"input"] || [node.spec[@"kind"] isEqual:@"secure"])) {
     if ([node.control isKindOfClass:NSControl.class] && !((NSControl *)node.control).enabled) return fail(env,"Fixture input is disabled");
@@ -145,11 +203,27 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     [editor.window makeFirstResponder:editor];
     if ([action isEqual:@"mark"]) { [editor setMarkedText:input[@"value"] selectedRange:NSMakeRange([input[@"value"] length],0) replacementRange:NSMakeRange(NSNotFound,0)]; [node editChanged]; }
     else [editor insertText:input[@"value"] replacementRange:NSMakeRange(NSNotFound,0)];
-  } else if ([action isEqual:@"click"] && [node.control isKindOfClass:NSButton.class]) [(NSButton *)node.control performClick:nil];
+  } else if ([action isEqual:@"click"] && [node.control isKindOfClass:NSButton.class]) {
+    // A disabled control ignores input; report it so a test cannot mistake an ignored press
+    // for an action that ran without effect.
+    if (!((NSButton *)node.control).enabled) return fail(env,"Fixture control is disabled");
+    [(NSButton *)node.control performClick:nil];
+  }
   else if ([action isEqual:@"choose"] && [node.control isKindOfClass:NSPopUpButton.class]) {
     NSPopUpButton *select = (NSPopUpButton *)node.control;
     for (NSMenuItem *item in select.itemArray) if ([item.representedObject isEqual:input[@"value"]] && item.enabled) { [select selectItem:item]; [node trigger:select]; break; }
-  } else if ([action isEqual:@"select"] && [node.spec[@"kind"] isEqual:@"table"]) {
+  } else if ([action isEqual:@"choose"] && [node.control isKindOfClass:NSSegmentedControl.class]) {
+    NSSegmentedControl *segmented = (NSSegmentedControl *)node.control; NSArray *options = node.spec[@"options"];
+    NSUInteger index = [options indexOfObjectPassingTest:^BOOL(NSDictionary *option, NSUInteger i, BOOL *stop) { return [option[@"id"] isEqual:input[@"value"]]; }];
+    if (index == NSNotFound || !segmented.enabled || ![segmented isEnabledForSegment:(NSInteger)index]) return fail(env,"Fixture segment is unavailable or disabled");
+    segmented.selectedSegment = (NSInteger)index; [node trigger:segmented];
+  } else if ([action isEqual:@"double"] && [node.spec[@"kind"] isEqual:@"table"]) {
+    // Same path as a double-click on the row: select it, then open it in its own window.
+    NSTableView *table = (NSTableView *)((NSScrollView *)node.control).documentView;
+    NSUInteger row = [node.spec[@"rows"] indexOfObjectPassingTest:^BOOL(NSDictionary *item, NSUInteger i, BOOL *stop) { return [item[@"id"] isEqual:input[@"value"]]; }];
+    if (row == NSNotFound) return fail(env,"Fixture row is unavailable");
+    [table selectRowIndexes:[NSIndexSet indexSetWithIndex:row] byExtendingSelection:NO]; [node openRowWindow:nil];
+  } else if ([action isEqual:@"select"] && ([node.spec[@"kind"] isEqual:@"table"] || [node.spec[@"kind"] isEqual:@"sidebar"])) {
     NSTableView *table = (NSTableView *)((NSScrollView *)node.control).documentView;
     NSInteger row = 0; for (NSDictionary *item in node.spec[@"rows"]) { if ([item[@"id"] isEqual:input[@"value"]]) { [table selectRowIndexes:[NSIndexSet indexSetWithIndex:row] byExtendingSelection:NO]; if ([input[@"activate"] boolValue]) [node activateRow]; break; } row++; }
   } else if ([action isEqual:@"scroll"] && [node.control isKindOfClass:NSScrollView.class]) {
@@ -159,15 +233,32 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     if (![input[@"value"] isEqual:@"legacy"] && ![input[@"value"] isEqual:@"overlay"]) return fail(env,"Unsupported fixture scroller style");
     ((NSScrollView *)node.control).scrollerStyle = [input[@"value"] isEqual:@"legacy"] ? NSScrollerStyleLegacy : NSScrollerStyleOverlay;
     node.needsLayout = YES; [host.root layoutSubtreeIfNeeded];
-  } else if ([action isEqual:@"divider"] && [node.control isKindOfClass:NSSplitView.class]) {
+  } else if ([action isEqual:@"divider"] && [node splitView]) {
     CGFloat value = [input[@"value"] doubleValue];
     if (value < [node.spec[@"minWidth"] doubleValue] || value > [node.spec[@"maxWidth"] doubleValue]) return fail(env,"Invalid fixture divider position");
-    [(NSSplitView *)node.control setPosition:value ofDividerAtIndex:0];
+    // Same path as dragging the divider: a user resize that sets the preference.
+    node.userResizing = YES; [[node splitView] setPosition:value ofDividerAtIndex:0]; [[node splitView] layoutSubtreeIfNeeded]; node.userResizing = NO;
   } else if ([action isEqual:@"key"]) {
     NSDictionary *codes = @{@"left":@123,@"right":@124,@"down":@125,@"up":@126,@"home":@115,@"end":@119,@"escape":@53,@"enter":@36,@"tab":@48,@"space":@49};
     NSNumber *code = codes[input[@"value"]]; if (!code) return fail(env,"Unsupported fixture key");
-    NSView *control = node.control ?: node; if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
-    [control.window makeFirstResponder:control];
+    NSView *control = [node splitView] ?: node.control ?: node; if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
+    if ([control isKindOfClass:NSControl.class] && !((NSControl *)control).enabled) return fail(env,"Fixture control is disabled");
+    // AppKit drops a synthetic Space press on a button whose window is not key (for example while
+    // another app is active); report that instead of letting a later state check time out.
+    if ([input[@"value"] isEqual:@"space"] && [control isKindOfClass:NSButton.class] && !control.window.isKeyWindow) {
+      NSString *reason = control.window ? [NSString stringWithFormat:@"Fixture button window is not the key window; AppKit drops the key press (visible=%d appActive=%d)",control.window.visible,NSApp.isActive] : @"Fixture button has no window";
+      return fail(env,reason.UTF8String);
+    }
+    BOOL focused = [control.window makeFirstResponder:control];
+    NSResponder *responder = control.window.firstResponder;
+    // A focused NSTextField hands first responder to its field editor.
+    BOOL owns = responder == control || ([control isKindOfClass:NSTextField.class] && responder == ((NSTextField *)control).currentEditor);
+    if (!focused || !owns) {
+      // Report why a key would otherwise go to another responder and be dropped silently.
+      NSString *reason = [NSString stringWithFormat:@"Fixture control did not take keyboard focus (acceptsFirstResponder=%d canBecomeKeyView=%d windowKey=%d appActive=%d fullKeyboardAccess=%d)",
+        control.acceptsFirstResponder,control.canBecomeKeyView,control.window.isKeyWindow,NSApp.isActive,NSApp.isFullKeyboardAccessEnabled];
+      return fail(env,reason.UTF8String);
+    }
     NSDictionary *characters = @{@"left":@"\uF702",@"right":@"\uF703",@"up":@"\uF700",@"down":@"\uF701",@"home":@"\uF729",@"end":@"\uF72B",@"escape":@"\x1b",@"enter":@"\r",@"tab":@"\t",@"space":@" "};
     NSEvent *event = [NSEvent keyEventWithType:NSEventTypeKeyDown location:NSZeroPoint modifierFlags:[input[@"shift"] boolValue] ? NSEventModifierFlagShift : 0 timestamp:0 windowNumber:control.window.windowNumber context:nil characters:characters[input[@"value"]] charactersIgnoringModifiers:characters[input[@"value"]] isARepeat:NO keyCode:code.unsignedShortValue];
     [(control.window.firstResponder ?: control) keyDown:event];
@@ -176,6 +267,10 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     NSString *name = names[input[@"value"]]; if (!name) return fail(env,"Unsupported fixture appearance");
     host.fixtureContrast = @([input[@"value"] hasPrefix:@"contrast-"]);
     host.canvas.appearance = [NSAppearance appearanceNamed:name]; [host updateMaterials];
+  } else if ([action isEqual:@"animations"] && [input[@"value"] isKindOfClass:NSNumber.class]) {
+    host.fixtureAnimations = [input[@"value"] boolValue];
+  } else if ([action isEqual:@"reduce-motion"] && [input[@"value"] isKindOfClass:NSNumber.class]) {
+    host.fixtureReduceMotion = [input[@"value"] boolValue];
   } else if ([action isEqual:@"transparency"] && [input[@"value"] isKindOfClass:NSNumber.class]) {
     host.fixtureTransparency = input[@"value"]; [host updateMaterials];
   } else if ([action isEqual:@"accent"]) {
@@ -185,7 +280,7 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     if (![input[@"value"] isEqual:@"system"] && !colors[input[@"value"]]) return fail(env,"Unsupported fixture accent");
     host.fixtureAccent = colors[input[@"value"]]; [host updateMaterials];
   } else if ([action isEqual:@"focus"]) {
-    NSView *control = node.control ?: node; if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
+    NSView *control = [node splitView] ?: node.control ?: node; if ([control isKindOfClass:NSScrollView.class]) control = ((NSScrollView *)control).documentView;
     [control.window makeFirstResponder:control];
   } else return fail(env,"Unsupported fixture action for this control");
   if (![input[@"deferFlush"] boolValue]) [host flush]; return nothing(env);

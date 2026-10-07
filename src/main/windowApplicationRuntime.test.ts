@@ -122,6 +122,12 @@ describe('native and compatibility window runtime', () => {
     f.menuPick = 'Copy Link'
     await x.session.api.showContextMenu(target)
     expect(f.copy).toHaveBeenCalledWith(target.url)
+    // The macOS Share submenu receives the https link and title, nothing else.
+    expect(f.template.find((entry) => (entry as { role?: string }).role === 'shareMenu')).toEqual({
+      role: 'shareMenu',
+      label: 'Share',
+      sharingItem: { urls: [target.url], texts: [target.title] }
+    })
     f.menuPick = 'Open in Browser'
     await x.session.api.showContextMenu(target)
     expect(f.open).toHaveBeenCalledWith(target.url)

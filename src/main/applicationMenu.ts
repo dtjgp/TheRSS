@@ -70,6 +70,16 @@ export function createApplicationMenuTemplate(
         accelerator: 'CommandOrControl+2',
         click: () => send('show-saved')
       },
+      {
+        label: 'Data Analytics',
+        accelerator: 'CommandOrControl+3',
+        click: () => send('show-analytics')
+      },
+      {
+        label: 'Sources',
+        accelerator: 'CommandOrControl+4',
+        click: () => send('show-sources')
+      },
       { type: 'separator' },
       {
         label: 'Show or Hide Sidebar',

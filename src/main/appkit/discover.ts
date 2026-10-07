@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { formatDisplayDate } from '../../shared/sourceDate'
 import {
   DISCOVER_SOURCE_IDS,
   type DiscoverRunProgress,
@@ -9,8 +10,8 @@ import type { AnalysisRunner } from '../../shared/models'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
 import {
   column,
+  emptyState,
   Controls,
-  heading,
   label,
   readableError,
   row,
@@ -19,13 +20,48 @@ import {
   type NativeContext,
   type NativeScreen
 } from './common'
-import type { NativeNode } from './presentation'
+import type { NativeNode, NativePopover } from './presentation'
 import { ResearchReader, type TriageHistory } from './reading'
-import { researchMetadata, researchSubtitle } from './researchMetadata'
+import {
+  researchMetadata,
+  researchRowDrag,
+  researchRowGlyph,
+  researchSubtitle
+} from './researchMetadata'
 import { ReadingWorkspace } from './readingWorkspace'
 import { discoverSources } from './discoverSources'
+import {
+  describeDiscoverRun,
+  discoverOutcomeLabel,
+  discoverResultCountLabel
+} from '../../shared/discoverRunProgress'
 
 type Filter = 'all' | 'paper' | 'repository' | 'other'
+const KIND_NAMES: Record<Exclude<Filter, 'all'>, string> = {
+  paper: 'papers',
+  repository: 'repositories',
+  other: 'other results'
+}
+
+const statusTitles: Record<DiscoverSnapshot['status'], string> = {
+  completed: 'Complete',
+  partial: 'Partial results',
+  no_results: 'No results',
+  failed: 'Search failed',
+  canceled: 'Canceled'
+}
+
+/** Plain-language session outcome derived only from persisted per-source outcomes. */
+function resultStatus(snapshot: DiscoverSnapshot, locale: string): string {
+  const searched = DISCOVER_SOURCE_IDS.map((source) => snapshot.sourceOutcomes[source]).filter(
+    (outcome): outcome is DiscoverSnapshot['sourceOutcomes'][DiscoverSource] =>
+      !!outcome && outcome.status !== 'not_searched'
+  )
+  const complete = searched.filter(
+    (outcome) => outcome.status === 'healthy' || outcome.status === 'no_results'
+  ).length
+  return `${statusTitles[snapshot.status]} · ${complete} of ${searched.length} sources succeeded · ${formatDisplayDate(snapshot.createdAt, locale)}`
+}
 
 export class DiscoverScreen implements NativeScreen {
   readonly reader: ResearchReader
@@ -38,7 +74,6 @@ export class DiscoverScreen implements NativeScreen {
   private sourceQuery = ''
   private snapshot: DiscoverSnapshot | null = null
   private filter: Filter = 'all'
-  private visible = 24
   private selected = ''
   private activeRun: string | null = null
   private canceling = false
@@ -113,7 +148,6 @@ export class DiscoverScreen implements NativeScreen {
       runner: this.runner,
       sources: this.sources,
       filter: this.filter,
-      visible: this.visible,
       selected: this.selected,
       picker: this.picker,
       message: this.message,
@@ -130,7 +164,6 @@ export class DiscoverScreen implements NativeScreen {
       )
     )
     this.filter = 'all'
-    this.visible = Math.max(24, Math.ceil((index + 1) / 24) * 24)
     this.selected = itemId
     this.picker = false
     this.message = ''
@@ -155,7 +188,8 @@ export class DiscoverScreen implements NativeScreen {
             ? item.kind !== 'paper' && item.kind !== 'repository'
             : item.kind === this.filter)
       ) ?? []
-    const visible = filtered.slice(0, this.visible)
+    // NSTableView creates row views lazily, so every filtered result is listed.
+    const visible = filtered
     const selected = visible.find((item) => item.id === this.selected) ?? visible[0] ?? null
     this.selected = selected?.id ?? ''
     this.reader.runner = this.runner
@@ -168,22 +202,8 @@ export class DiscoverScreen implements NativeScreen {
     return column(
       'discover-page',
       [
-        ...(!this.workspace.focused ? [heading('discover-title', 'Discover')] : []),
-        ...(!this.workspace.focused || busy
-          ? [this.composer(), ...this.readiness(), ...(this.picker ? [this.sourcePicker()] : [])]
-          : []),
-        ...(this.progress
-          ? [
-              label(
-                'discover-progress',
-                this.canceling
-                  ? 'Cancellation requested; waiting for the run to settle.'
-                  : this.progress.phase === 'planning'
-                    ? 'Planning the search…'
-                    : `Searching sources: ${this.progress.completedSources}/${this.progress.totalSources}${this.progress.source ? ` · ${sourceDisplayName(this.progress.source)}` : ''}`
-              )
-            ]
-          : []),
+        ...(!this.workspace.focused || busy ? [this.composer(), ...this.readiness()] : []),
+        ...(this.progress ? [this.runStatus(this.progress)] : []),
         ...(this.message ? [label('discover-message', this.message)] : []),
         ...(!this.loaded && !this.loading
           ? [b.button('discover-load-retry', 'Retry loading session', () => this.load())]
@@ -191,7 +211,7 @@ export class DiscoverScreen implements NativeScreen {
         ...(snapshot && !this.workspace.focused
           ? [
               row('discover-results-toolbar', [
-                b.select(
+                b.segmented(
                   'discover-kind',
                   'Result kind',
                   this.filter,
@@ -209,17 +229,13 @@ export class DiscoverScreen implements NativeScreen {
                   ],
                   (filter) => {
                     this.filter = filter as Filter
-                    this.visible = 24
                     this.selected = ''
                     this.context.redraw()
-                  },
-                  { width: 210 }
+                  }
                 ),
-                label(
-                  'discover-result-status',
-                  `${snapshot.status} · ${snapshot.createdAt.slice(0, 10)}`,
-                  { flex: 1 }
-                ),
+                label('discover-result-status', resultStatus(snapshot, this.context.locale), {
+                  flex: 1
+                }),
                 b.button('discover-details', 'Search details', () => this.details()),
                 ...(retryable.length
                   ? [
@@ -245,17 +261,21 @@ export class DiscoverScreen implements NativeScreen {
                       b.table(
                         'discover-results',
                         'Discover results',
-                        visible.map((item) => ({
-                          id: item.id,
-                          title: item.title,
-                          subtitle: researchSubtitle(
-                            item,
+                        visible.map((item) => {
+                          const saved =
                             this.triage.state({
                               ...item,
                               triageState: item.saved ? 'saved' : 'new'
                             }) === 'saved'
-                          )
-                        })),
+                          return {
+                            id: item.id,
+                            title: item.title,
+                            subtitle: researchSubtitle(item, this.context.locale),
+                            ...researchRowGlyph(item.kind),
+                            ...researchRowDrag(item),
+                            ...(saved ? { saved: true } : {})
+                          }
+                        }),
                         this.selected,
                         (id) => this.select(id),
                         {
@@ -266,22 +286,19 @@ export class DiscoverScreen implements NativeScreen {
                           context: async (id) => {
                             this.select(id)
                             await this.reader.contextMenu()
+                          },
+                          // Double-click opens the record in its own window, as in Mail.
+                          openWindow: (id) => {
+                            this.select(id)
+                            this.reader.openWindow()
                           }
                         }
                       ),
                       label(
                         'discover-pagination',
-                        `${visible.length} of ${filtered.length} results`,
+                        `${visible.length} ${visible.length === 1 ? 'result' : 'results'}`,
                         { weight: 'secondary' }
-                      ),
-                      ...(visible.length < filtered.length
-                        ? [
-                            b.button('discover-more', 'Show 24 more', () => {
-                              this.visible += 24
-                              this.context.redraw()
-                            })
-                          ]
-                        : [])
+                      )
                     ],
                     { flex: 1 }
                   ),
@@ -290,21 +307,60 @@ export class DiscoverScreen implements NativeScreen {
               )
             ]
           : [
-              column(
-                'discover-empty',
-                [
-                  label(
-                    'discover-empty-message',
-                    snapshot
-                      ? 'No results match this view. Source outcomes remain available in Search details.'
-                      : 'Search research sources and keep the results on this Mac.'
+              snapshot
+                ? emptyState(
+                    'discover-empty',
+                    'sparkle.magnifyingglass',
+                    // An empty session keeps its outcome: failed and canceled are not "no results".
+                    this.filter !== 'all'
+                      ? `No ${KIND_NAMES[this.filter]} in this session`
+                      : snapshot.status === 'failed'
+                        ? 'Search failed'
+                        : snapshot.status === 'canceled'
+                          ? 'Search canceled'
+                          : 'No results',
+                    'No results match this view. Source outcomes remain available in Search details.',
+                    this.filter === 'all'
+                      ? []
+                      : [
+                          b.button('discover-show-all', 'Show all results', () => {
+                            this.filter = 'all'
+                            this.selected = ''
+                            this.context.redraw()
+                          })
+                        ]
                   )
-                ],
-                { flex: 1 }
-              )
+                : emptyState(
+                    'discover-empty',
+                    'sparkle.magnifyingglass',
+                    'Start a research search',
+                    'Search research sources and keep the results on this Mac.'
+                  )
             ])
       ],
       { flex: 1, gap: 8 }
+    )
+  }
+
+  /** PRODUCT.md three-stage run: stage, native progress and the latest completed source. */
+  private runStatus(progress: DiscoverRunProgress): NativeNode {
+    const run = describeDiscoverRun(
+      this.canceling ? { ...progress, phase: 'cancel_requested' } : progress
+    )
+    return column(
+      'discover-run',
+      [
+        label('discover-run-headline', run.headline, { weight: 'bold' }),
+        label('discover-run-stage', run.stageLine, { weight: 'secondary', textStyle: 'callout' }),
+        {
+          id: 'discover-run-progress',
+          kind: 'progress',
+          title: 'Discover run progress',
+          ...(run.determinate ?? {})
+        },
+        label('discover-progress', run.detail, { weight: 'secondary' })
+      ],
+      { surface: 'inset', padding: 12, gap: 6 }
     )
   }
 
@@ -326,7 +382,10 @@ export class DiscoverScreen implements NativeScreen {
     return column(
       'discover-composer',
       [
-        label('discover-query-label', 'Research question', { weight: 'bold', size: 12 }),
+        label('discover-query-label', 'Research question', {
+          weight: 'bold',
+          textStyle: 'callout'
+        }),
         b.input(
           'discover-query',
           'Research question',
@@ -356,6 +415,8 @@ export class DiscoverScreen implements NativeScreen {
             `Sources (${this.sources.size}/22)`,
             () => {
               this.picker = !this.picker
+              // Keyboard users land in the source finder, as in a Safari or Mail popover.
+              if (this.picker) this.context.focus('discover-source-query')
               this.context.redraw()
             },
             !busy && !this.loading
@@ -368,7 +429,10 @@ export class DiscoverScreen implements NativeScreen {
               this.canSearch()
             ),
             emphasis: 'primary',
-            symbol: 'magnifyingglass'
+            symbol: 'magnifyingglass',
+            // Return stays a newline in the multiline question; Command-Return submits.
+            shortcut: 'command-return',
+            help: 'Search selected sources (Command-Return)'
           },
           ...(busy
             ? [
@@ -384,7 +448,7 @@ export class DiscoverScreen implements NativeScreen {
         ...(changed
           ? [
               label('discover-draft-status', `Draft not searched. Results: ${snapshot.intent}`, {
-                size: 11,
+                textStyle: 'subheadline',
                 maxLines: 2
               })
             ]
@@ -392,7 +456,7 @@ export class DiscoverScreen implements NativeScreen {
         label(
           'discover-personalization',
           `${this.query.length}/2000 characters · ${this.context.data.personalPrompt.trim() ? 'Personal context active' : 'No personal context saved'}`,
-          { weight: 'secondary', size: 11 }
+          { weight: 'secondary', textStyle: 'subheadline' }
         )
       ],
       { surface: 'panel', padding: 12, gap: 6 }
@@ -404,6 +468,8 @@ export class DiscoverScreen implements NativeScreen {
     const queryMissing = !this.query.trim()
     const sourcesMissing = !this.sources.size
     const runnerReason = runnerUnavailableReason(this.context, this.runner)
+    // Before the first search the empty state already explains what to do.
+    if (queryMissing && !this.snapshot) return []
     const reason = queryMissing
       ? 'Enter a research question to start a search.'
       : sourcesMissing
@@ -416,13 +482,30 @@ export class DiscoverScreen implements NativeScreen {
       ...(!queryMissing && !sourcesMissing && runnerReason
         ? [
             b.button('discover-configure-runner', 'Open Settings', () =>
-              this.context.navigate('settings')
+              this.context.openSettings('provider')
             )
           ]
         : [])
     ]
   }
 
+  popover(): NativePopover | undefined {
+    // The Sources button is part of the composer, which a focused reading workspace hides;
+    // hiding the anchor ends the choice so the popover never reopens on its own later.
+    if (this.workspace.focused) this.closePopover()
+    if (!this.picker || this.activeRun) return undefined
+    return {
+      anchor: 'discover-source-picker',
+      close: this.context.presentation.action('discover-source-popover-close', () => {
+        this.closePopover()
+        this.context.redraw()
+      }),
+      root: column('discover-source-popover', [this.sourcePicker()], { padding: 14 })
+    }
+  }
+  closePopover(): void {
+    this.picker = false
+  }
   private sourcePicker(): NativeNode {
     return discoverSources(this.context, {
       query: this.sourceQuery,
@@ -443,7 +526,11 @@ export class DiscoverScreen implements NativeScreen {
     const item = this.snapshot?.items.find((item) => item.id === id)
     if (!item) return
     this.selected = id
-    this.reader.select({ ...item, triageState: item.saved ? 'saved' : 'new' }, this.snapshot?.id)
+    this.reader.select(
+      { ...item, triageState: item.saved ? 'saved' : 'new' },
+      this.snapshot?.id,
+      researchMetadata(item)
+    )
     this.context.redraw()
   }
   private retryable(): DiscoverSource[] {
@@ -475,6 +562,7 @@ export class DiscoverScreen implements NativeScreen {
     const runId = `native:${randomUUID()}`
     this.version++
     this.activeRun = runId
+    this.picker = false
     this.canceling = false
     this.message = ''
     this.progress = {
@@ -501,7 +589,6 @@ export class DiscoverScreen implements NativeScreen {
       }
       this.loaded = true
       this.filter = 'all'
-      this.visible = 24
       this.selected = ''
       if (result.status === 'canceled')
         this.message = 'Search canceled. Completed source results were preserved.'
@@ -542,16 +629,31 @@ export class DiscoverScreen implements NativeScreen {
   private details(): void {
     const s = this.snapshot
     if (!s) return
+    // Plain-language outcomes; the recorded time and planner provenance stay as stored.
+    const plan = [
+      ['arXiv categories', s.plan.arxiv.categories],
+      ['arXiv keywords', s.plan.arxiv.keywords],
+      ['Excluded keywords', s.plan.arxiv.excludeKeywords],
+      ['GitHub keywords', s.plan.github.keywords],
+      ['Topics', s.plan.github.topics],
+      ['Languages', s.plan.github.languages]
+    ] as const
+    const outcomes = DISCOVER_SOURCE_IDS.map((source) => {
+      const outcome = s.sourceOutcomes[source]
+      const status = outcome?.status ?? 'not_searched'
+      // A source that was not searched has no observed count.
+      const count =
+        status === 'not_searched' ? '' : ` · ${discoverResultCountLabel(outcome?.resultCount ?? 0)}`
+      return `### ${sourceDisplayName(source)}\n${discoverOutcomeLabel(status)}${count}${outcome?.error ? `\n${outcome.error}` : ''}`
+    })
     this.context.showDocument(
       'Search details',
-      `# Search outcome\n\n${s.status} · ${s.createdAt}\n\n${s.intent}\n\n## Search plan\n\n${s.plan.intentSummary}\n\n${s.plan.rationale}\n\narXiv categories: ${s.plan.arxiv.categories.join(', ')}\narXiv keywords: ${s.plan.arxiv.keywords.join(', ')}\nExcluded keywords: ${s.plan.arxiv.excludeKeywords.join(', ')}\nGitHub keywords: ${s.plan.github.keywords.join(', ')}\nTopics: ${s.plan.github.topics.join(', ')}\nLanguages: ${s.plan.github.languages.join(', ')}\n\n## All source outcomes\n\n${DISCOVER_SOURCE_IDS.map(
-        (source) => {
-          const outcome = s.sourceOutcomes[source]
-          return `### ${sourceDisplayName(source)}\n${outcome?.status ?? 'not_searched'} · ${outcome?.resultCount ?? 0} results${outcome?.error ? `\n${outcome.error}` : ''}`
-        }
-      ).join(
-        '\n\n'
-      )}\n\n## Planner provenance\nProvider: ${s.provenance.providerName}\nModel: ${s.provenance.model}\nPrompt: ${s.provenance.promptVersion}\nInput hash: ${s.provenance.inputHash}\nPersonal context applied: ${s.provenance.personalizationApplied ? 'Yes' : 'No'}\nCreated: ${s.provenance.createdAt}`
+      `# Search outcome\n\n${statusTitles[s.status]}\nRecorded: ${s.createdAt}\n\n${s.intent}\n\n## Search plan\n\n${s.plan.intentSummary}\n\n${s.plan.rationale}\n\n${plan
+        .filter(([, values]) => values.length)
+        .map(([title, values]) => `${title}: ${values.join(', ')}`)
+        .join(
+          '\n'
+        )}\n\n## All source outcomes\n\n${outcomes.join('\n\n')}\n\n## Planner provenance\nProvider: ${s.provenance.providerName}\nModel: ${s.provenance.model}\nPrompt: ${s.provenance.promptVersion}\nInput hash: ${s.provenance.inputHash}\nPersonal context applied: ${s.provenance.personalizationApplied ? 'Yes' : 'No'}\nCreated: ${s.provenance.createdAt}`
     )
   }
 }

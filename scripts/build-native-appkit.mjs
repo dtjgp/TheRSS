@@ -56,6 +56,8 @@ if (platform !== 'darwin') {
       join(project, 'native/appkit/node.mm'),
       join(project, 'native/appkit/chart.mm'),
       join(project, 'native/appkit/researchText.mm'),
+      join(project, 'native/appkit/chrome.mm'),
+      join(project, 'native/appkit/popover.mm'),
       '-o',
       join(output, 'therss-ui.node')
     ],
