@@ -13,6 +13,42 @@ valid Developer ID, signing, and notarization.
 
 ### Added
 
+- Apple-native window structure on the AppKit route (#58): a unified toolbar with the window
+  title and a local search field, a source-list sidebar with Command-1 to Command-4, native
+  Discover progress with Cancel, a segmented result-kind filter, a source picker in a popover,
+  kind glyphs and a Saved star in rows, native empty states, Settings in its own window, a
+  read-only record window on double-click, Share and row drag to other apps, macOS system text
+  styles, and display dates in the system language.
+
+### Changed
+
+- Local search moved from a modal sheet to the toolbar search field; Command-F focuses it (#58).
+- Discover fits the window without paging; only the list and reading panes scroll (#58).
+- `smoke:sources` reports each source on its own line and no longer stops at the first failure,
+  so the source-health issue names the failing probe (#65).
+
+### Fixed
+
+- Rows place the subtitle under the measured title, and Settings fits each pane and refits after
+  a zoom change (#58).
+- Search details, notices and Analytics show plain labels, scoped notices and an empty-state for
+  analysis history (#58).
+
+### Security
+
+- Lockfile-only update for new high-severity advisories: Electron 44.9.3, Zod 4.6.7, Vite 7.3.7,
+  and transitive undici and body-parser (#63).
+
+## [0.3.0] - 2026-09-07
+
+Unsigned arm64/macOS 26+ pre-release. See the
+[release notes](docs/audits/2026-09-07-public-prerelease/RELEASE_NOTES.md).
+
+### Added
+
+- Complete AppKit working interface for Discover, Saved, Sources, Data Analytics, Settings and
+  local search.
+- Explicit Saved snapshot update that keeps Saved time and analysis history.
 - Scheduled `Source Health` workflow that re-probes arXiv, GitHub, and the configured sources
   daily and files (or updates) a `source-health` issue on regression.
 - macOS CI job running the Electron end-to-end flow, an unsigned `--mac dir` package, and the
@@ -90,6 +126,7 @@ and first GitHub publication (milestones M1–M4).
 - CI workflow covering format, lint, type check, tests, coverage, build, and dependency audit.
   (`409cdef`)
 
-[Unreleased]: https://github.com/dtjgp/TheRSS/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/dtjgp/TheRSS/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/dtjgp/TheRSS/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/dtjgp/TheRSS/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/dtjgp/TheRSS/releases/tag/v0.1.0
