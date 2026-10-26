@@ -97,6 +97,25 @@ describe('ResearchRepository local search', () => {
     repository.close()
   })
 
+  it('marks a cut summary excerpt with an ellipsis and keeps a short one unchanged', () => {
+    const { database, repository } = setup()
+    database
+      .prepare("UPDATE discovery_item SET summary = ? WHERE id = 'arxiv:saved'")
+      .run('边缘'.repeat(160))
+    const saved = repository
+      .searchLocal('structured')
+      .results.find((result) => result.kind === 'saved')
+    expect(saved?.detail).toBe('边缘'.repeat(150) + '…')
+    const [discover] = repository.searchLocal('quantum edge').results
+    expect(discover?.detail).toBe('A quantum edge networking toolkit.')
+    // The Discover branch cuts the same way; exactly 300 characters is not cut.
+    database.prepare('UPDATE discover_result SET summary = ?').run('q'.repeat(301))
+    expect(repository.searchLocal('quantum edge').results[0]?.detail).toBe('q'.repeat(300) + '…')
+    database.prepare('UPDATE discover_result SET summary = ?').run('q'.repeat(300))
+    expect(repository.searchLocal('quantum edge').results[0]?.detail).toBe('q'.repeat(300))
+    repository.close()
+  })
+
   it('rejects blank, one-character, and oversized local queries', () => {
     const { repository } = setup()
     expect(() => repository.searchLocal(' ')).toThrow()

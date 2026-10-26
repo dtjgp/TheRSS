@@ -3,6 +3,11 @@ import { NativePresenter } from './presenter'
 import { defaultNativePreferences } from './preferences'
 import { nativeDiscoverFixture, nativeHarness } from './testSupport'
 
+const toolbarItem = (
+  scene: { toolbar?: { items: { id: string; enabled?: boolean }[] } },
+  id: string
+) => scene.toolbar?.items.find((item) => item.id === id)
+
 describe('native feedback without reading disruption', () => {
   it('keeps the content structure stable while a success notice appears and expires', async () => {
     vi.useFakeTimers()
@@ -29,7 +34,7 @@ describe('native feedback without reading disruption', () => {
       expect(h.find(saved.root, 'native-main')!.children!.map((node) => node.id)).toEqual(
         mainChildren
       )
-      expect(h.find(h.find(saved.root, 'native-toolbar')!, 'native-notice')?.text).toContain(
+      expect(h.find(h.find(saved.root, 'native-status')!, 'native-notice')?.text).toContain(
         'Saved:'
       )
       expect(saved.announcement.message).toContain('Saved:')
@@ -42,7 +47,7 @@ describe('native feedback without reading disruption', () => {
         mainChildren
       )
       expect(h.find(expired.root, 'native-notice')?.text).toBe('')
-      expect(h.find(expired.root, 'undo-triage')?.enabled).toBe(true)
+      expect(toolbarItem(expired, 'undo-triage')?.enabled).toBe(true)
     } finally {
       presenter.dispose()
       vi.useRealTimers()
@@ -80,7 +85,7 @@ describe('native feedback without reading disruption', () => {
       await presenter.presentation.dispatch(JSON.stringify({ action: dismiss.action }))
       await Promise.resolve()
       expect(h.find(JSON.parse(json).root, 'native-notice')?.text).toBe('')
-      expect(h.find(JSON.parse(json).root, 'undo-triage')?.enabled).toBe(false)
+      expect(toolbarItem(JSON.parse(json), 'undo-triage')?.enabled).toBe(false)
     } finally {
       presenter.dispose()
       vi.useRealTimers()

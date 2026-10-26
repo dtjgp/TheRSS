@@ -4,7 +4,7 @@ TheRSS 把研究问题转换为可检查的检索计划，在内置研究来源�
 
 ## 第一次使用
 
-1. 打开 Settings。可选的 Personal context 用于保存研究方向和筛选偏好。
+1. 按 Command-comma（或菜单 TheRSS → Settings…）打开 Settings 窗口。窗口顶部的 Personal Context 和 Model Provider 用于切换面板。可选的 Personal context 用于保存研究方向和筛选偏好。
 2. 选择执行方式：自己的模型服务，或已安装并完成其自身登录配置的 Codex CLI / Claude Code。检测到可执行程序不代表其账号已经登录。
 3. 使用模型服务时，填写名称、协议、基础 URL、模型名和所需的 API key。Test connection 测试当前草稿，Save provider 才会保存修改。
 4. 在 Discover 输入研究问题，选择来源，再按 Search。按钮不可用时，旁边会说明缺少问题、来源还是执行方式。

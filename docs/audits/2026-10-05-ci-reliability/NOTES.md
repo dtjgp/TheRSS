@@ -1,0 +1,143 @@
+# CI reliability fixes for PR #58 (2026-10-05)
+
+Scope: CI failures reported by Auto-fix on PR #58 and the user's request "排查 smoke-appkit-controls
+第 1009 行的间歇性失败". Evidence is in the CI run artifacts and local runs listed below.
+
+## 1. Sidebar width measured at the node, not the divider (CI `desktop`, workflow smoke)
+
+- Symptom (run 37313940373): "The input did not match /248,/" with `native-sidebar` frame
+  `{{0, 0}, {240, 661}}` after the window was widened to 1360 pt.
+- Evidence (downloaded artifact): the same run's `discover-light.json` reports
+  `toolbar.sidebarDivider = 224` (the saved width) while the `native-sidebar` node is
+  216 × 627 inside a 224 × 643 pane. On CI's macOS the system sidebar split item insets its
+  content view by 8 pt; the product restored the width correctly.
+- Fix: the smoke measures the sidebar at the divider (`sidebarFits`), allowing for the content
+  minimum in narrow windows. No product change.
+
+## 2. Intermittent `smoke-appkit-controls.mjs:1009` (reader not scrollable)
+
+- Symptom: after switching a compact split to its reading pane, `scroll 400` left the origin at
+  0,0. Before the fix it failed in roughly a third to a half of local runs (also on the pushed
+  head without the date change).
+- Evidence: in every failed run `retained-text` measured 8 pt (insets only) instead of about
+  5590 pt, so the document was not taller than the 728 pt viewport and the scroll was clamped.
+  An in-memory record of the last measurement in a failed run showed: requested width 1000,
+  text view frame 500 × 5590, text container 500, 8001 glyphs, laid-out height 0.
+- Cause: `heightForWidth` set the container to the requested width while
+  `widthTracksTextView` was on; AppKit reset the container to the stale view width and
+  invalidated the layout just made, so the measurement read an empty layout. Whether the view
+  frame was already current depended on layout order, hence the intermittency.
+- Fix: reading text views do not track the view width; the measurement owns the container width.
+- Correction: commit `3261956` first attributed the failure to TextKit 2 and switched reading
+  text views to TextKit 1. That change stays (it avoids a TextKit 2 → 1 switch on first
+  measurement) but it was not the cause: the failure recurred with the same 8 pt signature.
+- Verification: 0 failures in 15 consecutive controls runs after the fix; a file-based trace
+  hid the failure (timing), the in-memory record above caught it.
+
+## 3. Arrow keys from a focused descendant resized an outer split (product defect)
+
+- Found while emulating a small CI window: arrow and Escape keys aimed at a compact inner split
+  bubbled up the responder chain to the window split's `TRSplit`, which moved the sidebar and
+  saved 264, then 184, as width preferences. The same happens for any focused control that
+  ignores arrow keys (e.g. a button with Full Keyboard Access).
+- Fix: `TRSplit` handles divider keys only while it is the first responder.
+- Regression: new controls group "Arrow keys reach a split divider only when the divider itself
+  has focus"; RED without the fix ("Keys on a focused button do not move the divider").
+
+## 4. Sidebar show animation sampled too slowly (CI `desktop`)
+
+- Symptom (run 37316499167): "Showing the sidebar passes through intermediate widths". The test
+  sampled widths from outside the app; on CI the slide finished between two samples.
+- Fix: the native split records the distinct sidebar widths drawn during each animation and
+  reports how many lie strictly between the start and end widths (`animationSteps`); the smoke
+  requires at least one (an instant change draws none). The first threshold, two, failed on CI
+  run 37318584177, whose artifact shows `animationSteps = 1`: the runner drew one frame. A collapsed pane is hidden but keeps its frame width, so the start
+  width of a show is 0 (first version of the counter missed this; a diagnostic run showed the
+  real frames 0 → 25 → 70 → 116 → 173 → 207 → 222 → 224).
+- RED: with animations forced off the check fails ("Hiding the sidebar draws intermediate
+  widths"). GREEN: 15/15 workflow runs, including runs with the fixture app inactive as on CI.
+
+## Verification of the combined head
+
+`npm run check` exit 0 (743 main, 141 AppKit tests); workflow smoke 15/15 in CI mode
+(`THERSS_NATIVE_DEFAULT_ONLY=1`); controls smoke 18/18 (15 consecutive runs); E2E 8/8.
+
+## Sidebar animation with no intermediate frame (head d05b154)
+
+- CI evidence: "Hiding the sidebar draws intermediate widths" failed with `animationSteps` 0,
+  `animating` false and divider 0. The same head drew 7 intermediate hide widths locally.
+- Inference: a loaded runner can complete one 0.2 s slide without a drawn intermediate frame.
+  This is runner timing, not a product change in d05b154.
+- Change: the native split counts completed animator groups (`animationsCompleted`). Each toggle
+  must run the animated path; intermediate frames must appear in at least one of up to three
+  hide/show cycles. The cycle record is in `sidebar-motion.json`.
+- Discrimination: with fixture animations left off, the smoke fails at "Hiding the sidebar runs
+  the animated path". With animations on, it passed locally (cycles `[{hideSteps: 6, showSteps: 8}]`).
+
+## Record window titled "TheRSS" (head 78bc013)
+
+- CI evidence: "A double-clicked result opens read-only in its own window" read the record
+  window title as "TheRSS" instead of the record title. The run before (f4e413a) passed.
+- Local reproduction: none. 25 open/close cycles showed the record title at once and after
+  400 ms. The traced order (guard, then first present) should always end on the record title,
+  so the cause is not confirmed.
+- Change: every native window guards `page-title-updated` when it is created, before the host
+  page loads, so no host-page title event can precede the guard. If the smoke sees a wrong title
+  again, it now records the Electron and native titles of every window, then again after 1 s.
+
+## Settings pane fit with legacy scroll bars (head 64b855b)
+
+- CI evidence: "The Personal Context pane fits its window: 404 pt of content in 374 pt".
+- Local reproduction: the same numbers when the app alone runs with `-AppleShowScrollBars Always`
+  (argument domain only; no system setting changed). CI runners have no trackpad, so they show
+  legacy scroll bars.
+- Cause: the fit measured the pane at the visible width. The visible scroller made it 583 pt
+  instead of 600 pt; the form wrapped to 404 pt, and each later fit saw a width change and
+  only recorded it.
+- Fix: the fit measures at the width without a vertical scroller. With legacy scroll bars the
+  workflow smoke failed before the fix and passed 16/16 after it; with overlay scroll bars it
+  also passed 16/16, and the controls smoke passed 20/20.
+
+## Settings pane taller than the CI screen (head 22d6440)
+
+- CI evidence: "The Model Provider pane fits its window: 660 pt of content in 519 pt". The
+  Personal Context pane fit there after the legacy-scroller fix.
+- Inference (not measured): the fit never grows the window past the screen's visible height,
+  and the runner's display is small, so the provider pane scrolls there. Locally (work area
+  1194 pt) the same pane fits with and without legacy scroll bars.
+- Change: the smoke accepts a scrolling pane only when the window height equals the display's
+  work-area height; otherwise content must equal the viewport. A failure now prints the window
+  bounds and work area, which confirms or refutes the inference on the next CI run.
+- Separate finding: a zoom change in Settings does not refit the window (150 %: 961 pt of
+  content in 628 pt with room on screen), because zoom changes the pane width and a width change
+  only updates the record.
+
+## Reversed sidebar toggle ends hidden (head d760daa)
+
+- CI evidence: "A reversed toggle ends shown" failed. The same run's `sidebar-motion.json` shows
+  4–5 samples per 0.2 s slide, so the runner's main thread was heavily loaded.
+- Reproduction: two toggles sent in one main-process task (no run loop turn between them, with a
+  0–150 ms stall) ended with the sidebar hidden in 8 of 8 tries, while the presenter's preference
+  said shown. Separate reversals with 0–260 ms between them always ended shown.
+- Cause: the update compared the request with `NSSplitViewItem.collapsed`, which can still report
+  the old state before the run loop turns, so the second request was dropped; an older animation
+  could also finish after the latest one.
+- Fix: the split keeps the requested state (`splitTarget`). While animating it compares with that
+  state; the completion that comes once no animation is pending sets the item to it, lays out, and
+  gets a fresh width-restore attempt (without that, the sidebar stayed at 184 pt instead of 224).
+- Regression check: the workflow smoke sends both toggles in one task (0 and 60 ms stall). Before
+  the fix it failed with the sidebar hidden; after it, the workflow smoke passed twice (16/16) and
+  the controls smoke passed 20/20.
+
+## Settings window moves up on a small display (head a3ab86e)
+
+- CI evidence: "Fitting keeps the top edge" failed with y 31 instead of 68 after the Model
+  Provider pane fitted. The capped-pane check before it passed, which supports the earlier
+  inference that the runner's display is small.
+- Behavior: when a pane needs more height than remains below the window's top edge, the fit
+  keeps the window on the work area, so its bottom sits on the work-area bottom and the top moves
+  up. That is the intended rule; the smoke assumed the top never moves.
+- Change: the smoke accepts a moved top only when the window bottom is on the work-area bottom,
+  and later checks use the new top. A local probe that placed the window low on a 1194 pt work
+  area moved it from y 651 to 415 with its bottom at 1233 (the work-area bottom), and the check
+  accepted it. The workflow smoke passed 16/16 with legacy scroll bars.

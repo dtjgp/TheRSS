@@ -499,6 +499,21 @@ describe('App', () => {
     expect(await screen.findByText('Persisted local analysis restored.')).toBeVisible()
   })
 
+  it('opens Data Analytics and Sources from their View menu commands', async () => {
+    const api = createApi()
+    let listener: Parameters<TheRSSApi['onAppCommand']>[0] | null = null
+    vi.mocked(api.onAppCommand).mockImplementation((candidate) => {
+      listener = candidate
+      return () => undefined
+    })
+    render(<App api={api} />)
+
+    act(() => listener?.('show-analytics'))
+    expect(await screen.findByRole('heading', { name: 'Data Analytics' })).toBeVisible()
+    act(() => listener?.('show-sources'))
+    expect(await screen.findByRole('heading', { name: 'Sources' })).toBeVisible()
+  })
+
   it('opens Data Analytics from the consolidated navigation', async () => {
     const user = userEvent.setup()
     render(<App api={createApi()} />)

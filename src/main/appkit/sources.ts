@@ -1,7 +1,7 @@
 import {
-  sourcePublicationLabel,
   sourcePublicationEvidence,
-  hasPublicationMonthOnly
+  hasPublicationMonthOnly,
+  sourcePublicationDisplay
 } from '../../shared/sourceDate'
 import { sourceHealthLabel, sourceObservationLabel } from '../../shared/sourceHealth'
 import type { SourceContentSnapshot, SourceHealth } from '../../shared/api'
@@ -15,6 +15,7 @@ import {
 import { discoverySourceFromCatalogId } from '../../shared/sourceIdentity'
 import { SOURCE_GROUPS, sourceGroup } from '../../shared/sourceGroups'
 import {
+  emptyState,
   column,
   Controls,
   heading,
@@ -78,7 +79,6 @@ export class SourcesScreen implements NativeScreen {
     return column(
       'sources-page',
       [
-        ...(!this.workspace.focused ? [heading('sources-title', 'Sources')] : []),
         ...(!this.workspace.focused
           ? [
               label(
@@ -191,10 +191,11 @@ export class SourcesScreen implements NativeScreen {
             ),
             entry
               ? this.details(entry)
-              : column(
+              : emptyState(
                   'sources-empty',
-                  [label('sources-empty-message', 'No sources match these filters.')],
-                  { flex: 1 }
+                  'square.stack',
+                  'No matching sources',
+                  'Use Clear filters in the list to see every source.'
                 )
           ]
         })
@@ -291,6 +292,8 @@ export class SourcesScreen implements NativeScreen {
       source = discoverySourceFromCatalogId(entry.id),
       snapshot = this.snapshot
     const health = this.healthDetail(entry)
+    const observed = this.health(entry),
+      recorded = observed === 'idle' ? null : observed
     const item = snapshot?.items.find((item) => item.id === this.selectedItem) ?? snapshot?.items[0]
     const status = snapshot
       ? {
@@ -308,15 +311,21 @@ export class SourcesScreen implements NativeScreen {
           heading('source-detail-title', entry.name),
           label(
             'source-detail-health',
-            `${sourceHealthLabel(this.health(entry), health?.context)} · ${sourceObservationLabel(health)}`,
+            recorded
+              ? `${sourceHealthLabel(recorded, health?.context)} · ${sourceObservationLabel(health)}`
+              : 'No outcome recorded yet.',
             { weight: 'secondary' }
           ),
           ...(health?.errorMessage ? [label('source-health-error', health.errorMessage)] : []),
-          label(
-            'source-observation-boundary',
-            'Last recorded outcome; cached content below is separate from this observation.',
-            { weight: 'secondary' }
-          ),
+          ...(recorded
+            ? [
+                label(
+                  'source-observation-boundary',
+                  'Last recorded outcome; cached content below is separate from this observation.',
+                  { weight: 'secondary' }
+                )
+              ]
+            : []),
           b.rich(
             'source-detail-description',
             `${entry.role}\n\n${entry.reason}\n\nPriority: ${entry.priority}\n\nResearch axes: ${entry.researchAxes.map((axis) => RESEARCH_AXIS_LABELS[axis]).join(', ')}\n\nOrigin: ${entry.origin}\n\nAccess: ${entry.accessNote}`
@@ -374,7 +383,7 @@ export class SourcesScreen implements NativeScreen {
                           snapshot.items.map((item) => ({
                             id: item.id,
                             title: item.title,
-                            subtitle: `${sourcePublicationLabel(item)} · ${item.kind ?? 'item'}`
+                            subtitle: `${sourcePublicationDisplay(item, this.context.locale)} · ${item.kind ?? 'item'}`
                           })),
                           item?.id ?? '',
                           (id) => {

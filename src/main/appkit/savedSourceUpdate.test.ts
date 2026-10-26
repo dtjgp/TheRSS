@@ -68,6 +68,9 @@ describe('native Saved snapshot update', () => {
     await vi.waitFor(() =>
       expect(h.find(h.render(screen), 'saved-update-source')?.enabled).toBe(true)
     )
+    expect(h.find(h.render(screen), 'saved-source-update-status')?.text).toMatch(
+      /^Local retrieval: Sep 7, 2026\./u
+    )
     await h.act(screen, 'saved-update-source')
     expect(h.api.applySavedSourceUpdate).toHaveBeenCalledWith({
       itemId: item.id,

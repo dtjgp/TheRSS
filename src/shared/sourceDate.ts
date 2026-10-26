@@ -41,3 +41,31 @@ export function sourceMatchReasons(
       )
     : item.reasons
 }
+
+function formatter(locale: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  try {
+    return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' })
+  } catch {
+    // An unsupported locale falls back to the system default rather than failing the view.
+    return new Intl.DateTimeFormat(undefined, { ...options, timeZone: 'UTC' })
+  }
+}
+
+/**
+ * A stored date in the user's language and region. Formatted in UTC so the calendar day is the
+ * one the ISO display showed; unparseable input is shown as stored (bounded). Display only:
+ * evidence fields and citations keep the stored ISO value.
+ */
+export function formatDisplayDate(value: string, locale: string): string {
+  const time = Date.parse(value)
+  if (Number.isNaN(time)) return value.slice(0, 64)
+  return formatter(locale, { dateStyle: 'medium' }).format(time)
+}
+
+/** `sourcePublicationLabel` for display in a locale; a month-only date shows only the month. */
+export function sourcePublicationDisplay(item: SourceDateRecord, locale: string): string {
+  const time = Date.parse(item.publishedAt)
+  if (!hasPublicationMonthOnly(item) || Number.isNaN(time))
+    return formatDisplayDate(item.publishedAt, locale)
+  return `${formatter(locale, { year: 'numeric', month: 'short' }).format(time)} (month only)`
+}

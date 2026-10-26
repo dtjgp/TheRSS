@@ -9,7 +9,8 @@ export const CONTEXT_MENU_ACTIONS = [
   'save',
   'unsave',
   'analyze',
-  'promote'
+  'promote',
+  'open-window'
 ] as const
 
 export type ContextMenuAction = (typeof CONTEXT_MENU_ACTIONS)[number]
@@ -18,7 +19,13 @@ export type ContextMenuAction = (typeof CONTEXT_MENU_ACTIONS)[number]
  * Actions the main process cannot complete alone. They are returned to the renderer so
  * the existing save/analyze/promote flows stay the single implementation of each.
  */
-export const RENDERER_CONTEXT_MENU_ACTIONS = ['save', 'unsave', 'analyze', 'promote'] as const
+export const RENDERER_CONTEXT_MENU_ACTIONS = [
+  'save',
+  'unsave',
+  'analyze',
+  'promote',
+  'open-window'
+] as const
 
 export type RendererContextMenuAction = (typeof RENDERER_CONTEXT_MENU_ACTIONS)[number]
 
@@ -37,7 +44,9 @@ export const contextMenuTargetSchema = z.object({
   publishedAt: z.string().max(64),
   isSaved: z.boolean(),
   canAnalyze: z.boolean(),
-  canPromote: z.boolean()
+  canPromote: z.boolean(),
+  /** Native route only: the item can open in its own record window. */
+  canOpenWindow: z.boolean().optional()
 })
 
 export type ContextMenuTarget = z.infer<typeof contextMenuTargetSchema>

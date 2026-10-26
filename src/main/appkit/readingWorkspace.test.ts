@@ -41,7 +41,12 @@ describe('compact reading without stacked panes', () => {
       'No saved items from this source'
     )
     await h.act(screen, 'saved-reset-filter')
-    expect(h.find(h.render(screen), 'saved-items')?.rows).toHaveLength(1)
+    const rows = h.find(h.render(screen), 'saved-items')?.rows
+    expect(rows).toHaveLength(1)
+    // Every Saved row is saved: the kind glyph stays, the star and the Saved word do not repeat.
+    expect(rows?.[0]).toMatchObject({ symbol: 'doc.text', symbolLabel: 'Paper' })
+    expect(rows?.[0]?.saved).toBeUndefined()
+    expect(rows?.[0]?.subtitle).not.toContain('Saved')
     h.context.data.dashboard = h.dashboard
     await h.act(screen, 'saved-open-discover')
     expect(h.context.navigate).toHaveBeenCalledWith('discover')

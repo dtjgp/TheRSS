@@ -72,6 +72,20 @@ describe('createApplicationMenuTemplate', () => {
     expect(send).toHaveBeenCalledWith('open-local-search')
   })
 
+  it('gives every sidebar workspace a sequential View shortcut', () => {
+    const send = vi.fn()
+    const viewMenu = submenuFor(createApplicationMenuTemplate(send, true), 'View')
+    const analytics = viewMenu.find((item) => item.label === 'Data Analytics')
+    const sources = viewMenu.find((item) => item.label === 'Sources')
+
+    expect(analytics).toMatchObject({ accelerator: 'CommandOrControl+3' })
+    expect(sources).toMatchObject({ accelerator: 'CommandOrControl+4' })
+    analytics?.click?.({} as never, undefined as never, {} as never)
+    sources?.click?.({} as never, undefined as never, {} as never)
+    expect(send).toHaveBeenCalledWith('show-analytics')
+    expect(send).toHaveBeenCalledWith('show-sources')
+  })
+
   it('makes Discover the first view and keeps removed Today and Interests surfaces out of menus', () => {
     const send = vi.fn()
     const template = createApplicationMenuTemplate(send, true)

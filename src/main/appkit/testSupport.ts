@@ -2,7 +2,10 @@ import { DISCOVER_SOURCE_IDS, type DiscoverSnapshot } from '../../shared/discove
 import { vi } from 'vitest'
 import type { TheRSSApi, DashboardSnapshot } from '../../shared/api'
 import type { NativeContext } from './common'
-import { NativePresentation, type NativeNode } from './presentation'
+import { NativePresentation, type NativeNode, type NativePopover } from './presentation'
+import { LocalSearchScreen } from './localSearch'
+
+type TestScreen = { render(): NativeNode; popover?(): NativePopover | undefined }
 
 export function nativeHarness(overrides: Partial<TheRSSApi> = {}) {
   const dashboard: DashboardSnapshot = {
@@ -35,6 +38,7 @@ export function nativeHarness(overrides: Partial<TheRSSApi> = {}) {
   const context: NativeContext = {
     api,
     presentation: new NativePresentation(),
+    locale: 'en-US',
     data: {
       dashboard,
       provider: null,
@@ -50,19 +54,28 @@ export function nativeHarness(overrides: Partial<TheRSSApi> = {}) {
     openExternal: vi.fn(),
     showDocument: vi.fn(),
     promote: vi.fn(async () => undefined),
+    openRecord: vi.fn(),
+    openSettings: vi.fn(),
     width: () => 320,
     setWidth: vi.fn()
   }
-  const render = (screen: { render(): NativeNode }) => {
+  // Test view: a screen's popover content is appended to its root so lookups and actions reach
+  // it; `popover()` returns the popover itself to assert its anchor and separation.
+  const render = (screen: TestScreen) => {
     context.presentation.begin()
     const root = screen.render()
-    context.presentation.finish(root)
-    return root
+    const popover = screen.popover?.()
+    context.presentation.finish(root, undefined, undefined, 1, undefined, undefined, popover)
+    return popover ? { ...root, children: [...(root.children ?? []), popover.root] } : root
+  }
+  const popover = (screen: TestScreen): NativePopover | undefined => {
+    render(screen)
+    return screen.popover?.()
   }
   const find = (node: NativeNode, id: string): NativeNode | undefined =>
     node.id === id ? node : node.children?.map((child) => find(child, id)).find(Boolean)
   const act = async (
-    screen: { render(): NativeNode },
+    screen: TestScreen,
     id: string,
     value?: string | boolean | number,
     secret = false
@@ -72,7 +85,7 @@ export function nativeHarness(overrides: Partial<TheRSSApi> = {}) {
     const json = JSON.stringify({ action: node.action, ...(value !== undefined ? { value } : {}) })
     await (secret ? context.presentation.dispatchSecret(json) : context.presentation.dispatch(json))
   }
-  return { api, context, render, find, act, dashboard }
+  return { api, context, render, popover, find, act, dashboard }
 }
 
 export const nativeDiscoverFixture: DiscoverSnapshot = {
@@ -134,4 +147,34 @@ export const nativeDiscoverFixture: DiscoverSnapshot = {
     reasons: ['Relevant'],
     saved: false
   }))
+}
+
+/**
+ * Test view of the toolbar search: the toolbar field is presented as a `local-search-query`
+ * node carrying the item's text action and Return activation, above the results page.
+ */
+export function localSearchHarness(context: NativeContext) {
+  const search = new LocalSearchScreen(context)
+  return {
+    search,
+    render: (): NativeNode => {
+      const item = search.toolbarItem(true)
+      return {
+        id: 'local-search-test-root',
+        kind: 'column',
+        children: [
+          {
+            id: item.id,
+            kind: 'input',
+            title: item.title,
+            value: item.value ?? '',
+            enabled: item.enabled,
+            action: item.action,
+            activate: item.activate
+          },
+          ...(search.showing ? [search.render()] : [])
+        ]
+      }
+    }
+  }
 }

@@ -56,7 +56,7 @@ export function searchLocal(database: Database.Database, candidate: string): Loc
   const savedRows = database
     .prepare(
       `SELECT d.id AS id, 'saved' AS kind, d.id AS item_id, d.title,
-              substr(d.summary, 1, 300) AS detail, d.url, d.source,
+              substr(d.summary, 1, 300) || CASE WHEN length(d.summary) > 300 THEN '…' ELSE '' END AS detail, d.url, d.source,
               d.triage_updated_at AS created_at
        FROM discovery_item d
        WHERE d.triage_state = 'saved'
@@ -71,7 +71,7 @@ export function searchLocal(database: Database.Database, candidate: string): Loc
     .prepare(
       `WITH matched AS (
          SELECT s.id || ':' || r.item_id AS id, 'discover' AS kind, r.item_id,
-                r.title, substr(r.summary, 1, 300) AS detail, r.url, r.source,
+                r.title, substr(r.summary, 1, 300) || CASE WHEN length(r.summary) > 300 THEN '…' ELSE '' END AS detail, r.url, r.source,
                 s.created_at, s.id AS session_id,
                 row_number() OVER (
                   PARTITION BY r.item_id ORDER BY s.created_at DESC, s.id DESC

@@ -1,16 +1,65 @@
-import type { DiscoveryItem } from '../../shared/discovery'
+import type { DiscoveryItem, DiscoveryItemKind } from '../../shared/discovery'
+import type { NativeRow, NativeSymbol } from './presentation'
+import { buildCitation, isSafeLink } from '../../core/menus/contextMenu'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
 import {
   sourcePublicationEvidence,
-  sourcePublicationLabel,
+  sourcePublicationDisplay,
   hasPublicationMonthOnly
 } from '../../shared/sourceDate'
 
 export function researchSubtitle(
   item: Pick<DiscoveryItem, 'source' | 'publishedAt'> & Partial<Pick<DiscoveryItem, 'summary'>>,
-  saved = false
+  locale: string
 ): string {
-  return `${sourceDisplayName(item.source)} · ${sourcePublicationLabel(item)}${saved ? ' · Saved' : ''}`
+  return `${sourceDisplayName(item.source)} · ${sourcePublicationDisplay(item, locale)}`
+}
+
+const kindGlyphs: Record<DiscoveryItemKind, { symbol: NativeSymbol; label: string }> = {
+  paper: { symbol: 'doc.text', label: 'Paper' },
+  repository: { symbol: 'chevron.left.forwardslash.chevron.right', label: 'Repository' },
+  article: { symbol: 'newspaper', label: 'Article' },
+  model: { symbol: 'cpu', label: 'Model' },
+  dataset: { symbol: 'tablecells', label: 'Dataset' },
+  post: { symbol: 'text.bubble', label: 'Post' }
+}
+
+/** The leading glyph and accessible kind name of a research row. */
+export function researchKindSymbol(kind: DiscoveryItemKind): {
+  symbol: NativeSymbol
+  label: string
+} {
+  return kindGlyphs[kind]
+}
+/** Row fields for the kind glyph; an item without a recorded kind gets no glyph. */
+export function researchRowGlyph(kind: DiscoveryItemKind | undefined): {
+  symbol?: NativeSymbol
+  symbolLabel?: string
+} {
+  return kind && kindGlyphs[kind]
+    ? { symbol: kindGlyphs[kind].symbol, symbolLabel: kindGlyphs[kind].label }
+    : {}
+}
+
+/** An https link short enough to share or drag; longer feed URLs are left in the app. */
+export function isShareableLink(url: string): boolean {
+  return url.length <= 2048 && isSafeLink(url)
+}
+
+/** Row drag payload for other apps; only a shareable https link makes a row draggable. */
+export function researchRowDrag(
+  item: Pick<DiscoveryItem, 'title' | 'url' | 'source' | 'publishedAt'>
+): Pick<NativeRow, 'drag'> {
+  if (!isShareableLink(item.url)) return {}
+  // Feed titles are unbounded; keep the payload within the presentation bounds.
+  const title = item.title.slice(0, 1000)
+  return {
+    drag: {
+      url: item.url,
+      title,
+      text: buildCitation(title, sourceDisplayName(item.source), item.publishedAt, item.url)
+    }
+  }
 }
 
 /** Present relevant fields; no source value is rewritten and zero is not treated as missing. */

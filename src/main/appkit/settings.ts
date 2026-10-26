@@ -14,9 +14,10 @@ import {
   row,
   scroll,
   type NativeContext,
-  type NativeScreen
+  type NativeScreen,
+  type SettingsSection
 } from './common'
-import type { NativeNode } from './presentation'
+import type { NativeNode, NativeSymbol } from './presentation'
 
 type Draft = { name: string; protocol: ModelProtocol; baseUrl: string; model: string }
 type Field =
@@ -28,9 +29,17 @@ const fromProvider = (provider: ModelProviderSummary | null): Draft => ({
   model: provider?.model ?? ''
 })
 
+/** Settings panes in toolbar order; the window title names the selected pane. */
+export const SETTINGS_SECTIONS: Readonly<
+  Record<SettingsSection, { readonly title: string; readonly symbol: NativeSymbol }>
+> = {
+  personal: { title: 'Personal Context', symbol: 'person.crop.circle' },
+  provider: { title: 'Model Provider', symbol: 'cpu' }
+}
+
 export class SettingsScreen implements NativeScreen {
   private readonly controls: Controls
-  private section: 'personal' | 'provider' = 'personal'
+  #section: SettingsSection = 'personal'
   private provider: ModelProviderSummary | null = null
   private draft: Draft = fromProvider(null)
   private prompt = ''
@@ -45,8 +54,22 @@ export class SettingsScreen implements NativeScreen {
   private errors: Partial<Record<Field, string>> = {}
   private connection: ProviderConnectionResult | null = null
 
-  constructor(private readonly context: NativeContext) {
+  /** `changed` runs after settings are saved, so other windows can reload them. */
+  constructor(
+    private readonly context: NativeContext,
+    private readonly options: { readonly changed?: () => void } = {}
+  ) {
     this.controls = new Controls(context)
+  }
+
+  get section(): SettingsSection {
+    return this.#section
+  }
+  /** Switching panes keeps both drafts, including an unsaved credential. */
+  select(section: SettingsSection): void {
+    if (section === this.#section) return
+    this.#section = section
+    this.context.redraw()
   }
 
   async load(): Promise<void> {
@@ -94,30 +117,10 @@ export class SettingsScreen implements NativeScreen {
 
   render(): NativeNode {
     const b = this.controls
-    const content = this.section === 'personal' ? this.personal() : this.model()
+    const content = this.#section === 'personal' ? this.personal() : this.model()
     return column(
       'settings-page',
       [
-        heading('settings-title', 'Settings'),
-        label(
-          'settings-description',
-          'Local research context, model access, and bounded agent availability.',
-          { weight: 'secondary' }
-        ),
-        b.select(
-          'settings-tab',
-          'Settings section',
-          this.section,
-          [
-            { id: 'personal', title: 'Personal context' },
-            { id: 'provider', title: 'Model provider' }
-          ],
-          (value) => {
-            this.section = value as typeof this.section
-            this.context.redraw()
-          },
-          { width: 250 }
-        ),
         ...(this.message ? [label('settings-status', this.message)] : []),
         ...(!this.loaded
           ? [
@@ -129,7 +132,7 @@ export class SettingsScreen implements NativeScreen {
               )
             ]
           : []),
-        scroll('settings-scroll', content)
+        scroll('settings-scroll', content, { fitWindow: true })
       ],
       { flex: 1 }
     )
@@ -141,7 +144,6 @@ export class SettingsScreen implements NativeScreen {
     return column(
       'personal-form',
       [
-        heading('personal-title', 'Personal context'),
         label(
           'personal-description',
           'Describe your research interests and constraints. This saved context informs future Discover search plans.'
@@ -225,7 +227,6 @@ export class SettingsScreen implements NativeScreen {
     return column(
       'provider-form',
       [
-        heading('provider-title', 'Model provider'),
         field('name', 'provider-name', 'Provider name', 80),
         label('provider-protocol-label', 'Protocol'),
         b.select(
@@ -378,6 +379,7 @@ export class SettingsScreen implements NativeScreen {
         ? 'Personal context saved for future Discover searches.'
         : 'Personal context cleared.'
       this.reportDirty()
+      this.options.changed?.()
     } catch {
       this.message = 'Personal context could not be saved.'
     } finally {
@@ -414,6 +416,7 @@ export class SettingsScreen implements NativeScreen {
       this.clearRevision++
       this.message = 'Provider saved. Any credential remains protected by the operating system.'
       this.reportDirty()
+      this.options.changed?.()
     } catch {
       this.message = 'Provider settings were rejected. Check the fields and credential rules.'
     } finally {
@@ -475,6 +478,7 @@ export class SettingsScreen implements NativeScreen {
       this.message = 'Protected credential cleared. Other unsaved fields are retained.'
       delete this.errors['provider-key']
       this.reportDirty()
+      this.options.changed?.()
     } catch {
       this.message = 'The protected credential could not be cleared.'
     } finally {

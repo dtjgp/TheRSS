@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-23",
+  "baseCommit": "0194f4f",
+  "scope": "S0 native polish",
+  "fullCheckExitCode": 0,
+  "mainTests": 690,
+  "nativeTests": 105,
+  "coverageOrder": ["statements", "branches", "functions", "lines"],
+  "mainCoveragePercent": [91.14, 82.46, 94.72, 93.83],
+  "nativeCoveragePercent": [89.43, 82.55, 89.76, 92.03],
+  "red": {
+    "applicationMenu.test.ts": "no Data Analytics Command-3 item",
+    "App.shell.test.tsx": "show-analytics did not navigate",
+    "discover.test.ts": "received 'partial · 2026-09-06'",
+    "presenter.commands.test.ts": "scene lacked analytics-page",
+    "smoke-appkit-controls.mjs": "row label frame filled the row"
+  },
+  "nativeControlsSmoke": {
+    "passed": true,
+    "groups": 9,
+    "screenshots": false,
+    "screenshotReason": "screencapture could not capture the window while the display was in a full-screen Space"
+  },
+  "nativeWorkflowSmoke": {
+    "passed": false,
+    "groupsPassed": 7,
+    "failedStep": "Source focus is separate from activation; content stays read-only",
+    "failureCause": "pre-existing fixture drift: configured-source fixture published 2026-08-14 is outside the rolling 30-day window 2026-08-24..2026-09-23",
+    "relatedToS0": false
+  },
+  "nativeWorkflowSmokeExcludingAgedStep": {
+    "method": "disposable copy of smoke-native-appkit.mjs with only the aged step disabled; deleted after the run",
+    "passed": true,
+    "groups": 13
+  },
+  "rawEvidence": "test-results/2026-09-23-s0 (git-ignored)",
+  "fixturesOnly": true,
+  "sourceAndModelCalls": 0,
+  "installedAppUpdated": false
+}

@@ -85,6 +85,15 @@ describe('native reading and triage', () => {
     await h.act(reader, 'discover-analysis-open-saved')
     expect(h.context.navigate).toHaveBeenCalledWith('saved')
   })
+  it('opens the Model Provider settings when no analysis runner is available', async () => {
+    const h = nativeHarness()
+    h.context.data.agents = []
+    const reader = new ResearchReader(h.context, 'saved', new TriageHistory(h.context))
+    reader.select({ ...item, triageState: 'saved' })
+    await h.act(reader, 'saved-analysis-configure-runner')
+    expect(h.context.openSettings).toHaveBeenCalledWith('provider')
+    expect(h.context.navigate).not.toHaveBeenCalled()
+  })
   it('distinguishes a pending saved-analysis read from no analysis and exposes stale source evidence', async () => {
     let finish!: (value: typeof artifact) => void
     const h = nativeHarness({

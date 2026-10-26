@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ContextMenuTarget } from '../../shared/contextMenu'
-import { buildContextMenuTemplate, buildCopyPayload } from './contextMenu'
+import { buildCitation, buildContextMenuTemplate, buildCopyPayload } from './contextMenu'
 
 function target(overrides: Partial<ContextMenuTarget> = {}): ContextMenuTarget {
   return {
@@ -29,6 +29,40 @@ function labelFor(
   const found = entries.find((entry) => entry.type === 'item' && entry.action === action)
   return found?.type === 'item' ? found.label : undefined
 }
+
+describe('Open in New Window', () => {
+  it('leads the menu only when the native route can open record windows', () => {
+    const entries = buildContextMenuTemplate(target({ canOpenWindow: true }))
+    expect(entries[0]).toEqual({ type: 'item', action: 'open-window', label: 'Open in New Window' })
+    expect(entries[1]).toEqual({ type: 'separator' })
+    expect(actionsOf(buildContextMenuTemplate(target()))).not.toContain('open-window')
+  })
+})
+
+describe('Share in the context menu', () => {
+  it('offers the system Share submenu after Copy Link for https links only', () => {
+    const entries = buildContextMenuTemplate(target())
+    const copyLink = entries.findIndex(
+      (entry) => entry.type === 'item' && entry.action === 'copy-link'
+    )
+    expect(entries[copyLink + 1]).toEqual({
+      type: 'share',
+      url: 'https://arxiv.org/abs/2501.00001v1',
+      title: 'Structured Pruning for Edge Inference'
+    })
+    for (const url of ['http://example.com/x', 'javascript:alert(1)', 'file:///tmp/x'])
+      expect(
+        buildContextMenuTemplate(target({ url })).some((entry) => entry.type === 'share')
+      ).toBe(false)
+  })
+  it('builds the drag citation with the same text as Copy Citation', () => {
+    const value = target()
+    expect(buildCitation(value.title, value.sourceLabel, value.publishedAt, value.url)).toBe(
+      buildCopyPayload(value, 'copy-citation')
+    )
+    expect(buildCitation('T', 'arXiv', 'not a date', 'file:///x')).toBe('T. arXiv')
+  })
+})
 
 describe('buildContextMenuTemplate', () => {
   it('offers the full action set for a promotable, analysable arXiv paper', () => {

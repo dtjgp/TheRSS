@@ -416,6 +416,12 @@ export function App({ api }: AppProps) {
           case 'show-discover':
             void navigate('discover')
             return
+          case 'show-analytics':
+            void navigate('analytics')
+            return
+          case 'show-sources':
+            void navigate('sources')
+            return
           case 'toggle-sidebar':
             if (!isSidebarConstrained) setIsSidebarCollapsed((current) => !current)
             return

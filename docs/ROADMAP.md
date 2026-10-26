@@ -106,3 +106,8 @@ adopt-or-drop decision covering 72 entries, plus 11 individually scoped adapters
 - Background helper while the app is closed.
 - Signed/notarized public self-updates.
 - Mobile and multi-user features.
+- Native local search scopes (Saved, Discover sessions, analyses) and recent searches; record and
+  Settings window frame restoration. Planned for the branch after PR #58
+  ([follow-up analysis](audits/2026-10-06-appearance-acceptance/REPORT.md)).
+- Web fallback alignment with the native route (Settings window, keyboard, localized dates, text
+  styles). Needs a decision on the required level before implementation.

@@ -2,6 +2,7 @@ import type { DashboardItem, TriageState } from '../../shared/api'
 import type { AnalysisArtifact, AnalysisFreshness, AnalysisRunner } from '../../shared/models'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
 import {
+  emptyState,
   analysisText,
   column,
   Controls,
@@ -17,8 +18,9 @@ import {
   type NativeScreen
 } from './common'
 import type { NativeNode } from './presentation'
+import { isShareableLink } from './researchMetadata'
 import { hashAnalysisSource } from '../../core/analysis/sourceSnapshot'
-import { sourcePublicationLabel, sourceMatchReasons } from '../../shared/sourceDate'
+import { sourcePublicationDisplay, sourceMatchReasons } from '../../shared/sourceDate'
 
 export class TriageHistory {
   private previous: { id: string; state: TriageState } | null = null
@@ -102,7 +104,9 @@ export class ResearchReader implements NativeScreen {
   constructor(
     private readonly context: NativeContext,
     private readonly scope: 'saved' | 'discover',
-    private readonly triage: TriageHistory
+    private readonly triage: TriageHistory,
+    /** Record windows read without changing data (no cross-window updates exist). */
+    private readonly options: { readonly readOnly?: boolean } = {}
   ) {
     this.controls = new Controls(context)
   }
@@ -149,14 +153,16 @@ export class ResearchReader implements NativeScreen {
       item = this.item,
       prefix = this.scope
     if (!item)
-      return column(
+      return emptyState(
         `${prefix}-reader-empty`,
-        [label(`${prefix}-empty-hint`, 'Select an item to read its full details.')],
-        { flex: 1, padding: 18 }
+        'doc.text',
+        'No selection',
+        'Select an item to read its full details.'
       )
     const key = `${prefix}:${this.sessionId ?? ''}:${item.id}`
     const saved = this.isSaved(),
-      analyzing = this.analysisPending.has(item.id)
+      analyzing = this.analysisPending.has(item.id),
+      readOnly = !!this.options.readOnly
     return scroll(
       `${prefix}-reading-scroll`,
       column(
@@ -165,7 +171,7 @@ export class ResearchReader implements NativeScreen {
           heading(`${prefix}-reading-title`, item.title),
           label(
             `${prefix}-reading-meta`,
-            `${sourceDisplayName(item.source)} · ${sourcePublicationLabel(item)}${saved ? ' · Saved' : ''}`,
+            `${sourceDisplayName(item.source)} · ${sourcePublicationDisplay(item, this.context.locale)}${saved ? ' · Saved' : ''}`,
             { weight: 'secondary' }
           ),
           row(`${prefix}-reading-actions`, [
@@ -179,39 +185,56 @@ export class ResearchReader implements NativeScreen {
               ),
               symbol: 'arrow.up.right'
             },
-            {
-              ...b.button(
-                `${prefix}-save`,
-                saved ? 'Unsave' : 'Save',
-                () => this.toggleSave(),
-                !this.triage.busy,
-                `${key}:save:${saved}`
-              ),
-              symbol: saved ? 'star.fill' : 'star'
-            },
-            {
-              ...b.button(
-                `${prefix}-analyze`,
-                analyzing ? 'Analyzing…' : this.artifact ? 'Analyze again' : 'Analyze',
-                () => this.analyze(),
-                !analyzing && this.canAnalyze(),
-                `${key}:analyze`
-              ),
-              symbol: 'sparkles'
-            },
-            ...(prefix === 'saved'
+            // The system sharing picker (Mail, Messages, Notes ...) for the https link.
+            ...(isShareableLink(item.url)
               ? [
-                  b.button(
-                    `${prefix}-dismiss`,
-                    'Dismiss',
-                    () => this.dismiss(),
-                    !this.triage.busy,
-                    `${key}:dismiss`
-                  )
+                  {
+                    id: `${prefix}-share`,
+                    kind: 'button' as const,
+                    title: 'Share',
+                    symbol: 'square.and.arrow.up' as const,
+                    help: 'Share the link with another app',
+                    share: { url: item.url }
+                  }
                 ]
-              : [])
+              : []),
+            ...(readOnly
+              ? []
+              : [
+                  {
+                    ...b.button(
+                      `${prefix}-save`,
+                      saved ? 'Unsave' : 'Save',
+                      () => this.toggleSave(),
+                      !this.triage.busy,
+                      `${key}:save:${saved}`
+                    ),
+                    symbol: (saved ? 'star.fill' : 'star') as NativeNode['symbol']
+                  },
+                  {
+                    ...b.button(
+                      `${prefix}-analyze`,
+                      analyzing ? 'Analyzing…' : this.artifact ? 'Analyze again' : 'Analyze',
+                      () => this.analyze(),
+                      !analyzing && this.canAnalyze(),
+                      `${key}:analyze`
+                    ),
+                    symbol: 'sparkles' as const
+                  },
+                  ...(prefix === 'saved'
+                    ? [
+                        b.button(
+                          `${prefix}-dismiss`,
+                          'Dismiss',
+                          () => this.dismiss(),
+                          !this.triage.busy,
+                          `${key}:dismiss`
+                        )
+                      ]
+                    : [])
+                ])
           ]),
-          ...(!this.canAnalyze() && !analyzing
+          ...(!readOnly && !this.canAnalyze() && !analyzing
             ? [
                 label(
                   `${prefix}-analysis-readiness`,
@@ -232,12 +255,13 @@ export class ResearchReader implements NativeScreen {
                 ...(this.scope === 'saved' || item.kind === 'paper'
                   ? [
                       b.button(`${prefix}-analysis-configure-runner`, 'Open Settings', () =>
-                        this.context.navigate('settings')
+                        this.context.openSettings('provider')
                       )
                     ]
                   : [])
               ]
             : []),
+          // Reading size decided by the user (F13, 2026-10-05): 14 pt, between Body and Title 3.
           { ...b.rich(`${prefix}-summary`, item.summary), size: 14 },
           column(
             `${prefix}-evidence-panel`,
@@ -247,7 +271,7 @@ export class ResearchReader implements NativeScreen {
                 item.kind === 'paper'
                   ? 'Evidence: paper discovery metadata and retrieved summary. Full-paper results are not verified here.'
                   : 'Evidence: source metadata and retrieved summary.',
-                { weight: 'secondary', size: 12 }
+                { weight: 'secondary', textStyle: 'callout' }
               )
             ],
             { surface: 'inset', padding: 10 }
@@ -274,7 +298,7 @@ export class ResearchReader implements NativeScreen {
               ),
               emphasis: 'quiet'
             },
-            ...(item.source === 'arxiv'
+            ...(!readOnly && item.source === 'arxiv'
               ? [
                   b.button(
                     `${prefix}-promote`,
@@ -433,6 +457,17 @@ export class ResearchReader implements NativeScreen {
   async dismiss(): Promise<void> {
     if (this.item && this.scope === 'saved') await this.triage.change(this.item, 'dismissed')
   }
+  /** Opens the selected record in its own read-only window. */
+  openWindow(): void {
+    // The window shows the state as of opening (it receives no later updates).
+    if (this.item)
+      this.context.openRecord({
+        item: { ...this.item, triageState: this.triage.state(this.item) },
+        sessionId: this.sessionId,
+        scope: this.scope,
+        extra: this.extra
+      })
+  }
   async contextMenu(): Promise<void> {
     const item = this.item,
       sessionId = this.sessionId,
@@ -448,7 +483,8 @@ export class ResearchReader implements NativeScreen {
       publishedAt: item.publishedAt,
       isSaved: this.isSaved(),
       canAnalyze: this.canAnalyze(),
-      canPromote: item.source === 'arxiv'
+      canPromote: item.source === 'arxiv',
+      canOpenWindow: !this.options.readOnly
     })
     if (
       version !== this.version ||
@@ -457,7 +493,8 @@ export class ResearchReader implements NativeScreen {
       result.sessionId !== sessionId
     )
       return
-    if (result.action === 'save' || result.action === 'unsave') await this.toggleSave()
+    if (result.action === 'open-window') this.openWindow()
+    else if (result.action === 'save' || result.action === 'unsave') await this.toggleSave()
     else if (result.action === 'analyze') await this.analyze()
     else if (result.action === 'promote') await this.context.promote(item.id, sessionId)
   }

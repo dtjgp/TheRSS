@@ -1,6 +1,20 @@
 # TheRSS Goals
 
-## Current stage: 0.3.0 unsigned GitHub pre-release delivery
+## Current stage: Apple-native UX on the AppKit route (PR #58)
+
+PR #58 implements the [Apple-native UX audit](docs/audits/2026-09-23-apple-native-ux/REPORT.md):
+findings F1-F14 and slices S0-S4 are closed, each with its own change contract. The 2026-10-06
+[appearance, window-size and package acceptance](docs/audits/2026-10-06-appearance-acceptance/REPORT.md)
+covered dark mode, minimum windows and the packaged app; its findings A1-A7 are fixed
+([rows and Settings fit](docs/audits/2026-10-06-rows-settings-fit/CHANGE_CONTRACT.md),
+[A3-A8 polish](docs/audits/2026-10-06-ui-polish-a3-a8/CHANGE_CONTRACT.md)). Open and recorded:
+A8 (toolbar constraint warnings seen only in the capture matrix), R1 (a synthetic Space press
+fails with its reason while another app is active), R2 (sheet captures off the active Space).
+The user authorized merging PR #58 on 2026-10-06; native search scopes, window restoration and
+Web fallback alignment follow on a new branch ([roadmap](docs/ROADMAP.md)). VoiceOver speech,
+installation over the existing app and signed distribution remain not run or deferred.
+
+## Previous stage: 0.3.0 unsigned GitHub pre-release delivery
 
 The user authorized merging PR #49 and publishing a GitHub Release. The release contract is
 [here](docs/audits/2026-09-07-public-prerelease/CHANGE_CONTRACT.md); it retains the earlier

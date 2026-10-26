@@ -7,17 +7,19 @@ import {
   label,
   row,
   type NativeContext,
+  type NativeRecord,
   type NativeScreen,
-  type Route
+  type Route,
+  type SettingsSection
 } from './common'
 import { NativePresentation } from './presentation'
-import type { NativeAnnouncement, NativeNode } from './presentation'
+import type { NativeAnnouncement, NativeNode, NativeToolbar } from './presentation'
 import { DiscoverScreen } from './discover'
 import { SavedScreen } from './saved'
-import { SettingsScreen } from './settings'
 import { SourcesScreen } from './sources'
 import { AnalyticsScreen } from './analytics'
 import { NativeModals } from './modals'
+import { LocalSearchScreen, LOCAL_SEARCH_FIELD } from './localSearch'
 import { TriageHistory } from './reading'
 import type { NativePreferences } from './preferences'
 import type { LocalResearchTarget } from '../../shared/localResearch'
@@ -28,15 +30,19 @@ export interface NativePresenterPort {
   persist(preferences: NativePreferences): Promise<void>
   openExternal(url: string): void
   contentSize?(): { readonly width: number; readonly height: number }
+  /** The system locale for display dates (defaults to the process locale). */
+  readonly locale?: string
+  /** Opens a record in its own read-only window (native route only). */
+  openRecord?(record: NativeRecord): void
+  /** Opens the separate Settings window (native route only). */
+  openSettings?(section?: SettingsSection): void
 }
-const routes: readonly { id: Route; title: string; short: string; symbol: NativeNode['symbol'] }[] =
-  [
-    { id: 'discover', title: 'Discover', short: 'Find', symbol: 'sparkle.magnifyingglass' },
-    { id: 'saved', title: 'Saved', short: 'Saved', symbol: 'star' },
-    { id: 'analytics', title: 'Data Analytics', short: 'Stats', symbol: 'chart.bar' },
-    { id: 'sources', title: 'Sources', short: 'Sources', symbol: 'square.stack' },
-    { id: 'settings', title: 'Settings', short: 'Settings', symbol: 'gearshape' }
-  ]
+const routes: readonly { id: Route; title: string; symbol: NativeNode['symbol'] }[] = [
+  { id: 'discover', title: 'Discover', symbol: 'sparkle.magnifyingglass' },
+  { id: 'saved', title: 'Saved', symbol: 'star' },
+  { id: 'analytics', title: 'Data Analytics', symbol: 'chart.bar' },
+  { id: 'sources', title: 'Sources', symbol: 'square.stack' }
+]
 
 export class NativePresenter {
   readonly presentation = new NativePresentation()
@@ -44,6 +50,7 @@ export class NativePresenter {
   private readonly controls: Controls
   private readonly triage: TriageHistory
   private readonly modals: NativeModals
+  private readonly localSearch: LocalSearchScreen
   private readonly screens: Record<Route, NativeScreen>
   private route: Route = 'discover'
   private preferences: NativePreferences
@@ -52,6 +59,8 @@ export class NativePresenter {
   private disposed = false
   private renderQueued = false
   private navigating = false
+  private settingsReload = 0
+  private settingsReloadPending = false
   private pendingFocus: string | undefined
   private notice = ''
   private noticeKind: 'success' | 'error' = 'success'
@@ -69,6 +78,7 @@ export class NativePresenter {
     this.preferences = { ...port.preferences }
     this.context = {
       api,
+      locale: port.locale ?? Intl.DateTimeFormat().resolvedOptions().locale,
       presentation: this.presentation,
       data: { dashboard: null, provider: null, personalPrompt: '', agents: [] },
       redraw: () => this.redraw(),
@@ -82,13 +92,15 @@ export class NativePresenter {
       compact: () => {
         const width = this.port.contentSize?.().width ?? 1360
         const sidebar = this.preferences.collapsed
-          ? 84
+          ? 0
           : Math.min(this.preferences.sidebar, Math.max(184, width - 637))
         return (width - sidebar - 18 - 44 * this.preferences.zoom) / this.preferences.zoom < 700
       },
       openExternal: (url) => port.openExternal(url),
       showDocument: (title, content) => this.modals.openDocument(title, content),
       promote: (itemId, sessionId) => this.modals.openPromotion(itemId, sessionId),
+      openRecord: (record) => port.openRecord?.(record),
+      openSettings: (section) => port.openSettings?.(section),
       width: (key) => this.preferences[key],
       setWidth: (key, width) => {
         this.preferences = { ...this.preferences, [key]: Math.round(width) }
@@ -98,10 +110,10 @@ export class NativePresenter {
     this.controls = new Controls(this.context)
     this.triage = new TriageHistory(this.context)
     this.modals = new NativeModals(this.context)
+    this.localSearch = new LocalSearchScreen(this.context)
     this.screens = {
       discover: new DiscoverScreen(this.context, this.triage),
       saved: new SavedScreen(this.context, this.triage),
-      settings: new SettingsScreen(this.context),
       sources: new SourcesScreen(this.context),
       analytics: new AnalyticsScreen(this.context)
     }
@@ -133,6 +145,10 @@ export class NativePresenter {
       })
       await this.screens.discover.load?.()
       this.ready = true
+      if (this.settingsReloadPending) {
+        this.settingsReloadPending = false
+        void this.settingsChanged()
+      }
     } catch {
       this.notice = 'The local research index could not be opened. Retry to load your workspace.'
     } finally {
@@ -140,8 +156,36 @@ export class NativePresenter {
       this.renderNow()
     }
   }
+  /** The Settings window saved changes: reload what Discover and reading depend on. */
+  async settingsChanged(): Promise<void> {
+    if (this.disposed) return
+    // Startup may already have read the old values: reload once it is ready.
+    if (!this.ready) {
+      this.settingsReloadPending = true
+      return
+    }
+    const reload = ++this.settingsReload
+    const [provider, agents, personal] = await Promise.all([
+      this.api.getModelProvider(),
+      this.api.getLocalAgentStatuses(),
+      this.api.getDiscoverPersonalizationSettings()
+    ]).catch(() => [undefined, undefined, undefined] as const)
+    // Only the latest reload applies; a failed one keeps the current values.
+    if (this.disposed || reload !== this.settingsReload || agents === undefined) return
+    Object.assign(this.context.data, {
+      provider: provider ?? null,
+      agents,
+      personalPrompt: personal?.prompt ?? ''
+    })
+    this.redraw()
+  }
   async navigate(route: Route): Promise<void> {
     if (this.navigating || this.modals.blocksNavigation || !this.ready) return
+    // Choosing a workspace ends an active search, as in Notes and Mail.
+    if (this.localSearch.showing) {
+      this.localSearch.clear()
+      this.redraw()
+    }
     if (
       this.localReturn &&
       !this.modals.visible &&
@@ -155,12 +199,9 @@ export class NativePresenter {
       return
     this.navigating = true
     try {
-      if (this.route === 'settings') {
-        if (!(await this.api.confirmDiscardSettings())) return
-        ;(this.screens.settings as SettingsScreen).discard()
-      }
       await this.modals.close()
-      this.route = route
+      this.screens[this.route].closePopover?.()
+      this.changeRoute(route)
       this.renderNow()
       await this.screens[route].load?.()
     } finally {
@@ -170,19 +211,21 @@ export class NativePresenter {
   }
   async command(command: AppCommand): Promise<void> {
     if (this.disposed) return
-    if (command === 'open-settings') await this.navigate('settings')
+    if (command === 'open-settings') this.port.openSettings?.()
     else if (command === 'show-saved') await this.navigate('saved')
     else if (command === 'show-discover') await this.navigate('discover')
+    else if (command === 'show-analytics') await this.navigate('analytics')
+    else if (command === 'show-sources') await this.navigate('sources')
     else if (command === 'toggle-sidebar') {
       this.preferences = { ...this.preferences, collapsed: !this.preferences.collapsed }
       this.persistSoon()
       this.redraw()
     } else if (command === 'open-local-search') {
-      this.returnToSearch(false)
+      await this.returnToSearch(false)
     } else if (command === 'open-help')
       this.modals.openDocument(
         'TheRSS Help',
-        '# Your local research desk\n\nDiscover searches 22 sources using a model provider, Codex CLI, or Claude Code. Sources and returned metadata are discovery evidence. Save relevant records, read their summaries, and run a derived analysis when useful.\n\n## Keyboard\n- Command+1: Discover\n- Command+2: Saved\n- Command+F: Search local records\n- Command+comma: Settings\n- Control+Command+S: Show or hide the sidebar\n- Shift+Command+D: Save selected\n- Shift+Command+A: Analyze selected\n- Command+Backspace: Dismiss selected Saved item\n- Escape: Close a sheet\n\nNative text controls use the standard editing shortcuts. Focus a divider and use arrow keys to resize; Shift uses larger steps, Home/End reach the limits, and Escape restores its starting position.\n\n## Evidence and privacy\nSQLite is the local operational index. Analysis is derived from retrieved content and retains provider, model, prompt, source hash, and creation time. API keys are protected by the operating system. A llm-wiki promotion requires a reviewed PDF/path preview and a final write confirmation.\n\n## Reading and recovery\nOn a narrow window, click a result or press Return to read it, then return to the retained list. Local search opens the exact Saved, search-session or analysis record; Back to search results restores the search and any original unsubmitted question.\n\n## Help and privacy\nDiscover sends your question and enabled personal context to the selected planner. Analyze sends the selected source content to its chosen provider. Local search, Saved and analytics stay in the local database. The current app has no telemetry or account synchronization.\n\n[Documentation and support](https://github.com/dtjgp/TheRSS#readme)'
+        '# Your local research desk\n\nDiscover searches 22 sources using a model provider, Codex CLI, or Claude Code. Sources and returned metadata are discovery evidence. Save relevant records, read their summaries, and run a derived analysis when useful.\n\n## Keyboard\n- Command+1: Discover\n- Command+2: Saved\n- Command+F: Search local records\n- Command+Return: Search Discover\n- Command+Z: Undo text edits, or the last Save, Unsave or Dismiss outside text fields\n- Command+comma: Settings\n- Control+Command+S: Show or hide the sidebar\n- Shift+Command+D: Save selected\n- Shift+Command+A: Analyze selected\n- Command+Backspace: Dismiss selected Saved item\n- Escape: Close a sheet\n\nNative text controls use the standard editing shortcuts. Focus a divider and use arrow keys to resize; Shift uses larger steps, Home/End reach the limits, and Escape restores its starting position.\n\n## Evidence and privacy\nSQLite is the local operational index. Analysis is derived from retrieved content and retains provider, model, prompt, source hash, and creation time. API keys are protected by the operating system. A llm-wiki promotion requires a reviewed PDF/path preview and a final write confirmation.\n\n## Reading and recovery\nOn a narrow window, click a result or press Return to read it, then return to the retained list. Local search opens the exact Saved, search-session or analysis record; Back to search results restores the search and any original unsubmitted question.\n\n## Help and privacy\nDiscover sends your question and enabled personal context to the selected planner. Analyze sends the selected source content to its chosen provider. Local search, Saved and analytics stay in the local database. The current app has no telemetry or account synchronization.\n\n[Documentation and support](https://github.com/dtjgp/TheRSS#readme)'
       )
     else if (!this.modals.visible && this.ready) {
       const reader =
@@ -229,12 +272,6 @@ export class NativePresenter {
     const discover = this.screens.discover as DiscoverScreen
     if (record.kind === 'discover' && discover.searching)
       return 'Wait for the active Discover search to finish before opening a historical session.'
-    if (this.route === 'settings') {
-      if (!(await this.api.confirmDiscardSettings()))
-        return 'Settings were kept. Finish editing before opening this local result.'
-      if (!isCurrent()) return null
-      ;(this.screens.settings as SettingsScreen).discard()
-    }
     if (route === 'analytics') await this.screens.analytics.load?.()
     if (!isCurrent() || this.disposed) return null
     const origin = this.route
@@ -245,12 +282,13 @@ export class NativePresenter {
           ? (this.screens.saved as SavedScreen).openLocal(record.item)
           : (this.screens.analytics as AnalyticsScreen).openLocal(record)
     this.localReturn = { route: origin, restore }
-    this.route = route
+    this.changeRoute(route)
     await this.modals.close()
+    this.localSearch.suspend()
     this.redraw()
     return null
   }
-  private returnToSearch(restoreResults: boolean): void {
+  private async returnToSearch(restoreResults: boolean): Promise<void> {
     if (!this.modals.canOpenSearch) return
     if (this.localReturn && (this.screens.discover as DiscoverScreen).searching) {
       this.notify(
@@ -262,9 +300,13 @@ export class NativePresenter {
       const previous = this.localReturn
       this.localReturn = null
       previous.restore()
-      this.route = previous.route
+      this.changeRoute(previous.route)
     }
-    this.modals.openSearch(restoreResults)
+    await this.modals.close()
+    this.localSearch.resume()
+    this.pendingFocus =
+      restoreResults && this.localSearch.hasResults ? 'local-search-results' : LOCAL_SEARCH_FIELD
+    this.redraw()
   }
   receive(json: string, secure = false): void {
     void (secure ? this.presentation.dispatchSecret(json) : this.presentation.dispatch(json)).catch(
@@ -284,6 +326,7 @@ export class NativePresenter {
     this.unsubscribe()
     this.presentation.dispose()
     this.modals.dispose()
+    this.localSearch.dispose()
     Object.values(this.screens).forEach((screen) => screen.dispose?.())
     if (this.noticeTimer) clearTimeout(this.noticeTimer)
     void this.flushPreferences()
@@ -300,6 +343,15 @@ export class NativePresenter {
     this.preferenceWork = this.preferenceWork
       .then(() => this.port.persist(snapshot))
       .catch(() => this.notify('Window layout preferences could not be saved.', 'error'))
+  }
+  /** A success notice belongs to the workspace it came from; errors stay until dismissed. */
+  private changeRoute(route: Route): void {
+    if (route !== this.route && this.notice && this.noticeKind === 'success') {
+      if (this.noticeTimer) clearTimeout(this.noticeTimer)
+      this.noticeTimer = null
+      this.notice = ''
+    }
+    this.route = route
   }
   private notify(message: string, kind: 'success' | 'error' = 'success'): void {
     this.notice = message.slice(0, 2000)
@@ -334,74 +386,81 @@ export class NativePresenter {
     const root = {
       id: 'native-workspace',
       kind: 'split' as const,
-      width: collapsed ? 84 : this.preferences.sidebar,
-      minWidth: collapsed ? 84 : 184,
+      windowSidebar: true,
+      width: this.preferences.sidebar,
+      minWidth: 184,
       minContentWidth: 636,
-      maxWidth: collapsed ? 84 : 360,
+      maxWidth: 360,
+      // A hidden sidebar leaves the content pane alone, as NSSplitView collapse does.
+      ...(collapsed ? { compactPane: 'detail' as const } : {}),
       action: this.presentation.action(
         'sidebar-width',
         (width) => {
           if (!collapsed) this.context.setWidth('sidebar', width as number)
         },
-        { type: 'number', min: collapsed ? 84 : 184, max: collapsed ? 84 : 360 }
+        { type: 'number', min: 184, max: 360 }
       ),
       children: [
         column(
           'native-sidebar',
           [
-            heading('native-brand', collapsed ? 'RSS' : 'TheRSS'),
-            ...(!collapsed
-              ? [
-                  label('native-sidebar-caption', 'YOUR RESEARCH DESK', {
-                    size: 10,
-                    weight: 'secondary'
-                  })
-                ]
-              : []),
-            ...routes.map((route) => ({
-              ...b.button(
-                `navigate-${route.id}`,
-                collapsed ? route.short : route.title,
-                () => this.navigate(route.id),
-                this.ready
-              ),
-              checked: route.id === this.route,
-              emphasis: 'navigation' as const,
-              symbol: collapsed ? undefined : route.symbol,
-              height: 38
-            })),
-            label('native-sidebar-space', '', { flex: 1 }),
             {
-              ...b.button('sidebar-toggle', collapsed ? 'Expand' : 'Collapse sidebar', () =>
-                this.command('toggle-sidebar')
-              ),
-              emphasis: 'quiet',
-              symbol: collapsed ? undefined : 'sidebar.left'
+              id: 'native-navigation',
+              kind: 'sidebar' as const,
+              title: 'Workspaces',
+              // A local search covers every workspace, so none is selected while it shows.
+              selected: this.localSearch.showing ? undefined : this.route,
+              enabled: this.ready,
+              flex: 1,
+              rows: routes.map((route) => ({
+                id: route.id,
+                title: route.title,
+                symbol: route.symbol
+              })),
+              action: this.presentation.action(
+                'navigate',
+                async (value) => {
+                  await this.navigate(value as Route)
+                  // A refused or ignored navigation restores the current selection.
+                  this.redraw()
+                },
+                { type: 'choice', values: routes.map((route) => route.id) }
+              )
             }
           ],
-          { padding: collapsed ? 8 : 18, gap: 8, glass: true }
+          { padding: 10, gap: 0, glass: true, safeArea: true }
         ),
         column(
           'native-main',
           [
+            ...(this.ready
+              ? [
+                  this.localSearch.showing
+                    ? this.localSearch.render()
+                    : this.screens[this.route].render()
+                ]
+              : [
+                  column(
+                    'native-loading',
+                    [
+                      heading(
+                        'native-loading-title',
+                        this.loading ? 'Opening your research desk…' : 'Workspace unavailable'
+                      ),
+                      ...(!this.loading
+                        ? [b.button('native-load-retry', 'Retry', () => this.start())]
+                        : [])
+                    ],
+                    { flex: 1 }
+                  )
+                ]),
+            // A fixed status bar keeps feedback from shifting the reading layout.
             row(
-              'native-toolbar',
+              'native-status',
               [
-                ...(this.localReturn
-                  ? [
-                      {
-                        ...b.button(
-                          'return-local-search',
-                          compact ? 'Search results' : 'Back to search results',
-                          () => this.returnToSearch(true),
-                          !(this.screens.discover as DiscoverScreen).searching
-                        ),
-                        emphasis: 'quiet' as const
-                      }
-                    ]
-                  : []),
                 label('native-notice', this.notice, {
                   weight: this.noticeKind === 'error' ? 'bold' : 'secondary',
+                  textStyle: 'callout',
                   maxLines: 1,
                   flex: 1
                 }),
@@ -419,60 +478,76 @@ export class NativePresenter {
                         emphasis: 'quiet' as const
                       }
                     ]
-                  : []),
-                {
-                  ...b.button(
-                    'open-local-search',
-                    compact ? 'Find' : 'Find local research',
-                    () => this.command('open-local-search'),
-                    this.ready
-                  ),
-                  emphasis: 'quiet',
-                  help: 'Find local research (Command-F)',
-                  symbol: 'magnifyingglass'
-                },
-                {
-                  ...b.button(
-                    'undo-triage',
-                    compact ? 'Undo' : 'Undo triage',
-                    () => this.triage.undo(),
-                    this.triage.canUndo
-                  ),
-                  emphasis: 'quiet',
-                  help: 'Undo the last Save, Unsave or Dismiss action',
-                  symbol: 'arrow.uturn.backward'
-                }
+                  : [])
               ],
-              { wrap: false }
-            ),
-            ...(this.ready
-              ? [this.screens[this.route].render()]
-              : [
-                  column(
-                    'native-loading',
-                    [
-                      heading(
-                        'native-loading-title',
-                        this.loading ? 'Opening your research desk…' : 'Workspace unavailable'
-                      ),
-                      ...(!this.loading
-                        ? [b.button('native-load-retry', 'Retry', () => this.start())]
-                        : [])
-                    ],
-                    { flex: 1 }
-                  )
-                ])
+              { wrap: false, height: 24 }
+            )
           ],
-          { padding: 22, gap: 18, adaptiveScroll: true }
+          { padding: 22, gap: 18, adaptiveScroll: true, safeArea: true }
         )
       ]
     }
     const modal = this.modals.render(),
       focus = this.modals.focus ?? (modal ? undefined : this.pendingFocus)
+    // A popover belongs to the visible workspace; a sheet or the search page closes it.
+    if (modal || this.localSearch.showing || !this.ready)
+      Object.values(this.screens).forEach((screen) => screen.closePopover?.())
+    const popover = this.screens[this.route].popover?.()
     this.pendingFocus = undefined
     this.modals.focus = undefined
     this.port.present(
-      this.presentation.finish(root, modal, focus, this.preferences.zoom, this.announcement)
+      this.presentation.finish(
+        root,
+        modal,
+        focus,
+        this.preferences.zoom,
+        this.announcement,
+        this.toolbar(collapsed),
+        popover
+      )
     )
+  }
+  private toolbar(collapsed: boolean): NativeToolbar {
+    const action = (key: string, receive: () => void | Promise<void>, enabled: boolean) =>
+      this.presentation.action(key, enabled ? receive : () => undefined)
+    const searching = (this.screens.discover as DiscoverScreen).searching
+    return {
+      title: !this.ready
+        ? 'TheRSS'
+        : this.localSearch.showing
+          ? 'Search'
+          : routes.find((route) => route.id === this.route)!.title,
+      items: [
+        {
+          id: 'sidebar-toggle',
+          title: collapsed ? 'Show Sidebar' : 'Hide Sidebar',
+          symbol: 'sidebar.left',
+          help: 'Show or hide the sidebar (Control-Command-S)',
+          placement: 'sidebar',
+          action: action('toolbar:sidebar', () => this.command('toggle-sidebar'), true)
+        },
+        ...(this.localReturn
+          ? [
+              {
+                id: 'return-local-search',
+                title: 'Back to search results',
+                symbol: 'chevron.backward' as const,
+                help: 'Return to the local search results',
+                enabled: !searching,
+                action: action('toolbar:return', () => this.returnToSearch(true), !searching)
+              }
+            ]
+          : []),
+        this.localSearch.toolbarItem(this.ready),
+        {
+          id: 'undo-triage',
+          title: 'Undo triage',
+          symbol: 'arrow.uturn.backward',
+          help: 'Undo the last Save, Unsave or Dismiss action',
+          enabled: this.triage.canUndo,
+          action: action('toolbar:undo', () => this.triage.undo(), this.triage.canUndo)
+        }
+      ]
+    }
   }
 }

@@ -12,14 +12,63 @@ const nativeSymbols = [
   'sidebar.left',
   'arrow.up.right',
   'exclamationmark.circle',
-  'sparkles'
+  'sparkles',
+  'chevron.backward',
+  'doc.text',
+  'chevron.left.forwardslash.chevron.right',
+  'newspaper',
+  'cpu',
+  'tablecells',
+  'text.bubble',
+  'square.and.arrow.up',
+  'person.crop.circle'
 ] as const
+export type NativeSymbol = (typeof nativeSymbols)[number]
 
 export interface NativeRow {
   readonly id: string
   readonly title: string
   readonly subtitle?: string | undefined
+  readonly symbol?: NativeSymbol | undefined
+  /** Accessible name of a research row's kind glyph, e.g. "Paper". */
+  readonly symbolLabel?: string | undefined
+  /** Research rows: the item is saved (trailing star). */
+  readonly saved?: boolean | undefined
+  /** Research rows: what a drag to another app carries (https link, title, citation text). */
+  readonly drag?:
+    { readonly url: string; readonly title: string; readonly text: string } | undefined
   readonly cells?: Readonly<Record<string, string>> | undefined
+}
+/** Window-level commands shown in the AppKit toolbar; never part of the content tree. */
+export interface NativeToolbarItem {
+  readonly id: string
+  readonly title: string
+  readonly symbol: NativeSymbol
+  readonly help?: string | undefined
+  readonly enabled?: boolean | undefined
+  readonly action?: string | undefined
+  /** Items placed in the sidebar section, before the toolbar's sidebar tracking separator. */
+  readonly placement?: 'sidebar' | undefined
+  /** A toolbar search field: `action` receives committed text, `activate` receives Return. */
+  readonly kind?: 'search' | undefined
+  readonly placeholder?: string | undefined
+  readonly value?: string | undefined
+  readonly activate?: string | undefined
+}
+export interface NativeToolbar {
+  readonly title: string
+  readonly items: readonly NativeToolbarItem[]
+  /** `preference`: a Settings window toolbar of selectable panes (centered, with labels). */
+  readonly style?: 'preference' | undefined
+  /** The selected pane item of a preference toolbar. */
+  readonly selected?: string | undefined
+}
+/** Transient content shown in an NSPopover below the `anchor` node of the scene root. */
+export interface NativePopover {
+  readonly anchor: string
+  /** Emitted when the user dismisses the popover (outside click or Escape). */
+  readonly close: string
+  readonly root: NativeNode
 }
 export interface NativeColumn {
   readonly id: string
@@ -46,6 +95,10 @@ export type NativeKind =
   | 'check'
   | 'table'
   | 'chart'
+  | 'sidebar'
+  | 'progress'
+  | 'segmented'
+  | 'symbol'
 export interface NativeNode {
   readonly compactPane?: 'list' | 'detail' | undefined
   readonly wrap?: boolean | undefined
@@ -56,7 +109,7 @@ export interface NativeNode {
   readonly maxLines?: number | undefined
   readonly points?: readonly { readonly date: string; readonly value: number }[] | undefined
   readonly emphasis?: 'primary' | 'navigation' | 'quiet' | undefined
-  readonly symbol?: (typeof nativeSymbols)[number] | undefined
+  readonly symbol?: NativeSymbol | undefined
   readonly surface?: 'panel' | 'inset' | 'reading' | undefined
   readonly title?: string | undefined
   readonly text?: string | undefined
@@ -65,6 +118,8 @@ export interface NativeNode {
   readonly action?: string | undefined
   readonly activate?: string | undefined
   readonly context?: string | undefined
+  /** Tables: double-click opens the row in its own window. */
+  readonly openWindow?: string | undefined
   readonly checked?: boolean | undefined
   readonly enabled?: boolean | undefined
   readonly selected?: string | undefined
@@ -80,8 +135,21 @@ export interface NativeNode {
   readonly padding?: number | undefined
   readonly size?: number | undefined
   readonly weight?: 'regular' | 'bold' | 'secondary' | 'title' | undefined
+  /** macOS text style (system sizes); `size` is kept only for reading text and symbols. */
+  readonly textStyle?:
+    | 'title1'
+    | 'title2'
+    | 'title3'
+    | 'headline'
+    | 'body'
+    | 'callout'
+    | 'subheadline'
+    | 'footnote'
+    | undefined
   readonly glass?: boolean | undefined
   readonly adaptiveScroll?: boolean | undefined
+  /** A scroll node whose content height a preference window takes when its pane changes. */
+  readonly fitWindow?: boolean | undefined
   readonly multiline?: boolean | undefined
   readonly maxLength?: number | undefined
   readonly clearRevision?: number | undefined
@@ -89,9 +157,33 @@ export interface NativeNode {
   readonly minContentWidth?: number | undefined
   readonly maxWidth?: number | undefined
   readonly collapseAt?: number | undefined
+  /** Starts content below the window toolbar while the column background reaches the top. */
+  readonly safeArea?: boolean | undefined
+  /** Determinate progress (progress nodes only); omit both for indeterminate progress. */
+  readonly completed?: number | undefined
+  readonly total?: number | undefined
+  /** Button only: opens the system sharing picker for this https link instead of an action. */
+  readonly share?: { readonly url: string } | undefined
+  /** The window's sidebar split: hosted so the toolbar title sits over the content column. */
+  readonly windowSidebar?: boolean | undefined
+  /** Centered columns center their stack and children; centered labels center their text. */
+  readonly align?: 'center' | undefined
+  /** Button key equivalent: Return (default button) or Command-Return. */
+  readonly shortcut?: 'return' | 'command-return' | undefined
 }
 
 const short = z.string().max(4096)
+// Only https links may reach the pasteboard or a sharing service (as for Open in Browser).
+const httpsUrl = z
+  .string()
+  .max(4096)
+  .refine((value) => {
+    try {
+      return new URL(value).protocol === 'https:'
+    } catch {
+      return false
+    }
+  }, 'Only https links can be shared or dragged')
 const positive = z.number().finite().min(0).max(100000)
 const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
   z
@@ -110,7 +202,11 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
         'select',
         'check',
         'table',
-        'chart'
+        'chart',
+        'sidebar',
+        'progress',
+        'segmented',
+        'symbol'
       ]),
       compactPane: z.enum(['list', 'detail']).optional(),
       wrap: z.boolean().optional(),
@@ -138,6 +234,7 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
       action: short.optional(),
       activate: short.optional(),
       context: short.optional(),
+      openWindow: short.optional(),
       checked: z.boolean().optional(),
       enabled: z.boolean().optional(),
       selected: short.optional(),
@@ -148,6 +245,13 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
               id: short,
               title: short,
               subtitle: short.optional(),
+              symbol: z.enum(nativeSymbols).optional(),
+              symbolLabel: z.string().min(1).max(40).optional(),
+              saved: z.boolean().optional(),
+              drag: z
+                .object({ url: httpsUrl, title: z.string().max(4000), text: z.string().max(4000) })
+                .strict()
+                .optional(),
               cells: z.record(z.string().min(1).max(40), z.string().max(300)).optional()
             })
             .strict()
@@ -181,15 +285,35 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
       padding: positive.optional(),
       size: z.number().min(8).max(48).optional(),
       weight: z.enum(['regular', 'bold', 'secondary', 'title']).optional(),
+      textStyle: z
+        .enum([
+          'title1',
+          'title2',
+          'title3',
+          'headline',
+          'body',
+          'callout',
+          'subheadline',
+          'footnote'
+        ])
+        .optional(),
       glass: z.boolean().optional(),
       adaptiveScroll: z.boolean().optional(),
+      fitWindow: z.boolean().optional(),
       multiline: z.boolean().optional(),
       maxLength: z.number().int().min(1).max(20000).optional(),
       clearRevision: z.number().int().nonnegative().optional(),
       minWidth: positive.optional(),
       minContentWidth: positive.optional(),
       maxWidth: positive.optional(),
-      collapseAt: positive.optional()
+      collapseAt: positive.optional(),
+      safeArea: z.boolean().optional(),
+      completed: z.number().int().min(0).max(100000).optional(),
+      total: z.number().int().min(1).max(100000).optional(),
+      shortcut: z.enum(['return', 'command-return']).optional(),
+      align: z.literal('center').optional(),
+      windowSidebar: z.boolean().optional(),
+      share: z.object({ url: httpsUrl }).strict().optional()
     })
     .strict()
     .superRefine((node, context) => {
@@ -210,6 +334,50 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
             message: 'Native table cells must match the unique declared columns'
           })
       }
+      if (
+        (node.completed !== undefined || node.total !== undefined) &&
+        (node.kind !== 'progress' ||
+          node.completed === undefined ||
+          node.total === undefined ||
+          node.completed > node.total)
+      )
+        context.addIssue({
+          code: 'custom',
+          message: 'Native progress needs completed <= total on a progress node'
+        })
+      if (node.options !== undefined && node.kind !== 'select' && node.kind !== 'segmented')
+        context.addIssue({ code: 'custom', message: 'Only native choice controls carry options' })
+      if (
+        node.kind === 'segmented' &&
+        (!node.options ||
+          node.options.length < 2 ||
+          node.options.length > 6 ||
+          !node.options.some((option) => option.id === node.selected))
+      )
+        context.addIssue({
+          code: 'custom',
+          message: 'Native segmented controls need 2-6 options including the selected one'
+        })
+      if (node.size !== undefined && node.kind !== 'text' && node.kind !== 'symbol')
+        context.addIssue({
+          code: 'custom',
+          message: 'Point sizes are for reading text and symbols; other nodes use a text style'
+        })
+      if (node.share !== undefined && node.kind !== 'button')
+        context.addIssue({ code: 'custom', message: 'Only native buttons share a link' })
+      if (node.fitWindow !== undefined && node.kind !== 'scroll')
+        context.addIssue({ code: 'custom', message: 'Only a scroll node fits its window' })
+      if (node.windowSidebar !== undefined && node.kind !== 'split')
+        context.addIssue({ code: 'custom', message: 'Only a split hosts the window sidebar' })
+      if (node.align !== undefined && node.kind !== 'column' && node.kind !== 'label')
+        context.addIssue({ code: 'custom', message: 'Only columns and labels are centered' })
+      if (node.kind === 'symbol' && (!node.symbol || (node.size !== undefined && node.size < 16)))
+        context.addIssue({
+          code: 'custom',
+          message: 'Native symbols need an allowlisted symbol and a 16-48 pt size'
+        })
+      if (node.shortcut !== undefined && node.kind !== 'button')
+        context.addIssue({ code: 'custom', message: 'Only native buttons carry a shortcut' })
       if (node.kind === 'secure' && (node.value !== undefined || node.text !== undefined))
         context.addIssue({
           code: 'custom',
@@ -217,6 +385,49 @@ const nodeSchema: z.ZodType<NativeNode> = z.lazy(() =>
         })
     })
 )
+
+const toolbarSchema: z.ZodType<NativeToolbar> = z
+  .object({
+    title: z.string().min(1).max(200),
+    items: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1).max(100),
+            title: z.string().min(1).max(200),
+            symbol: z.enum(nativeSymbols),
+            help: short.optional(),
+            enabled: z.boolean().optional(),
+            action: short.optional(),
+            placement: z.literal('sidebar').optional(),
+            kind: z.literal('search').optional(),
+            placeholder: z.string().max(200).optional(),
+            value: z.string().max(200).optional(),
+            activate: short.optional()
+          })
+          .strict()
+      )
+      .max(8)
+      .refine((items) => new Set(items.map((item) => item.id)).size === items.length, {
+        message: 'Toolbar item identities must be unique'
+      }),
+    style: z.literal('preference').optional(),
+    selected: z.string().min(1).max(100).optional()
+  })
+  .strict()
+  .refine(
+    (toolbar) =>
+      toolbar.selected === undefined ||
+      (toolbar.style === 'preference' &&
+        toolbar.items.some((item) => item.id === toolbar.selected && item.kind !== 'search')),
+    { message: 'A selected toolbar item must be a pane of a preference toolbar' }
+  )
+  .refine(
+    (toolbar) =>
+      toolbar.style !== 'preference' ||
+      toolbar.items.every((item) => item.kind === undefined && item.placement === undefined),
+    { message: 'A preference toolbar contains only selectable panes' }
+  )
 
 type Value = string | boolean | number | undefined
 type Rule =
@@ -274,7 +485,9 @@ export class NativePresentation {
     modal?: NativeNode,
     focus?: string,
     zoom = 1,
-    announcement?: NativeAnnouncement
+    announcement?: NativeAnnouncement,
+    toolbar?: NativeToolbar,
+    popover?: NativePopover
   ): string {
     const ids = new Set<string>()
     const check = (node: NativeNode, depth: number) => {
@@ -285,11 +498,26 @@ export class NativePresentation {
     }
     check(root, 0)
     if (modal) check(modal, 0)
+    if (popover) {
+      // A sheet is window-modal, so a popover cannot share the scene with it.
+      if (modal || !ids.has(popover.anchor)) throw new Error('Invalid native popover anchor')
+      check(popover.root, 0)
+    }
     const validated = {
       version: 1,
       revision: ++this.revision,
       root: nodeSchema.parse(root),
       ...(modal ? { modal: nodeSchema.parse(modal) } : {}),
+      ...(toolbar ? { toolbar: toolbarSchema.parse(toolbar) } : {}),
+      ...(popover
+        ? {
+            popover: {
+              anchor: z.string().min(1).max(300).parse(popover.anchor),
+              close: z.string().min(1).max(100).parse(popover.close),
+              root: nodeSchema.parse(popover.root)
+            }
+          }
+        : {}),
       ...(focus ? { focus } : {}),
       zoom: z.number().min(0.8).max(1.5).parse(zoom),
       ...(announcement
@@ -307,11 +535,21 @@ export class NativePresentation {
       throw new Error('Native scene exceeds its explicit size budget')
     const liveActions = new Set<string>()
     const visit = (node: NativeNode) => {
-      for (const action of [node.action, node.activate, node.context])
+      for (const action of [node.action, node.activate, node.context, node.openWindow])
         if (action) liveActions.add(action)
       node.children?.forEach(visit)
     }
     visit(modal ?? root)
+    if (popover) {
+      visit(popover.root)
+      liveActions.add(popover.close)
+    }
+    // A sheet is window-modal: toolbar commands stay inert until it closes.
+    if (!modal)
+      toolbar?.items.forEach((item) => {
+        if (item.action) liveActions.add(item.action)
+        if (item.activate) liveActions.add(item.activate)
+      })
     this.active = new Map([...this.next].filter(([, binding]) => liveActions.has(binding.id)))
     this.secureResets.clear()
     return json
