@@ -21,13 +21,15 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 are merged; `npm audit` reports 0 vulnerabilities. The release PR changes only the version and
 documents. The [0.4.0 report](docs/audits/2026-10-27-v0.4.0-prerelease/REPORT.md) records the
 candidate checks (770 main and 162 AppKit tests, archive content/modes/links, 16 native groups
-from the extracted app). Publication waits for the merge, a rebuilt package with the same bundle
-content hash, draft asset checks and the user's review of the release notes.
+from the extracted app). PR #72 merged as `a95e5bf` with the candidate tree; the rebuilt package
+has the same bundle content hash, and the draft release assets pass SHA-256 checks. Publication
+waits for the user's review of the release notes. The installed `TheRSS Dev.app` is 0.4.0 from
+`a95e5bf`.
 
 **Apple-native UX (PR #58) merged on 2026-10-26** as `575d2fd`. Follow-up PR #63 (`f480597`)
 restored the CI audit gate with a lockfile-only update, and PR #65 (`148ede4`) gave
-`smoke:sources` one line per source. The installed `TheRSS Dev.app` is built from `f480597` and
-verified (install receipt, 11 user-data tables, 16 native workflow groups). No new release was
+`smoke:sources` one line per source. The `TheRSS Dev.app` installed on 2026-10-26 was built from
+`f480597` and verified (install receipt, 11 user-data tables, 16 native workflow groups). No new release was
 published. GOALS.md records the open items (A8, R1, R2) and the next steps (human acceptance,
 search scopes, window restoration, Web fallback decision, retrieval quality).
 
