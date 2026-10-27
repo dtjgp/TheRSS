@@ -1,6 +1,6 @@
 # TheRSS Goals
 
-## Current stage: v0.4.0 unsigned pre-release
+## Current stage: v0.4.0 unsigned pre-release (published)
 
 On 2026-10-27 the user chose to publish `v0.4.0` after PRs #67, #68 and #70 merged, and to
 review the release notes before publication. #67 (`70cb68f`), #70 (`2797042`, Vitest and
@@ -10,8 +10,11 @@ than 2026-10-26 were moved to the Trash. The release PR changes only the version
 candidate evidence is in the [0.4.0 report](docs/audits/2026-10-27-v0.4.0-prerelease/REPORT.md).
 PR #72 merged as `a95e5bf`; its tree equals the candidate tree. The package rebuilt on
 `a95e5bf` has the candidate bundle content hash, and the draft `v0.4.0` release has three assets
-whose SHA-256 sums pass after download. Publication waits for the user's approval of the notes
-and the `main` CI result in the manifest. The installed `TheRSS Dev.app` is now 0.4.0 from
+whose SHA-256 sums pass after download. After the user approved the notes, the `main` CI run
+40515580398 on `a95e5bf` passed (`quality` and `desktop`), the manifest recorded that result,
+the replaced assets passed SHA-256 checks again, and
+[`v0.4.0`](https://github.com/dtjgp/TheRSS/releases/tag/v0.4.0) was published as a pre-release
+on 2026-10-27 at 17:12:38 UTC. The tag points to `a95e5bf`. The installed `TheRSS Dev.app` is now 0.4.0 from
 `a95e5bf` (see the report for install checks and the open screenshot check). Dependabot PR #71 (`@modelcontextprotocol/sdk` patch) is outside this release.
 
 Next after the release: human acceptance of the native UI; native search scopes and window

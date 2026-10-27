@@ -17,13 +17,15 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Status
 
-**v0.4.0 unsigned pre-release in preparation (2026-10-27).** PRs #64, #67, #68, #69 and #70
+**v0.4.0 unsigned pre-release published (2026-10-27).** PRs #64, #67, #68, #69 and #70
 are merged; `npm audit` reports 0 vulnerabilities. The release PR changes only the version and
 documents. The [0.4.0 report](docs/audits/2026-10-27-v0.4.0-prerelease/REPORT.md) records the
 candidate checks (770 main and 162 AppKit tests, archive content/modes/links, 16 native groups
 from the extracted app). PR #72 merged as `a95e5bf` with the candidate tree; the rebuilt package
-has the same bundle content hash, and the draft release assets pass SHA-256 checks. Publication
-waits for the user's review of the release notes. The installed `TheRSS Dev.app` is 0.4.0 from
+has the same bundle content hash, and the release assets pass SHA-256 checks. After the user
+approved the notes and the `main` CI run on `a95e5bf` passed,
+[`v0.4.0`](https://github.com/dtjgp/TheRSS/releases/tag/v0.4.0) was published as a pre-release
+at 2026-10-27 17:12:38 UTC. The installed `TheRSS Dev.app` is 0.4.0 from
 `a95e5bf`.
 
 **Apple-native UX (PR #58) merged on 2026-10-26** as `575d2fd`. Follow-up PR #63 (`f480597`)
