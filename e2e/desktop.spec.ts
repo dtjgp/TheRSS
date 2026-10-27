@@ -5,6 +5,9 @@ import { env, platform } from 'node:process'
 import { _electron as electron, expect, test, type Page } from '@playwright/test'
 
 test('Discover-first search across every deployed source', async () => {
+  // CI macOS runners took 23.7-45.0 s for this flow while local runs take about 20 s.
+  // The default 45 s budget made it time out at random (2026-10-26, run 40347208346).
+  test.setTimeout(90_000)
   const userDataDirectory = await mkdtemp(join(tmpdir(), 'therss-e2e-'))
   const poisonVault = join(userDataDirectory, 'must-not-touch-llm-wiki')
   const poisonSentinel = join(poisonVault, 'SENTINEL.txt')
@@ -68,207 +71,11 @@ test('Discover-first search across every deployed source', async () => {
     await page.waitForLoadState('domcontentloaded')
     await page.waitForTimeout(500)
 
-    expect(rendererErrors).toEqual([])
-    expect(page.url()).toContain('/out/renderer/index.html')
-    await expect(page.locator('.sidebar__title')).toHaveText('TheRSS')
-    await expect(page.locator('.brand-lockup__index')).toHaveCount(0)
-    await expect(page.getByText('research signal desk')).toHaveCount(0)
-
-    const discoverHeading = page.getByRole('heading', { name: 'Discover research' })
-    await expect(discoverHeading).toBeVisible()
-    const appleTypography = await page.evaluate(() => {
-      const rootStyle = getComputedStyle(document.documentElement)
-      return {
-        textVariable: rootStyle.getPropertyValue('--font-apple-text').trim(),
-        displayVariable: rootStyle.getPropertyValue('--font-apple-display').trim(),
-        bodyFont: getComputedStyle(document.body).fontFamily
-      }
-    })
-    expect(appleTypography.textVariable).toContain('-apple-system')
-    expect(appleTypography.textVariable).toContain('SF Pro Text')
-    expect(appleTypography.displayVariable).toContain('SF Pro Display')
-    expect(appleTypography.bodyFont).toContain('-apple-system')
-    expect(
-      await discoverHeading.evaluate((element) => getComputedStyle(element).fontFamily)
-    ).toContain('SF Pro Display')
+    // Locators used by more than one phase. Locators query the page only when used.
     const primaryNavigation = page.getByRole('navigation', { name: 'Primary navigation' })
-    await expect(primaryNavigation.getByRole('button')).toHaveCount(2)
-    await expect(primaryNavigation.getByRole('button', { name: '01 Discover' })).toBeVisible()
-    await expect(primaryNavigation.getByRole('button', { name: '02 Saved' })).toBeVisible()
     const researchUtilities = page.getByRole('navigation', { name: 'Research utilities' })
-    await expect(researchUtilities.getByRole('button')).toHaveCount(2)
-    await expect(researchUtilities.getByRole('button', { name: '03 Data Analytics' })).toBeVisible()
-    await expect(researchUtilities.getByRole('button', { name: '04 Sources' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible()
-    await expect(primaryNavigation.getByText('Today')).toHaveCount(0)
-    await expect(primaryNavigation.getByText('Interests')).toHaveCount(0)
-    if (!isBaselineCapture) {
-      expect(
-        await page.locator('.nav-item--active .nav-item__icon').evaluate((element) => {
-          const probe = document.createElement('span')
-          probe.style.color = 'var(--system-accent)'
-          document.body.append(probe)
-          const matches = getComputedStyle(element).color === getComputedStyle(probe).color
-          probe.remove()
-          return matches
-        })
-      ).toBe(true)
-    }
-
-    if (!isBaselineCapture) {
-      const applicationMenuLabels = await application.evaluate(({ Menu }) =>
-        (Menu.getApplicationMenu()?.items ?? []).map((item) => ({
-          label: item.label,
-          submenu: item.submenu?.items.map((child) => child.label) ?? []
-        }))
-      )
-      const fileMenu = applicationMenuLabels.find((item) => item.label === 'File')
-      const viewMenu = applicationMenuLabels.find((item) => item.label === 'View')
-      expect(applicationMenuLabels).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            label: 'TheRSS',
-            submenu: expect.arrayContaining(['Settings…'])
-          }),
-          expect.objectContaining({
-            label: 'View',
-            submenu: expect.arrayContaining(['Discover', 'Saved', 'Show or Hide Sidebar'])
-          })
-        ])
-      )
-      expect(viewMenu?.submenu).not.toContain('Today')
-      expect(viewMenu?.submenu).not.toContain('Interests')
-      expect(fileMenu?.submenu).toContain('Close Window')
-    }
-
-    const sourcePicker = page.getByRole('button', {
-      name: 'Choose sources, 22 of 22 selected'
-    })
-    await expect(sourcePicker).toHaveAttribute('aria-expanded', 'false')
     const viewContext = page.getByRole('group', { name: 'View context' })
-    await expect(viewContext).toContainText('22 sources')
-    await expect(viewContext).toContainText('Search by research question')
-    await capture(page, '01-discover-first.png')
-    if (!isBaselineCapture) {
-      const originalBounds = await application.evaluate(({ BrowserWindow }) =>
-        BrowserWindow.getAllWindows()[0]!.getBounds()
-      )
-      await application.evaluate(({ BrowserWindow }, bounds) => {
-        BrowserWindow.getAllWindows()[0]?.setBounds({ ...bounds, width: 820, height: 700 })
-      }, originalBounds)
-      await page.waitForTimeout(250)
-      await expect(viewContext.locator('.topbar-context__secondary')).toHaveCSS('display', 'none')
-      expect(
-        await page.evaluate(() =>
-          Math.max(
-            document.documentElement.scrollWidth - document.documentElement.clientWidth,
-            document.body.scrollWidth - document.body.clientWidth
-          )
-        )
-      ).toBeLessThanOrEqual(1)
-      await capture(page, '01a-discover-820.png')
-      await application.evaluate(({ BrowserWindow }, bounds) => {
-        BrowserWindow.getAllWindows()[0]?.setBounds(bounds)
-      }, originalBounds)
-      await page.waitForTimeout(250)
-    }
-    await sourcePicker.click()
-    const sourceGroup = page.getByRole('group', { name: 'Search sources' })
-    await expect(sourceGroup.getByRole('checkbox')).toHaveCount(22)
-    expect(
-      await sourceGroup
-        .getByRole('checkbox')
-        .evaluateAll((inputs) => inputs.every((input) => (input as HTMLInputElement).checked))
-    ).toBe(true)
-    await expect(sourceGroup.getByRole('checkbox', { name: 'Search arXiv' })).toBeChecked()
-    await expect(sourceGroup.getByRole('checkbox', { name: 'Search GitHub' })).toBeChecked()
-    await expect(
-      sourceGroup.getByRole('checkbox', { name: 'Search 北京智源人工智能研究院' })
-    ).toBeChecked()
-    await sourceGroup.getByRole('button', { name: 'Clear all sources' }).click()
-    await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeDisabled()
-    await sourceGroup.getByRole('button', { name: 'Select all sources' }).click()
-    await sourcePicker.click()
-    await expect(sourcePicker).toHaveAttribute('aria-expanded', 'false')
-    await page
-      .getByRole('textbox', { name: 'Research question' })
-      .fill('semantic communication pruning for edge deployment')
-    await page.getByRole('combobox', { name: 'Search with' }).selectOption('codex')
-    await page.getByRole('button', { name: 'Search', exact: true }).click()
-
-    const activePipeline = page.getByRole('region', { name: 'Discover run pipeline' })
-    const liveProgress = activePipeline.getByRole('status', { name: 'Discover run progress' })
-    const cancelDiscover = activePipeline.getByRole('button', { name: 'Cancel Discover search' })
-    await expect(liveProgress).toContainText('Expanding research intent')
-    await expect(liveProgress.getByRole('button')).toHaveCount(0)
-    await expect(cancelDiscover).toBeVisible()
-    await expect(cancelDiscover).toBeEnabled()
-    await expect(cancelDiscover).toHaveCSS('border-radius', '7px')
-    await expect(cancelDiscover).toHaveCSS('cursor', 'pointer')
-    await expect(cancelDiscover).toHaveCSS('opacity', '1')
-    await capture(page, '01b-discover-planning.png')
-
-    await expect(liveProgress).toContainText('Searching selected sources')
-    await expect(liveProgress.locator('.discover-run-card__header span')).toHaveCSS(
-      'font-size',
-      '11px'
-    )
-    await expect(liveProgress.locator('.discover-run-stage__copy > span').first()).toHaveCSS(
-      'font-size',
-      '11px'
-    )
-    await expect(liveProgress.locator('.discover-run-stage__value').first()).toHaveCSS(
-      'font-size',
-      '11px'
-    )
-    await capture(page, '01c-discover-searching.png')
-
-    if (!isBaselineCapture) {
-      const activeWideBounds = await application.evaluate(({ BrowserWindow }) =>
-        BrowserWindow.getAllWindows()[0]!.getBounds()
-      )
-      await application.evaluate(({ BrowserWindow }, bounds) => {
-        BrowserWindow.getAllWindows()[0]?.setBounds({ ...bounds, width: 820, height: 700 })
-      }, activeWideBounds)
-      await page.waitForTimeout(150)
-      await expect(activePipeline).toBeVisible()
-      expect(
-        await page.evaluate(() =>
-          Math.max(
-            document.documentElement.scrollWidth - document.documentElement.clientWidth,
-            document.body.scrollWidth - document.body.clientWidth
-          )
-        )
-      ).toBeLessThanOrEqual(1)
-      await capture(page, '01d-discover-searching-820.png')
-
-      await page.emulateMedia({ colorScheme: 'dark' })
-      await capture(page, '01e-discover-searching-dark.png')
-      await page.emulateMedia({ colorScheme: 'light' })
-
-      const activeCdp = await page.context().newCDPSession(page)
-      await activeCdp.send('Emulation.setEmulatedMedia', {
-        features: [{ name: 'forced-colors', value: 'active' }]
-      })
-      await capture(page, '01f-discover-searching-forced-colors.png')
-      await activeCdp.send('Emulation.setEmulatedMedia', { features: [] })
-
-      await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
-      const currentStageMarker = liveProgress.locator(
-        ".discover-run-stage[data-state='current'] .discover-run-stage__marker"
-      )
-      await expect(currentStageMarker).toHaveCSS('animation-iteration-count', '1')
-      await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'no-preference' })
-      await application.evaluate(({ BrowserWindow }, bounds) => {
-        BrowserWindow.getAllWindows()[0]?.setBounds(bounds)
-      }, activeWideBounds)
-      await page.waitForTimeout(150)
-    }
-
-    await expect(page.getByText('Search complete')).toBeVisible()
     const searchDetails = page.getByLabel('Discover search details')
-    await expect(searchDetails).not.toHaveAttribute('open', '')
-
     const discoverList = page.getByRole('list', { name: 'Discover result list' })
     const discoverPaperRow = discoverList.getByRole('button', {
       name: 'Select result: Semantic expansion search for edge intelligence'
@@ -280,534 +87,766 @@ test('Discover-first search across every deployed source', async () => {
       name: 'Select result: BAAI structured pruning research fixture'
     })
     const selectedDiscover = page.getByRole('article', { name: 'Selected Discover result' })
-    await expect(discoverPaperRow).toBeVisible()
-    await expect(discoverRepositoryRow).toBeVisible()
-    await expect(discoverArticleRow).toBeVisible()
-    await expect(discoverArticleRow.getByText('北京智源人工智能研究院')).toBeVisible()
-    await expect(discoverArticleRow.getByText('Article')).toBeVisible()
-    await expect(
-      selectedDiscover.getByRole('heading', {
-        name: 'Semantic expansion search for edge intelligence'
-      })
-    ).toBeVisible()
-    await discoverPaperRow.click()
-    await page.keyboard.press('ArrowDown')
-    await expect(
-      selectedDiscover.getByRole('heading', {
-        name: 'BAAI structured pruning research fixture'
-      })
-    ).toBeVisible()
-    await discoverPaperRow.click()
     const resultRegion = page.getByRole('region', { name: 'Discover results' })
-    await expect(resultRegion).toHaveAttribute('tabindex', '0')
-    await expect(resultRegion).toHaveCSS('overflow-y', 'hidden')
-    await expect(discoverList).toHaveCSS('overflow-y', 'auto')
-    await expect(selectedDiscover).toHaveCSS('overflow-y', 'auto')
-    await expect(selectedDiscover.locator('.signal-detail__summary')).toHaveCSS('display', 'block')
-    await expect(selectedDiscover.locator('.signal-detail__summary')).toContainText(
-      'Full fixture summary ends here.'
-    )
-    await expect(selectedDiscover.getByRole('button', { name: 'Show full summary' })).toHaveCount(0)
-    const discoverListDivider = page.getByRole('separator', {
-      name: 'Resize Discover result list'
-    })
-    await expect(discoverListDivider).toBeVisible()
-    const paperSave = selectedDiscover.getByRole('button', { name: 'Save result' })
-    await expect(paperSave).toHaveAttribute('aria-pressed', 'false')
-    await expect(paperSave.locator('[data-save-star]')).toHaveAttribute('fill', 'none')
-    await expect(selectedDiscover.getByRole('button', { name: 'Analyze paper' })).toBeVisible()
-    await expect(
-      selectedDiscover.getByRole('button', { name: 'Promote to llm-wiki' })
-    ).toBeVisible()
-    await selectedDiscover.getByRole('button', { name: 'Promote to llm-wiki' }).click()
-    const promotionDialog = page.getByRole('dialog', { name: 'Promote paper to llm-wiki' })
-    await expect(promotionDialog).toContainText('Destination: local llm-wiki vault')
-    await expect(promotionDialog).not.toContainText(poisonVault)
-    await expect(promotionDialog).toContainText(
-      'Literature/Paper_Notes/L2_Structured/Model_Compression'
-    )
-    await capture(page, '02a-llm-wiki-promotion-preview.png')
-    await promotionDialog.getByRole('button', { name: 'Cancel promotion' }).click()
-    await expect(promotionDialog).toHaveCount(0)
-    await selectedDiscover.getByRole('button', { name: 'Promote to llm-wiki' }).click()
-    await page.getByRole('button', { name: 'Confirm local promotion' }).click()
-    await expect(selectedDiscover.getByRole('status')).toContainText(
-      'without writing the real vault'
-    )
-    await selectedDiscover.getByRole('button', { name: 'Analyze paper' }).click()
-    await expect(selectedDiscover.getByLabel('L1 paper analysis result')).toContainText(
-      'llm-wiki-paper-l1-v3'
-    )
-    await expect(paperSave).toHaveAttribute('aria-pressed', 'false')
-    const resultTop = await page
-      .getByRole('region', { name: 'Discover results' })
-      .evaluate((element) => element.getBoundingClientRect().top)
-    const detailsTop = await searchDetails.evaluate(
-      (element) => element.getBoundingClientRect().top
-    )
-    expect(resultTop).toBeLessThan(detailsTop)
-    await page.waitForTimeout(1_200)
-    await capture(page, '02-discover-results.png')
 
-    if (!isBaselineCapture) {
-      const shell = page.locator('.app-shell')
-      const activeDiscoverNav = primaryNavigation.getByRole('button', { name: '01 Discover' })
-      const allDiscoverResults = page
-        .getByRole('group', { name: 'Filter Discover results' })
-        .getByRole('button', { name: 'All 3' })
-      const selectedControlRadii = await Promise.all([
-        activeDiscoverNav.evaluate((element) => getComputedStyle(element).borderRadius),
-        allDiscoverResults.evaluate((element) => getComputedStyle(element).borderRadius)
-      ])
-      expect(selectedControlRadii).toEqual(['7px', '7px'])
+    await test.step('Launch, shell navigation, typography and menus', async () => {
+      expect(rendererErrors).toEqual([])
+      expect(page.url()).toContain('/out/renderer/index.html')
+      await expect(page.locator('.sidebar__title')).toHaveText('TheRSS')
+      await expect(page.locator('.brand-lockup__index')).toHaveCount(0)
+      await expect(page.getByText('research signal desk')).toHaveCount(0)
 
-      const discoverWideBounds = await application.evaluate(({ BrowserWindow }) =>
-        BrowserWindow.getAllWindows()[0]!.getBounds()
-      )
-      await application.evaluate(({ BrowserWindow }, bounds) => {
-        BrowserWindow.getAllWindows()[0]?.setBounds({ ...bounds, width: 820, height: 700 })
-      }, discoverWideBounds)
-      await page.waitForTimeout(250)
-      await expect(shell).not.toHaveClass(/app-shell--sidebar-collapsed/)
-      await resultRegion.evaluate((element) => element.scrollIntoView({ block: 'start' }))
-      await expect(searchDetails.locator('.discover-status')).toHaveCSS('white-space', 'nowrap')
+      const discoverHeading = page.getByRole('heading', { name: 'Discover research' })
+      await expect(discoverHeading).toBeVisible()
+      const appleTypography = await page.evaluate(() => {
+        const rootStyle = getComputedStyle(document.documentElement)
+        return {
+          textVariable: rootStyle.getPropertyValue('--font-apple-text').trim(),
+          displayVariable: rootStyle.getPropertyValue('--font-apple-display').trim(),
+          bodyFont: getComputedStyle(document.body).fontFamily
+        }
+      })
+      expect(appleTypography.textVariable).toContain('-apple-system')
+      expect(appleTypography.textVariable).toContain('SF Pro Text')
+      expect(appleTypography.displayVariable).toContain('SF Pro Display')
+      expect(appleTypography.bodyFont).toContain('-apple-system')
+      expect(
+        await discoverHeading.evaluate((element) => getComputedStyle(element).fontFamily)
+      ).toContain('SF Pro Display')
+      await expect(primaryNavigation.getByRole('button')).toHaveCount(2)
+      await expect(primaryNavigation.getByRole('button', { name: '01 Discover' })).toBeVisible()
+      await expect(primaryNavigation.getByRole('button', { name: '02 Saved' })).toBeVisible()
+      await expect(researchUtilities.getByRole('button')).toHaveCount(2)
       await expect(
-        searchDetails.getByRole('group', { name: 'Recorded Discover run summary' })
+        researchUtilities.getByRole('button', { name: '03 Data Analytics' })
       ).toBeVisible()
-      await capture(page, '02a-discover-results-820.png')
-      await application.evaluate(({ BrowserWindow }, bounds) => {
-        BrowserWindow.getAllWindows()[0]?.setBounds(bounds)
-      }, discoverWideBounds)
-      await page.waitForTimeout(250)
-      await resultRegion.evaluate((element) => element.scrollIntoView({ block: 'start' }))
+      await expect(researchUtilities.getByRole('button', { name: '04 Sources' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible()
+      await expect(primaryNavigation.getByText('Today')).toHaveCount(0)
+      await expect(primaryNavigation.getByText('Interests')).toHaveCount(0)
+      if (!isBaselineCapture) {
+        expect(
+          await page.locator('.nav-item--active .nav-item__icon').evaluate((element) => {
+            const probe = document.createElement('span')
+            probe.style.color = 'var(--system-accent)'
+            document.body.append(probe)
+            const matches = getComputedStyle(element).color === getComputedStyle(probe).color
+            probe.remove()
+            return matches
+          })
+        ).toBe(true)
+      }
 
+      if (!isBaselineCapture) {
+        const applicationMenuLabels = await application.evaluate(({ Menu }) =>
+          (Menu.getApplicationMenu()?.items ?? []).map((item) => ({
+            label: item.label,
+            submenu: item.submenu?.items.map((child) => child.label) ?? []
+          }))
+        )
+        const fileMenu = applicationMenuLabels.find((item) => item.label === 'File')
+        const viewMenu = applicationMenuLabels.find((item) => item.label === 'View')
+        expect(applicationMenuLabels).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              label: 'TheRSS',
+              submenu: expect.arrayContaining(['Settings…'])
+            }),
+            expect.objectContaining({
+              label: 'View',
+              submenu: expect.arrayContaining(['Discover', 'Saved', 'Show or Hide Sidebar'])
+            })
+          ])
+        )
+        expect(viewMenu?.submenu).not.toContain('Today')
+        expect(viewMenu?.submenu).not.toContain('Interests')
+        expect(fileMenu?.submenu).toContain('Close Window')
+      }
+    })
+
+    await test.step('Discover: source picker and live search progress', async () => {
+      const sourcePicker = page.getByRole('button', {
+        name: 'Choose sources, 22 of 22 selected'
+      })
+      await expect(sourcePicker).toHaveAttribute('aria-expanded', 'false')
+      await expect(viewContext).toContainText('22 sources')
+      await expect(viewContext).toContainText('Search by research question')
+      await capture(page, '01-discover-first.png')
+      if (!isBaselineCapture) {
+        const originalBounds = await application.evaluate(({ BrowserWindow }) =>
+          BrowserWindow.getAllWindows()[0]!.getBounds()
+        )
+        await application.evaluate(({ BrowserWindow }, bounds) => {
+          BrowserWindow.getAllWindows()[0]?.setBounds({ ...bounds, width: 820, height: 700 })
+        }, originalBounds)
+        await page.waitForTimeout(250)
+        await expect(viewContext.locator('.topbar-context__secondary')).toHaveCSS('display', 'none')
+        expect(
+          await page.evaluate(() =>
+            Math.max(
+              document.documentElement.scrollWidth - document.documentElement.clientWidth,
+              document.body.scrollWidth - document.body.clientWidth
+            )
+          )
+        ).toBeLessThanOrEqual(1)
+        await capture(page, '01a-discover-820.png')
+        await application.evaluate(({ BrowserWindow }, bounds) => {
+          BrowserWindow.getAllWindows()[0]?.setBounds(bounds)
+        }, originalBounds)
+        await page.waitForTimeout(250)
+      }
+      await sourcePicker.click()
+      const sourceGroup = page.getByRole('group', { name: 'Search sources' })
+      await expect(sourceGroup.getByRole('checkbox')).toHaveCount(22)
+      expect(
+        await sourceGroup
+          .getByRole('checkbox')
+          .evaluateAll((inputs) => inputs.every((input) => (input as HTMLInputElement).checked))
+      ).toBe(true)
+      await expect(sourceGroup.getByRole('checkbox', { name: 'Search arXiv' })).toBeChecked()
+      await expect(sourceGroup.getByRole('checkbox', { name: 'Search GitHub' })).toBeChecked()
+      await expect(
+        sourceGroup.getByRole('checkbox', { name: 'Search 北京智源人工智能研究院' })
+      ).toBeChecked()
+      await sourceGroup.getByRole('button', { name: 'Clear all sources' }).click()
+      await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeDisabled()
+      await sourceGroup.getByRole('button', { name: 'Select all sources' }).click()
+      await sourcePicker.click()
+      await expect(sourcePicker).toHaveAttribute('aria-expanded', 'false')
+      await page
+        .getByRole('textbox', { name: 'Research question' })
+        .fill('semantic communication pruning for edge deployment')
+      await page.getByRole('combobox', { name: 'Search with' }).selectOption('codex')
+      await page.getByRole('button', { name: 'Search', exact: true }).click()
+
+      const activePipeline = page.getByRole('region', { name: 'Discover run pipeline' })
+      const liveProgress = activePipeline.getByRole('status', { name: 'Discover run progress' })
+      const cancelDiscover = activePipeline.getByRole('button', { name: 'Cancel Discover search' })
+      await expect(liveProgress).toContainText('Expanding research intent')
+      await expect(liveProgress.getByRole('button')).toHaveCount(0)
+      await expect(cancelDiscover).toBeVisible()
+      await expect(cancelDiscover).toBeEnabled()
+      await expect(cancelDiscover).toHaveCSS('border-radius', '7px')
+      await expect(cancelDiscover).toHaveCSS('cursor', 'pointer')
+      await expect(cancelDiscover).toHaveCSS('opacity', '1')
+      await capture(page, '01b-discover-planning.png')
+
+      await expect(liveProgress).toContainText('Searching selected sources')
+      await expect(liveProgress.locator('.discover-run-card__header span')).toHaveCSS(
+        'font-size',
+        '11px'
+      )
+      await expect(liveProgress.locator('.discover-run-stage__copy > span').first()).toHaveCSS(
+        'font-size',
+        '11px'
+      )
+      await expect(liveProgress.locator('.discover-run-stage__value').first()).toHaveCSS(
+        'font-size',
+        '11px'
+      )
+      await capture(page, '01c-discover-searching.png')
+
+      if (!isBaselineCapture) {
+        const activeWideBounds = await application.evaluate(({ BrowserWindow }) =>
+          BrowserWindow.getAllWindows()[0]!.getBounds()
+        )
+        await application.evaluate(({ BrowserWindow }, bounds) => {
+          BrowserWindow.getAllWindows()[0]?.setBounds({ ...bounds, width: 820, height: 700 })
+        }, activeWideBounds)
+        await page.waitForTimeout(150)
+        await expect(activePipeline).toBeVisible()
+        expect(
+          await page.evaluate(() =>
+            Math.max(
+              document.documentElement.scrollWidth - document.documentElement.clientWidth,
+              document.body.scrollWidth - document.body.clientWidth
+            )
+          )
+        ).toBeLessThanOrEqual(1)
+        await capture(page, '01d-discover-searching-820.png')
+
+        await page.emulateMedia({ colorScheme: 'dark' })
+        await capture(page, '01e-discover-searching-dark.png')
+        await page.emulateMedia({ colorScheme: 'light' })
+
+        const activeCdp = await page.context().newCDPSession(page)
+        await activeCdp.send('Emulation.setEmulatedMedia', {
+          features: [{ name: 'forced-colors', value: 'active' }]
+        })
+        await capture(page, '01f-discover-searching-forced-colors.png')
+        await activeCdp.send('Emulation.setEmulatedMedia', { features: [] })
+
+        await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
+        const currentStageMarker = liveProgress.locator(
+          ".discover-run-stage[data-state='current'] .discover-run-stage__marker"
+        )
+        await expect(currentStageMarker).toHaveCSS('animation-iteration-count', '1')
+        await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'no-preference' })
+        await application.evaluate(({ BrowserWindow }, bounds) => {
+          BrowserWindow.getAllWindows()[0]?.setBounds(bounds)
+        }, activeWideBounds)
+        await page.waitForTimeout(150)
+      }
+    })
+
+    await test.step('Discover: results, reading, promotion and analysis', async () => {
+      await expect(page.getByText('Search complete')).toBeVisible()
+      await expect(searchDetails).not.toHaveAttribute('open', '')
+
+      await expect(discoverPaperRow).toBeVisible()
+      await expect(discoverRepositoryRow).toBeVisible()
+      await expect(discoverArticleRow).toBeVisible()
+      await expect(discoverArticleRow.getByText('北京智源人工智能研究院')).toBeVisible()
+      await expect(discoverArticleRow.getByText('Article')).toBeVisible()
+      await expect(
+        selectedDiscover.getByRole('heading', {
+          name: 'Semantic expansion search for edge intelligence'
+        })
+      ).toBeVisible()
+      await discoverPaperRow.click()
+      await page.keyboard.press('ArrowDown')
+      await expect(
+        selectedDiscover.getByRole('heading', {
+          name: 'BAAI structured pruning research fixture'
+        })
+      ).toBeVisible()
+      await discoverPaperRow.click()
+      await expect(resultRegion).toHaveAttribute('tabindex', '0')
+      await expect(resultRegion).toHaveCSS('overflow-y', 'hidden')
+      await expect(discoverList).toHaveCSS('overflow-y', 'auto')
+      await expect(selectedDiscover).toHaveCSS('overflow-y', 'auto')
+      await expect(selectedDiscover.locator('.signal-detail__summary')).toHaveCSS(
+        'display',
+        'block'
+      )
+      await expect(selectedDiscover.locator('.signal-detail__summary')).toContainText(
+        'Full fixture summary ends here.'
+      )
+      await expect(selectedDiscover.getByRole('button', { name: 'Show full summary' })).toHaveCount(
+        0
+      )
+      const discoverListDivider = page.getByRole('separator', {
+        name: 'Resize Discover result list'
+      })
+      await expect(discoverListDivider).toBeVisible()
+      const paperSave = selectedDiscover.getByRole('button', { name: 'Save result' })
+      await expect(paperSave).toHaveAttribute('aria-pressed', 'false')
+      await expect(paperSave.locator('[data-save-star]')).toHaveAttribute('fill', 'none')
+      await expect(selectedDiscover.getByRole('button', { name: 'Analyze paper' })).toBeVisible()
+      await expect(
+        selectedDiscover.getByRole('button', { name: 'Promote to llm-wiki' })
+      ).toBeVisible()
+      await selectedDiscover.getByRole('button', { name: 'Promote to llm-wiki' }).click()
+      const promotionDialog = page.getByRole('dialog', { name: 'Promote paper to llm-wiki' })
+      await expect(promotionDialog).toContainText('Destination: local llm-wiki vault')
+      await expect(promotionDialog).not.toContainText(poisonVault)
+      await expect(promotionDialog).toContainText(
+        'Literature/Paper_Notes/L2_Structured/Model_Compression'
+      )
+      await capture(page, '02a-llm-wiki-promotion-preview.png')
+      await promotionDialog.getByRole('button', { name: 'Cancel promotion' }).click()
+      await expect(promotionDialog).toHaveCount(0)
+      await selectedDiscover.getByRole('button', { name: 'Promote to llm-wiki' }).click()
+      await page.getByRole('button', { name: 'Confirm local promotion' }).click()
+      await expect(selectedDiscover.getByRole('status')).toContainText(
+        'without writing the real vault'
+      )
+      await selectedDiscover.getByRole('button', { name: 'Analyze paper' }).click()
+      await expect(selectedDiscover.getByLabel('L1 paper analysis result')).toContainText(
+        'llm-wiki-paper-l1-v3'
+      )
+      await expect(paperSave).toHaveAttribute('aria-pressed', 'false')
+      const resultTop = await page
+        .getByRole('region', { name: 'Discover results' })
+        .evaluate((element) => element.getBoundingClientRect().top)
+      const detailsTop = await searchDetails.evaluate(
+        (element) => element.getBoundingClientRect().top
+      )
+      expect(resultTop).toBeLessThan(detailsTop)
+      await page.waitForTimeout(1_200)
+      await capture(page, '02-discover-results.png')
+    })
+
+    await test.step('Discover: 820 pt, dark, 200% zoom and forced-colors layout', async () => {
+      if (!isBaselineCapture) {
+        const shell = page.locator('.app-shell')
+        const activeDiscoverNav = primaryNavigation.getByRole('button', { name: '01 Discover' })
+        const allDiscoverResults = page
+          .getByRole('group', { name: 'Filter Discover results' })
+          .getByRole('button', { name: 'All 3' })
+        const selectedControlRadii = await Promise.all([
+          activeDiscoverNav.evaluate((element) => getComputedStyle(element).borderRadius),
+          allDiscoverResults.evaluate((element) => getComputedStyle(element).borderRadius)
+        ])
+        expect(selectedControlRadii).toEqual(['7px', '7px'])
+
+        const discoverWideBounds = await application.evaluate(({ BrowserWindow }) =>
+          BrowserWindow.getAllWindows()[0]!.getBounds()
+        )
+        await application.evaluate(({ BrowserWindow }, bounds) => {
+          BrowserWindow.getAllWindows()[0]?.setBounds({ ...bounds, width: 820, height: 700 })
+        }, discoverWideBounds)
+        await page.waitForTimeout(250)
+        await expect(shell).not.toHaveClass(/app-shell--sidebar-collapsed/)
+        await resultRegion.evaluate((element) => element.scrollIntoView({ block: 'start' }))
+        await expect(searchDetails.locator('.discover-status')).toHaveCSS('white-space', 'nowrap')
+        await expect(
+          searchDetails.getByRole('group', { name: 'Recorded Discover run summary' })
+        ).toBeVisible()
+        await capture(page, '02a-discover-results-820.png')
+        await application.evaluate(({ BrowserWindow }, bounds) => {
+          BrowserWindow.getAllWindows()[0]?.setBounds(bounds)
+        }, discoverWideBounds)
+        await page.waitForTimeout(250)
+        await resultRegion.evaluate((element) => element.scrollIntoView({ block: 'start' }))
+
+        await page.emulateMedia({ colorScheme: 'dark' })
+        await capture(page, '02b-discover-results-dark.png')
+        await page.emulateMedia({ colorScheme: 'light' })
+
+        await application.evaluate(({ BrowserWindow }, bounds) => {
+          BrowserWindow.getAllWindows()[0]?.setBounds({ ...bounds, width: 900, height: 700 })
+        }, discoverWideBounds)
+        await page.waitForTimeout(150)
+        await application.evaluate(({ BrowserWindow }) => {
+          BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(2)
+        })
+        await page.waitForTimeout(150)
+        await expect(shell).toHaveClass(/app-shell--sidebar-collapsed/)
+        await expect(shell).toHaveAttribute('data-sidebar-constrained', 'true')
+        await expect(
+          page.getByRole('button', { name: 'Sidebar compact at current zoom' })
+        ).toBeDisabled()
+        await expect(page.getByRole('separator', { name: 'Resize sidebar' })).toBeHidden()
+        await expect(page.locator('.sidebar')).toHaveCSS('width', '84px')
+        await resultRegion.evaluate((element) => element.scrollIntoView({ block: 'start' }))
+        expect(
+          await resultRegion
+            .getByRole('heading', { name: 'Ranked source records' })
+            .evaluate((element) => element.scrollWidth - element.clientWidth)
+        ).toBeLessThanOrEqual(1)
+        const discoverZoomOverflow = await page.evaluate(() => ({
+          document: Math.max(
+            document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            document.body.scrollWidth - document.body.clientWidth
+          ),
+          main: Math.max(
+            document.querySelector('main')!.scrollWidth -
+              document.querySelector('main')!.clientWidth,
+            0
+          )
+        }))
+        expect(discoverZoomOverflow.document).toBeLessThanOrEqual(1)
+        expect(discoverZoomOverflow.main).toBeLessThanOrEqual(1)
+        expect(
+          (await page.locator('#discover-visible-results').boundingBox())?.height
+        ).toBeGreaterThanOrEqual(220)
+        await page.locator('.signal-detail__title').scrollIntoViewIfNeeded()
+        await expect(page.locator('.signal-detail__title')).toBeInViewport()
+        expect(await page.evaluate(() => document.scrollingElement?.scrollTop)).toBe(0)
+        await capture(page, '02c-discover-results-200-percent.png')
+        await application.evaluate(({ BrowserWindow }) => {
+          BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(1)
+        })
+        await application.evaluate(({ BrowserWindow }, bounds) => {
+          BrowserWindow.getAllWindows()[0]?.setBounds(bounds)
+        }, discoverWideBounds)
+        await page.waitForTimeout(150)
+        await expect(shell).not.toHaveClass(/app-shell--sidebar-collapsed/)
+        await expect(shell).toHaveAttribute('data-sidebar-constrained', 'false')
+        await expect(page.getByRole('button', { name: 'Hide sidebar' })).toBeEnabled()
+        await expect(page.getByRole('separator', { name: 'Resize sidebar' })).toBeVisible()
+
+        const discoverCdp = await page.context().newCDPSession(page)
+        await discoverCdp.send('Emulation.setEmulatedMedia', {
+          features: [{ name: 'forced-colors', value: 'active' }]
+        })
+        await resultRegion.focus()
+        for (let index = 0; index < 5; index += 1) await page.keyboard.press('Tab')
+        await expect(discoverPaperRow).toBeFocused()
+        await expect(discoverPaperRow).toHaveCSS('outline-style', 'solid')
+        await capture(page, '02d-discover-results-forced-colors.png')
+        await discoverCdp.send('Emulation.setEmulatedMedia', { features: [] })
+      }
+    })
+
+    await test.step('Discover: search details, result filter and Save', async () => {
+      await page.getByRole('button', { name: /Search details/u }).click()
+      await expect(searchDetails.getByText('Codex CLI · codex-cli')).toBeVisible()
+      const outcomes = page.getByRole('list', { name: 'Source outcomes' })
+      await expect(outcomes.getByRole('listitem')).toHaveCount(22)
+      await expect(outcomes.getByText('北京智源人工智能研究院')).toBeVisible()
+
+      const resultFilters = page.getByRole('group', { name: 'Filter Discover results' })
+      await resultFilters.getByRole('button', { name: 'Other 1' }).click()
+      await expect(discoverPaperRow).toHaveCount(0)
+      await expect(discoverRepositoryRow).toHaveCount(0)
+      await expect(discoverArticleRow).toBeVisible()
+      await expect(
+        selectedDiscover.getByRole('heading', {
+          name: 'BAAI structured pruning research fixture'
+        })
+      ).toBeVisible()
+      await expect(selectedDiscover.getByRole('button', { name: 'Analyze paper' })).toHaveCount(0)
+      await expect(
+        selectedDiscover.getByRole('button', { name: 'Promote to llm-wiki' })
+      ).toHaveCount(0)
+      await capture(page, '03-discover-other.png')
+
+      await selectedDiscover.getByRole('button', { name: 'Save result' }).click({ force: true })
+      const removeSavedArticle = selectedDiscover.getByRole('button', {
+        name: 'Remove result from Saved'
+      })
+      await expect(removeSavedArticle).toHaveAttribute('aria-pressed', 'true')
+      await expect(removeSavedArticle.locator('[data-save-star]')).toHaveAttribute(
+        'fill',
+        'currentColor'
+      )
+      await capture(page, '03b-discover-star-saved.png')
+      await removeSavedArticle.click({ force: true })
+      await expect(selectedDiscover.getByRole('button', { name: 'Save result' })).toHaveAttribute(
+        'aria-pressed',
+        'false'
+      )
+      await selectedDiscover.getByRole('button', { name: 'Save result' }).click({ force: true })
+    })
+    await test.step('Saved: local search, list width, dismiss and undo', async () => {
+      await primaryNavigation.getByRole('button', { name: '02 Saved' }).click()
+      await expect(page.getByRole('heading', { name: 'Saved research signals' })).toBeVisible()
+      await expect(viewContext).toContainText('1 saved')
+      await expect(viewContext).toContainText('All sources')
+      await expect(
+        page.getByRole('button', {
+          name: 'Select signal: BAAI structured pruning research fixture'
+        })
+      ).toBeVisible()
+      await expect(
+        page.getByRole('group', { name: 'Filter saved signals by source' })
+      ).toBeVisible()
+      await application.evaluate(({ Menu }) => {
+        const editMenu = Menu.getApplicationMenu()?.items.find((item) => item.label === 'Edit')
+        editMenu?.submenu?.items.find((item) => item.label === 'Find Local Research')?.click()
+      })
+      const localSearch = page.getByRole('dialog', { name: 'Find research' })
+      await expect(localSearch).toBeVisible()
+      await localSearch.getByRole('searchbox', { name: 'Search local research' }).fill('structured')
+      await page.keyboard.press('Enter')
+      await expect(localSearch.getByRole('list', { name: 'Local search results' })).toContainText(
+        'BAAI structured pruning research fixture'
+      )
+      await page.keyboard.press('Escape')
+      await expect(localSearch).toHaveCount(0)
+      const savedActionsBox = await page.locator('.signal-detail__actions').boundingBox()
+      const savedSummaryBox = await page.locator('.signal-detail__summary').boundingBox()
+      expect(savedActionsBox).not.toBeNull()
+      expect(savedSummaryBox).not.toBeNull()
+      if (savedActionsBox && savedSummaryBox) {
+        expect(savedActionsBox.y).toBeLessThan(savedSummaryBox.y)
+      }
+      const savedListDivider = page.getByRole('separator', { name: 'Resize saved signal list' })
+      await expect(savedListDivider).toBeVisible()
+      // End grows the pane to the maximum the current viewport allows, which
+      // ResizableSplitPane derives from window.innerWidth. Asserting a fixed pixel value
+      // only holds on a window wide enough to reach the 520 cap; a narrower screen reports
+      // a smaller aria-valuemax. Assert the relationship instead of the magic number.
+      const savedListMaximum = await savedListDivider.getAttribute('aria-valuemax')
+      if (!savedListMaximum) throw new Error('Saved list divider is missing aria-valuemax')
+      await savedListDivider.focus()
+      await page.keyboard.press('End')
+      await expect(savedListDivider).toHaveAttribute('aria-valuenow', savedListMaximum)
+      expect(
+        await page.evaluate(() => window.localStorage.getItem('therss.saved-list-width'))
+      ).toBe(savedListMaximum)
+      await page.getByRole('button', { name: 'Dismiss signal' }).click()
+      await expect(page.getByRole('status')).toContainText(
+        'Dismissed “BAAI structured pruning research fixture”'
+      )
+      await page.getByRole('button', { name: 'Undo' }).click()
+      await expect(
+        page.getByRole('button', {
+          name: 'Select signal: BAAI structured pruning research fixture'
+        })
+      ).toBeVisible()
+      await capture(page, '04-saved.png')
+    })
+
+    await test.step('Settings: personal prompt and model provider', async () => {
+      await page.getByRole('button', { name: 'Settings' }).click()
+      const settingsHeading = page.getByRole('heading', { name: 'Settings' })
+      await expect(settingsHeading).toBeVisible()
+      await expect(settingsHeading).toHaveCSS('font-size', '26px')
+      await expect(page.locator('.settings-heading > .eyebrow')).toHaveCount(0)
+      await expect(page.locator('.settings-panel__heading > .eyebrow')).toHaveCount(0)
+      expect(
+        await page
+          .locator('.settings-layout')
+          .evaluate((element) => Math.round(element.getBoundingClientRect().top))
+      ).toBeLessThan(180)
+      await expect(viewContext).toContainText('Local settings')
+      await expect(viewContext).toContainText('All changes saved')
+      const personalPrompt = page.getByRole('textbox', { name: 'Personal Discover prompt' })
+      await expect(personalPrompt).toHaveValue('')
       await page.emulateMedia({ colorScheme: 'dark' })
-      await capture(page, '02b-discover-results-dark.png')
+      const placeholderContrast = await personalPrompt.evaluate((element) => {
+        const parseRgb = (value: string) => {
+          const channels = value.match(/[\d.]+/gu)?.map(Number)
+          if (!channels || channels.length < 3) throw new Error(`Unsupported color: ${value}`)
+          return channels.slice(0, 3)
+        }
+        const luminance = (channels: number[]) => {
+          const linear = channels
+            .map((value) => value / 255)
+            .map((value) =>
+              value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4)
+            )
+          return 0.2126 * linear[0]! + 0.7152 * linear[1]! + 0.0722 * linear[2]!
+        }
+        const foreground = luminance(parseRgb(getComputedStyle(element, '::placeholder').color))
+        const background = luminance(parseRgb(getComputedStyle(element).backgroundColor))
+        return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05)
+      })
+      expect(placeholderContrast).toBeGreaterThanOrEqual(4.5)
+      await capture(page, '05a-personal-prompt-dark.png')
       await page.emulateMedia({ colorScheme: 'light' })
-
-      await application.evaluate(({ BrowserWindow }, bounds) => {
-        BrowserWindow.getAllWindows()[0]?.setBounds({ ...bounds, width: 900, height: 700 })
-      }, discoverWideBounds)
-      await page.waitForTimeout(150)
       await application.evaluate(({ BrowserWindow }) => {
         BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(2)
       })
-      await page.waitForTimeout(150)
-      await expect(shell).toHaveClass(/app-shell--sidebar-collapsed/)
-      await expect(shell).toHaveAttribute('data-sidebar-constrained', 'true')
-      await expect(
-        page.getByRole('button', { name: 'Sidebar compact at current zoom' })
-      ).toBeDisabled()
-      await expect(page.getByRole('separator', { name: 'Resize sidebar' })).toBeHidden()
-      await expect(page.locator('.sidebar')).toHaveCSS('width', '84px')
-      await resultRegion.evaluate((element) => element.scrollIntoView({ block: 'start' }))
-      expect(
-        await resultRegion
-          .getByRole('heading', { name: 'Ranked source records' })
-          .evaluate((element) => element.scrollWidth - element.clientWidth)
-      ).toBeLessThanOrEqual(1)
-      const discoverZoomOverflow = await page.evaluate(() => ({
-        document: Math.max(
-          document.documentElement.scrollWidth - document.documentElement.clientWidth,
-          document.body.scrollWidth - document.body.clientWidth
-        ),
-        main: Math.max(
-          document.querySelector('main')!.scrollWidth - document.querySelector('main')!.clientWidth,
-          0
-        )
-      }))
-      expect(discoverZoomOverflow.document).toBeLessThanOrEqual(1)
-      expect(discoverZoomOverflow.main).toBeLessThanOrEqual(1)
-      expect(
-        (await page.locator('#discover-visible-results').boundingBox())?.height
-      ).toBeGreaterThanOrEqual(220)
-      await page.locator('.signal-detail__title').scrollIntoViewIfNeeded()
-      await expect(page.locator('.signal-detail__title')).toBeInViewport()
-      expect(await page.evaluate(() => document.scrollingElement?.scrollTop)).toBe(0)
-      await capture(page, '02c-discover-results-200-percent.png')
+      await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+      const zoomLayout = await page.evaluate(() => {
+        const main = document.querySelector('main')!
+        return {
+          documentOverflow:
+            document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          mainOverflow: main.scrollWidth - main.clientWidth
+        }
+      })
+      expect(zoomLayout.documentOverflow).toBeLessThanOrEqual(1)
+      expect(zoomLayout.mainOverflow).toBeLessThanOrEqual(1)
+      await capture(page, '05z-settings-200-percent.png')
       await application.evaluate(({ BrowserWindow }) => {
         BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(1)
       })
-      await application.evaluate(({ BrowserWindow }, bounds) => {
-        BrowserWindow.getAllWindows()[0]?.setBounds(bounds)
-      }, discoverWideBounds)
-      await page.waitForTimeout(150)
-      await expect(shell).not.toHaveClass(/app-shell--sidebar-collapsed/)
-      await expect(shell).toHaveAttribute('data-sidebar-constrained', 'false')
-      await expect(page.getByRole('button', { name: 'Hide sidebar' })).toBeEnabled()
-      await expect(page.getByRole('separator', { name: 'Resize sidebar' })).toBeVisible()
-
-      const discoverCdp = await page.context().newCDPSession(page)
-      await discoverCdp.send('Emulation.setEmulatedMedia', {
-        features: [{ name: 'forced-colors', value: 'active' }]
+      await personalPrompt.fill(
+        'I research edge intelligence and energy systems. Prioritize reproducible evaluations and explicit resource budgets.'
+      )
+      await page.getByRole('button', { name: 'Save personal Discover prompt' }).click()
+      await expect(page.getByRole('status')).toContainText('Personal context saved')
+      await page.locator('main').evaluate((element) => {
+        element.scrollTop = 0
       })
-      await resultRegion.focus()
-      for (let index = 0; index < 5; index += 1) await page.keyboard.press('Tab')
-      await expect(discoverPaperRow).toBeFocused()
-      await expect(discoverPaperRow).toHaveCSS('outline-style', 'solid')
-      await capture(page, '02d-discover-results-forced-colors.png')
-      await discoverCdp.send('Emulation.setEmulatedMedia', { features: [] })
-    }
-
-    await page.getByRole('button', { name: /Search details/u }).click()
-    await expect(searchDetails.getByText('Codex CLI · codex-cli')).toBeVisible()
-    const outcomes = page.getByRole('list', { name: 'Source outcomes' })
-    await expect(outcomes.getByRole('listitem')).toHaveCount(22)
-    await expect(outcomes.getByText('北京智源人工智能研究院')).toBeVisible()
-
-    const resultFilters = page.getByRole('group', { name: 'Filter Discover results' })
-    await resultFilters.getByRole('button', { name: 'Other 1' }).click()
-    await expect(discoverPaperRow).toHaveCount(0)
-    await expect(discoverRepositoryRow).toHaveCount(0)
-    await expect(discoverArticleRow).toBeVisible()
-    await expect(
-      selectedDiscover.getByRole('heading', {
-        name: 'BAAI structured pruning research fixture'
-      })
-    ).toBeVisible()
-    await expect(selectedDiscover.getByRole('button', { name: 'Analyze paper' })).toHaveCount(0)
-    await expect(selectedDiscover.getByRole('button', { name: 'Promote to llm-wiki' })).toHaveCount(
-      0
-    )
-    await capture(page, '03-discover-other.png')
-
-    await selectedDiscover.getByRole('button', { name: 'Save result' }).click({ force: true })
-    const removeSavedArticle = selectedDiscover.getByRole('button', {
-      name: 'Remove result from Saved'
-    })
-    await expect(removeSavedArticle).toHaveAttribute('aria-pressed', 'true')
-    await expect(removeSavedArticle.locator('[data-save-star]')).toHaveAttribute(
-      'fill',
-      'currentColor'
-    )
-    await capture(page, '03b-discover-star-saved.png')
-    await removeSavedArticle.click({ force: true })
-    await expect(selectedDiscover.getByRole('button', { name: 'Save result' })).toHaveAttribute(
-      'aria-pressed',
-      'false'
-    )
-    await selectedDiscover.getByRole('button', { name: 'Save result' }).click({ force: true })
-    await primaryNavigation.getByRole('button', { name: '02 Saved' }).click()
-    await expect(page.getByRole('heading', { name: 'Saved research signals' })).toBeVisible()
-    await expect(viewContext).toContainText('1 saved')
-    await expect(viewContext).toContainText('All sources')
-    await expect(
-      page.getByRole('button', {
-        name: 'Select signal: BAAI structured pruning research fixture'
-      })
-    ).toBeVisible()
-    await expect(page.getByRole('group', { name: 'Filter saved signals by source' })).toBeVisible()
-    await application.evaluate(({ Menu }) => {
-      const editMenu = Menu.getApplicationMenu()?.items.find((item) => item.label === 'Edit')
-      editMenu?.submenu?.items.find((item) => item.label === 'Find Local Research')?.click()
-    })
-    const localSearch = page.getByRole('dialog', { name: 'Find research' })
-    await expect(localSearch).toBeVisible()
-    await localSearch.getByRole('searchbox', { name: 'Search local research' }).fill('structured')
-    await page.keyboard.press('Enter')
-    await expect(localSearch.getByRole('list', { name: 'Local search results' })).toContainText(
-      'BAAI structured pruning research fixture'
-    )
-    await page.keyboard.press('Escape')
-    await expect(localSearch).toHaveCount(0)
-    const savedActionsBox = await page.locator('.signal-detail__actions').boundingBox()
-    const savedSummaryBox = await page.locator('.signal-detail__summary').boundingBox()
-    expect(savedActionsBox).not.toBeNull()
-    expect(savedSummaryBox).not.toBeNull()
-    if (savedActionsBox && savedSummaryBox) {
-      expect(savedActionsBox.y).toBeLessThan(savedSummaryBox.y)
-    }
-    const savedListDivider = page.getByRole('separator', { name: 'Resize saved signal list' })
-    await expect(savedListDivider).toBeVisible()
-    // End grows the pane to the maximum the current viewport allows, which
-    // ResizableSplitPane derives from window.innerWidth. Asserting a fixed pixel value
-    // only holds on a window wide enough to reach the 520 cap; a narrower screen reports
-    // a smaller aria-valuemax. Assert the relationship instead of the magic number.
-    const savedListMaximum = await savedListDivider.getAttribute('aria-valuemax')
-    if (!savedListMaximum) throw new Error('Saved list divider is missing aria-valuemax')
-    await savedListDivider.focus()
-    await page.keyboard.press('End')
-    await expect(savedListDivider).toHaveAttribute('aria-valuenow', savedListMaximum)
-    expect(await page.evaluate(() => window.localStorage.getItem('therss.saved-list-width'))).toBe(
-      savedListMaximum
-    )
-    await page.getByRole('button', { name: 'Dismiss signal' }).click()
-    await expect(page.getByRole('status')).toContainText(
-      'Dismissed “BAAI structured pruning research fixture”'
-    )
-    await page.getByRole('button', { name: 'Undo' }).click()
-    await expect(
-      page.getByRole('button', {
-        name: 'Select signal: BAAI structured pruning research fixture'
-      })
-    ).toBeVisible()
-    await capture(page, '04-saved.png')
-
-    await page.getByRole('button', { name: 'Settings' }).click()
-    const settingsHeading = page.getByRole('heading', { name: 'Settings' })
-    await expect(settingsHeading).toBeVisible()
-    await expect(settingsHeading).toHaveCSS('font-size', '26px')
-    await expect(page.locator('.settings-heading > .eyebrow')).toHaveCount(0)
-    await expect(page.locator('.settings-panel__heading > .eyebrow')).toHaveCount(0)
-    expect(
+      await capture(page, '05-personal-prompt-settings.png')
+      await page.getByRole('tab', { name: 'Model provider' }).click()
+      await page.getByRole('textbox', { name: 'Provider name' }).fill('Local fixture')
       await page
-        .locator('.settings-layout')
-        .evaluate((element) => Math.round(element.getBoundingClientRect().top))
-    ).toBeLessThan(180)
-    await expect(viewContext).toContainText('Local settings')
-    await expect(viewContext).toContainText('All changes saved')
-    const personalPrompt = page.getByRole('textbox', { name: 'Personal Discover prompt' })
-    await expect(personalPrompt).toHaveValue('')
-    await page.emulateMedia({ colorScheme: 'dark' })
-    const placeholderContrast = await personalPrompt.evaluate((element) => {
-      const parseRgb = (value: string) => {
-        const channels = value.match(/[\d.]+/gu)?.map(Number)
-        if (!channels || channels.length < 3) throw new Error(`Unsupported color: ${value}`)
-        return channels.slice(0, 3)
-      }
-      const luminance = (channels: number[]) => {
-        const linear = channels
-          .map((value) => value / 255)
-          .map((value) =>
-            value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4)
-          )
-        return 0.2126 * linear[0]! + 0.7152 * linear[1]! + 0.0722 * linear[2]!
-      }
-      const foreground = luminance(parseRgb(getComputedStyle(element, '::placeholder').color))
-      const background = luminance(parseRgb(getComputedStyle(element).backgroundColor))
-      return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05)
-    })
-    expect(placeholderContrast).toBeGreaterThanOrEqual(4.5)
-    await capture(page, '05a-personal-prompt-dark.png')
-    await page.emulateMedia({ colorScheme: 'light' })
-    await application.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(2)
-    })
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
-    const zoomLayout = await page.evaluate(() => {
-      const main = document.querySelector('main')!
-      return {
-        documentOverflow:
-          document.documentElement.scrollWidth - document.documentElement.clientWidth,
-        mainOverflow: main.scrollWidth - main.clientWidth
-      }
-    })
-    expect(zoomLayout.documentOverflow).toBeLessThanOrEqual(1)
-    expect(zoomLayout.mainOverflow).toBeLessThanOrEqual(1)
-    await capture(page, '05z-settings-200-percent.png')
-    await application.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(1)
-    })
-    await personalPrompt.fill(
-      'I research edge intelligence and energy systems. Prioritize reproducible evaluations and explicit resource budgets.'
-    )
-    await page.getByRole('button', { name: 'Save personal Discover prompt' }).click()
-    await expect(page.getByRole('status')).toContainText('Personal context saved')
-    await page.locator('main').evaluate((element) => {
-      element.scrollTop = 0
-    })
-    await capture(page, '05-personal-prompt-settings.png')
-    await page.getByRole('tab', { name: 'Model provider' }).click()
-    await page.getByRole('textbox', { name: 'Provider name' }).fill('Local fixture')
-    await page.getByRole('textbox', { name: 'Provider base URL' }).fill('http://127.0.0.1:11434/v1')
-    await page.getByRole('textbox', { name: 'Model name' }).fill('fixture-model')
-    await page.getByRole('button', { name: 'Test connection' }).click()
-    await expect(page.getByRole('status', { name: 'Provider connection result' })).toContainText(
-      'without a network request'
-    )
-    await page.getByRole('button', { name: 'Save model provider' }).click()
-    await expect(page.locator('.provider-save-status')).toContainText('Provider settings saved')
-    await expect(page.getByText('Unsaved changes')).toHaveCount(0)
-    if (!isBaselineCapture) {
-      const cdp = await page.context().newCDPSession(page)
-      const accessibilityTree = await cdp.send('Accessibility.getFullAXTree')
-      const accessibleNodes = accessibilityTree.nodes.map((node) => ({
-        role: node.role?.value,
-        name: node.name?.value
-      }))
-      expect(accessibleNodes).toEqual(
-        expect.arrayContaining([
-          { role: 'heading', name: 'Settings' },
-          { role: 'tab', name: 'Personal context' },
-          { role: 'tab', name: 'Model provider' },
-          { role: 'button', name: 'Test connection' }
-        ])
+        .getByRole('textbox', { name: 'Provider base URL' })
+        .fill('http://127.0.0.1:11434/v1')
+      await page.getByRole('textbox', { name: 'Model name' }).fill('fixture-model')
+      await page.getByRole('button', { name: 'Test connection' }).click()
+      await expect(page.getByRole('status', { name: 'Provider connection result' })).toContainText(
+        'without a network request'
       )
-      await cdp.send('Emulation.setEmulatedMedia', {
-        features: [{ name: 'forced-colors', value: 'active' }]
-      })
-      expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true)
-      await page.getByRole('button', { name: 'Save model provider' }).focus()
-      await page.keyboard.press('Shift+Tab')
-      await expect(page.getByRole('button', { name: 'Test connection' })).toBeFocused()
-      await expect(page.getByRole('button', { name: 'Test connection' })).toHaveCSS(
-        'outline-style',
-        'solid'
-      )
-      await capture(page, '05f-settings-forced-colors.png')
-      await cdp.send('Emulation.setEmulatedMedia', { features: [] })
-    }
-    await capture(page, '05-models.png')
-
-    await page.locator('main').evaluate((element) => {
-      element.scrollTop = 500
-    })
-    expect(await page.locator('main').evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
-    await researchUtilities.getByRole('button', { name: '03 Data Analytics' }).click()
-    expect(await page.locator('main').evaluate((element) => element.scrollTop)).toBe(0)
-    await expect(page.getByRole('heading', { name: 'Data Analytics' })).toBeVisible()
-    await capture(page, '05d-navigation-scroll-reset.png')
-
-    await primaryNavigation.getByRole('button', { name: '01 Discover' }).click()
-    await expect(page.getByRole('status', { name: 'Personal prompt status' })).toContainText(
-      'Personal context on'
-    )
-    await capture(page, '05b-personalized-discover-ready.png')
-    await page.getByRole('button', { name: 'Search', exact: true }).click()
-    const personalizedPipeline = page.getByRole('region', { name: 'Discover run pipeline' })
-    await expect(personalizedPipeline).toBeVisible()
-    await expect(personalizedPipeline).toHaveCount(0, { timeout: 10_000 })
-    await expect(page.getByText('Search complete')).toBeVisible()
-    await page.getByRole('button', { name: /Search details/u }).click()
-    await expect(page.getByLabel('Discover search details')).toContainText(
-      'semantic-discover-v2 · personal context applied'
-    )
-    await capture(page, '05c-personalized-discover.png')
-
-    await page.getByRole('button', { name: 'Hide sidebar' }).click()
-    await expect(page.locator('.app-shell')).toHaveClass(/app-shell--sidebar-collapsed/)
-    await page.getByRole('button', { name: 'Show sidebar' }).click()
-    await expect(page.locator('.app-shell')).not.toHaveClass(/app-shell--sidebar-collapsed/)
-
-    await researchUtilities.getByRole('button', { name: '03 Data Analytics' }).click()
-    await expect(page.getByRole('heading', { name: 'Data Analytics' })).toBeVisible()
-    await expect(viewContext).toContainText('Local only')
-    await expect(viewContext).toContainText('No telemetry')
-    await expect(page.getByLabel('Last 7 local days')).toBeVisible()
-    const searchResults = page.getByLabel('Lifetime returned records')
-    await expect(searchResults).toContainText('6')
-    await expect(searchResults).toContainText('0 legacy Today · 6 Discover')
-    const analysisHistory = page.getByRole('list', { name: 'Deep analysis history' })
-    await analysisHistory
-      .getByRole('button', {
-        name: 'Open analysis: Semantic expansion search for edge intelligence'
-      })
-      .click()
-    await expect(page.getByRole('article', { name: 'Historical analysis detail' })).toContainText(
-      'Current — source snapshot matches'
-    )
-    await capture(page, '06-analytics.png')
-
-    if (!isBaselineCapture) {
-      await researchUtilities.getByRole('button', { name: '04 Sources' }).click()
-      await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible()
-      await expect(viewContext).toContainText('22 recorded ready')
-      await expect(page.locator('.source-detail-heading')).toContainText('Latest search')
-      await expect(viewContext).toContainText('22 configured')
-      await expect(
-        page.getByRole('listbox', { name: 'Configured sources' }).getByRole('option')
-      ).toHaveCount(22)
-      await capture(page, '07-sources-directory.png')
-      await page
-        .getByRole('option', { name: 'Browse 北京智源人工智能研究院 recent content' })
-        .click()
-      await expect(page.getByRole('heading', { name: '北京智源人工智能研究院' })).toBeVisible()
-      await expect(page.getByText('BAAI structured pruning research fixture')).toBeVisible()
-      await expect(page.locator('.source-detail-boundary')).toContainText('rolling 30 days')
-      await capture(page, '08-source-detail.png')
-
-      await page.getByRole('option', { name: 'Browse GitHub recent content' }).click()
-      await expect(page.getByRole('heading', { name: 'GitHub' })).toBeVisible()
-      await expect(page.getByText('Search GitHub from Discover.')).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Refresh recent content' })).toBeDisabled()
-      await capture(page, '07-sources.png')
-    }
-
-    await expect(page.getByRole('button', { name: /Today|Interests|Sync/ })).toHaveCount(0)
-    await expect(page.getByText(/Google Drive/i)).toHaveCount(0)
-    expect(rendererErrors).toEqual([])
-
-    if (!isBaselineCapture && platform === 'darwin') {
-      const originalBounds = await application.evaluate(({ BrowserWindow }) =>
-        BrowserWindow.getAllWindows()[0]!.getBounds()
-      )
-      // A fixed 1120x760 only fits on a large display. Both setBounds and the
-      // restore-time work-area fit in windowState clamp to the display, so a 1024x768 CI
-      // runner reopened at 1024x677 and the equality assertion failed. Derive the
-      // expectation from the actual display: request a size that already fits the work
-      // area, then expect the reopened window to reproduce exactly the bounds it held.
-      const restoredBounds = await application.evaluate(
-        ({ BrowserWindow, screen }, requested) => {
-          const fitToWorkArea = (bounds: {
-            x: number
-            y: number
-            width: number
-            height: number
-          }) => {
-            const area = screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y }).workArea
-            return {
-              x: bounds.x,
-              y: bounds.y,
-              width: Math.min(bounds.width, area.x + area.width - bounds.x),
-              height: Math.min(bounds.height, area.y + area.height - bounds.y)
-            }
-          }
-          const window = BrowserWindow.getAllWindows()[0]!
-          window.setBounds(fitToWorkArea(requested))
-          return fitToWorkArea(window.getBounds())
-        },
-        { x: originalBounds.x, y: originalBounds.y, width: 1120, height: 760 }
-      )
-      await page.waitForTimeout(350)
-      expect(
-        await application.evaluate(({ Menu }) => {
-          const closeItem = Menu.getApplicationMenu()?.getMenuItemById('close-window')
-          return closeItem
-            ? {
-                role: closeItem.role,
-                accelerator: closeItem.accelerator,
-                registerAccelerator: closeItem.registerAccelerator
-              }
-            : null
-        })
-      ).toEqual({
-        role: 'close',
-        accelerator: 'CommandOrControl+W',
-        registerAccelerator: true
-      })
-      await application.evaluate(({ app, BrowserWindow }) => {
-        app.focus({ steal: true })
-        BrowserWindow.getAllWindows()[0]?.focus()
-      })
-      await expect
-        .poll(() =>
-          application.evaluate(({ BrowserWindow }) => Boolean(BrowserWindow.getFocusedWindow()))
+      await page.getByRole('button', { name: 'Save model provider' }).click()
+      await expect(page.locator('.provider-save-status')).toContainText('Provider settings saved')
+      await expect(page.getByText('Unsaved changes')).toHaveCount(0)
+      if (!isBaselineCapture) {
+        const cdp = await page.context().newCDPSession(page)
+        const accessibilityTree = await cdp.send('Accessibility.getFullAXTree')
+        const accessibleNodes = accessibilityTree.nodes.map((node) => ({
+          role: node.role?.value,
+          name: node.name?.value
+        }))
+        expect(accessibleNodes).toEqual(
+          expect.arrayContaining([
+            { role: 'heading', name: 'Settings' },
+            { role: 'tab', name: 'Personal context' },
+            { role: 'tab', name: 'Model provider' },
+            { role: 'button', name: 'Test connection' }
+          ])
         )
-        .toBe(true)
-      await application.evaluate(({ Menu }) => {
-        Menu.sendActionToFirstResponder('performClose:')
-      })
-      await expect.poll(() => page.isClosed()).toBe(true)
-      await expect.poll(() => application.windows().length).toBe(0)
+        await cdp.send('Emulation.setEmulatedMedia', {
+          features: [{ name: 'forced-colors', value: 'active' }]
+        })
+        expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true)
+        await page.getByRole('button', { name: 'Save model provider' }).focus()
+        await page.keyboard.press('Shift+Tab')
+        await expect(page.getByRole('button', { name: 'Test connection' })).toBeFocused()
+        await expect(page.getByRole('button', { name: 'Test connection' })).toHaveCSS(
+          'outline-style',
+          'solid'
+        )
+        await capture(page, '05f-settings-forced-colors.png')
+        await cdp.send('Emulation.setEmulatedMedia', { features: [] })
+      }
+      await capture(page, '05-models.png')
+    })
 
-      const reopenedWindow = application.waitForEvent('window')
-      await application.evaluate(({ app }) => {
-        app.emit('activate')
+    await test.step('Personalized Discover and sidebar toggle', async () => {
+      await page.locator('main').evaluate((element) => {
+        element.scrollTop = 500
       })
-      const reopenedPage = await reopenedWindow
-      await expect(reopenedPage.getByRole('heading', { name: 'Discover research' })).toBeVisible()
-      expect(
-        await application.evaluate(({ BrowserWindow }) =>
+      expect(await page.locator('main').evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+      await researchUtilities.getByRole('button', { name: '03 Data Analytics' }).click()
+      expect(await page.locator('main').evaluate((element) => element.scrollTop)).toBe(0)
+      await expect(page.getByRole('heading', { name: 'Data Analytics' })).toBeVisible()
+      await capture(page, '05d-navigation-scroll-reset.png')
+
+      await primaryNavigation.getByRole('button', { name: '01 Discover' }).click()
+      await expect(page.getByRole('status', { name: 'Personal prompt status' })).toContainText(
+        'Personal context on'
+      )
+      await capture(page, '05b-personalized-discover-ready.png')
+      await page.getByRole('button', { name: 'Search', exact: true }).click()
+      const personalizedPipeline = page.getByRole('region', { name: 'Discover run pipeline' })
+      await expect(personalizedPipeline).toBeVisible()
+      await expect(personalizedPipeline).toHaveCount(0, { timeout: 10_000 })
+      await expect(page.getByText('Search complete')).toBeVisible()
+      await page.getByRole('button', { name: /Search details/u }).click()
+      await expect(page.getByLabel('Discover search details')).toContainText(
+        'semantic-discover-v2 · personal context applied'
+      )
+      await capture(page, '05c-personalized-discover.png')
+
+      await page.getByRole('button', { name: 'Hide sidebar' }).click()
+      await expect(page.locator('.app-shell')).toHaveClass(/app-shell--sidebar-collapsed/)
+      await page.getByRole('button', { name: 'Show sidebar' }).click()
+      await expect(page.locator('.app-shell')).not.toHaveClass(/app-shell--sidebar-collapsed/)
+    })
+
+    await test.step('Data Analytics and Sources', async () => {
+      await researchUtilities.getByRole('button', { name: '03 Data Analytics' }).click()
+      await expect(page.getByRole('heading', { name: 'Data Analytics' })).toBeVisible()
+      await expect(viewContext).toContainText('Local only')
+      await expect(viewContext).toContainText('No telemetry')
+      await expect(page.getByLabel('Last 7 local days')).toBeVisible()
+      const searchResults = page.getByLabel('Lifetime returned records')
+      await expect(searchResults).toContainText('6')
+      await expect(searchResults).toContainText('0 legacy Today · 6 Discover')
+      const analysisHistory = page.getByRole('list', { name: 'Deep analysis history' })
+      await analysisHistory
+        .getByRole('button', {
+          name: 'Open analysis: Semantic expansion search for edge intelligence'
+        })
+        .click()
+      await expect(page.getByRole('article', { name: 'Historical analysis detail' })).toContainText(
+        'Current — source snapshot matches'
+      )
+      await capture(page, '06-analytics.png')
+
+      if (!isBaselineCapture) {
+        await researchUtilities.getByRole('button', { name: '04 Sources' }).click()
+        await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible()
+        await expect(viewContext).toContainText('22 recorded ready')
+        await expect(page.locator('.source-detail-heading')).toContainText('Latest search')
+        await expect(viewContext).toContainText('22 configured')
+        await expect(
+          page.getByRole('listbox', { name: 'Configured sources' }).getByRole('option')
+        ).toHaveCount(22)
+        await capture(page, '07-sources-directory.png')
+        await page
+          .getByRole('option', { name: 'Browse 北京智源人工智能研究院 recent content' })
+          .click()
+        await expect(page.getByRole('heading', { name: '北京智源人工智能研究院' })).toBeVisible()
+        await expect(page.getByText('BAAI structured pruning research fixture')).toBeVisible()
+        await expect(page.locator('.source-detail-boundary')).toContainText('rolling 30 days')
+        await capture(page, '08-source-detail.png')
+
+        await page.getByRole('option', { name: 'Browse GitHub recent content' }).click()
+        await expect(page.getByRole('heading', { name: 'GitHub' })).toBeVisible()
+        await expect(page.getByText('Search GitHub from Discover.')).toBeVisible()
+        await expect(page.getByRole('button', { name: 'Refresh recent content' })).toBeDisabled()
+        await capture(page, '07-sources.png')
+      }
+    })
+
+    await test.step('No legacy surfaces or renderer errors', async () => {
+      await expect(page.getByRole('button', { name: /Today|Interests|Sync/ })).toHaveCount(0)
+      await expect(page.getByText(/Google Drive/i)).toHaveCount(0)
+      expect(rendererErrors).toEqual([])
+    })
+
+    await test.step('Close and reopen the window with restored bounds', async () => {
+      if (!isBaselineCapture && platform === 'darwin') {
+        const originalBounds = await application.evaluate(({ BrowserWindow }) =>
           BrowserWindow.getAllWindows()[0]!.getBounds()
         )
-      ).toEqual(restoredBounds)
-      await reopenedPage.getByRole('button', { name: 'Settings' }).click()
-      const reopenedPrompt = reopenedPage.getByRole('textbox', {
-        name: 'Personal Discover prompt'
-      })
-      await reopenedPrompt.fill('Unsaved shutdown guard fixture')
-      await expect(reopenedPage.getByText('Unsaved changes')).toBeVisible()
-    }
+        // A fixed 1120x760 only fits on a large display. Both setBounds and the
+        // restore-time work-area fit in windowState clamp to the display, so a 1024x768 CI
+        // runner reopened at 1024x677 and the equality assertion failed. Derive the
+        // expectation from the actual display: request a size that already fits the work
+        // area, then expect the reopened window to reproduce exactly the bounds it held.
+        const restoredBounds = await application.evaluate(
+          ({ BrowserWindow, screen }, requested) => {
+            const fitToWorkArea = (bounds: {
+              x: number
+              y: number
+              width: number
+              height: number
+            }) => {
+              const area = screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y }).workArea
+              return {
+                x: bounds.x,
+                y: bounds.y,
+                width: Math.min(bounds.width, area.x + area.width - bounds.x),
+                height: Math.min(bounds.height, area.y + area.height - bounds.y)
+              }
+            }
+            const window = BrowserWindow.getAllWindows()[0]!
+            window.setBounds(fitToWorkArea(requested))
+            return fitToWorkArea(window.getBounds())
+          },
+          { x: originalBounds.x, y: originalBounds.y, width: 1120, height: 760 }
+        )
+        await page.waitForTimeout(350)
+        expect(
+          await application.evaluate(({ Menu }) => {
+            const closeItem = Menu.getApplicationMenu()?.getMenuItemById('close-window')
+            return closeItem
+              ? {
+                  role: closeItem.role,
+                  accelerator: closeItem.accelerator,
+                  registerAccelerator: closeItem.registerAccelerator
+                }
+              : null
+          })
+        ).toEqual({
+          role: 'close',
+          accelerator: 'CommandOrControl+W',
+          registerAccelerator: true
+        })
+        await application.evaluate(({ app, BrowserWindow }) => {
+          app.focus({ steal: true })
+          BrowserWindow.getAllWindows()[0]?.focus()
+        })
+        await expect
+          .poll(() =>
+            application.evaluate(({ BrowserWindow }) => Boolean(BrowserWindow.getFocusedWindow()))
+          )
+          .toBe(true)
+        await application.evaluate(({ Menu }) => {
+          Menu.sendActionToFirstResponder('performClose:')
+        })
+        await expect.poll(() => page.isClosed()).toBe(true)
+        await expect.poll(() => application.windows().length).toBe(0)
+
+        const reopenedWindow = application.waitForEvent('window')
+        await application.evaluate(({ app }) => {
+          app.emit('activate')
+        })
+        const reopenedPage = await reopenedWindow
+        await expect(reopenedPage.getByRole('heading', { name: 'Discover research' })).toBeVisible()
+        expect(
+          await application.evaluate(({ BrowserWindow }) =>
+            BrowserWindow.getAllWindows()[0]!.getBounds()
+          )
+        ).toEqual(restoredBounds)
+        await reopenedPage.getByRole('button', { name: 'Settings' }).click()
+        const reopenedPrompt = reopenedPage.getByRole('textbox', {
+          name: 'Personal Discover prompt'
+        })
+        await reopenedPrompt.fill('Unsaved shutdown guard fixture')
+        await expect(reopenedPage.getByText('Unsaved changes')).toBeVisible()
+      }
+    })
   } finally {
     await application.close()
     expect(await readdir(poisonVault)).toEqual(['SENTINEL.txt'])
