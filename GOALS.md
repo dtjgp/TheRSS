@@ -1,6 +1,22 @@
 # TheRSS Goals
 
-## Current stage: after the Apple-native UX merge
+## Current stage: v0.4.0 unsigned pre-release
+
+On 2026-10-27 the user chose to publish `v0.4.0` after PRs #67, #68 and #70 merged, and to
+review the release notes before publication. #67 (`70cb68f`), #70 (`2797042`, Vitest and
+`@vitest/coverage-v8` 5.0.5 together, `npm audit` 0 vulnerabilities) and #68 (`7581ac9`) are
+merged. Issue #34 was closed after a passing source-health run, and database backups older
+than 2026-10-26 were moved to the Trash. The release PR changes only the version and documents;
+candidate evidence is in the [0.4.0 report](docs/audits/2026-10-27-v0.4.0-prerelease/REPORT.md).
+Publication waits for the merge, a rebuilt package with the same bundle content hash, draft
+upload checks and the user's review of the notes. The installed `TheRSS Dev.app` is still built
+from `f480597`. Dependabot PR #71 (`@modelcontextprotocol/sdk` patch) is outside this release.
+
+Next after the release: human acceptance of the native UI; native search scopes and window
+restoration ([roadmap](docs/ROADMAP.md)); a decision on Web fallback alignment; per-group
+timeouts in the native smoke; then retrieval quality.
+
+## Previous stage: after the Apple-native UX merge
 
 On 2026-10-26 the user authorized the merge of PR #58 and a local reinstall. PR #58 was
 squash-merged as `575d2fd`. After the merge, new high-severity advisories made the CI audit gate
@@ -20,7 +36,7 @@ restoration ([roadmap](docs/ROADMAP.md)); a decision on Web fallback alignment; 
 quality (see the [quality baseline](docs/audits/2026-09-07-source-quality/REPORT.md)). Open
 issue #34 (source health) and Dependabot PRs remain separate maintenance items.
 
-## Previous stage: Apple-native UX on the AppKit route (PR #58)
+## Earlier stage: Apple-native UX on the AppKit route (PR #58)
 
 PR #58 implements the [Apple-native UX audit](docs/audits/2026-09-23-apple-native-ux/REPORT.md):
 findings F1-F14 and slices S0-S4 are closed, each with its own change contract. The 2026-10-06
