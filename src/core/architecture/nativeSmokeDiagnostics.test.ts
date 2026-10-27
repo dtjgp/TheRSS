@@ -30,6 +30,19 @@ describe('native smoke stderr classification', () => {
     expect(result.platformDiagnostics).toEqual([category, input])
     expect(result.applicationErrors).toEqual([])
   })
+  it('retains the exact dead-port variant seen during CI window recreation', () => {
+    // CI run 40486411381 (2026-10-27): the policy call reached a process that had already exited.
+    const deadPort = [
+      '[6726:1027/101516.296712:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (ipc/send) invalid destination port (0x10000003)',
+      '[6726:1027/101534.490783:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (ipc/send) invalid destination port (0x10000003)'
+    ]
+    expect(classifyNativeSmokeStderr([deadPort.join('\n') + '\n'])).toEqual({
+      applicationErrors: [],
+      platformDiagnostics: deadPort
+    })
+    const otherCode = deadPort[0]!.replace('0x10000003', '0x10000004')
+    expect(classifyNativeSmokeStderr([otherCode]).applicationErrors).toEqual([otherCode])
+  })
   it('does not hide different kernel errors, spoofed prefixes or additional suffixes', () => {
     const unknown = [
       category.replace('(4)', '(5)'),
