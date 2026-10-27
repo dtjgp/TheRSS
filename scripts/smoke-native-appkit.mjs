@@ -11,6 +11,12 @@ import { fileURLToPath, URL } from 'node:url'
 import { _electron as electron } from '@playwright/test'
 import { classifyNativeSmokeStderr } from './native-smoke-diagnostics.mjs'
 import { nativeSmokeAppKitOptions } from './native-smoke-options.mjs'
+import {
+  createPendingCallTracker,
+  nativeSmokeStepTimeoutMs,
+  runStepWithDeadline,
+  withDeadline
+} from './native-smoke-step.mjs'
 import { sourceHealthFixture } from './source-health-fixture.mjs'
 import { savedSourceUpdateFixture } from './saved-source-update-fixture.mjs'
 
@@ -22,6 +28,7 @@ await mkdir(output, { recursive: true })
 const profile = await mkdtemp(join(tmpdir(), 'therss-appkit-acceptance-'))
 const screenshots = process.env.THERSS_NATIVE_SCREENSHOTS !== '0'
 const appKitOptions = nativeSmokeAppKitOptions(process.env)
+const stepTimeoutMs = nativeSmokeStepTimeoutMs(process.env)
 const checks = [],
   errors = [],
   captureFailures = []
@@ -47,6 +54,15 @@ const application = await electron.launch({
   timeout: 30000
 })
 application.process().stderr.on('data', (data) => errors.push(String(data)))
+// Every main-process call is tracked, so a group timeout can name the call that did not return.
+// The label keeps only the fixture control id and action, never fixture values.
+const mainCalls = createPendingCallTracker()
+const evaluateInMain = application.evaluate.bind(application)
+application.evaluate = (fn, arg) => {
+  const target =
+    arg && typeof arg === 'object' && 'id' in arg ? ` [${arg.id} ${arg.action ?? ''}]` : ''
+  return mainCalls.track(`${String(fn)}${target}`, evaluateInMain(fn, arg))
+}
 const page = await application.firstWindow()
 await page.waitForLoadState()
 
@@ -302,9 +318,42 @@ async function capture(name) {
   }
   return after
 }
+async function recordTimeout(name, started) {
+  const diagnostics = {
+    group: name,
+    timeoutMs: stepTimeoutMs,
+    elapsedMs: Date.now() - started,
+    pendingMainCalls: mainCalls.snapshot(),
+    stderrTail: errors.join('').split('\n').slice(-40)
+  }
+  try {
+    diagnostics.state = await withDeadline(inspect(), 5000, 'inspect')
+  } catch (error) {
+    diagnostics.stateError = String(error)
+  }
+  // A stack sample shows where the main process waits, also when it no longer answers.
+  try {
+    execFileSync(
+      '/usr/bin/sample',
+      [String(application.process().pid), '3', '-file', join(output, 'timeout-main-sample.txt')],
+      { stdio: 'pipe', timeout: 30000 }
+    )
+  } catch (error) {
+    diagnostics.sampleError = String(error).slice(0, 500)
+  }
+  await writeFile(join(output, 'timeout.json'), JSON.stringify(diagnostics, null, 2))
+  process.stderr.write(
+    `TIMEOUT ${name}: pending main-process calls ${JSON.stringify(diagnostics.pendingMainCalls)}\n`
+  )
+}
 async function step(name, run) {
   const started = Date.now()
-  await run()
+  await runStepWithDeadline({
+    name,
+    run,
+    timeoutMs: stepTimeoutMs,
+    onTimeout: () => recordTimeout(name, started)
+  })
   checks.push({ name, passed: true, elapsedMs: Date.now() - started })
   process.stdout.write(`PASS ${name}\n`)
 }
@@ -1468,7 +1517,11 @@ try {
       await alert('Keep Editing')
       await answerAlert('Keep Editing')
       assert.equal(await destroyed(), false)
-      assert.equal(find((await inspect()).root, 'personal-prompt').value, '尚未保存')
+      assert.equal(
+        find((await inspect()).root, 'personal-prompt').value,
+        '尚未保存',
+        'Keep Editing keeps the marked text; another value may come from external keyboard input'
+      )
       await application.evaluate(() => globalThis.__nativeWindow.close())
       await alert('Discard Changes')
       await answerAlert('Discard Changes')
@@ -1654,7 +1707,7 @@ try {
 } catch (error) {
   let state
   try {
-    state = await capture('failure')
+    state = await withDeadline(capture('failure'), 15000, 'failure capture')
   } catch {
     state = null
   }
@@ -1668,7 +1721,11 @@ try {
         errors,
         error: String(error),
         state,
-        dialogs: await application.evaluate(() => globalThis.__fixtureDialogs)
+        dialogs: await withDeadline(
+          application.evaluate(() => globalThis.__fixtureDialogs),
+          5000,
+          'fixture dialogs'
+        ).catch(() => null)
       },
       null,
       2
@@ -1678,16 +1735,27 @@ try {
 } finally {
   // Failed fixture assertions must not strand an accepted operation in a dialog.
   try {
-    const state = await inspect()
-    for (const entry of state.alerts)
-      await answerAlert(entry.buttons.includes('Cancel') ? 'Cancel' : 'Discard Changes')
-    await application.evaluate(({ dialog }) => {
-      dialog.showMessageBox = async (_, options) => ({
-        response: options.buttons.includes('Discard Changes') ? 1 : 0
-      })
-    })
+    await withDeadline(
+      (async () => {
+        const state = await inspect()
+        for (const entry of state.alerts)
+          await answerAlert(entry.buttons.includes('Cancel') ? 'Cancel' : 'Discard Changes')
+        await application.evaluate(({ dialog }) => {
+          dialog.showMessageBox = async (_, options) => ({
+            response: options.buttons.includes('Discard Changes') ? 1 : 0
+          })
+        })
+      })(),
+      15000,
+      'dialog cleanup'
+    )
   } catch {
-    /* A lifecycle test may already have closed the window. */
+    /* A lifecycle test may already have closed the window, or the main process is blocked. */
   }
-  await application.close()
+  try {
+    await withDeadline(application.close(), 15000, 'application.close')
+  } catch (error) {
+    process.stderr.write(`${String(error)}; stopping the app process\n`)
+    application.process().kill('SIGKILL')
+  }
 }
