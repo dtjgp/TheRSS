@@ -21,10 +21,11 @@ TheRSS 把研究问题转换为可检查的检索计划，在内置研究来源�
 - Analyze 是单独的显式操作，不会因为阅读或收藏自动运行。保存过的分析会显示加载状态及来源哈希检查结果；来源变化时需重新评估旧分析。
 - 窄窗口下，点击条目或按 Return 进入单栏阅读，使用 Back to results 返回原列表。宽窗口保留可调整的列表与详情分栏。
 - 部分来源失败时，成功结果仍保留。Search details 记录每个来源的结果，Retry incomplete 只重试未完成来源。
+- 双击结果会在单独的只读窗口中打开该记录。带 `https:` 链接的记录可以用 Share 发送到其他应用，也可以把列表行拖到其他应用；拖出的内容是链接和基于发现元数据的引用文本。
 
 ## 找回本地记录
 
-Command-F 打开 Find Local Research。输入至少两个字符后会自动筛选收藏、已保存的搜索会话和分析文本；按 Return 可以立即查找。它不调用模型或外部来源。
+本地查找使用窗口工具栏中的搜索框（Search local research）。按 Command-F 把焦点移到这个搜索框。输入至少两个字符后，结果显示在内容区，筛选范围是收藏、已保存的搜索会话和分析文本；按 Return 可以立即查找。清空搜索框或按 Escape 会结束查找，并回到当前工作区。它不调用模型或外部来源，也不会打开遮挡窗口的弹窗。
 
 原生界面中点击结果或选中后按 Return 直接打开对应本地记录；历史分析按其固定 ID 打开。Back to search results 返回原查询及选择，并恢复原工作区中未提交的搜索草稿。Open original 是另一个动作，用于打开来源网站。记录失效时会说明原因，不会偷偷跳到一个不同的最新结果。
 
@@ -44,16 +45,21 @@ arXiv 论文可以进入独立的写入预览。只有符合既定模板和写�
 
 ## 快捷键与显示
 
-| 操作             | 快捷键                |
-| ---------------- | --------------------- |
-| Discover / Saved | Command-1 / Command-2 |
-| 本地查找         | Command-F             |
-| Settings         | Command-comma         |
-| 显示或隐藏侧栏   | Control-Command-S     |
-| 收藏当前条目     | Shift-Command-D       |
-| 分析当前条目     | Shift-Command-A       |
-| 丢弃当前收藏条目 | Command-Backspace     |
-| 关闭弹窗         | Escape                |
+| 操作                     | 快捷键                |
+| ------------------------ | --------------------- |
+| Discover / Saved         | Command-1 / Command-2 |
+| Data Analytics / Sources | Command-3 / Command-4 |
+| 本地查找                 | Command-F             |
+| 执行 Discover 搜索       | Command-Return        |
+| 撤销上一次收藏或丢弃     | Command-Z             |
+| Settings                 | Command-comma         |
+| 显示或隐藏侧栏           | Control-Command-S     |
+| 收藏当前条目             | Shift-Command-D       |
+| 分析当前条目             | Shift-Command-A       |
+| 丢弃当前收藏条目         | Command-Backspace     |
+| 关闭弹窗                 | Escape                |
+
+在文本框外按 Command-Z，撤销上一次 Save、Unsave 或 Dismiss；在文本框内按 Command-Z，撤销文本编辑。
 
 View 菜单支持缩放。应用跟随系统外观，并支持提高对比度和减少透明度。原生文本控件使用标准复制、粘贴、撤销和中文输入法操作。
 

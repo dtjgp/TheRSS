@@ -1,6 +1,26 @@
 # TheRSS Goals
 
-## Current stage: Apple-native UX on the AppKit route (PR #58)
+## Current stage: after the Apple-native UX merge
+
+On 2026-10-26 the user authorized the merge of PR #58 and a local reinstall. PR #58 was
+squash-merged as `575d2fd`. After the merge, new high-severity advisories made the CI audit gate
+fail on `main`. PR #63 (`f480597`) updated the lockfile only, within the existing ranges
+(Electron 44.9.3, Zod 4.6.7, Vite 7.3.7). PR #65 (`148ede4`) makes `smoke:sources` report each
+source on its own line, so the source-health issue can name the failing probe. On 2026-10-27,
+PR #64 (`6b4b480`) updated React, lucide-react and fast-xml-parser, and PR #69 (`af90d92`) gave
+the Web desktop E2E flow a 90 s budget with named phases and classified a Chromium dead-port
+stderr line in the native smoke ([notes](docs/audits/2026-10-27-e2e-desktop-timeout/NOTES.md)).
+The installed
+`TheRSS Dev.app` is built from `f480597`. Its install receipt matches the package hash, all 11
+user-data tables match the immediate backup, and the installed app passed 16 native workflow
+groups. No new GitHub Release was published; `package.json` remains 0.3.0.
+
+Next, in order: human acceptance of the installed native UI; native search scopes and window
+restoration ([roadmap](docs/ROADMAP.md)); a decision on Web fallback alignment; then retrieval
+quality (see the [quality baseline](docs/audits/2026-09-07-source-quality/REPORT.md)). Open
+issue #34 (source health) and Dependabot PRs remain separate maintenance items.
+
+## Previous stage: Apple-native UX on the AppKit route (PR #58)
 
 PR #58 implements the [Apple-native UX audit](docs/audits/2026-09-23-apple-native-ux/REPORT.md):
 findings F1-F14 and slices S0-S4 are closed, each with its own change contract. The 2026-10-06
@@ -14,7 +34,7 @@ The user authorized merging PR #58 on 2026-10-06; native search scopes, window r
 Web fallback alignment follow on a new branch ([roadmap](docs/ROADMAP.md)). VoiceOver speech,
 installation over the existing app and signed distribution remain not run or deferred.
 
-## Previous stage: 0.3.0 unsigned GitHub pre-release delivery
+## Earlier stage: 0.3.0 unsigned GitHub pre-release delivery
 
 The user authorized merging PR #49 and publishing a GitHub Release. The release contract is
 [here](docs/audits/2026-09-07-public-prerelease/CHANGE_CONTRACT.md); it retains the earlier
