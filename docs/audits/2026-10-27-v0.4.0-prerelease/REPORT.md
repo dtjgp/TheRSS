@@ -30,9 +30,17 @@
 
 - #72 以 `a95e5bf` 合并，合并后的内容树 `1c6cd8b` 与候选树相同。PR CI（run 40496371386）的 `quality` 和 `desktop` 都通过。
 - 在 `a95e5bf` 上重新执行 `npm ci` 和 `npm run package:mac`。新 ZIP 的 bundle 内容哈希等于 `5897e79…`；665 个条目、14 个符号链接、11 个运行文件的检查都通过。
-- 草稿 Release `v0.4.0` 指向 `a95e5bf`，带 ZIP、`SHA256SUMS.txt` 和 `release-manifest.json`。下载这三个资产后，`shasum -a 256 -c` 全部通过，manifest 与本地文件相同。公开前还要把 `main` CI 的结果写入 manifest，并由用户批准发布说明。
+- 草稿 Release `v0.4.0` 指向 `a95e5bf`，带 ZIP、`SHA256SUMS.txt` 和 `release-manifest.json`。下载这三个资产后，`shasum -a 256 -c` 全部通过，manifest 与本地文件相同。
 - 本机安装：`npm run install:local` 的安装步骤用同一个包把 `~/Applications/TheRSS Dev.app` 更新为 0.4.0。安装器保留了旧应用和数据库备份，回执中的 `app.asar` 和 bundle 哈希一致。去掉顶层目录名后，已安装应用与发布 ZIP 中的应用逐项相同（665 个条目，0 个差异）。11 个用户数据表的行数与安装前备份相同，`integrity_check` 为 `ok`。
 - 已安装应用的 `smoke:package`（隔离资料）：第一次运行在第 14 组失败，输入框中是 `bi`，不是测试写入的组合文字；第二次运行未作修改，Web 启动和全部 16 组原生流程通过，但之后有 6 张原生截图因 `screencapture` 报告 "could not create image from window" 而失败。两次运行期间本机有用户键盘和触控板活动，这可能是原因，但没有证实。已安装应用的截图检查仍未通过，需要在无人操作时重跑。
+
+## 公开发布（2026-10-27）
+
+- 用户批准了发布说明，并保留中文标题。
+- `main` CI（[run 40515580398](https://github.com/dtjgp/TheRSS/actions/runs/40515580398)）在 `a95e5bf` 上通过，`quality` 和 `desktop` 都成功。
+- `release-manifest.json` 的 `verification.mainCI` 从 `in_progress` 改为 `success`，并记录两个任务的结果；manifest 没有其他改动，ZIP 没有改动。重新生成的 `SHA256SUMS.txt` 覆盖 ZIP 和新 manifest。
+- 替换草稿中的两个文件后，下载全部三个资产，`shasum -a 256 -c` 全部通过，下载文件与本地文件相同。
+- [`v0.4.0`](https://github.com/dtjgp/TheRSS/releases/tag/v0.4.0) 于 2026-10-27 17:12:38 UTC 公开为 pre-release，没有标记为 Latest。标签指向 `a95e5bf`。
 
 ## 边界
 
