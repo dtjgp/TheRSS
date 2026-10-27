@@ -26,8 +26,15 @@ valid Developer ID, signing, and notarization.
 - Discover fits the window without paging; only the list and reading panes scroll (#58).
 - `smoke:sources` reports each source on its own line and no longer stops at the first failure,
   so the source-health issue names the failing probe (#65).
+- Production dependencies: React and react-dom 19.3.1, lucide-react 1.61.0, fast-xml-parser
+  5.11.2 (#64).
+- The Web desktop E2E flow has its own 90 s budget and eleven named `test.step` phases, because
+  CI macOS runners took 23.7-45.0 s for the same code (#69).
 
 ### Fixed
+
+- The native smoke stderr check treats the exact Chromium dead-port process-policy line as a
+  platform diagnostic, as it already did for the invalid-argument form (#69).
 
 - Rows place the subtitle under the measured title, and Settings fits each pane and refits after
   a zoom change (#58).
