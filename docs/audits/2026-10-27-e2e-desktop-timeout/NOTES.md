@@ -46,6 +46,20 @@ On PR #64, CI `desktop` failed once: `Discover-first search across every deploye
 - `npm run check`: 769 main and 162 AppKit tests pass; coverage unchanged.
 - CI `desktop` on the PR is the authoritative runner check.
 
+## Follow-up: packaged native smoke stderr (Auto-fix, run 40486411381)
+
+- On this PR, CI `desktop` passed the Web flow in 42.0 s and all 16 packaged native workflow
+  groups, then `smoke-native-appkit.mjs:1631` failed: stderr held three Chromium lines
+  `task_policy_set TASK_(CATEGORY|SUPPRESSION)_POLICY: (ipc/send) invalid destination port
+(0x10000003)`.
+- `scripts/native-smoke-diagnostics.mjs` already classified the same process-priority call with
+  `(os/kern) invalid argument (4)` as a platform diagnostic observed during window recreation.
+  The new lines have the dead-port result and their timestamps fall in the Settings-window and
+  window-recreation groups.
+- Fix: the classifier also accepts this one exact dead-port text. A RED/GREEN test uses the CI
+  lines; a different port code, a different kernel error, a spoofed prefix or an added suffix
+  still count as application errors.
+
 ## Not changed
 
 - The global `timeout: 45_000` in `playwright.config.ts` and every other spec.
