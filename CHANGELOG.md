@@ -11,6 +11,11 @@ valid Developer ID, signing, and notarization.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-27
+
+Unsigned arm64/macOS 26+ pre-release. See the
+[release notes](docs/audits/2026-10-27-v0.4.0-prerelease/RELEASE_NOTES.md).
+
 ### Added
 
 - Apple-native window structure on the AppKit route (#58): a unified toolbar with the window
@@ -30,21 +35,25 @@ valid Developer ID, signing, and notarization.
   5.11.2 (#64).
 - The Web desktop E2E flow has its own 90 s budget and eleven named `test.step` phases, because
   CI macOS runners took 23.7-45.0 s for the same code (#69).
+- Development dependencies: Vitest and `@vitest/coverage-v8` 5.0.5, upgraded together; Dependabot
+  now groups `vitest` and `@vitest/*` (#70). Playwright 1.64.1, electron-builder 26.18.0, ESLint
+  10.13.0, typescript-eslint 8.72.0, Prettier 3.9.10, jsdom 30.1.3 and other minor updates (#68).
 
 ### Fixed
-
-- The native smoke stderr check treats the exact Chromium dead-port process-policy line as a
-  platform diagnostic, as it already did for the invalid-argument form (#69).
 
 - Rows place the subtitle under the measured title, and Settings fits each pane and refits after
   a zoom change (#58).
 - Search details, notices and Analytics show plain labels, scoped notices and an empty-state for
   analysis history (#58).
+- The native smoke stderr check treats the exact Chromium dead-port process-policy line as a
+  platform diagnostic, as it already did for the invalid-argument form (#69).
 
 ### Security
 
 - Lockfile-only update for new high-severity advisories: Electron 44.9.3, Zod 4.6.7, Vite 7.3.7,
   and transitive undici and body-parser (#63).
+- The Vitest 5 upgrade removes the three moderate `vitest`/`@vitest/mocker` advisories; `npm audit`
+  reports 0 vulnerabilities (#70).
 
 ## [0.3.0] - 2026-09-07
 
@@ -133,7 +142,8 @@ and first GitHub publication (milestones M1–M4).
 - CI workflow covering format, lint, type check, tests, coverage, build, and dependency audit.
   (`409cdef`)
 
-[Unreleased]: https://github.com/dtjgp/TheRSS/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/dtjgp/TheRSS/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/dtjgp/TheRSS/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/dtjgp/TheRSS/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/dtjgp/TheRSS/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/dtjgp/TheRSS/releases/tag/v0.1.0

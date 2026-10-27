@@ -2,11 +2,11 @@
 
 使用入口：[使用说明](docs/USER_GUIDE.md) · [隐私](docs/PRIVACY.md) · [支持与恢复](docs/SUPPORT.md) · [正式发布验证](docs/MARKET_RELEASE.md)。
 
-`main` 在 0.3.0 之后合并了 Apple 原生窗口结构（PR #58）：工具栏和本地搜索框、source list 侧栏、独立的 Settings 窗口和记录窗口、来源选择弹出面板、Share 和拖拽。这些改动尚未发布为新的 GitHub 版本，`package.json` 版本号仍为 0.3.0。Developer ID 签名、公证及签名后继包验证尚未完成，未签名包仍属于本机测试分发。
+0.4.0 加入了 Apple 原生窗口结构：工具栏和本地搜索框、source list 侧栏、独立的 Settings 窗口和记录窗口、来源选择弹出面板、Share 和拖拽。Developer ID 签名、公证及签名后继包验证尚未完成，未签名包仍属于本机测试分发。
 
 TheRSS 是一个本地优先的研究发现桌面应用：你可以用自然语言描述研究问题，让自定义模型、Codex 或 Claude Code 生成可检查的语义扩展计划，再由 TheRSS 在 22 个通过日期化部署验证的信息源中执行受控检索、筛选和排序。
 
-> 当前是未签名的个人测试版（最新发布为 v0.3.0 预发布版）。arXiv 摘要、GitHub 元数据和模型输出只用于发现与初筛，不能替代全文阅读、代码审计或实验复现。
+> 当前是未签名的个人测试版（最新发布为 v0.4.0 预发布版）。arXiv 摘要、GitHub 元数据和模型输出只用于发现与初筛，不能替代全文阅读、代码审计或实验复现。
 
 ![TheRSS Discover：本地优先的语义研究检索桌面](docs/images/therss-discover.png)
 
@@ -68,13 +68,13 @@ API key 不会返回给渲染进程，也不会以明文写入 SQLite；应用�
 
 应用不会在启动时隐式发起 22 个来源请求。每次外部检索都由 Discover 中的显式操作触发；失败不会删除上一轮会话或 Saved 数据。
 
-## 0.3.0 预发布下载
+## 0.4.0 预发布下载
 
-[GitHub v0.3.0 预发布](https://github.com/dtjgp/TheRSS/releases/tag/v0.3.0) 提供 Apple Silicon（arm64）、macOS 26+ 的未签名 ZIP、SHA-256 校验文件及包清单。下载包不包含 Developer ID 签名或公证，可能被 macOS 安全策略拦截；安装、升级备份及限制见 [发布说明](docs/audits/2026-09-07-public-prerelease/RELEASE_NOTES.md)。它不是已通过正式市场发行验收的版本。
+[GitHub v0.4.0 预发布](https://github.com/dtjgp/TheRSS/releases/tag/v0.4.0) 提供 Apple Silicon（arm64）、macOS 26+ 的未签名 ZIP、SHA-256 校验文件及包清单。下载包不包含 Developer ID 签名或公证，可能被 macOS 安全策略拦截；安装、升级备份及限制见 [发布说明](docs/audits/2026-10-27-v0.4.0-prerelease/RELEASE_NOTES.md)。它不是已通过正式市场发行验收的版本。较早的 [v0.3.0](https://github.com/dtjgp/TheRSS/releases/tag/v0.3.0) 仍保留在 Releases 页面。
 
-## 当前验证状态（2026-10-26）
+## 当前验证状态（2026-10-27，v0.4.0）
 
-- `main` 提交 `f480597`：主测试 769 项、AppKit 专项 162 项（套件有重叠）通过；CI 的 `desktop` 任务运行 Electron E2E、未签名打包和打包冒烟测试。本机安装后的应用通过 16 组原生工作流。默认原生入口没有可见 Web 页面。
+- v0.4.0 候选（`main` `7581ac9` 加版本号改动）：主测试 770 项、AppKit 专项 162 项（套件有重叠）通过，`npm audit` 报告 0 个漏洞；CI 的 `desktop` 任务运行 Electron E2E、未签名打包和打包冒烟测试。发布归档解压后，665 个 bundle 条目和 14 个符号链接与源包一致，解压后的应用通过 16 组原生工作流。默认原生入口没有可见 Web 页面。详见 [0.4.0 验收](docs/audits/2026-10-27-v0.4.0-prerelease/REPORT.md)。
 - 2026-10-06 的外观验收覆盖深色和浅色模式、最小窗口及打包应用，共 60 张截图；VoiceOver 朗读、真实鼠标键盘输入和 `en-US` 以外的语言环境尚未验证。
 - 覆盖搜索、22 个来源、保存/撤销、论文及仓库分析、双设置草稿与密钥顺序、工具栏本地搜索与写入弹窗、中文组合输入、焦点恢复、关闭重开、布局持久化，以及 820×600 下的 150% 字体。
 - 富文本使用原生段落和表格；异常表格或超出样式预算时保留完整纯文本，避免不可信内容放大原生对象分配。深色侧栏截图已单独复审。
