@@ -8,9 +8,11 @@ review the release notes before publication. #67 (`70cb68f`), #70 (`2797042`, Vi
 merged. Issue #34 was closed after a passing source-health run, and database backups older
 than 2026-10-26 were moved to the Trash. The release PR changes only the version and documents;
 candidate evidence is in the [0.4.0 report](docs/audits/2026-10-27-v0.4.0-prerelease/REPORT.md).
-Publication waits for the merge, a rebuilt package with the same bundle content hash, draft
-upload checks and the user's review of the notes. The installed `TheRSS Dev.app` is still built
-from `f480597`. Dependabot PR #71 (`@modelcontextprotocol/sdk` patch) is outside this release.
+PR #72 merged as `a95e5bf`; its tree equals the candidate tree. The package rebuilt on
+`a95e5bf` has the candidate bundle content hash, and the draft `v0.4.0` release has three assets
+whose SHA-256 sums pass after download. Publication waits for the user's approval of the notes
+and the `main` CI result in the manifest. The installed `TheRSS Dev.app` is now 0.4.0 from
+`a95e5bf` (see the report for install checks and the open screenshot check). Dependabot PR #71 (`@modelcontextprotocol/sdk` patch) is outside this release.
 
 Next after the release: human acceptance of the native UI; native search scopes and window
 restoration ([roadmap](docs/ROADMAP.md)); a decision on Web fallback alignment; per-group
