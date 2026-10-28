@@ -30,7 +30,7 @@ macOS 26 及以上默认使用完整 AppKit 界面：侧栏中的 Discover、Sav
 - 使用工具栏搜索框（**⌘F** 移动焦点）搜索本机 SQLite 中的 Saved、Discover 会话和 analysis 内容；该流程不调用模型、来源适配器或网络。
 - 在 **Sources** 中浏览和筛选同一组 22 个保留来源（A=7、B=15、C=0）；目录成员资格、日期化验证、当前记录健康和本机缓存时间分别表达。
 - 在 **Settings** 配置 OpenAI-compatible（包括兼容的 DeepSeek 端点）或 Anthropic-compatible 模型；保存前可以显式测试连接，并可明确替换或清除受保护凭据。
-- 对符合条件的 arXiv 论文使用 **Promote to llm-wiki**：TheRSS 先下载发现记录对应的精确版本 PDF，调用本地 Codex 生成全文分析并展示目标路径预览；只有用户再次确认后，才按照 vault 的治理规则写入 PDF、来源 sidecar、L2 论文笔记、Topic/Method 反向链接和审计记录。
+- 对符合条件的 arXiv 论文使用 **Promote to llm-wiki**：TheRSS 先下载发现记录对应的精确版本 PDF，调用本地 Codex 生成全文分析并展示目标路径预览；只有用户再次确认后，才按照 vault 的治理规则写入 PDF、来源 sidecar、L2 论文笔记、Topic/Method 反向链接和审计记录。确认步骤使用标准确认对话框，不带警告图标，默认按钮是取消；确认对话框显示期间，推送预览暂时收起，完成后显示回执。应用中的其他确认弹窗（例如放弃未保存的设置）也使用同样的样式。
 - 通过只读 Model Context Protocol（MCP）服务向 Codex、Claude Code 或其他兼容客户端开放本地候选项。
 - 所有 Discover 会话、Saved 状态和分析记录仅保存在本机；当前不提供账号登录或跨设备同步。
 - 控件、文本选区和焦点环跟随系统设置中的强调色（System Settings > Appearance），并在用户更改时实时更新；各视图自身的标识色（Discover 蓝、Saved 琥珀、Sources 青、Analytics 靛）保持不变。

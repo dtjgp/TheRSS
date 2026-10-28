@@ -26,6 +26,9 @@ export class NativeModals {
   private preview: LlmWikiPromotionPreview | null = null
   private receipt: LlmWikiPromotionReceipt | null = null
   private consumed = false
+  // The final confirmation is a standard macOS alert. It waits until the window's current
+  // sheet ends, so the preview sheet steps aside until the confirmation and write finish.
+  private confirming = false
   private disposed = false
   focus: string | undefined
 
@@ -96,7 +99,7 @@ export class NativeModals {
   }
 
   render(): NativeNode | undefined {
-    if (!this.kind) return undefined
+    if (!this.kind || this.confirming) return undefined
     const b = this.controls
     const title = this.kind === 'promotion' ? 'Promote paper to llm-wiki' : this.document.title
     const closeAction = this.context.presentation.action(
@@ -205,6 +208,7 @@ export class NativeModals {
     if (!id || !this.preview?.ready || this.consumed || this.busy) return
     this.consumed = true
     this.busy = true
+    this.confirming = true
     this.message = ''
     this.context.redraw()
     try {
@@ -214,6 +218,8 @@ export class NativeModals {
     } finally {
       this.preview = null
       this.busy = false
+      this.confirming = false
+      this.focus = 'modal-close'
       this.context.redraw()
     }
   }
