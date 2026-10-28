@@ -26,7 +26,7 @@ export function isSafeExternalUrl(value: string): boolean {
 
 export async function confirmDiscardSettings(window: BrowserWindow): Promise<boolean> {
   const choice = await dialog.showMessageBox(window, {
-    type: 'warning',
+    type: 'question',
     title: 'Discard unsaved settings?',
     message: 'Your Settings changes have not been saved.',
     detail: 'Discard the edits and leave Settings?',
@@ -103,7 +103,7 @@ export class WindowApplicationRuntime {
         if (window.isDestroyed()) return false
         if (this.fixture) return true
         const choice = await dialog.showMessageBox(window, {
-          type: 'warning',
+          type: 'question',
           title: 'Confirm llm-wiki write',
           message: 'Write the previewed paper artifacts to your local llm-wiki vault?',
           detail:

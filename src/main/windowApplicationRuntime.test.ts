@@ -91,6 +91,11 @@ describe('native and compatibility window runtime', () => {
     f.events.get(IPC_CHANNELS.setSettingsDirty)!(x.event, true)
     expect(dirtySettingsWindows.has(x.window.webContents)).toBe(true)
     expect(await x.session.api.confirmDiscardSettings()).toBe(false)
+    // A confirmation, not an error: macOS shows the caution icon for 'warning' and 'error'.
+    expect(f.choice).toHaveBeenLastCalledWith(
+      x.window,
+      expect.objectContaining({ type: 'question', defaultId: 0, cancelId: 0 })
+    )
     f.choice.mockResolvedValue({ response: 1 })
     expect(await x.session.api.confirmDiscardSettings()).toBe(true)
     expect(dirtySettingsWindows.has(x.window.webContents)).toBe(false)
@@ -142,7 +147,7 @@ describe('native and compatibility window runtime', () => {
     await x.session.api.confirmLlmWikiPromotion(preview)
     expect(f.choice).toHaveBeenCalledWith(
       x.window,
-      expect.objectContaining({ defaultId: 0, cancelId: 0 })
+      expect.objectContaining({ type: 'question', defaultId: 0, cancelId: 0 })
     )
     expect(x.promotion.cancel).toHaveBeenCalledWith(preview, '7')
     expect(x.promotion.confirm).not.toHaveBeenCalled()
