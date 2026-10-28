@@ -1318,8 +1318,8 @@ try {
       await click('discover-promote')
       await wait('promotion-confirm')
       const preview = await capture('promotion-preview')
-      assert.match(find(preview.modal, 'promotion-preview-text').text, /SHA-256:/)
-      assert.match(find(preview.modal, 'promotion-preview-text').text, /raw\/papers\//)
+      assert.match(find(preview.modal, 'promotion-technical').text, /SHA-256:/)
+      assert.match(find(preview.modal, 'promotion-paths').text, /raw\/papers\//)
       await click('promotion-confirm')
       const confirmation = await alert('Cancel')
       await writeFile(

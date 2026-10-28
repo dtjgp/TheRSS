@@ -1,6 +1,7 @@
 import type {
   LlmWikiPromotionPreview,
-  LlmWikiPromotionReceipt
+  LlmWikiPromotionReceipt,
+  LlmWikiPromotionStatus
 } from '../../shared/llmWikiPromotion'
 import {
   column,
@@ -13,6 +14,18 @@ import {
   type NativeContext
 } from './common'
 import type { NativeNode } from './presentation'
+
+/** Receipt status phrase, and whether the outcome needs the user's attention. */
+const RECEIPT_STATUS: Record<LlmWikiPromotionStatus, readonly [string, boolean]> = {
+  running: ['In progress', false],
+  completed: ['Completed', false],
+  partial: ['Partially completed', true],
+  blocked: ['Blocked', true],
+  'no-change': ['No change', false],
+  'no-source': ['No source', true],
+  skipped: ['Skipped', false],
+  failed: ['Failed', true]
+}
 
 export class NativeModals {
   private readonly controls: Controls
@@ -123,7 +136,10 @@ export class NativeModals {
                 )
               )
             ]),
+        // macOS sheet order: actions sit at the trailing edge with the primary action last.
         row('modal-footer', [
+          label('modal-footer-spacer', '', { flex: 1 }),
+          ...(this.kind === 'promotion' ? this.promotionSecondaryActions() : []),
           {
             ...b.button(
               'modal-close',
@@ -136,7 +152,8 @@ export class NativeModals {
             ),
             // Return closes read-only documents only; the promotion sheet guards a vault write.
             ...(this.kind === 'document' ? { shortcut: 'return' as const } : {})
-          }
+          },
+          ...(this.kind === 'promotion' ? this.promotionPrimaryAction() : [])
         ])
       ],
       { title, padding: 22, flex: 1, context: closeAction }
@@ -144,64 +161,144 @@ export class NativeModals {
   }
 
   private promotionContent(): NativeNode[] {
-    const b = this.controls,
-      preview = this.preview,
+    const preview = this.preview,
       receipt = this.receipt
     return [
-      ...(this.busy
-        ? [
-            label(
-              'promotion-progress',
-              this.consumed
-                ? 'Completing the selected operation…'
-                : 'Preparing the PDF and write preview…'
-            )
-          ]
-        : []),
+      ...(this.busy ? [this.promotionProgress()] : []),
       scroll(
         'promotion-scroll',
         column(
           'promotion-document',
           [
-            ...(preview
-              ? [
-                  b.rich(
-                    'promotion-preview-text',
-                    `# ${preview.title}\n\nDestination: ${preview.vaultLabel}\nReview level: ${preview.level ?? 'Blocked'}\n\n${preview.routingRationale}\n\n## Evidence boundary\n${preview.evidenceBoundary}\n\n## Intended paths\n${preview.intendedPaths.map((path) => `- ${path}`).join('\n') || 'No paths approved.'}\n\n## PDF verification\n${preview.pdf ? `${preview.pdf.pageCount} pages · ${preview.pdf.byteSize} bytes\nSHA-256: ${preview.pdf.sha256}` : 'No verified PDF.'}\n\n## Blockers\n${preview.blockers.map((blocker) => `- ${blocker}`).join('\n') || 'None'}\n\nSource hash: ${preview.sourceHash}\nContract hash: ${preview.contractHash}\nExpires: ${preview.expiresAt}`
-                  )
-                ]
-              : []),
-            ...(receipt
-              ? [
-                  b.rich(
-                    'promotion-receipt-text',
-                    `## ${preview ? 'Previous receipt' : 'Operation receipt'}\nStatus: ${receipt.status}\nEvidence: ${receipt.evidenceTier}\n\n${receipt.summary}\n\nCreated:\n${receipt.createdPaths.map((path) => `- ${path}`).join('\n')}\n\nUpdated:\n${receipt.updatedPaths.map((path) => `- ${path}`).join('\n')}\n\nAudit: ${receipt.auditPath ?? 'Unavailable'}\n\n${receipt.blockers.join('\n')}`
-                  )
-                ]
-              : [])
+            ...(preview ? this.previewSections(preview) : []),
+            ...(receipt ? this.receiptSection(receipt, !!preview) : [])
           ],
-          { padding: 4 }
+          { padding: 4, gap: 12 }
         )
+      )
+    ]
+  }
+  private promotionProgress(): NativeNode {
+    const text = this.consumed
+      ? 'Completing the selected operation…'
+      : 'Preparing the PDF and write preview…'
+    return row('promotion-progress-row', [
+      { id: 'promotion-progress-indicator', kind: 'progress', title: text },
+      label('promotion-progress', text, { weight: 'secondary', flex: 1 })
+    ])
+  }
+  /** What will be written and what stops it come first; hashes stay available at the end. */
+  private previewSections(preview: LlmWikiPromotionPreview): NativeNode[] {
+    const b = this.controls,
+      paths = preview.intendedPaths,
+      blockers = preview.blockers
+    return [
+      column(
+        'promotion-summary',
+        [
+          label('promotion-paper-title', preview.title, { textStyle: 'headline', wrap: true }),
+          label(
+            'promotion-destination',
+            `${preview.vaultLabel} · Review level ${preview.level ?? 'Blocked'}`,
+            { weight: 'secondary', wrap: true }
+          ),
+          label('promotion-rationale', preview.routingRationale, { wrap: true })
+        ],
+        { surface: 'inset', padding: 12, gap: 6 }
       ),
-      ...(preview?.ready && preview.previewId && !this.consumed
+      ...(blockers.length
         ? [
-            b.button(
+            column(
+              'promotion-blockers',
+              [
+                row('promotion-blockers-row', [
+                  {
+                    id: 'promotion-blockers-symbol',
+                    kind: 'symbol',
+                    symbol: 'exclamationmark.circle',
+                    title: 'Blocked',
+                    size: 16
+                  },
+                  label(
+                    'promotion-blockers-heading',
+                    `${blockers.length} ${blockers.length === 1 ? 'blocker prevents' : 'blockers prevent'} this write`,
+                    { weight: 'bold', flex: 1 }
+                  )
+                ]),
+                b.rich('promotion-blockers-list', blockers.map((item) => `- ${item}`).join('\n'))
+              ],
+              { gap: 4 }
+            )
+          ]
+        : [label('promotion-blockers', 'No blockers', { weight: 'secondary' })]),
+      label(
+        'promotion-paths-heading',
+        paths.length
+          ? `Will write ${paths.length} ${paths.length === 1 ? 'file' : 'files'}`
+          : 'No paths approved',
+        { weight: 'bold' }
+      ),
+      ...(paths.length
+        ? [b.rich('promotion-paths', paths.map((path) => `- ${path}`).join('\n'))]
+        : []),
+      label('promotion-evidence-heading', 'Evidence boundary', { weight: 'bold' }),
+      label('promotion-evidence', preview.evidenceBoundary, { wrap: true }),
+      label('promotion-technical-heading', 'Technical details', { weight: 'bold' }),
+      b.rich(
+        'promotion-technical',
+        `${preview.pdf ? `PDF: ${preview.pdf.pageCount} pages · ${preview.pdf.byteSize} bytes\nSHA-256: ${preview.pdf.sha256}` : 'No verified PDF.'}\n\nSource hash: ${preview.sourceHash}\nContract hash: ${preview.contractHash}\nExpires: ${preview.expiresAt}`
+      )
+    ]
+  }
+  private receiptSection(receipt: LlmWikiPromotionReceipt, previous: boolean): NativeNode[] {
+    const [phrase, attention] = RECEIPT_STATUS[receipt.status]
+    return [
+      row('promotion-receipt-status-row', [
+        ...(attention
+          ? [
+              {
+                id: 'promotion-receipt-status-symbol',
+                kind: 'symbol' as const,
+                symbol: 'exclamationmark.circle' as const,
+                title: phrase,
+                size: 16
+              }
+            ]
+          : []),
+        label('promotion-receipt-status', phrase, { weight: 'bold', flex: 1 })
+      ]),
+      this.controls.rich(
+        'promotion-receipt-text',
+        `## ${previous ? 'Previous receipt' : 'Operation receipt'}\nEvidence: ${receipt.evidenceTier}\n\n${receipt.summary}\n\nCreated:\n${receipt.createdPaths.map((path) => `- ${path}`).join('\n')}\n\nUpdated:\n${receipt.updatedPaths.map((path) => `- ${path}`).join('\n')}\n\nAudit: ${receipt.auditPath ?? 'Unavailable'}\n\n${receipt.blockers.join('\n')}`
+      )
+    ]
+  }
+  private promotionSecondaryActions(): NativeNode[] {
+    const preview = this.preview
+    return !this.busy && (!preview || this.consumed || !preview.ready)
+      ? [
+          this.controls.button('promotion-new-preview', 'Create a new preview', () =>
+            this.openPromotion(this.itemId, this.sessionId)
+          )
+        ]
+      : []
+  }
+  private promotionPrimaryAction(): NativeNode[] {
+    const preview = this.preview
+    return preview?.ready && preview.previewId && !this.consumed
+      ? [
+          {
+            ...this.controls.button(
               'promotion-confirm',
-              'Confirm previewed write…',
+              'Write to llm-wiki…',
               () => this.confirmPromotion(),
               !this.busy,
               `promotion-confirm:${preview.previewId}`
-            )
-          ]
-        : []),
-      ...(!this.busy && (!preview || this.consumed || !preview.ready)
-        ? [
-            b.button('promotion-new-preview', 'Create a new preview', () =>
-              this.openPromotion(this.itemId, this.sessionId)
-            )
-          ]
-        : [])
-    ]
+            ),
+            emphasis: 'primary'
+          }
+        ]
+      : []
   }
   private async confirmPromotion(): Promise<void> {
     const id = this.preview?.previewId
