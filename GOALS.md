@@ -18,8 +18,9 @@ on 2026-10-27 at 17:12:38 UTC. The tag points to `a95e5bf`. The installed `TheRS
 `a95e5bf` (see the report for install checks and the open screenshot check). Dependabot PR #71 (`@modelcontextprotocol/sdk` patch) is outside this release.
 
 Next after the release: human acceptance of the native UI; native search scopes and window
-restoration ([roadmap](docs/ROADMAP.md)); a decision on Web fallback alignment; per-group
-timeouts in the native smoke; then retrieval quality.
+restoration ([roadmap](docs/ROADMAP.md)); a decision on Web fallback alignment; the cause of the
+native smoke hang in window recreation (now bounded per group, see
+[notes](docs/audits/2026-10-27-native-smoke-hang/NOTES.md)); then retrieval quality.
 
 ## Previous stage: after the Apple-native UX merge
 
