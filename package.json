@@ -43,7 +43,7 @@
     "smoke:appkit": "npm run build --silent && node scripts/smoke-native-appkit.mjs && node scripts/smoke-appkit-controls.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "better-sqlite3": "^13.0.3",
     "fast-xml-parser": "^5.11.2",
     "lucide-react": "^1.61.0",
