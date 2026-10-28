@@ -14,7 +14,7 @@ npm run install:local
 
 它执行以下步骤：获取 `~/Library/Application Support/therss/install.lock`；比较 packaged 与
 installed 的完整应用包指纹（文件内容、执行权限与符号链接），并保留 `app.asar` 哈希；若数据库存在则先验证并调用 SQLite 在线备份；用 macOS `ditto`
-复制 bundle 以保留 framework 符号链接；验证关键链接、`icudtl.dat`、安装后哈希与数据库
+把 bundle 复制到 `~/Applications/.TheRSS Dev.installing-<pid>/TheRSS Dev.app`，以保留 framework 符号链接。这个隐藏文件夹与目标在同一磁盘上，最后的改名仍是原子操作，而且 Spotlight 不会把临时名称当作应用列出；验证关键链接、`icudtl.dat`、安装后哈希与数据库
 完整性；保留上一版应用；最后原子切换安装目录并在 `install-receipts/` 写入结构化完成
 回执。无论成功或失败，当前进程都会释放安装锁。
 
@@ -42,6 +42,7 @@ npm run update:local
 - 旧应用位于 `~/Applications/TheRSS Dev.backup-<timestamp>.app`。
 - 如果新版本不能启动，先退出 TheRSS，再把当前 `TheRSS Dev.app` 移到其他明确位置，然后将选定备份重命名为 `TheRSS Dev.app`。
 - 如果数据库迁移出现问题，先保留当前数据库，再从对应时间戳备份恢复。不要在应用运行时直接覆盖数据库。
+- 如果安装报告 `A previous temporary install remains`，说明之前有一次安装中断。先确认没有安装命令正在运行，再把报告的 `.TheRSS Dev.installing-<pid>` 隐藏文件夹（或旧格式的 `TheRSS Dev.app.installing-<pid>`）移到废纸篓，然后重新安装。安装器不会自动删除它。
 
 脚本不会自动删除旧备份。定期清理应使用独立、可审查的保留策略，不能在安装失败后扩大删除范围。
 

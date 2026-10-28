@@ -112,6 +112,20 @@ function defaultCopyApp(sourceApp, temporaryApp) {
   execFileSync('/usr/bin/ditto', ['--rsrc', '--extattr', '--acl', sourceApp, temporaryApp])
 }
 
+// Temporary copies live in a hidden folder beside the target so the final rename stays on one
+// volume and Spotlight never indexes a temporary app name. The first pattern is the older format.
+const TEMPORARY_INSTALL_PATTERNS = [
+  /^TheRSS Dev\.app\.installing-\d+$/u,
+  /^\.TheRSS Dev\.installing-\d+$/u
+]
+
+async function assertNoTemporaryInstall(applicationsDirectory) {
+  for (const name of (await readdir(applicationsDirectory)).sort()) {
+    if (TEMPORARY_INSTALL_PATTERNS.some((pattern) => pattern.test(name)))
+      throw new Error(`A previous temporary install remains: ${join(applicationsDirectory, name)}`)
+  }
+}
+
 async function acquireInstallLock(lockPath, processId, timestamp) {
   let handle
   try {
@@ -153,14 +167,12 @@ export async function installLocalBeta({
   timestamp
 }) {
   const targetApp = join(applicationsDirectory, 'TheRSS Dev.app')
-  const temporaryApp = join(applicationsDirectory, `TheRSS Dev.app.installing-${processId}`)
+  const stagingDirectory = join(applicationsDirectory, `.TheRSS Dev.installing-${processId}`)
+  const temporaryApp = join(stagingDirectory, 'TheRSS Dev.app')
   if (dirname(targetApp) !== applicationsDirectory || basename(targetApp) !== 'TheRSS Dev.app') {
     throw new Error('Refusing to install outside the exact TheRSS Dev.app target')
   }
   await assertDirectoryApplication(sourceApp, 'Packaged application')
-  if (existsSync(temporaryApp)) {
-    throw new Error(`A previous temporary install remains: ${temporaryApp}`)
-  }
   if (existsSync(targetApp)) await assertDirectoryApplication(targetApp, 'Installed application')
   if (existsSync(targetApp) && isAppRunning(targetApp))
     throw new Error('Quit TheRSS Dev before installing; the running application was not replaced')
@@ -173,7 +185,9 @@ export async function installLocalBeta({
 
   let previousApp = null
   let targetReplaced = false
+  let stagingCreated = false
   try {
+    await assertNoTemporaryInstall(applicationsDirectory)
     const sourceAsarSha256 = await sha256File(asarPath(sourceApp))
     const sourceBundleSha256 = await bundleFingerprint(sourceApp)
     if (existsSync(targetApp)) {
@@ -189,6 +203,8 @@ export async function installLocalBeta({
     assertDatabase(databasePath, databaseWasPresent)
     const databaseBackup = await backupDatabase(databasePath, timestamp, databaseWasPresent)
 
+    await mkdir(stagingDirectory)
+    stagingCreated = true
     await copyApp(sourceApp, temporaryApp)
     await assertDirectoryApplication(temporaryApp, 'Copied application')
     await assertFrameworkIntegrity(temporaryApp)
@@ -208,6 +224,8 @@ export async function installLocalBeta({
 
     await rename(temporaryApp, targetApp)
     targetReplaced = true
+    await rm(stagingDirectory, { recursive: true })
+    stagingCreated = false
     const installedAsarSha256 = await sha256File(asarPath(targetApp))
     const installedBundleSha256 = await bundleFingerprint(targetApp)
     if (installedAsarSha256 !== sourceAsarSha256) {
@@ -242,7 +260,8 @@ export async function installLocalBeta({
     if (targetReplaced) {
       await rollbackReplacement({ applicationsDirectory, previousApp, targetApp, timestamp })
     }
-    if (existsSync(temporaryApp)) await rm(temporaryApp, { recursive: true })
+    if (stagingCreated && existsSync(stagingDirectory))
+      await rm(stagingDirectory, { recursive: true })
     throw error
   } finally {
     await lockHandle.close()

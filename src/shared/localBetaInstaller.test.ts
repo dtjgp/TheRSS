@@ -247,6 +247,95 @@ describe('installLocalBeta', () => {
     expect(await readFile(join(targetApp, 'Contents', 'Resources', 'app.asar'), 'utf8')).toBe('old')
   })
 
+  it('stages the copy in a hidden folder so Spotlight never lists a temporary app name', async () => {
+    const root = await makeRoot(),
+      applicationsDirectory = join(root, 'Applications')
+    const sourceApp = join(root, 'release', 'TheRSS.app'),
+      targetApp = join(applicationsDirectory, 'TheRSS Dev.app')
+    const timestamp = '2026-10-28-hidden-staging'
+    await makeApp(sourceApp, 'new')
+    await makeApp(targetApp, 'old')
+    const destinations: string[] = []
+    await installLocalBeta({
+      applicationsDirectory,
+      sourceApp,
+      databasePath: join(root, 'data', 'therss.sqlite'),
+      applicationVersion: '0.4.0',
+      processId: 109,
+      timestamp,
+      isAppRunning: () => false,
+      copyApp: async (source, destination) => {
+        destinations.push(destination)
+        await copyFixture(source, destination)
+      }
+    })
+    expect(destinations).toEqual([
+      join(applicationsDirectory, '.TheRSS Dev.installing-109', 'TheRSS Dev.app')
+    ])
+    expect((await readdir(applicationsDirectory)).sort()).toEqual([
+      'TheRSS Dev.app',
+      `TheRSS Dev.backup-${timestamp}.app`
+    ])
+  })
+
+  it('removes the hidden staging folder when the copied bundle fails verification', async () => {
+    const root = await makeRoot(),
+      applicationsDirectory = join(root, 'Applications')
+    const sourceApp = join(root, 'release', 'TheRSS.app'),
+      targetApp = join(applicationsDirectory, 'TheRSS Dev.app')
+    await makeApp(sourceApp, 'new')
+    await makeApp(targetApp, 'old')
+    await expect(
+      installLocalBeta({
+        applicationsDirectory,
+        sourceApp,
+        databasePath: join(root, 'data', 'therss.sqlite'),
+        applicationVersion: '0.4.0',
+        processId: 110,
+        timestamp: '2026-10-28-staging-cleanup',
+        isAppRunning: () => false,
+        copyApp: async (source, destination) => {
+          await copyFixture(source, destination)
+          await writeFile(join(destination, 'Contents', 'Resources', 'app.asar'), 'corrupted')
+        }
+      })
+    ).rejects.toThrow('Copied application bundle does not match')
+    expect(await readdir(applicationsDirectory)).toEqual(['TheRSS Dev.app'])
+  })
+
+  it.each(['TheRSS Dev.app.installing-55', '.TheRSS Dev.installing-55'])(
+    'refuses to install over a leftover temporary install (%s) from any process',
+    async (leftover) => {
+      const root = await makeRoot(),
+        applicationsDirectory = join(root, 'Applications')
+      const sourceApp = join(root, 'release', 'TheRSS.app'),
+        targetApp = join(applicationsDirectory, 'TheRSS Dev.app')
+      const support = join(root, 'data')
+      await makeApp(sourceApp, 'new')
+      await makeApp(targetApp, 'old')
+      await mkdir(join(applicationsDirectory, leftover))
+      const install = () =>
+        installLocalBeta({
+          applicationsDirectory,
+          sourceApp,
+          databasePath: join(support, 'therss.sqlite'),
+          applicationVersion: '0.4.0',
+          processId: 111,
+          timestamp: '2026-10-28-leftover',
+          copyApp: copyFixture,
+          isAppRunning: () => false
+        })
+      await expect(install()).rejects.toThrow(
+        `A previous temporary install remains: ${join(applicationsDirectory, leftover)}`
+      )
+      expect(await readFile(join(targetApp, 'Contents', 'Resources', 'app.asar'), 'utf8')).toBe(
+        'old'
+      )
+      // The scoped lock is released, so the next attempt reports the leftover again.
+      await expect(install()).rejects.toThrow('A previous temporary install remains')
+    }
+  )
+
   it('fails before app replacement when an existing database disappears during copying', async () => {
     const root = await makeRoot()
     const applicationsDirectory = join(root, 'Applications')
