@@ -88,6 +88,23 @@ Do not add adjacent endpoints, providers, settings, migrations, or UI controls w
 Feature Intake. Keep public APIs stable during mechanical refactors unless the contract authorizes a
 change.
 
+### Defect fixes
+
+Find the cause before you change code. A failed attempt is a fix that does not make the RED
+verifier pass.
+
+- After two failed attempts, stop guessing. Add temporary diagnostics (logs, data captures, or
+  state dumps) and read the actual runtime data before the next attempt. Diagnostics must not log
+  secrets or plaintext credentials.
+- After three failed attempts, stop. Add a dated handoff entry to `notes.md`: the problem, the
+  expected and actual behavior, the reproduction, each attempt and why it failed, the evidence
+  paths, and the current hypothesis. Revert attempt changes that have no verified purpose. Start
+  again in a fresh session from that entry.
+
+When the cause is known, search the codebase for the same pattern. Fix occurrences that share the
+same root cause in the same change and cover them with the regression test. Record other similar
+problems as follow-up items; do not add them to the current change.
+
 ## 6. Automated and rendered verification
 
 Run gates in proportion to impact:
@@ -110,6 +127,10 @@ Run a separate diff review after implementation. Check product/contract fit, acc
 complexity, test weakening, input validation, secrets, untrusted content, SQLite/IPC boundaries,
 migration and rollback, diagnostics, packaging, and documentation.
 
+Limit the review to three rounds. The first round reviews the full diff. Each later round reviews
+only the changes made since the previous round. If a critical or high finding remains open after
+the third round, stop and report it to the user instead of starting a fourth round.
+
 Then perform the human black-box acceptance path. Human QA supplements the code and evidence review;
 it never replaces them. Resolve critical/high findings before closeout.
 
@@ -127,3 +148,19 @@ Record:
 Do not claim completion from a clean checkout, an agent statement, or one passing test. Installation,
 Git push, release publication, live external calls, and third-party mutations remain separately
 authorized actions.
+
+### Commit message
+
+Use a Conventional Commits subject. Except for typo or formatting-only commits, write a body with
+these three parts:
+
+```text
+<type>(<scope>): <summary>
+
+What changed: <the behavior or files that changed, and why>
+Verification: <the commands or checks that ran, and their results>
+Rollback: <how to undo the change, including data or migration steps>
+```
+
+The Git history is context for later agents. Record checks that did not run; do not list them as
+passed.

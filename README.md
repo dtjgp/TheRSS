@@ -110,7 +110,7 @@ npm run dev
 npm run install:local
 ```
 
-该命令会获得本机安装锁、构建未签名应用、备份并校验数据库、校验 Electron Framework 与 `app.asar` 哈希，并原子替换 `~/Applications/TheRSS Dev.app`；旧应用会保留为带时间戳的备份，成功后在 Application Support 中写入结构化回执。同一构建默认拒绝重复安装，确需演练时显式运行 `npm run install:local -- --force`。已有远程仓库后，可在干净的 `main` 工作树运行：
+该命令会获得本机安装锁、构建未签名应用、备份并校验数据库、校验 Electron Framework 与 `app.asar` 哈希，并原子替换 `~/Applications/TheRSS Dev.app`；旧应用会保留为带时间戳的备份，成功后在 Application Support 中写入结构化回执。确认新版本运行正常后，可以把 `~/Applications` 中的 `TheRSS Dev.backup-*.app` 移到废纸篓，只保留最新版本；数据库备份单独保存在 `~/Library/Application Support/therss/backups/`，不受影响。同一构建默认拒绝重复安装，确需演练时显式运行 `npm run install:local -- --force`。已有远程仓库后，可在干净的 `main` 工作树运行：
 
 ```bash
 npm run update:local
@@ -156,6 +156,8 @@ npm audit --audit-level=high
 ```
 
 `smoke:sources` 与 `smoke:configured-sources` 会访问真实来源，其他自动化测试使用确定性 fixture。项目要求覆盖率统计范围（`src/core` 与 `src/shared`）的 statements、branches、functions 和 lines 均不低于 80%，该阈值由 `vitest.config.ts` 强制。
+
+非简单改动按 [开发流程](docs/DEVELOPMENT_WORKFLOW.md) 执行：缺陷修复失败两次后先加诊断，失败三次后在 `notes.md` 写交接说明并在新会话中重做；找到原因后排查同类问题；Review 最多三轮；提交正文写明改动内容、验证方法和回滚方法。
 
 ## 数据与边界
 
