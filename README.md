@@ -30,7 +30,7 @@ macOS 26 及以上默认使用完整 AppKit 界面：侧栏中的 Discover、Sav
 - 使用工具栏搜索框（**⌘F** 移动焦点）搜索本机 SQLite 中的 Saved、Discover 会话和 analysis 内容；该流程不调用模型、来源适配器或网络。
 - 在 **Sources** 中浏览和筛选同一组 22 个保留来源（A=7、B=15、C=0）；目录成员资格、日期化验证、当前记录健康和本机缓存时间分别表达。
 - 在 **Settings** 配置 OpenAI-compatible（包括兼容的 DeepSeek 端点）或 Anthropic-compatible 模型；保存前可以显式测试连接，并可明确替换或清除受保护凭据。
-- 对符合条件的 arXiv 论文使用 **Promote to llm-wiki**：TheRSS 先下载发现记录对应的精确版本 PDF，调用本地 Codex 生成全文分析并展示目标路径预览；只有用户再次确认后，才按照 vault 的治理规则写入 PDF、来源 sidecar、L2 论文笔记、Topic/Method 反向链接和审计记录。
+- 对符合条件的 arXiv 论文使用 **Promote to llm-wiki**：TheRSS 先下载发现记录对应的精确版本 PDF，调用本地 Codex 生成全文分析并展示目标路径预览；只有用户再次确认后，才按照 vault 的治理规则写入 PDF、来源 sidecar、L2 论文笔记、Topic/Method 反向链接和审计记录。写入确认和放弃未保存设置的确认使用标准确认对话框，不使用警告图标；默认按钮始终是取消。
 - 通过只读 Model Context Protocol（MCP）服务向 Codex、Claude Code 或其他兼容客户端开放本地候选项。
 - 所有 Discover 会话、Saved 状态和分析记录仅保存在本机；当前不提供账号登录或跨设备同步。
 - 控件、文本选区和焦点环跟随系统设置中的强调色（System Settings > Appearance），并在用户更改时实时更新；各视图自身的标识色（Discover 蓝、Saved 琥珀、Sources 青、Analytics 靛）保持不变。
@@ -110,7 +110,7 @@ npm run dev
 npm run install:local
 ```
 
-该命令会获得本机安装锁、构建未签名应用、备份并校验数据库、校验 Electron Framework 与 `app.asar` 哈希，并原子替换 `~/Applications/TheRSS Dev.app`；旧应用会保留为带时间戳的备份，成功后在 Application Support 中写入结构化回执。同一构建默认拒绝重复安装，确需演练时显式运行 `npm run install:local -- --force`。已有远程仓库后，可在干净的 `main` 工作树运行：
+该命令会获得本机安装锁、构建未签名应用、备份并校验数据库、校验 Electron Framework 与 `app.asar` 哈希，并原子替换 `~/Applications/TheRSS Dev.app`；旧应用会保留为带时间戳的备份，成功后在 Application Support 中写入结构化回执。确认新版本运行正常后，可以把 `~/Applications` 中的 `TheRSS Dev.backup-*.app` 移到废纸篓，只保留最新版本；数据库备份单独保存在 `~/Library/Application Support/therss/backups/`，不受影响。同一构建默认拒绝重复安装，确需演练时显式运行 `npm run install:local -- --force`。已有远程仓库后，可在干净的 `main` 工作树运行：
 
 ```bash
 npm run update:local
@@ -156,6 +156,8 @@ npm audit --audit-level=high
 ```
 
 `smoke:sources` 与 `smoke:configured-sources` 会访问真实来源，其他自动化测试使用确定性 fixture。项目要求覆盖率统计范围（`src/core` 与 `src/shared`）的 statements、branches、functions 和 lines 均不低于 80%，该阈值由 `vitest.config.ts` 强制。
+
+非简单改动按 [开发流程](docs/DEVELOPMENT_WORKFLOW.md) 执行：缺陷修复失败两次后先加诊断，失败三次后在 `notes.md` 写交接说明并在新会话中重做；找到原因后排查同类问题；Review 最多三轮；提交正文写明改动内容、验证方法和回滚方法。
 
 ## 数据与边界
 
