@@ -93,9 +93,39 @@ describe('native modal workflows', () => {
     const screen = { render: () => modal.render()! }
     const work = h.act(screen, 'promotion-confirm')
     await modal.close()
-    expect(modal.render()).toBeDefined()
+    expect(modal.visible).toBe(true)
     expect(confirm).toHaveBeenCalledOnce()
     finish(receipt)
     await work
+  })
+
+  it('steps the preview sheet aside while the final system confirmation is open', async () => {
+    // A standard (non-critical) macOS alert waits until the window's current sheet ends.
+    let finish!: (value: LlmWikiPromotionReceipt) => void
+    const confirm = vi.fn(
+      () =>
+        new Promise<LlmWikiPromotionReceipt>((resolve) => {
+          finish = resolve
+        })
+    )
+    const h = nativeHarness({
+      getLatestLlmWikiPromotion: vi.fn(async () => null),
+      previewLlmWikiPromotion: vi.fn(async () => preview),
+      confirmLlmWikiPromotion: confirm,
+      cancelLlmWikiPromotion: vi.fn(async () => receipt)
+    })
+    const modal = new NativeModals(h.context)
+    await modal.openPromotion('arxiv:1')
+    const screen = { render: () => modal.render()! }
+    const work = h.act(screen, 'promotion-confirm')
+    await Promise.resolve()
+    expect(confirm).toHaveBeenCalledOnce()
+    expect(modal.render()).toBeUndefined()
+    expect(modal.visible).toBe(true)
+    expect(modal.blocksNavigation).toBe(true)
+    finish(receipt)
+    await work
+    expect(h.find(h.render(screen), 'promotion-receipt-text')?.text).toContain('Fixture completed')
+    expect(modal.focus).toBe('modal-close')
   })
 })
