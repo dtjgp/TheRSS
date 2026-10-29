@@ -25,6 +25,17 @@ export function nativeHarness(overrides: Partial<TheRSSApi> = {}) {
     getDashboard: vi.fn(async () => dashboard),
     setSettingsDirty: vi.fn(),
     getLatestAnalysis: vi.fn(async () => null),
+    getLlmWikiStatus: vi.fn(async ({ arxivId }) => ({
+      arxivId,
+      status: 'not-found',
+      checkedAt: '2026-10-28T12:00:00Z',
+      recordPath: null,
+      notePath: null,
+      level: null,
+      readStatus: null,
+      reason: null
+    })),
+    openLlmWikiNote: vi.fn(async () => ({ opened: true })),
     getSavedSourceUpdate: vi.fn(async () => null),
     applySavedSourceUpdate: vi.fn(async () => ({ status: 'unchanged', item: null, dashboard })),
     getAnalysisArtifact: vi.fn(async () => null),

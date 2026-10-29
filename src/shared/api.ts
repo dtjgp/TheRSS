@@ -25,6 +25,7 @@ import type { DiscoveryItemKind, DiscoverySource } from './discovery'
 import type { LlmWikiPromotionPreview, LlmWikiPromotionReceipt } from './llmWikiPromotion'
 import type { LocalSearchResponse } from './localSearch'
 import type { LocalResearchRecord, LocalResearchTarget } from './localResearch'
+import type { LlmWikiLibraryStatus, LlmWikiStatusRequest } from './llmWikiLibrary'
 import type {
   SavedSourceUpdateCandidate,
   SavedSourceUpdateRequest,
@@ -144,4 +145,6 @@ export interface TheRSSApi {
   confirmLlmWikiPromotion(previewId: string): Promise<LlmWikiPromotionReceipt>
   cancelLlmWikiPromotion(previewId: string): Promise<LlmWikiPromotionReceipt>
   getLatestLlmWikiPromotion(itemId: string): Promise<LlmWikiPromotionReceipt | null>
+  getLlmWikiStatus(request: LlmWikiStatusRequest): Promise<LlmWikiLibraryStatus>
+  openLlmWikiNote(arxivId: string): Promise<{ opened: true }>
 }

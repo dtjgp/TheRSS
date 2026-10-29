@@ -1,0 +1,26 @@
+[
+  {
+    "case": "absent",
+    "passed": true,
+    "openAction": false
+  },
+  {
+    "case": "repository",
+    "passed": true,
+    "wikiBlock": false
+  },
+  {
+    "case": "record-only",
+    "passed": true,
+    "openAction": true,
+    "obsidianWindow": "Window: \"arxiv_2602.03060 - llm-wiki - Obsidian 1.14.5\", App: Obsidian.",
+    "trigger": "Native button via CUA; no direct API call"
+  },
+  {
+    "case": "existing-note",
+    "passed": true,
+    "openAction": true,
+    "obsidianWindow": "Window: \"Han_2026_iCATS - llm-wiki - Obsidian 1.14.5\", App: Obsidian.",
+    "trigger": "Native button via CUA; no direct API call"
+  }
+]

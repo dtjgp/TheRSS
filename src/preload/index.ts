@@ -149,7 +149,9 @@ const api: TheRSSApi = {
   cancelLlmWikiPromotion: (previewId) =>
     ipcRenderer.invoke(IPC_CHANNELS.cancelLlmWikiPromotion, { previewId }),
   getLatestLlmWikiPromotion: (itemId) =>
-    ipcRenderer.invoke(IPC_CHANNELS.getLatestLlmWikiPromotion, itemId)
+    ipcRenderer.invoke(IPC_CHANNELS.getLatestLlmWikiPromotion, itemId),
+  getLlmWikiStatus: (request) => ipcRenderer.invoke(IPC_CHANNELS.getLlmWikiStatus, request),
+  openLlmWikiNote: (arxivId) => ipcRenderer.invoke(IPC_CHANNELS.openLlmWikiNote, arxivId)
 }
 
 contextBridge.exposeInMainWorld('therss', api)

@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-10-29T10:00:54.397Z",
+  "productionCodeChanged": false,
+  "appAsarSha256": "1cad5c6982c88b4323b587ef2e9403ce0547943f894db1ed00ff1d228e8ac467",
+  "isolatedAsarSha256": "1cad5c6982c88b4323b587ef2e9403ce0547943f894db1ed00ff1d228e8ac467",
+  "identicalApplicationContent": true,
+  "uniqueBundleId": "dev.dtjgp.therss.verification",
+  "localSigning": "ad-hoc test copy only",
+  "matrixSeed": "three labeled arXiv test entries and one labeled GitHub test entry in a disposable database",
+  "fixtureServicesEnabled": false,
+  "liveSourceCalls": false,
+  "modelCalls": false,
+  "promotionCalls": false,
+  "uncommittedNoteText": {
+    "text": "ge",
+    "userConfirmedOwnInput": true,
+    "preserved": true
+  },
+  "controlledOpenFileHashesUnchanged": true,
+  "launch": {
+    "mode": "actual read-only vault; production service/API/UI; disposable app database",
+    "profile": "/var/folders/d9/50r202r14gbc_shcxg960xrh0000gn/T/therss-wiki-readonly-jo6fsy",
+    "verificationBundle": "/var/folders/d9/50r202r14gbc_shcxg960xrh0000gn/T/therss-wiki-readonly-jo6fsy/TheRSS Verification.app",
+    "matrix": true,
+    "pid": 15710,
+    "liveSourceCalls": false,
+    "modelCalls": false,
+    "vaultWrites": false
+  }
+}

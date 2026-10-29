@@ -93,6 +93,34 @@ function fixture() {
 }
 
 describe('shared application contract parity', () => {
+  it('validates read-only wiki requests and accepts no caller-selected open path', async () => {
+    const f = fixture()
+    const status = {
+      arxivId: '2610.11302',
+      status: 'recorded' as const,
+      checkedAt: '2026-10-28T12:00:00Z',
+      recordPath: 'raw/paper_records/Paper.md',
+      notePath: null,
+      level: null,
+      readStatus: null,
+      reason: null
+    }
+    const wiki = {
+      status: vi.fn(async () => status),
+      open: vi.fn(async () => ({ opened: true as const }))
+    }
+    const app = new WindowApplication({ ...f.services, wiki }, f.context)
+    expect(await app.api.getLlmWikiStatus({ arxivId: '2610.11302v1' })).toEqual(status)
+    expect(wiki.status).toHaveBeenCalledWith({ arxivId: '2610.11302' })
+    await app.api.openLlmWikiNote('2610.11302')
+    expect(wiki.open).toHaveBeenCalledWith('2610.11302')
+    await expect(
+      app.api.getLlmWikiStatus({ arxivId: '2610.11302', path: 'Life/private.md' } as never)
+    ).rejects.toThrow()
+    await expect(app.api.openLlmWikiNote('obsidian://new?content=bad')).rejects.toThrow()
+    expect(f.repository.materializeDiscoverResultForLlmWikiPromotion).not.toHaveBeenCalled()
+    await app.shutdown()
+  })
   it('resolves exact local targets read-only, rejects foreign fields and preserves missing outcomes', async () => {
     const f = fixture()
     f.repository.getDiscoveryItem.mockReturnValue({ id: f.item, triageState: 'saved' })

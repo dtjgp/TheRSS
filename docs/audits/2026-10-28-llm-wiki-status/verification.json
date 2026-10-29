@@ -1,0 +1,153 @@
+{
+  "completedAt": "2026-10-29T10:04:51.348Z",
+  "branch": "codex/llm-wiki-state",
+  "baseRevision": "41c5aaf",
+  "checks": {
+    "check": {
+      "exitCode": 0,
+      "mainTests": 832,
+      "appkitTests": 183,
+      "overlap": true
+    },
+    "electronE2e": {
+      "passed": 8,
+      "environment": "host; initial sandbox launch failed"
+    },
+    "nativeFixtureGroups": {
+      "passed": 16,
+      "realVault": false
+    },
+    "actualPreflight": true,
+    "actualObsidianOpen": "Real native button selects correct existing note and record; no direct API call for continued testing",
+    "nativeRealMouseButton": "CUA accessibility click plus visible native/Obsidian postconditions passed; human physical input not run",
+    "documentationLinks": 29,
+    "continuedRegression": {
+      "files": 6,
+      "tests": 51,
+      "exitCode": 0,
+      "overlapWithPriorSuite": true
+    },
+    "controlledRepeat": {
+      "files": 3,
+      "allHashesUnchanged": true
+    }
+  },
+  "notRun": [
+    "real paper ingestion",
+    "VoiceOver/human acceptance",
+    "remote CI",
+    "installation/publication"
+  ],
+  "vaultContentWrites": false,
+  "artifacts": [
+    {
+      "path": "CHANGE_CONTRACT.md",
+      "sha256": "14fa629d95ad036dd457003125af039fc7e9fd2aafb882bacc9d66f9a81596ce"
+    },
+    {
+      "path": "CONTINUED_TESTING.md",
+      "sha256": "d0a6f0dc9827d8970bfa65f3d30ef859772f83712f71fbbad2bb13c48ffe40b0"
+    },
+    {
+      "path": "REPORT.md",
+      "sha256": "e29c7533622394560a74750d783fd4a06187721eaf379a9a1a04adb0e1992295"
+    },
+    {
+      "path": "actual-vault-check.json",
+      "sha256": "bee64bad21d30dd1ac79aca4aac4c6aeab505fd21b99f5f0b1accb838e33868d"
+    },
+    {
+      "path": "actual-vault-status.jpg",
+      "sha256": "a779920630ba887729cf09474a67798c9d7262d77eecaba4a28ceb1a1d508de0"
+    },
+    {
+      "path": "continued-absent-ax.txt",
+      "sha256": "15601076d343aaae3147200ab4b2c275c22e7ce2c3049b437c0faa9e97c70b23"
+    },
+    {
+      "path": "continued-absent.jpg",
+      "sha256": "89942be3aa45627ff5d6dc82bc5a649d98715d939ccd00b72af20d9ebea54b55"
+    },
+    {
+      "path": "continued-environment.json",
+      "sha256": "92ad2711cee036aa3fe47540b07c41d4477118a4202a7ebe9b902d90eb8cbb3a"
+    },
+    {
+      "path": "continued-matrix-proof.json",
+      "sha256": "8f2bb1c948f4a6f7f1f261d485a0b9e9b010c262b7d029cca4739d5895616333"
+    },
+    {
+      "path": "continued-open-obsidian.jpg",
+      "sha256": "a9c50409c9645486d74a16d6aeeee99d3fde7d14554e3c3dc3a7d3b4af99373c"
+    },
+    {
+      "path": "continued-open-proof.json",
+      "sha256": "7fe826b7d407818a85189ba83539db4b428c2ab174ccf402d19edba8a1032bbb"
+    },
+    {
+      "path": "continued-open-record.jpg",
+      "sha256": "cd5964c3237943dc9d2ce18beb03ca18ef9e9ab5d653a3c475e3e9388b9d38ad"
+    },
+    {
+      "path": "continued-recheck-ax.txt",
+      "sha256": "6b9c57f4897f1139b215c040a6f69a6d50fcef79f6854e145dbbb7ab99bcb2b4"
+    },
+    {
+      "path": "continued-recheck.jpg",
+      "sha256": "c4940dd98471f9b661f8dbfdceca26f75ae0f3728a500092d61e92848a6d4335"
+    },
+    {
+      "path": "continued-record-only-ax.txt",
+      "sha256": "74b96d395e49ca64d4c41e936ecb54a014282c31f0c30644f2c71654240fe172"
+    },
+    {
+      "path": "continued-record-only.jpg",
+      "sha256": "c852745e98aaecf8e1a95ea4de0ec88ad9319e8f05b51d2807fd3f92088fa4a2"
+    },
+    {
+      "path": "continued-regression.txt",
+      "sha256": "31b5038364e613bd04c3e8b318b0d1dc7e9b5b14f4298bb6dc88962f71105698"
+    },
+    {
+      "path": "continued-repository-ax.txt",
+      "sha256": "45d7bbb52750476882409f7ecca2d66aa7d914d87fac11cfaaeec189ef2157ee"
+    },
+    {
+      "path": "continued-vault-after.json",
+      "sha256": "e0afa1c7d18b4d4be89c75284862b159f9fae5bdef8ec2358c06385e39483ec0"
+    },
+    {
+      "path": "continued-vault-before.json",
+      "sha256": "17af19ac8a2ec9a12cbc3e488647892a373eed2603dd6cc5c61416a4a87086fe"
+    },
+    {
+      "path": "native-dark.png",
+      "sha256": "31fe2730be503cd808c3229c80b0fe27636708a82fe7456bf1b1527d659ef179"
+    },
+    {
+      "path": "native-narrow.png",
+      "sha256": "e5312017f7ce3fecb14aaa516981f8c85bd5b1baa779960a2d8c8b42c25e4645"
+    },
+    {
+      "path": "native-result.json",
+      "sha256": "495e090c49353c2503dcc1c2434cdcd9ad127ee666f7226daf2c96a40ac99dc6"
+    },
+    {
+      "path": "native-status.png",
+      "sha256": "fb90330f99d9e83205c53d741b5ac21d2d230cd1e9eeaf0a4089f3a0e94334ff"
+    },
+    {
+      "path": "obsidian-open-existing.jpg",
+      "sha256": "a81500855b7d1b4c012654a5441acbf631a4952377adc6960aec42fbdd1600d0"
+    },
+    {
+      "path": "opened-existing.json",
+      "sha256": "dd2ec9b77838e8bfa604b07b0b333420d652436c7799da997a9c89eb6e265077"
+    },
+    {
+      "path": "verify-readonly.mjs",
+      "sha256": "ee6ce96c647151e252abdd3780621b1a1a16dabd4956f21ab6df0a8f26c09f4e"
+    }
+  ],
+  "userConfirmedNoteInputPreserved": true
+}

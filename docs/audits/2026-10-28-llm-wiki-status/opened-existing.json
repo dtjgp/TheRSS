@@ -1,0 +1,15 @@
+{
+  "status": {
+    "arxivId": "2610.11302",
+    "status": "recorded",
+    "checkedAt": "2026-10-28T21:46:01.612Z",
+    "recordPath": "raw/paper_records/Han et al. - 2026 - iCATS.md",
+    "notePath": "Literature/Paper_Notes/L2_Structured/Model_Compression/Han_2026_iCATS.md",
+    "level": "L2",
+    "readStatus": "unread",
+    "reason": null
+  },
+  "result": {
+    "opened": true
+  }
+}

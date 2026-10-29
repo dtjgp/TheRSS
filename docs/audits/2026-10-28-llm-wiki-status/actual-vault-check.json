@@ -1,0 +1,43 @@
+{
+  "checkedAt": "2026-10-29T09:21:07.454Z",
+  "runtimeSha256": "bdbf13e28523f1ba9679fdd6230a44f85c21426cade6a3af5c05a29e41f7da61",
+  "pinMatches": true,
+  "preflightPassed": true,
+  "knowledgePages": 37,
+  "vaultWrites": false,
+  "cases": [
+    {
+      "arxivId": "2610.11302",
+      "status": "recorded",
+      "checkedAt": "2026-10-29T09:21:07.256Z",
+      "recordPath": "raw/paper_records/Han et al. - 2026 - iCATS.md",
+      "notePath": "Literature/Paper_Notes/L2_Structured/Model_Compression/Han_2026_iCATS.md",
+      "level": "L2",
+      "readStatus": "unread",
+      "reason": null,
+      "elapsedMs": 116
+    },
+    {
+      "arxivId": "2602.03060",
+      "status": "recorded",
+      "checkedAt": "2026-10-29T09:21:07.357Z",
+      "recordPath": "raw/paper_records/arxiv_2602.03060.md",
+      "notePath": null,
+      "level": null,
+      "readStatus": null,
+      "reason": null,
+      "elapsedMs": 100
+    },
+    {
+      "arxivId": "9912.99999",
+      "status": "not-found",
+      "checkedAt": "2026-10-29T09:21:07.454Z",
+      "recordPath": null,
+      "notePath": null,
+      "level": null,
+      "readStatus": null,
+      "reason": null,
+      "elapsedMs": 97
+    }
+  ]
+}

@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { DiscoveryItem } from '../../shared/discovery'
 import { LlmWikiVaultAdapter, llmWikiVaultAdapterInternals } from './llmWikiVaultAdapter'
@@ -133,6 +134,37 @@ afterEach(async () => {
 })
 
 describe('LlmWikiVaultAdapter', () => {
+  it('completes a fixture promotion and releases its lease through the reviewed real Python runtime', async () => {
+    const root = await makeVault()
+    const script = await readFile(resolve('tests/fixtures/llm-wiki/automation_runtime.py'))
+    const scriptPath = join(root, 'System/Scripts/automation_runtime.py')
+    await writeFile(scriptPath, script)
+    const options = fixtureOptions(root)
+    options.trustedRuntimeHash = createHash('sha256').update(script).digest('hex')
+    options.runRuntime.mockImplementation(async (_root, args) =>
+      JSON.parse(
+        execFileSync('python3', [scriptPath, ...args], {
+          cwd: root,
+          encoding: 'utf8',
+          timeout: 30_000
+        })
+      )
+    )
+    const adapter = new LlmWikiVaultAdapter(options)
+    const prepared = await adapter.prepare(paper, {
+      previewId: '11111111-1111-4111-8111-111111111111',
+      expiresAt: '2026-10-28T12:30:00Z'
+    })
+    expect(prepared.preview.ready).toBe(true)
+    const receipt = await adapter.confirm(prepared)
+    expect(receipt.status).toBe('completed')
+    const state = JSON.parse(
+      execFileSync('python3', [scriptPath, 'status'], { cwd: root, encoding: 'utf8' })
+    )
+    expect(state.leases).toEqual([])
+    expect(state.recent_events.at(-1).outcome).toBe('completed')
+    await adapter.dispose(prepared)
+  })
   it('sanitizes fallback paths, routes L1, and appends idempotent index entries', () => {
     expect(llmWikiVaultAdapterInternals.safeFilenamePart('\u0000/:*', 'Fallback', 20)).toBe(
       'Fallback'
@@ -280,6 +312,9 @@ describe('LlmWikiVaultAdapter', () => {
     ])
     expect(await readFile(join(root, receipt.sidecarPath!), 'utf8')).toContain(
       'arxiv_id: "2608.00001"'
+    )
+    expect(await readFile(join(root, receipt.sidecarPath!), 'utf8')).toContain(
+      `paper_note: ${JSON.stringify(`[[${receipt.notePath!.replace(/\.md$/u, '')}]]`)}`
     )
     expect(await readFile(join(root, receipt.notePath!), 'utf8')).toContain(
       'Author-reported results are not independently reproduced'

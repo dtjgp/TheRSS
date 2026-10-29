@@ -1,0 +1,178 @@
+{
+  "passed": true,
+  "screenshots": true,
+  "legacyScrollers": false,
+  "dialogs": [
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1793223399269
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1793223399931
+    },
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1793223400001
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 1,
+        "checkboxChecked": false
+      },
+      "time": 1793223400654
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1793223408513
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1793223409567
+    },
+    {
+      "event": "open",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "time": 1793223411034
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Cancel", "Write to llm-wiki"],
+      "result": {
+        "response": 1,
+        "checkboxChecked": false
+      },
+      "time": 1793223413240
+    },
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1793223419076
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 0,
+        "checkboxChecked": false
+      },
+      "time": 1793223419722
+    },
+    {
+      "event": "open",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "time": 1793223419786
+    },
+    {
+      "event": "resolved",
+      "buttons": ["Keep Editing", "Discard Changes"],
+      "result": {
+        "response": 1,
+        "checkboxChecked": false
+      },
+      "time": 1793223420423
+    }
+  ],
+  "profile": "/var/folders/d9/50r202r14gbc_shcxg960xrh0000gn/T/therss-appkit-acceptance-YVYgX1",
+  "checks": [
+    {
+      "name": "Native root, blank Web page and Unicode boundary",
+      "passed": true,
+      "elapsedMs": 292
+    },
+    {
+      "name": "All 22 source choices and semantic search",
+      "passed": true,
+      "elapsedMs": 7709
+    },
+    {
+      "name": "Native reading, Save, full analysis and search details sheet",
+      "passed": true,
+      "elapsedMs": 8038
+    },
+    {
+      "name": "A double-clicked result opens read-only in its own window",
+      "passed": true,
+      "elapsedMs": 1200
+    },
+    {
+      "name": "Saved repository analysis and independent source/runner filters",
+      "passed": true,
+      "elapsedMs": 1388
+    },
+    {
+      "name": "Settings opens in its own window and the workspace reloads saved context",
+      "passed": true,
+      "elapsedMs": 2982
+    },
+    {
+      "name": "Secure key then immediate Save uses the real ordered callback queue",
+      "passed": true,
+      "elapsedMs": 808
+    },
+    {
+      "name": "Secure draft survives tabs and explicit discard clears the hidden native field",
+      "passed": true,
+      "elapsedMs": 2140
+    },
+    {
+      "name": "Persisted Analytics metrics and complete analysis artifact",
+      "passed": true,
+      "elapsedMs": 2453
+    },
+    {
+      "name": "Source focus is separate from activation; content stays read-only",
+      "passed": true,
+      "elapsedMs": 852
+    },
+    {
+      "name": "Local search uses the toolbar field and safe external-open routing",
+      "passed": true,
+      "elapsedMs": 3118
+    },
+    {
+      "name": "Promotion preview includes verified facts and produces a fixture receipt only after confirmation",
+      "passed": true,
+      "elapsedMs": 6441
+    },
+    {
+      "name": "Native editing Undo, zoom, dividers and narrow window layout",
+      "passed": true,
+      "elapsedMs": 4915
+    },
+    {
+      "name": "Dirty marked-text close guard and native window recreation preserve data/preferences",
+      "passed": true,
+      "elapsedMs": 2548
+    },
+    {
+      "name": "Explicit Saved snapshot update preserves SQLite history and refreshes native reading",
+      "passed": true,
+      "elapsedMs": 1825
+    },
+    {
+      "name": "Latest recorded source feedback replaces old checks and stays local to Sources",
+      "passed": true,
+      "elapsedMs": 1171
+    }
+  ],
+  "errors": [],
+  "platformDiagnostics": [],
+  "webElementCount": 0,
+  "nativeRoot": "TRCanvas"
+}

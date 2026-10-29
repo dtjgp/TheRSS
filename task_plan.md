@@ -17,6 +17,15 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Status
 
+**llm-wiki handoff implemented and locally verified (2026-10-29), not installed.**
+The [task report](docs/audits/2026-10-28-llm-wiki-status/REPORT.md) owns this slice:
+reviewed runtime pin, bounded read-only collected state and safe Obsidian opening in the
+existing native reader. Current checks pass 832 main/183 AppKit tests, eight Electron cases,
+and 16 native fixture groups. Actual vault checks and production API → Obsidian navigation
+pass. The continuation verifies native button actions, note/record opening and absent/non-paper
+UI, plus 51 related regression cases. Human physical-input/VoiceOver acceptance remains separate;
+no real paper write, commit, install, push or release occurred.
+
 **v0.4.0 unsigned pre-release published (2026-10-27).** PRs #64, #67, #68, #69 and #70
 are merged; `npm audit` reports 0 vulnerabilities. The release PR changes only the version and
 documents. The [0.4.0 report](docs/audits/2026-10-27-v0.4.0-prerelease/REPORT.md) records the

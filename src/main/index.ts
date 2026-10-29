@@ -35,6 +35,7 @@ import { ProviderService, type SecretCipher } from '../core/models/providerServi
 import { ResearchRepository } from '../core/storage/researchRepository'
 import { LlmWikiPromotionService } from '../core/integrations/llmWikiPromotionService'
 import { LlmWikiVaultAdapter } from '../core/integrations/llmWikiVaultAdapter'
+import { LlmWikiLibrary } from '../core/integrations/llmWikiLibrary'
 import type { SystemAccentName } from '../shared/appearance'
 import {
   LLM_WIKI_PROMOTION_PREVIEW_VERSION,
@@ -502,6 +503,21 @@ app.whenReady().then(async () => {
       analysis: analysisService,
       agents: localAgentService,
       promotion: promotionService,
+      wiki: useE2eFixtures
+        ? {
+            status: async ({ arxivId }) => ({
+              arxivId,
+              status: 'recorded',
+              checkedAt: new Date().toISOString(),
+              recordPath: 'raw/paper_records/Fixture.md',
+              notePath: 'Literature/Paper_Notes/L2_Structured/Model_Compression/Fixture.md',
+              level: 'L2',
+              readStatus: 'unread',
+              reason: null
+            }),
+            open: async () => ({ opened: true })
+          }
+        : new LlmWikiLibrary({ openExternal: (url) => shell.openExternal(url) }),
       credentials: () => {
         const githubToken = githubTokenFromEnvironment(env)
         const huggingFaceToken = huggingFaceTokenFromEnvironment(env)

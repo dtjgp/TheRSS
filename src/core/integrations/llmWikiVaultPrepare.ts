@@ -214,7 +214,7 @@ export async function prepareLlmWikiPromotion(
         vaultRoot: preflight.root,
         sourceItem: item,
         analysis,
-        sidecarMarkdown: buildSidecar(item, paths.pdf),
+        sidecarMarkdown: buildSidecar(item, paths.pdf, paths.note),
         sidecarPreexisting: Boolean(existingSidecar),
         paths,
         mutableHashes,

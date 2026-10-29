@@ -1,0 +1,8 @@
+{
+  "beforeWindow": "The following is a diff from the previous accessibility tree for Window: \"LLM_四层缓存_中文详解 - llm-wiki - Obsidian 1.14.5\" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.",
+  "afterWindow": "Window: \"Han_2026_iCATS - llm-wiki - Obsidian 1.14.5\", App: Obsidian.",
+  "trigger": "Native Open in Obsidian button via CUA; no direct API invocation",
+  "expectedIdVisible": true,
+  "expectedNoteVisible": true,
+  "toolReportedAccessibilityError": true
+}
