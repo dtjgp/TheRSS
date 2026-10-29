@@ -133,6 +133,9 @@ export class ResearchReader implements NativeScreen {
     this.version++
     if (item) void this.loadStoredAnalysis()
   }
+  llmWikiChanged(arxivId: string): void {
+    void this.wiki.refreshIfShowing(arxivId)
+  }
   dispose(): void {
     this.wiki.dispose()
     this.disposed = true

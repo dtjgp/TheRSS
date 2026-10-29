@@ -29,6 +29,9 @@ export class SavedScreen implements NativeScreen {
       if (this.localItem?.id === id) this.localItem = item?.triageState === 'saved' ? item : null
     })
   }
+  llmWikiChanged(arxivId: string): void {
+    this.reader.llmWikiChanged(arxivId)
+  }
   dispose(): void {
     this.reader.dispose()
     this.sourceUpdate.dispose()

@@ -59,6 +59,59 @@ describe('native llm-wiki status', () => {
       expect(h.find(h.render(widget), 'saved-wiki-open')).toBeUndefined()
     }
   )
+  it('rechecks only when it shows the written arXiv ID', async () => {
+    const get = vi.fn(async () => found)
+    const h = nativeHarness({ getLlmWikiStatus: get })
+    const widget = new WikiStatus(h.context, 'discover')
+    await widget.refreshIfShowing('2610.11302')
+    expect(get).not.toHaveBeenCalled()
+    widget.select(paper)
+    await vi.waitFor(() => expect(get).toHaveBeenCalledOnce())
+    await widget.refreshIfShowing('2609.00001')
+    expect(get).toHaveBeenCalledOnce()
+    await widget.refreshIfShowing('2610.11302')
+    expect(get).toHaveBeenCalledTimes(2)
+    expect(get).toHaveBeenLastCalledWith({ arxivId: '2610.11302', refresh: true })
+  })
+  it('keeps Open and Recheck usable when a write recheck runs during an open', async () => {
+    let opened!: () => void
+    const h = nativeHarness({
+      getLlmWikiStatus: vi.fn(async () => found),
+      openLlmWikiNote: vi.fn(
+        () =>
+          new Promise<{ opened: true }>((resolve) => {
+            opened = () => resolve({ opened: true })
+          })
+      )
+    })
+    const widget = new WikiStatus(h.context, 'discover')
+    widget.select(paper)
+    await vi.waitFor(() => expect(JSON.stringify(h.render(widget))).toContain('In llm-wiki'))
+    const opening = h.act(widget, 'discover-wiki-open')
+    await widget.refreshIfShowing('2610.11302')
+    opened()
+    await opening
+    expect(h.find(h.render(widget), 'discover-wiki-open')?.enabled).toBe(true)
+    expect(h.find(h.render(widget), 'discover-wiki-refresh')?.enabled).toBe(true)
+  })
+  it('makes Open the primary action only when a paper note exists', async () => {
+    const get = vi
+      .fn()
+      .mockResolvedValueOnce(found)
+      .mockResolvedValue({ ...found, notePath: null, level: null, readStatus: null })
+    const h = nativeHarness({ getLlmWikiStatus: get })
+    const widget = new WikiStatus(h.context, 'saved')
+    widget.select(paper)
+    await vi.waitFor(() =>
+      expect(h.find(h.render(widget), 'saved-wiki-open')?.emphasis).toBe('primary')
+    )
+    expect(h.find(h.render(widget), 'saved-wiki-hint')).toBeUndefined()
+    await h.act(widget, 'saved-wiki-refresh')
+    expect(h.find(h.render(widget), 'saved-wiki-open')?.emphasis).toBeUndefined()
+    expect(h.find(h.render(widget), 'saved-wiki-hint')?.text).toBe(
+      'No L1/L2 paper note yet. Preview llm-wiki promotion checks whether one can be added.'
+    )
+  })
   it('explains record-only state and presents query/open failures honestly', async () => {
     const get = vi
       .fn()

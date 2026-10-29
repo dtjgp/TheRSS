@@ -109,7 +109,9 @@ export class NativePresenter {
     }
     this.controls = new Controls(this.context)
     this.triage = new TriageHistory(this.context)
-    this.modals = new NativeModals(this.context)
+    this.modals = new NativeModals(this.context, (arxivId) => {
+      for (const screen of Object.values(this.screens)) screen.llmWikiChanged?.(arxivId)
+    })
     this.localSearch = new LocalSearchScreen(this.context)
     this.screens = {
       discover: new DiscoverScreen(this.context, this.triage),

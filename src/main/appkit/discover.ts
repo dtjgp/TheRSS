@@ -128,6 +128,9 @@ export class DiscoverScreen implements NativeScreen {
       this.context.redraw()
     }
   }
+  llmWikiChanged(arxivId: string): void {
+    this.reader.llmWikiChanged(arxivId)
+  }
   dispose(): void {
     this.disposed = true
     this.version++

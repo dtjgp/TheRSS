@@ -40,6 +40,10 @@ export class WikiStatus {
   get visible(): boolean {
     return !!this.arxivId
   }
+  /** Rechecks after a promotion write, but only for the paper this block shows. */
+  async refreshIfShowing(arxivId: string): Promise<void> {
+    if (arxivId === this.arxivId) await this.refresh(true)
+  }
   async refresh(force = true): Promise<void> {
     if (!this.arxivId || this.disposed) return
     const version = ++this.version,
@@ -108,15 +112,28 @@ export class WikiStatus {
         ...(this.error || result?.reason
           ? [label(`${prefix}-reason`, this.error || result!.reason!, { weight: 'secondary' })]
           : []),
+        ...(result?.status === 'recorded' && !result.notePath && !this.busy
+          ? [
+              label(
+                `${prefix}-hint`,
+                'No L1/L2 paper note yet. Preview llm-wiki promotion checks whether one can be added.',
+                { weight: 'secondary', textStyle: 'footnote' }
+              )
+            ]
+          : []),
         row(`${prefix}-actions`, [
           ...(result?.status === 'recorded'
             ? [
-                this.controls.button(
-                  `${prefix}-open`,
-                  this.opening ? 'Opening Obsidian…' : 'Open in Obsidian',
-                  () => this.open(),
-                  !this.busy && !this.opening
-                )
+                {
+                  ...this.controls.button(
+                    `${prefix}-open`,
+                    this.opening ? 'Opening Obsidian…' : 'Open in Obsidian',
+                    () => this.open(),
+                    !this.busy && !this.opening
+                  ),
+                  // A written note is the main next step; a bare record stays a normal action.
+                  ...(result.notePath ? { emphasis: 'primary' as const } : {})
+                }
               ]
             : []),
           {
@@ -135,17 +152,17 @@ export class WikiStatus {
   }
   private async open(): Promise<void> {
     if (!this.arxivId || this.opening) return
-    const version = this.version,
-      id = this.arxivId
+    // Match by paper, not refresh version: a recheck during the open must not leave it stuck.
+    const id = this.arxivId
     this.opening = true
     this.error = ''
     this.context.redraw()
     try {
       await this.context.api.openLlmWikiNote(id)
     } catch (error) {
-      if (!this.disposed && version === this.version) this.error = readableError(error)
+      if (!this.disposed && id === this.arxivId) this.error = readableError(error)
     } finally {
-      if (!this.disposed && version === this.version) {
+      if (!this.disposed && id === this.arxivId) {
         this.opening = false
         this.context.redraw()
       }

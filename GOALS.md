@@ -13,6 +13,9 @@ push or release was performed. Existing broader collaboration proposals remain d
 
 The [prioritized follow-up list](docs/audits/2026-10-28-llm-wiki-status/PRIORITIES.md)
 records the user's requested planning reference. These are proposed next steps, not completed capabilities.
+On 2026-10-29 the user selected item P0-2. The native reader now rechecks llm-wiki status after a
+confirmed promotion write ends ([change contract](docs/audits/2026-10-29-llm-wiki-post-promotion-refresh/CHANGE_CONTRACT.md)).
+It is verified with fixtures only; a real promotion (P0-1) has not run.
 
 ## Current stage: v0.4.0 unsigned pre-release (published)
 
