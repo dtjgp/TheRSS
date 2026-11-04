@@ -55,7 +55,7 @@ export interface ApplicationServices {
   readonly promotion: LlmWikiPromotionService
   readonly credentials?: () => { githubToken?: string; huggingFaceToken?: string }
   readonly testProvider: (
-    profile: ReturnType<ProviderService['getConnectionTestProfile']>
+    profile: Awaited<ReturnType<ProviderService['getConnectionTestProfile']>>
   ) => Promise<ProviderConnectionResult>
 }
 
@@ -187,7 +187,7 @@ export class WindowApplication {
       getModelProvider: () => task(() => provider.getSummary()),
       saveModelProvider: (candidate) => task(() => provider.save(candidate)),
       testModelProvider: (candidate) =>
-        task(() => services.testProvider(provider.getConnectionTestProfile(candidate))),
+        task(async () => services.testProvider(await provider.getConnectionTestProfile(candidate))),
       clearModelProviderCredential: () => task(() => provider.clearCredential()),
       setSettingsDirty: (candidate) => {
         if (this.closed || !context.isAvailable()) return

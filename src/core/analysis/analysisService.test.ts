@@ -6,13 +6,13 @@ import { ResearchRepository } from '../storage/researchRepository'
 import { AnalysisService } from './analysisService'
 
 class FakeSecretCipher implements SecretCipher {
-  isAvailable(): boolean {
+  async isAvailable(): Promise<boolean> {
     return true
   }
-  encrypt(value: string): Buffer {
+  async encrypt(value: string): Promise<Buffer> {
     return Buffer.from(value)
   }
-  decrypt(value: Buffer): string {
+  async decrypt(value: Buffer): Promise<string> {
     return value.toString()
   }
 }
@@ -48,11 +48,11 @@ const rankedItem: RankedDiscoveryItem = {
   ]
 }
 
-function setup() {
+async function setup() {
   const repository = new ResearchRepository(new Database(':memory:'))
   repository.upsertRankedItems([rankedItem], '2026-08-15T10:00:00.000Z')
   const providers = new ProviderService(repository, new FakeSecretCipher())
-  providers.save({
+  await providers.save({
     name: 'Local model',
     protocol: 'openai-compatible',
     baseUrl: 'http://127.0.0.1:11434/v1',
@@ -63,7 +63,7 @@ function setup() {
 
 describe('AnalysisService', () => {
   it('analyzes one persisted item and stores a provenance-bearing artifact', async () => {
-    const { repository, providers } = setup()
+    const { repository, providers } = await setup()
     const gateway = vi.fn().mockResolvedValue({
       content: '## Research fit\nHighly relevant.',
       inputTokens: 120,
@@ -96,7 +96,7 @@ describe('AnalysisService', () => {
   })
 
   it('does not call a provider for an unknown local item', async () => {
-    const { repository, providers } = setup()
+    const { repository, providers } = await setup()
     const gateway = vi.fn()
     const service = new AnalysisService(repository, providers, gateway)
 
@@ -106,7 +106,7 @@ describe('AnalysisService', () => {
   })
 
   it('routes a local Codex request without requiring the model provider gateway', async () => {
-    const { repository, providers } = setup()
+    const { repository, providers } = await setup()
     const modelGateway = vi.fn()
     const localAgentGateway = vi.fn().mockResolvedValue({
       content: '## Research fit\nCodex found a strong match.',
@@ -142,7 +142,7 @@ describe('AnalysisService', () => {
   })
 
   it('reopens an immutable historical artifact and marks it stale after source changes', async () => {
-    const { repository, providers } = setup()
+    const { repository, providers } = await setup()
     const gateway = vi
       .fn()
       .mockResolvedValueOnce({ content: 'Original analysis', inputTokens: 10, outputTokens: 5 })

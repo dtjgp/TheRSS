@@ -190,10 +190,11 @@ const repository = new ResearchRepository(new Database(join(output, 'evaluation.
 const unavailable = () => {
   throw new Error('This benchmark has no model API provider or credential storage')
 }
+const unavailableCipher = async (): Promise<never> => unavailable()
 const providers = new ProviderService(repository, {
-  isAvailable: () => false,
-  encrypt: unavailable,
-  decrypt: unavailable
+  isAvailable: async () => false,
+  encrypt: unavailableCipher,
+  decrypt: unavailableCipher
 })
 const analyzer = new AnalysisService(
   repository,

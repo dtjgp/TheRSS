@@ -16,18 +16,19 @@ const application = await electron.launch({
 })
 try {
   await application.firstWindow()
-  const result = await application.evaluate(({ app, safeStorage }, expectedProfile) => {
+  const result = await application.evaluate(async ({ app, safeStorage }, expectedProfile) => {
     const { realpathSync } = process.getBuiltinModule('node:fs')
     const { Buffer } = process.getBuiltinModule('node:buffer')
     if (realpathSync(app.getPath('userData')) !== realpathSync(expectedProfile))
       throw new Error('Credential smoke requires disposable app data')
-    if (!safeStorage.isEncryptionAvailable())
+    if (!(await safeStorage.isAsyncEncryptionAvailable()))
       throw new Error('OS-backed safeStorage is unavailable')
     const sample = ['TheRSS', 'credential', 'smoke'].join('-')
-    const ciphertext = safeStorage.encryptString(sample)
+    const ciphertext = await safeStorage.encryptStringAsync(sample)
+    const decrypted = await safeStorage.decryptStringAsync(ciphertext)
     return {
       plaintextAbsent: !ciphertext.includes(Buffer.from(sample, 'utf8')),
-      roundTrip: safeStorage.decryptString(ciphertext) === sample
+      roundTrip: decrypted.result === sample
     }
   }, profile)
   assert.deepEqual(result, { plaintextAbsent: true, roundTrip: true })

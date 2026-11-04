@@ -54,17 +54,18 @@ import { githubTokenFromEnvironment, huggingFaceTokenFromEnvironment } from './s
 import { createLlmWikiPromotionRuntime } from './llmWikiPromotionRuntime'
 import { readWindowState, writeWindowState, type WindowBounds } from './windowState'
 
+/** Electron 45 deprecates the synchronous safeStorage calls; the async calls also decrypt their ciphertext. */
 class ElectronSecretCipher implements SecretCipher {
-  isAvailable(): boolean {
-    return safeStorage.isEncryptionAvailable()
+  isAvailable(): Promise<boolean> {
+    return safeStorage.isAsyncEncryptionAvailable()
   }
 
-  encrypt(value: string): Buffer {
-    return safeStorage.encryptString(value)
+  encrypt(value: string): Promise<Buffer> {
+    return safeStorage.encryptStringAsync(value)
   }
 
-  decrypt(value: Buffer): string {
-    return safeStorage.decryptString(value)
+  async decrypt(value: Buffer): Promise<string> {
+    return (await safeStorage.decryptStringAsync(value)).result
   }
 }
 
