@@ -412,8 +412,8 @@ try {
       clipboard.writeText = (text) => {
         globalThis.__nativeCopied.push(text)
       }
-      const encrypt = safeStorage.encryptString.bind(safeStorage)
-      safeStorage.encryptString = (value) => {
+      const encrypt = safeStorage.encryptStringAsync.bind(safeStorage)
+      safeStorage.encryptStringAsync = (value) => {
         globalThis.__fixtureCipherHashes.push(
           process.getBuiltinModule('node:crypto').createHash('sha256').update(value).digest('hex')
         )

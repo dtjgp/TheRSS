@@ -60,7 +60,7 @@ export class AnalysisService {
     let providerName: string
     let model: string
     if (runner === 'model-provider') {
-      const provider = this.#providers.getExecutionProfile()
+      const provider = await this.#providers.getExecutionProfile()
       response = await this.#gateway(item, provider)
       providerId = provider.id
       providerName = provider.name

@@ -10,7 +10,7 @@ import { parseDiscoverPlan } from './discoverPlan'
 export const DISCOVER_PROMPT_VERSION = 'semantic-discover-v2'
 
 interface DiscoverPlannerDependencies {
-  readonly getModelProfile: () => ModelExecutionProfile
+  readonly getModelProfile: () => ModelExecutionProfile | Promise<ModelExecutionProfile>
   readonly getPersonalizationPrompt?: () => string | null
   readonly planWithModel: (
     prompt: string,
@@ -124,7 +124,7 @@ export class DiscoverPlannerService {
     let model: string
 
     if (request.runner === 'model-provider') {
-      const profile = this.#dependencies.getModelProfile()
+      const profile = await this.#dependencies.getModelProfile()
       response = signal
         ? await this.#dependencies.planWithModel(prompt, profile, signal)
         : await this.#dependencies.planWithModel(prompt, profile)

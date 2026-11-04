@@ -6,29 +6,33 @@ import { ProviderService, type SecretCipher } from './providerService'
 const placeholderCredential = ['test', 'credential'].join('-')
 const existingPlaceholder = ['existing', 'placeholder'].join('-')
 
+/** Resolves on a later task, like Electron's asynchronous safeStorage. */
+const later = <T>(value: T): Promise<T> =>
+  new Promise((resolve) => setTimeout(() => resolve(value), 0))
+
 class FakeSecretCipher implements SecretCipher {
   constructor(private readonly available = true) {}
 
-  isAvailable(): boolean {
-    return this.available
+  isAvailable(): Promise<boolean> {
+    return later(this.available)
   }
 
-  encrypt(value: string): Buffer {
-    return Buffer.from(`encrypted:${value}`, 'utf8')
+  encrypt(value: string): Promise<Buffer> {
+    return later(Buffer.from(`encrypted:${value}`, 'utf8'))
   }
 
-  decrypt(value: Buffer): string {
-    return value.toString('utf8').replace(/^encrypted:/, '')
+  decrypt(value: Buffer): Promise<string> {
+    return later(value.toString('utf8').replace(/^encrypted:/, ''))
   }
 }
 
 describe('ProviderService', () => {
-  it('stores only encrypted credentials and returns non-secret settings', () => {
+  it('stores only encrypted credentials and returns non-secret settings', async () => {
     const database = new Database(':memory:')
     const repository = new ResearchRepository(database)
     const service = new ProviderService(repository, new FakeSecretCipher())
 
-    const summary = service.save(
+    const summary = await service.save(
       {
         name: 'DeepSeek',
         protocol: 'openai-compatible',
@@ -53,14 +57,16 @@ describe('ProviderService', () => {
       .prepare('SELECT secret_ciphertext FROM model_provider WHERE id = ?')
       .get('default') as { secret_ciphertext: Buffer }
     expect(stored.secret_ciphertext.toString('utf8')).toBe(`encrypted:${placeholderCredential}`)
-    expect(service.getExecutionProfile()).toMatchObject({ apiKey: placeholderCredential })
+    await expect(service.getExecutionProfile()).resolves.toMatchObject({
+      apiKey: placeholderCredential
+    })
     repository.close()
   })
 
-  it('preserves an existing credential when settings are edited without a new key', () => {
+  it('preserves an existing credential when settings are edited without a new key', async () => {
     const repository = new ResearchRepository(new Database(':memory:'))
     const service = new ProviderService(repository, new FakeSecretCipher())
-    service.save({
+    await service.save({
       name: 'Provider',
       protocol: 'openai-compatible',
       baseUrl: 'https://example.net/v1',
@@ -68,14 +74,14 @@ describe('ProviderService', () => {
       apiKey: existingPlaceholder
     })
 
-    service.save({
+    await service.save({
       name: 'Provider renamed',
       protocol: 'openai-compatible',
       baseUrl: 'https://example.net/v1',
       model: 'model-b'
     })
 
-    expect(service.getExecutionProfile()).toMatchObject({
+    await expect(service.getExecutionProfile()).resolves.toMatchObject({
       name: 'Provider renamed',
       model: 'model-b',
       apiKey: existingPlaceholder
@@ -83,10 +89,10 @@ describe('ProviderService', () => {
     repository.close()
   })
 
-  it('clears an existing credential without changing provider metadata', () => {
+  it('clears an existing credential without changing provider metadata', async () => {
     const repository = new ResearchRepository(new Database(':memory:'))
     const service = new ProviderService(repository, new FakeSecretCipher())
-    service.save({
+    await service.save({
       name: 'Provider',
       protocol: 'openai-compatible',
       baseUrl: 'https://example.net/v1',
@@ -103,14 +109,14 @@ describe('ProviderService', () => {
       hasCredential: false,
       updatedAt: '2026-08-24T12:00:00.000Z'
     })
-    expect(service.getExecutionProfile().apiKey).toBeNull()
+    expect((await service.getExecutionProfile()).apiKey).toBeNull()
     repository.close()
   })
 
-  it('builds a transient connection profile without persisting a replacement credential', () => {
+  it('builds a transient connection profile without persisting a replacement credential', async () => {
     const repository = new ResearchRepository(new Database(':memory:'))
     const service = new ProviderService(repository, new FakeSecretCipher())
-    service.save({
+    await service.save({
       name: 'Provider',
       protocol: 'openai-compatible',
       baseUrl: 'https://example.net/v1',
@@ -119,7 +125,7 @@ describe('ProviderService', () => {
     })
     const replacementPlaceholder = ['replacement', 'placeholder'].join('-')
 
-    expect(
+    await expect(
       service.getConnectionTestProfile({
         name: 'Edited provider',
         protocol: 'anthropic-compatible',
@@ -127,21 +133,21 @@ describe('ProviderService', () => {
         model: 'model-b',
         apiKey: replacementPlaceholder
       })
-    ).toMatchObject({
+    ).resolves.toMatchObject({
       name: 'Edited provider',
       protocol: 'anthropic-compatible',
       baseUrl: 'https://api.example.org',
       model: 'model-b',
       apiKey: replacementPlaceholder
     })
-    expect(service.getExecutionProfile().apiKey).toBe(existingPlaceholder)
+    expect((await service.getExecutionProfile()).apiKey).toBe(existingPlaceholder)
     repository.close()
   })
 
-  it('never reuses a stored credential for a changed protocol or endpoint', () => {
+  it('never reuses a stored credential for a changed protocol or endpoint', async () => {
     const repository = new ResearchRepository(new Database(':memory:'))
     const service = new ProviderService(repository, new FakeSecretCipher())
-    service.save({
+    await service.save({
       name: 'Provider',
       protocol: 'openai-compatible',
       baseUrl: 'https://api.example.net/v1',
@@ -150,33 +156,35 @@ describe('ProviderService', () => {
     })
 
     expect(
-      service.getConnectionTestProfile({
-        name: 'Changed host',
-        protocol: 'openai-compatible',
-        baseUrl: 'https://other.example.net/v1',
-        model: 'model-a'
-      }).apiKey
+      (
+        await service.getConnectionTestProfile({
+          name: 'Changed host',
+          protocol: 'openai-compatible',
+          baseUrl: 'https://other.example.net/v1',
+          model: 'model-a'
+        })
+      ).apiKey
     ).toBeNull()
-    expect(() =>
+    await expect(
       service.save({
         name: 'Changed host',
         protocol: 'openai-compatible',
         baseUrl: 'https://other.example.net/v1',
         model: 'model-a'
       })
-    ).toThrow('replacement credential')
-    expect(service.getExecutionProfile()).toMatchObject({
+    ).rejects.toThrow('replacement credential')
+    await expect(service.getExecutionProfile()).resolves.toMatchObject({
       baseUrl: 'https://api.example.net/v1',
       apiKey: existingPlaceholder
     })
     repository.close()
   })
 
-  it('rejects insecure remote URLs and plaintext fallback when encryption is unavailable', () => {
+  it('rejects insecure remote URLs and plaintext fallback when encryption is unavailable', async () => {
     const repository = new ResearchRepository(new Database(':memory:'))
     const service = new ProviderService(repository, new FakeSecretCipher(false))
 
-    expect(() =>
+    await expect(
       service.save({
         name: 'Unsafe',
         protocol: 'openai-compatible',
@@ -184,8 +192,8 @@ describe('ProviderService', () => {
         model: 'model',
         apiKey: placeholderCredential
       })
-    ).toThrow('HTTPS')
-    expect(() =>
+    ).rejects.toThrow('HTTPS')
+    await expect(
       service.save({
         name: 'No encryption',
         protocol: 'openai-compatible',
@@ -193,7 +201,8 @@ describe('ProviderService', () => {
         model: 'model',
         apiKey: placeholderCredential
       })
-    ).toThrow('OS-backed credential encryption is unavailable')
+    ).rejects.toThrow('OS-backed credential encryption is unavailable')
+    expect(service.getSummary()).toBeNull()
     repository.close()
   })
 })

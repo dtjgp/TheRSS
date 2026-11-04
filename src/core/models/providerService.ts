@@ -3,10 +3,11 @@ import { validateProviderBaseUrl } from '../security/providerUrl'
 import type { ResearchRepository, StoredModelProvider } from '../storage/researchRepository'
 import type { ModelProviderSummary } from '../../shared/models'
 
+/** OS-backed encryption for provider credentials; Electron exposes it only asynchronously. */
 export interface SecretCipher {
-  isAvailable(): boolean
-  encrypt(value: string): Buffer
-  decrypt(value: Buffer): string
+  isAvailable(): Promise<boolean>
+  encrypt(value: string): Promise<Buffer>
+  decrypt(value: Buffer): Promise<string>
 }
 
 export interface ModelExecutionProfile extends ModelProviderSummary {
@@ -49,7 +50,7 @@ export class ProviderService {
     this.#cipher = cipher
   }
 
-  save(input: unknown, updatedAt = new Date().toISOString()): ModelProviderSummary {
+  async save(input: unknown, updatedAt = new Date().toISOString()): Promise<ModelProviderSummary> {
     const validated = providerInputSchema.parse(input)
     const apiKey = validated.apiKey || undefined
     const existing = this.#repository.getModelProvider()
@@ -58,9 +59,10 @@ export class ProviderService {
         'Enter a replacement credential or clear the protected credential before changing provider protocol or endpoint'
       )
     }
-    if (apiKey && !this.#cipher.isAvailable()) {
+    if (apiKey && !(await this.#cipher.isAvailable())) {
       throw new Error('OS-backed credential encryption is unavailable')
     }
+    const ciphertext = apiKey ? await this.#cipher.encrypt(apiKey) : undefined
 
     const provider = this.#repository.saveModelProvider(
       {
@@ -71,7 +73,7 @@ export class ProviderService {
         model: validated.model,
         updatedAt
       },
-      apiKey ? this.#cipher.encrypt(apiKey) : undefined
+      ciphertext
     )
     return toSummary(provider)
   }
@@ -85,13 +87,13 @@ export class ProviderService {
     return toSummary(this.#repository.clearModelProviderCredential('default', updatedAt))
   }
 
-  getConnectionTestProfile(input: unknown): ModelExecutionProfile {
+  async getConnectionTestProfile(input: unknown): Promise<ModelExecutionProfile> {
     const validated = providerInputSchema.parse(input)
     const existing = this.#repository.getModelProvider()
     const replacementKey = validated.apiKey || null
     const existingKey =
       hasSameCredentialScope(existing, validated) && existing?.secretCiphertext
-        ? this.#cipher.decrypt(existing.secretCiphertext)
+        ? await this.#cipher.decrypt(existing.secretCiphertext)
         : null
     const apiKey = replacementKey ?? existingKey
 
@@ -107,13 +109,15 @@ export class ProviderService {
     }
   }
 
-  getExecutionProfile(): ModelExecutionProfile {
+  async getExecutionProfile(): Promise<ModelExecutionProfile> {
     const provider = this.#repository.getModelProvider()
     if (!provider) throw new Error('Configure a model provider first')
 
     return {
       ...toSummary(provider),
-      apiKey: provider.secretCiphertext ? this.#cipher.decrypt(provider.secretCiphertext) : null
+      apiKey: provider.secretCiphertext
+        ? await this.#cipher.decrypt(provider.secretCiphertext)
+        : null
     }
   }
 }
