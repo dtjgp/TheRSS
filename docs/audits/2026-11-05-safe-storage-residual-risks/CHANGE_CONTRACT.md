@@ -126,10 +126,10 @@
 - Focused RED/GREEN: with only the `DecryptedSecret` type change in place, 4 of 13 provider cases failed
   for the expected reasons (cleared key restored; earlier save stored; legacy ciphertext kept on
   both read paths). After the fix and the review cases: 15/15 provider cases pass.
-- `npm run check`: the `format:check` step fails only on `.claude/settings.local.json`, a
-  git-ignored file that the desktop app wrote into this worktree; CI does not have it. The same
-  steps with only that file excluded exit 0: 847 + 189 tests; coverage 91.53% statements,
-  83.15% branches, 95.02% functions, 94.18% lines.
+- `npm run check`: exit 0 with no file excluded, on merged `main` (`167c4e2`): 847 + 189 tests;
+  coverage 91.53% statements, 83.15% branches, 95.02% functions, 94.18% lines. Before #86,
+  `format:check` failed only on `.claude/settings.local.json`, which the desktop app wrote into
+  the worktree. #86 added that file to `.gitignore`, which Prettier 3 also reads.
 - `npm run smoke:credentials`: exit 0 (real `safeStorage` round trip and boolean
   `shouldReEncrypt`).
 - Not run: real Keychain key rotation; packaged-app smoke (CI `desktop` job); live provider calls.
