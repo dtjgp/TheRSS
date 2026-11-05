@@ -1,6 +1,25 @@
 # TheRSS Goals
 
-## Current local work: llm-wiki handoff (verified, not installed)
+## Current stage: llm-wiki handoff and Electron 45 on `main` (not installed)
+
+On 2026-11-04 PR #84 (`c752ada`) moved the app to Electron 45.2.3, electron-vite 6.0.0 and
+lucide-react 1.68.0, and replaced the synchronous `safeStorage` calls with the async API
+([change contract](docs/audits/2026-11-04-electron-45-safe-storage/CHANGE_CONTRACT.md)).
+Dependabot PRs #81, #82 and #83 are closed as superseded by #84. On 2026-11-05 PR #85
+(`22c818f`) merged the llm-wiki work below. CI (`quality` and `desktop`) passed for both PRs.
+The installed `TheRSS Dev.app` is still 0.4.0 from `a95e5bf`. No new release was published.
+
+Next, in order:
+
+1. P0-1 of the [follow-up list](docs/audits/2026-10-28-llm-wiki-status/PRIORITIES.md): check
+   real search quality, promote one real paper through the existing preview and confirmation,
+   then update the installed app. This step needs the user's research question and approval.
+2. Electron 45 residual risks recorded in the #84 contract: use `shouldReEncrypt` to rewrite
+   rotated-key ciphertext, and stop a pending keyed save from restoring a cleared credential.
+   A downgrade to Electron 44 can require the user to enter the API key again.
+3. P1 items 3-6 of the follow-up list, one change contract each.
+
+## Previous stage: llm-wiki handoff (merged in #85)
 
 The user's 2026-10-28 scope is implemented on `codex/llm-wiki-state`: repair the reviewed
 runtime compatibility, show collected paper state in the native reader, and open existing

@@ -15,8 +15,10 @@ secrets/
 *.sqlite3-shm
 *.sqlite3-wal
 
-# Local agent session transcripts
+# Local agent session transcripts, settings and worktrees
 .claude/logs/
+.claude/settings.local.json
+.claude/worktrees/
 
 # Recoverable branch consolidation and disposable visual captures
 output/branch-backups/
