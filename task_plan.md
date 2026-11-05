@@ -17,7 +17,11 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Status
 
-**llm-wiki handoff implemented and locally verified (2026-10-29), not installed.**
+**llm-wiki handoff and Electron 45 merged to `main` (2026-11-05), not installed.** PR #84
+(`c752ada`) moved to Electron 45 with async `safeStorage`; PR #85 (`22c818f`) merged the llm-wiki
+slice below. CI passed for both. `GOALS.md` owns the next steps.
+
+**llm-wiki handoff implemented and locally verified (2026-10-29), merged in #85.**
 The [task report](docs/audits/2026-10-28-llm-wiki-status/REPORT.md) owns this slice:
 reviewed runtime pin, bounded read-only collected state and safe Obsidian opening in the
 existing native reader. Current checks pass 832 main/183 AppKit tests, eight Electron cases,
