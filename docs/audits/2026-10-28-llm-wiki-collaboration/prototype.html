@@ -1,0 +1,1417 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>llm-wiki Collaboration Prototype</title>
+    <style>
+      /* Illustrative prototype of the proposed TheRSS llm-wiki collaboration.
+   It imitates the native AppKit layout with system fonts and semantic colours.
+   It is not production code and it is not native-completion evidence. */
+      :root {
+        --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+        --desk: #e9e9ec;
+        --window: #ffffff;
+        --sidebar: #f4f4f6;
+        --sidebar-selected: #dfe7fb;
+        --text: #1d1d1f;
+        --secondary: #6e6e73;
+        --tertiary: #9a9aa0;
+        --separator: #e3e3e6;
+        --control: #ececef;
+        --control-hover: #e2e2e6;
+        --row-selected: #dcdcdf;
+        --accent: #0a64d8;
+        --accent-text: #ffffff;
+        --warning: #9a5b00;
+        --warning-bg: #fff4e0;
+        --error: #b42318;
+        --error-bg: #fdecea;
+        --success: #1a7f37;
+        --info-bg: #f2f6fd;
+        --sheet-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+        --focus: 0 0 0 3px rgba(10, 100, 216, 0.35);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --desk: #161618;
+          --window: #1e1e20;
+          --sidebar: #252528;
+          --sidebar-selected: #2f3b55;
+          --text: #f2f2f4;
+          --secondary: #a1a1a8;
+          --tertiary: #75757c;
+          --separator: #343438;
+          --control: #333337;
+          --control-hover: #3c3c41;
+          --row-selected: #3a3a3f;
+          --accent: #3b8cf5;
+          --warning: #f0b45a;
+          --warning-bg: #3a2d16;
+          --error: #ff8a80;
+          --error-bg: #3d1f1d;
+          --success: #5fd07a;
+          --info-bg: #222a38;
+          --sheet-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+        }
+      }
+      :root[data-theme='dark'] {
+        --desk: #161618;
+        --window: #1e1e20;
+        --sidebar: #252528;
+        --sidebar-selected: #2f3b55;
+        --text: #f2f2f4;
+        --secondary: #a1a1a8;
+        --tertiary: #75757c;
+        --separator: #343438;
+        --control: #333337;
+        --control-hover: #3c3c41;
+        --row-selected: #3a3a3f;
+        --accent: #3b8cf5;
+        --warning: #f0b45a;
+        --warning-bg: #3a2d16;
+        --error: #ff8a80;
+        --error-bg: #3d1f1d;
+        --success: #5fd07a;
+        --info-bg: #222a38;
+        --sheet-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--desk);
+        color: var(--text);
+        font: 13px/1.4 var(--font);
+      }
+      button,
+      select,
+      input {
+        font: inherit;
+        color: inherit;
+      }
+      button:focus-visible,
+      select:focus-visible,
+      input:focus-visible,
+      [tabindex]:focus-visible {
+        outline: none;
+        box-shadow: var(--focus);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+        }
+      }
+
+      /* Prototype controls, outside the simulated window */
+      .proto {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 16px 16px 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 16px;
+        align-items: center;
+      }
+      .proto h1 {
+        font-size: 15px;
+        margin: 0 8px 0 0;
+      }
+      .proto .note {
+        color: var(--secondary);
+        font-size: 12px;
+        flex-basis: 100%;
+      }
+      .seg {
+        display: inline-flex;
+        background: var(--control);
+        border-radius: 7px;
+        padding: 2px;
+      }
+      .seg button {
+        border: 0;
+        background: transparent;
+        padding: 4px 10px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .seg button[aria-pressed='true'] {
+        background: var(--window);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+      }
+      .proto label {
+        color: var(--secondary);
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      /* Simulated window */
+      .window {
+        max-width: 1240px;
+        margin: 8px auto 32px;
+        height: 760px;
+        background: var(--window);
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+        display: flex;
+        overflow: clip;
+        position: relative;
+      }
+      .sidebar {
+        width: 210px;
+        flex: none;
+        background: var(--sidebar);
+        border-right: 1px solid var(--separator);
+        padding: 14px 10px;
+        display: flex;
+        flex-direction: column;
+      }
+      .lights {
+        display: flex;
+        gap: 8px;
+        margin: 0 4px 22px;
+      }
+      .lights span {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #ff5f57;
+      }
+      .lights span:nth-child(2) {
+        background: #febc2e;
+      }
+      .lights span:nth-child(3) {
+        background: #28c840;
+      }
+      .brand {
+        font-size: 20px;
+        font-weight: 700;
+        margin: 0 6px;
+      }
+      .tagline {
+        font-size: 10px;
+        color: var(--secondary);
+        letter-spacing: 0.04em;
+        margin: 2px 6px 14px;
+      }
+      .nav button {
+        display: flex;
+        width: 100%;
+        gap: 8px;
+        align-items: center;
+        border: 0;
+        background: transparent;
+        padding: 6px 8px;
+        border-radius: 6px;
+        text-align: left;
+        cursor: pointer;
+      }
+      .nav button[aria-current='page'] {
+        background: var(--sidebar-selected);
+        font-weight: 600;
+      }
+      .nav svg,
+      .ico {
+        width: 15px;
+        height: 15px;
+        flex: none;
+      }
+      .sidebar .spacer {
+        flex: 1;
+      }
+      .sidebar .collapse {
+        color: var(--secondary);
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+      .main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .titlebar {
+        height: 44px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--separator);
+      }
+      .titlebar .title {
+        font-weight: 600;
+      }
+      .find {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--control);
+        border-radius: 7px;
+        padding: 4px 10px;
+        color: var(--secondary);
+        min-width: 260px;
+      }
+
+      .btn {
+        border: 0;
+        background: var(--control);
+        padding: 4px 11px;
+        border-radius: 6px;
+        cursor: pointer;
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .btn:hover {
+        background: var(--control-hover);
+      }
+      .btn.primary {
+        background: var(--accent);
+        color: var(--accent-text);
+      }
+      .btn.small {
+        padding: 2px 8px;
+        font-size: 12px;
+      }
+      .btn[disabled] {
+        opacity: 0.45;
+        cursor: default;
+      }
+      .new {
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--accent);
+        border: 1px solid var(--accent);
+        border-radius: 4px;
+        padding: 0 4px;
+        margin-left: 2px;
+      }
+      .muted {
+        color: var(--secondary);
+      }
+      .small {
+        font-size: 12px;
+      }
+      .mono-path {
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+        font-size: 11.5px;
+        overflow-wrap: anywhere;
+      }
+
+      /* Discover */
+      .query {
+        padding: 12px 16px 10px;
+        border-bottom: 1px solid var(--separator);
+      }
+      .query .label {
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      .query textarea {
+        width: 100%;
+        height: 44px;
+        resize: none;
+        border: 1px solid var(--separator);
+        border-radius: 7px;
+        padding: 6px 8px;
+        background: var(--window);
+        color: var(--text);
+        font: inherit;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+        align-items: center;
+        position: relative;
+      }
+      .resultbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 16px;
+        border-bottom: 1px solid var(--separator);
+      }
+      .tabs {
+        display: inline-flex;
+        gap: 2px;
+      }
+      .tabs span {
+        padding: 3px 8px;
+        border-radius: 6px;
+      }
+      .tabs span.on {
+        background: var(--control);
+        font-weight: 600;
+      }
+      .split {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+      }
+      .list {
+        width: 300px;
+        flex: none;
+        border-right: 1px solid var(--separator);
+        overflow: auto;
+      }
+      .row {
+        padding: 9px 14px;
+        border-bottom: 1px solid var(--separator);
+        cursor: pointer;
+      }
+      .row.sel {
+        background: var(--row-selected);
+      }
+      .row .t {
+        font-weight: 600;
+      }
+      .row .m {
+        color: var(--secondary);
+        font-size: 12px;
+        margin-top: 3px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .kb {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        color: var(--accent);
+      }
+      .detail {
+        flex: 1;
+        overflow: auto;
+        padding: 16px 22px 30px;
+        min-width: 0;
+      }
+      .detail h2 {
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 12px 0;
+      }
+      .abstract {
+        max-width: 72ch;
+      }
+      .section-h {
+        font-weight: 600;
+        margin: 18px 0 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      /* llm-wiki status block */
+      .vault {
+        border: 1px solid var(--separator);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin: 4px 0 12px;
+        max-width: 760px;
+        background: var(--info-bg);
+      }
+      .vault.warn {
+        background: var(--warning-bg);
+        border-color: transparent;
+      }
+      .vault.err {
+        background: var(--error-bg);
+        border-color: transparent;
+      }
+      .vault .head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+      }
+      .vault .facts {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        gap: 2px 12px;
+        margin: 6px 0 8px;
+        font-size: 12px;
+      }
+      .vault .facts dt {
+        color: var(--secondary);
+      }
+      .vault .facts dd {
+        margin: 0;
+      }
+      .vault .row-actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .state-word {
+        font-weight: 600;
+      }
+      .warn .state-word {
+        color: var(--warning);
+      }
+      .err .state-word {
+        color: var(--error);
+      }
+
+      .related {
+        max-width: 760px;
+        border-top: 1px solid var(--separator);
+      }
+      .related .item {
+        display: grid;
+        grid-template-columns: 70px minmax(0, 1fr) auto;
+        gap: 10px;
+        padding: 7px 0;
+        border-bottom: 1px solid var(--separator);
+        align-items: start;
+      }
+      .kind {
+        color: var(--secondary);
+        font-size: 12px;
+      }
+
+      /* Popover */
+      .popover {
+        position: absolute;
+        top: 34px;
+        left: 300px;
+        width: 380px;
+        background: var(--window);
+        border: 1px solid var(--separator);
+        border-radius: 10px;
+        box-shadow: var(--sheet-shadow);
+        padding: 10px;
+        z-index: 5;
+      }
+      .popover input[type='search'] {
+        width: 100%;
+        border: 1px solid var(--separator);
+        border-radius: 6px;
+        padding: 4px 8px;
+        background: var(--window);
+      }
+      .group-h {
+        display: flex;
+        justify-content: space-between;
+        font-weight: 600;
+        margin: 10px 2px 4px;
+        font-size: 12px;
+      }
+      .check {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        padding: 3px 2px;
+      }
+      .check small {
+        color: var(--secondary);
+        display: block;
+      }
+      .popover .foot {
+        border-top: 1px solid var(--separator);
+        margin-top: 8px;
+        padding-top: 8px;
+        font-size: 12px;
+        color: var(--secondary);
+      }
+
+      /* Sheet */
+      .scrim {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.18);
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 60px;
+        z-index: 10;
+      }
+      .sheet {
+        width: min(720px, calc(100% - 32px));
+        background: var(--window);
+        border-radius: 12px;
+        box-shadow: var(--sheet-shadow);
+        padding: 18px 20px;
+      }
+      .sheet h3 {
+        margin: 0 0 4px;
+        font-size: 15px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 12px 0;
+      }
+      th {
+        text-align: left;
+        font-weight: 600;
+        color: var(--secondary);
+        font-size: 12px;
+        padding: 4px 6px;
+        border-bottom: 1px solid var(--separator);
+      }
+      td {
+        padding: 7px 6px;
+        border-bottom: 1px solid var(--separator);
+        vertical-align: top;
+      }
+      .sheet .buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 12px;
+        align-items: center;
+      }
+      .sheet .buttons .muted {
+        margin-right: auto;
+        font-size: 12px;
+      }
+      details summary {
+        cursor: pointer;
+        color: var(--secondary);
+        font-size: 12px;
+      }
+
+      /* Settings window */
+      .settings {
+        margin: 30px auto;
+        width: 640px;
+        background: var(--window);
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--separator);
+      }
+      .settings .tb {
+        display: flex;
+        justify-content: center;
+        gap: 4px;
+        padding: 10px;
+        border-bottom: 1px solid var(--separator);
+        position: relative;
+      }
+      .settings .tb .lights {
+        position: absolute;
+        left: 14px;
+        top: 12px;
+        margin: 0;
+      }
+      .settings .tb button {
+        border: 0;
+        background: transparent;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 4px 10px;
+        border-radius: 7px;
+        font-size: 11px;
+        cursor: pointer;
+      }
+      .settings .tb button[aria-pressed='true'] {
+        background: var(--control);
+        color: var(--accent);
+      }
+      .settings .tb svg {
+        width: 20px;
+        height: 20px;
+      }
+      .form {
+        padding: 18px 26px 22px;
+        display: grid;
+        grid-template-columns: 150px minmax(0, 1fr);
+        gap: 12px 14px;
+        align-items: start;
+      }
+      .form .k {
+        text-align: right;
+        color: var(--secondary);
+        padding-top: 3px;
+      }
+      .ok {
+        color: var(--success);
+      }
+      .bad {
+        color: var(--error);
+      }
+      .checklist div {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 3px;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="proto" role="region" aria-label="Prototype controls">
+      <h1>llm-wiki collaboration prototype</h1>
+      <div class="seg" role="group" aria-label="Scenario" id="scenarios">
+        <button aria-pressed="true" data-s="reading">1 Reading status</button>
+        <button aria-pressed="false" data-s="context">2 Discover context</button>
+        <button aria-pressed="false" data-s="queue">3 Saved promotion queue</button>
+        <button aria-pressed="false" data-s="inbox">4 Send to Inbox</button>
+        <button aria-pressed="false" data-s="settings">5 Settings pane</button>
+      </div>
+      <label id="vaultStateWrap"
+        >Vault state
+        <select id="vaultState">
+          <option value="none">Not in llm-wiki</option>
+          <option value="promoted">Promoted by TheRSS</option>
+          <option value="external">Found in vault (added elsewhere)</option>
+          <option value="missing">Receipt exists, note missing</option>
+          <option value="unavailable">Vault unavailable</option>
+        </select>
+      </label>
+      <div class="seg" role="group" aria-label="Appearance" id="theme">
+        <button aria-pressed="true" data-t="light">Light</button>
+        <button aria-pressed="false" data-t="dark">Dark</button>
+      </div>
+      <div class="note">
+        All titles, paths, counts and times are illustrative fixture data, not records from your
+        vault. Items marked <span class="new">NEW</span> are the proposed additions; everything else
+        exists today.
+      </div>
+    </div>
+
+    <!-- Main workspace window -->
+    <div class="window" id="workspace">
+      <aside class="sidebar">
+        <div class="lights" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="brand">TheRSS</div>
+        <div class="tagline">YOUR RESEARCH DESK</div>
+        <nav class="nav" aria-label="Workspaces">
+          <button id="navDiscover" aria-current="page">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+              <circle cx="7" cy="7" r="4.5" />
+              <path d="M10.5 10.5 14 14M7 5v4M5 7h4" /></svg
+            >Discover
+          </button>
+          <button id="navSaved">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+              <path d="m8 1.8 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6l-3.8 2 .7-4.3-3.1-3 4.3-.6z" /></svg
+            >Saved
+          </button>
+          <button>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+              <path d="M2 14V8h3v6zM6.5 14V4h3v10zM11 14V2h3v12z" /></svg
+            >Data Analytics
+          </button>
+          <button>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+              <rect x="3" y="4" width="10" height="10" rx="1.5" />
+              <path d="M4.5 2h7" /></svg
+            >Sources
+          </button>
+        </nav>
+        <div class="spacer"></div>
+        <div class="collapse">Collapse sidebar</div>
+      </aside>
+
+      <section class="main">
+        <div class="titlebar">
+          <span class="title" id="wsTitle">Discover</span
+          ><span class="find"
+            ><svg
+              class="ico"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.4"
+            >
+              <circle cx="7" cy="7" r="4.5" />
+              <path d="M10.5 10.5 14 14" /></svg
+            >Search saved items, sessions and analyses</span
+          >
+        </div>
+
+        <!-- Discover workspace -->
+        <div id="discover" style="display: flex; flex-direction: column; flex: 1; min-height: 0">
+          <div class="query">
+            <div class="label">Research question</div>
+            <textarea aria-label="Research question">
+edge intelligence structured pruning under energy budgets</textarea>
+            <div class="controls">
+              <button class="btn">Codex CLI ▾</button>
+              <button class="btn">Sources (22/22)</button>
+              <button class="btn" id="ctxBtn" aria-haspopup="dialog" aria-expanded="false">
+                llm-wiki context <span id="ctxCount">(2)</span> ▾ <span class="new">NEW</span>
+              </button>
+              <button class="btn primary">Search</button>
+              <span class="small muted" id="ctxSummary">Context: ModelCompress, Edge_AI</span>
+
+              <div class="popover" id="ctxPop" role="dialog" aria-label="llm-wiki context" hidden>
+                <input
+                  type="search"
+                  placeholder="Find a project, topic or method"
+                  aria-label="Find a project, topic or method"
+                />
+                <div class="group-h">
+                  <span>Projects · 1/3</span><button class="btn small">Clear group</button>
+                </div>
+                <label class="check"
+                  ><input type="checkbox" checked data-ctx="ModelCompress" /><span
+                    >ModelCompress<small
+                      >Projects/ModelCompress · tags: area/edge-ai, method/pruning</small
+                    ></span
+                  ></label
+                >
+                <label class="check"
+                  ><input type="checkbox" data-ctx="GreenAI" /><span
+                    >GreenAI<small>Projects/GreenAI</small></span
+                  ></label
+                >
+                <label class="check"
+                  ><input type="checkbox" data-ctx="Incubating" /><span
+                    >Incubating<small>Projects/Incubating</small></span
+                  ></label
+                >
+                <div class="group-h">
+                  <span>Topics · 1/3</span><button class="btn small">Clear group</button>
+                </div>
+                <label class="check"
+                  ><input type="checkbox" checked data-ctx="Edge_AI" /><span
+                    >Edge_AI<small>Topics/Edge_AI · aliases and related links</small></span
+                  ></label
+                >
+                <label class="check"
+                  ><input type="checkbox" data-ctx="Green_AI" /><span
+                    >Green_AI<small>Topics/Green_AI.md</small></span
+                  ></label
+                >
+                <label class="check"
+                  ><input type="checkbox" data-ctx="LLM_Caching" /><span
+                    >LLM_Caching<small>Topics/LLM_Caching.md</small></span
+                  ></label
+                >
+                <div class="group-h"><span>Daily scan keywords</span></div>
+                <label class="check"
+                  ><input type="checkbox" data-ctx="Scan include keywords" /><span
+                    >Include and priority keywords<small
+                      >System/Configs/ArXiv_Scan_Keywords.md · exclude keywords also apply</small
+                    ></span
+                  ></label
+                >
+                <div class="foot">
+                  Only the selected titles, aliases and keywords are added to this search plan and
+                  sent to <b>Codex CLI</b>. Note bodies stay in the vault. Vault scanned Oct 28,
+                  10:42.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="resultbar">
+            <span class="tabs"
+              ><span class="on">All (4)</span><span>Papers (3)</span
+              ><span>Repositories (1)</span></span
+            >
+            <button class="btn small">llm-wiki: All ▾ <span class="new">NEW</span></button>
+            <span class="small muted">Complete · 22 of 22 sources · Oct 28, 2026</span>
+            <span style="flex: 1"></span>
+            <button class="btn small" id="detailsBtn">Search details</button>
+          </div>
+          <div
+            class="small"
+            id="detailsPanel"
+            hidden
+            style="padding: 8px 16px; border-bottom: 1px solid var(--separator)"
+          >
+            <b>Plan</b> · Codex CLI · prompt v3 · Personal Prompt applied · <b>llm-wiki context</b>
+            <span class="new">NEW</span>: <span id="ctxProv">ModelCompress, Edge_AI</span> (vault
+            scan Oct 28, 10:42; contract hash 4be1…) · 22 sources complete
+          </div>
+          <div class="split">
+            <div class="list" role="listbox" aria-label="Results">
+              <div class="row sel" role="option" aria-selected="true">
+                <div class="t">
+                  Energy-aware structured pruning for on-device vision transformers
+                </div>
+                <div class="m">
+                  arXiv · Oct 2, 2026
+                  <span class="kb" id="rowMarker" hidden
+                    ><svg
+                      class="ico"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                    >
+                      <path d="M3 2.5h8a2 2 0 0 1 2 2v9H5a2 2 0 0 1-2-2z" />
+                      <path d="M3 11.5a2 2 0 0 1 2-2h8" /></svg
+                    ><span id="rowMarkerText">In llm-wiki · L2</span></span
+                  >
+                </div>
+              </div>
+              <div class="row" role="option">
+                <div class="t">Channel pruning with latency lookup tables on edge NPUs</div>
+                <div class="m">
+                  arXiv · Sep 29, 2026
+                  <span class="kb"
+                    ><svg
+                      class="ico"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                    >
+                      <path d="M3 2.5h8a2 2 0 0 1 2 2v9H5a2 2 0 0 1-2-2z" />
+                      <path d="M3 11.5a2 2 0 0 1 2-2h8" /></svg
+                    >In llm-wiki · L1</span
+                  >
+                </div>
+              </div>
+              <div class="row" role="option">
+                <div class="t">A survey of compression for edge intelligence</div>
+                <div class="m">arXiv · Sep 18, 2026 · Saved</div>
+              </div>
+              <div class="row" role="option">
+                <div class="t">example-org/edge-prune-bench</div>
+                <div class="m">GitHub · Oct 20, 2026</div>
+              </div>
+            </div>
+            <article class="detail" aria-label="Selected result">
+              <h2>Energy-aware structured pruning for on-device vision transformers</h2>
+              <div class="muted small">arXiv · Oct 2, 2026 · 2610.01234</div>
+              <div class="actions">
+                <button class="btn">Open original</button><button class="btn">Share</button
+                ><button class="btn">☆ Save</button><button class="btn">Analyze</button>
+                <button class="btn" id="promoteBtn">Preview llm-wiki promotion…</button>
+              </div>
+
+              <div class="vault" id="vaultBlock" role="status" aria-live="polite"></div>
+
+              <p class="abstract">
+                Illustrative abstract. The paper proposes an energy-aware criterion for removing
+                attention heads and MLP channels in vision transformers that run on edge
+                accelerators, and reports latency and energy on two devices. Abstract text is
+                discovery evidence only.
+              </p>
+              <div class="muted small">
+                Evidence: paper discovery metadata and abstract. Full-paper results are not verified
+                here.
+              </div>
+
+              <div class="section-h">Why this matches</div>
+              <ul class="small" style="margin: 0; padding-left: 18px">
+                <li>Title matches "structured pruning"</li>
+                <li>Summary matches "edge" and "energy"</li>
+              </ul>
+
+              <div class="section-h">
+                Related in llm-wiki <span class="muted" id="relCount">(3)</span>
+                <span class="new">NEW</span>
+              </div>
+              <div class="related" id="related">
+                <div class="item">
+                  <span class="kind">Method</span
+                  ><span
+                    ><b>Structured Pruning</b><br /><span class="small muted"
+                      >Title term "structured pruning" matches the note title.</span
+                    ></span
+                  ><button class="btn small">Open in Obsidian</button>
+                </div>
+                <div class="item">
+                  <span class="kind">Topic</span
+                  ><span
+                    ><b>Edge_AI</b><br /><span class="small muted"
+                      >Summary term "on-device" matches an alias of the topic.</span
+                    ></span
+                  ><button class="btn small">Open in Obsidian</button>
+                </div>
+                <div class="item">
+                  <span class="kind">Project</span
+                  ><span
+                    ><b>ModelCompress</b><br /><span class="small muted"
+                      >Title term "pruning" matches the project tag "method/pruning".</span
+                    ></span
+                  ><button class="btn small">Open in Obsidian</button>
+                </div>
+                <div class="small muted" style="padding-top: 6px">
+                  Matched from note titles, aliases and tags only. TheRSS does not read or display
+                  note bodies.
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <div class="scrim" id="inboxSheet" hidden>
+          <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="iTitle">
+            <h3 id="iTitle">Send to llm-wiki Inbox</h3>
+            <div class="small muted">
+              TheRSS creates one new Inbox item. It does not edit Topics, Methods, Projects or
+              existing notes. llm-wiki triage decides what happens next.
+            </div>
+            <dl
+              class="vault facts"
+              style="background: transparent; border: 0; padding: 0; margin: 12px 0"
+            >
+              <dt>Record</dt>
+              <dd><b>example-org/edge-prune-bench</b> · GitHub · Oct 20, 2026</dd>
+              <dt>New file</dt>
+              <dd class="mono-path">
+                Inbox/Research_Feeds/TheRSS/2026-10-28__github__example-org-edge-prune-bench.md
+              </dd>
+              <dt>Frontmatter</dt>
+              <dd class="mono-path">
+                type: inbox · status: unprocessed · source: therss · relevance: medium · linked_to:
+                [Edge_AI]
+              </dd>
+              <dt>Body</dt>
+              <dd>
+                Title, link, source time, match reasons and the Discover question. Metadata only; no
+                README text.
+              </dd>
+              <dt>Note</dt>
+              <dd>
+                <label class="check" style="padding: 0"
+                  ><input
+                    type="text"
+                    placeholder="Optional note for triage"
+                    style="
+                      width: 100%;
+                      border: 1px solid var(--separator);
+                      border-radius: 6px;
+                      padding: 4px 8px;
+                      background: var(--window);
+                    "
+                    aria-label="Optional note for triage"
+                /></label>
+              </dd>
+            </dl>
+            <div class="buttons">
+              <span class="muted"
+                >Writes under the therss-inbox-handoff lease and adds a log.md line.</span
+              >
+              <button class="btn" data-close="inboxSheet">Cancel</button>
+              <button class="btn primary" data-close="inboxSheet">Send to Inbox</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Saved workspace -->
+        <div
+          id="saved"
+          hidden
+          style="flex: 1; display: flex; flex-direction: column; min-height: 0"
+        >
+          <div class="resultbar">
+            <button class="btn small">Papers (5) ▾</button>
+            <button class="btn small">
+              llm-wiki: Not in llm-wiki ▾ <span class="new">NEW</span>
+            </button>
+            <span class="small muted">3 selected</span>
+            <span style="flex: 1"></span>
+            <button class="btn small primary" id="queueBtn">
+              Preview promotion (3)…
+              <span class="new" style="color: inherit; border-color: currentColor">NEW</span>
+            </button>
+          </div>
+          <div class="split">
+            <div
+              class="list"
+              role="listbox"
+              aria-label="Saved papers"
+              aria-multiselectable="true"
+              style="width: 100%; border-right: 0"
+            >
+              <div class="row sel">
+                <div class="t">A survey of compression for edge intelligence</div>
+                <div class="m">arXiv · Sep 18, 2026 · Saved Oct 1</div>
+              </div>
+              <div class="row sel">
+                <div class="t">Token merging for low-power transformer inference</div>
+                <div class="m">arXiv · Sep 9, 2026 · Saved Sep 30</div>
+              </div>
+              <div class="row sel">
+                <div class="t">Carbon-aware scheduling of federated fine-tuning</div>
+                <div class="m">arXiv · Aug 27, 2026 · Saved Sep 12</div>
+              </div>
+              <div class="row">
+                <div class="t">Sparse mixture-of-experts on microcontrollers</div>
+                <div class="m">
+                  arXiv · Aug 2, 2026 · Saved Aug 20 ·
+                  <span class="muted">Promotion failed Aug 21 · Retry available</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="scrim" id="queueSheet" hidden>
+            <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="qTitle">
+              <h3 id="qTitle">Promote papers to llm-wiki</h3>
+              <div class="small muted" id="qSub">
+                TheRSS checked each paper against the live vault contract. Nothing is written until
+                you confirm.
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 26px"></th>
+                    <th>Paper</th>
+                    <th>Route</th>
+                    <th>PDF</th>
+                    <th>State</th>
+                  </tr>
+                </thead>
+                <tbody id="qBody"></tbody>
+              </table>
+              <details>
+                <summary>Intended paths (8)</summary>
+                <div class="mono-path" style="margin-top: 6px">
+                  Literature/Paper_Notes/L2_Structured/Model_Compression/Kim_2026_2609.01111.md<br />Literature/Paper_Notes/L1_Deep_Read/Model_Compression/Rossi_2026_2609.02222.md<br />raw/papers/2609.01111.pdf
+                  · raw/paper_records/2609.01111.md<br />raw/papers/2609.02222.pdf ·
+                  raw/paper_records/2609.02222.md<br />Literature/Paper_Notes/Paper_Notes_Index.md ·
+                  index.md · log.md<br />Topics/Edge_AI (reverse link) · Automation_Conversations
+                  audit record
+                </div>
+              </details>
+              <div class="buttons">
+                <span class="muted" id="qFoot"
+                  >One paper at a time under the llm-wiki writer lease. You can stop after the
+                  current paper.</span
+                >
+                <button class="btn" id="qCancel">Cancel</button>
+                <button class="btn primary" id="qGo">Promote 2 papers</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Settings window -->
+    <div class="settings" id="settingsWin" hidden>
+      <div class="tb">
+        <div class="lights" aria-hidden="true"><span></span><span></span><span></span></div>
+        <button aria-pressed="false">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3">
+            <circle cx="10" cy="10" r="8" />
+            <circle cx="10" cy="8" r="3" />
+            <path d="M4.5 15.5c1.5-2 3.4-3 5.5-3s4 1 5.5 3" /></svg
+          >Personal Context
+        </button>
+        <button aria-pressed="false">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3">
+            <rect x="5" y="5" width="10" height="10" rx="1.5" />
+            <path d="M8 2v3M12 2v3M8 15v3M12 15v3M2 8h3M2 12h3M15 8h3M15 12h3" /></svg
+          >Model Provider
+        </button>
+        <button aria-pressed="true">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3">
+            <path d="M3 3h3v14H3zM7.5 3h3v14h-3zM12 4l2.8-.8 3.2 13-2.8.8z" /></svg
+          >llm-wiki <span class="new">NEW</span>
+        </button>
+      </div>
+      <div class="form">
+        <div class="k">Vault</div>
+        <div>
+          <span class="mono-path">~/Obsidian/llm-wiki</span> &nbsp;<button class="btn small">
+            Choose…
+          </button>
+          <button class="btn small">Open in Obsidian</button>
+        </div>
+        <div class="k">Contract check</div>
+        <div class="checklist small">
+          <div><span class="ok">✓</span> Governance and pipeline files are regular files</div>
+          <div>
+            <span class="ok">✓</span> Writer scope
+            <span class="mono-path">therss-paper-promotion</span> is registered
+          </div>
+          <div><span class="ok">✓</span> Paper templates L1 and L2 are present</div>
+          <div class="muted">Checked Oct 28, 10:42</div>
+        </div>
+        <div class="k">Index</div>
+        <div class="small">
+          Paper notes, topics, methods and projects found by the last read-only scan:<br /><b
+            >fixture counts</b
+          >
+          120 papers · 24 topics · 15 methods · 6 projects<br /><span class="muted"
+            >Scanned Oct 28, 10:42 · frontmatter fields only</span
+          ><br /><span class="muted"
+            >Reads raw/paper_records, Literature/Paper_Notes, Topics, Methods, Projects and
+            ArXiv_Scan_Keywords. Never reads Life/, .obsidian, .runtime or .claude.</span
+          ><br /><button class="btn small" style="margin-top: 6px">Scan now</button>
+        </div>
+        <div class="k">Promotion history</div>
+        <div class="small">
+          5 receipts · 4 completed · 1 failed &nbsp;<button class="btn small">Show receipts</button>
+        </div>
+        <div class="k">Inbox handoff</div>
+        <div class="checklist small">
+          <div>
+            <span class="bad">✕</span> Writer scope
+            <span class="mono-path">therss-inbox-handoff</span> is not registered
+          </div>
+          <div class="muted">
+            Send to Inbox stays unavailable until the vault owner registers this scope and its SOP.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const $ = (s) => document.querySelector(s)
+      const $$ = (s) => [...document.querySelectorAll(s)]
+      const bookIcon =
+        '<svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 2.5h8a2 2 0 0 1 2 2v9H5a2 2 0 0 1-2-2z"/><path d="M3 11.5a2 2 0 0 1 2-2h8"/></svg>'
+
+      const VAULT = {
+        none: {
+          cls: '',
+          word: 'Not in llm-wiki',
+          facts: [
+            [
+              'Checked',
+              'No paper record or note with arXiv ID 2610.01234 · vault scan Oct 28, 10:42'
+            ]
+          ],
+          actions: [],
+          marker: null,
+          promote: true
+        },
+        promoted: {
+          cls: '',
+          word: 'In llm-wiki',
+          facts: [
+            [
+              'Note',
+              'Literature/Paper_Notes/L2_Structured/Model_Compression/Lee_2026_2610.01234.md'
+            ],
+            ['Route', 'L2 Structured · evidence: full-text verified'],
+            ['Reading', 'status: unread · decision: not set'],
+            ['Receipt', 'Promoted by TheRSS Oct 21, 2026, 16:05 · Codex llm-wiki-promotion-v1']
+          ],
+          actions: ['Open in Obsidian', 'Reveal in Finder', 'Show receipt'],
+          marker: 'In llm-wiki · L2',
+          promote: false
+        },
+        external: {
+          cls: '',
+          word: 'In llm-wiki',
+          facts: [
+            [
+              'Note',
+              'Literature/Paper_Notes/L2_Structured/Model_Compression/Lee_2026_2610.01234.md'
+            ],
+            ['Route', 'L2 Structured · added by daily-arxiv-scan, not by TheRSS'],
+            ['Reading', 'status: read · decision: baseline'],
+            [
+              'Record',
+              'raw/paper_records sidecar and archived PDF found · vault scan Oct 28, 10:42'
+            ]
+          ],
+          actions: ['Open in Obsidian', 'Reveal in Finder'],
+          marker: 'In llm-wiki · L1',
+          promote: false
+        },
+        missing: {
+          cls: 'warn',
+          word: 'Note not found',
+          facts: [
+            [
+              'Receipt path',
+              'Literature/Paper_Notes/L2_Structured/Model_Compression/Lee_2026_2610.01234.md'
+            ],
+            ['Last scan', 'Oct 28, 10:42 · no note or paper record with this arXiv ID'],
+            [
+              'Meaning',
+              'The note was moved, renamed or deleted in the vault. TheRSS did not change it.'
+            ]
+          ],
+          actions: ['Scan again', 'Preview llm-wiki promotion…'],
+          marker: 'llm-wiki note missing',
+          promote: false
+        },
+        unavailable: {
+          cls: 'err',
+          word: 'llm-wiki unavailable',
+          facts: [
+            [
+              'Reason',
+              'System/Configs/Automation_Runtime_Scopes.json is missing or is not a regular file'
+            ],
+            ['Effect', 'Status and related notes cannot be checked. Promotion is blocked.']
+          ],
+          actions: ['Open llm-wiki Settings'],
+          marker: null,
+          promote: false
+        }
+      }
+
+      function renderVault() {
+        const v = VAULT[$('#vaultState').value]
+        const block = $('#vaultBlock')
+        block.className = 'vault ' + v.cls
+        block.innerHTML = `<div class="head">${bookIcon}<span class="state-word">${v.word}</span><span class="new">NEW</span></div>
+    <dl class="facts">${v.facts.map(([k, val]) => `<dt>${k}</dt><dd class="${/\//.test(val) && !/ /.test(val) ? 'mono-path' : ''}">${val}</dd>`).join('')}</dl>
+    <div class="row-actions">${v.actions.map((a, i) => `<button class="btn small${i === 0 && v.cls === '' && !v.promote ? '' : ''}">${a}</button>`).join('')}</div>`
+        $('#promoteBtn').hidden = !v.promote
+        const marker = $('#rowMarker')
+        marker.hidden = !v.marker
+        if (v.marker) $('#rowMarkerText').textContent = v.marker
+        const unavailable = $('#vaultState').value === 'unavailable'
+        $('#related').style.opacity = unavailable ? '.45' : '1'
+        $('#relCount').textContent = unavailable ? '(not checked)' : '(3)'
+      }
+
+      const QUEUE = [
+        {
+          title: 'A survey of compression for edge intelligence',
+          id: '2609.01111',
+          route: 'L2 Structured',
+          pdf: '18 pages · verified',
+          state: 'Ready',
+          ok: true
+        },
+        {
+          title: 'Token merging for low-power transformer inference',
+          id: '2609.02222',
+          route: 'L1 Deep Read',
+          pdf: '11 pages · verified',
+          state: 'Ready',
+          ok: true
+        },
+        {
+          title: 'Carbon-aware scheduling of federated fine-tuning',
+          id: '2608.03333',
+          route: '—',
+          pdf: 'Not available',
+          state: 'Blocked: the official PDF could not be downloaded',
+          ok: false
+        }
+      ]
+      let qPhase = 'preview'
+      function renderQueue() {
+        const states = {
+          preview: QUEUE.map((q) => q.state),
+          running: ['Completed', 'Writing note…', 'Skipped (blocked)'],
+          done: [
+            'Completed',
+            'Partial: reverse link to Topics/Edge_AI not written',
+            'Skipped (blocked)'
+          ]
+        }[qPhase]
+        $('#qBody').innerHTML = QUEUE.map(
+          (q, i) => `<tr>
+    <td><input type="checkbox" ${q.ok ? 'checked' : 'disabled'} aria-label="Include ${q.title}"></td>
+    <td><b>${q.title}</b><br><span class="small muted">${q.id}</span></td>
+    <td class="small">${q.route}</td><td class="small">${q.pdf}</td>
+    <td class="small ${/Blocked|Partial/.test(states[i]) ? 'bad' : /Completed|Ready/.test(states[i]) ? 'ok' : ''}">${states[i]}</td></tr>`
+        ).join('')
+        $('#qGo').textContent = {
+          preview: 'Promote 2 papers',
+          running: 'Stop after current paper',
+          done: 'Done'
+        }[qPhase]
+        $('#qCancel').hidden = qPhase !== 'preview'
+        $('#qTitle').textContent = {
+          preview: 'Promote papers to llm-wiki',
+          running: 'Promoting 2 papers to llm-wiki',
+          done: 'Promotion finished: 1 completed, 1 partial, 1 skipped'
+        }[qPhase]
+        $('#qFoot').textContent = {
+          preview:
+            'One paper at a time under the llm-wiki writer lease. You can stop after the current paper.',
+          running: 'Paper 2 of 2. The writer lease is held until this paper finishes.',
+          done: 'Each paper has its own receipt. Retry is available for the partial paper.'
+        }[qPhase]
+      }
+
+      function setScenario(s) {
+        $$('#scenarios button').forEach((b) =>
+          b.setAttribute('aria-pressed', String(b.dataset.s === s))
+        )
+        const isSettings = s === 'settings'
+        $('#workspace').hidden = isSettings
+        $('#settingsWin').hidden = !isSettings
+        $('#vaultStateWrap').hidden = s !== 'reading'
+        const saved = s === 'queue'
+        $('#discover').hidden = saved
+        $('#saved').hidden = !saved
+        $('#navDiscover').toggleAttribute('aria-current', !saved)
+        $('#navSaved').toggleAttribute('aria-current', saved)
+        if (saved) $('#navSaved').setAttribute('aria-current', 'page')
+        else $('#navDiscover').setAttribute('aria-current', 'page')
+        $('#wsTitle').textContent = saved ? 'Saved' : 'Discover'
+        $('#ctxPop').hidden = s !== 'context'
+        $('#ctxBtn').setAttribute('aria-expanded', String(s === 'context'))
+        $('#detailsPanel').hidden = s !== 'context'
+        $('#queueSheet').hidden = !saved
+        $('#inboxSheet').hidden = s !== 'inbox'
+        $$('#discover .row').forEach((r, i) =>
+          r.classList.toggle('sel', s === 'inbox' ? i === 3 : i === 0)
+        )
+        if (saved) {
+          qPhase = 'preview'
+          renderQueue()
+        }
+      }
+
+      $('#scenarios').addEventListener('click', (e) => {
+        if (e.target.dataset.s) setScenario(e.target.dataset.s)
+      })
+      $('#vaultState').addEventListener('change', renderVault)
+      $('#theme').addEventListener('click', (e) => {
+        const t = e.target.dataset.t
+        if (!t) return
+        document.documentElement.dataset.theme = t
+        $$('#theme button').forEach((b) =>
+          b.setAttribute('aria-pressed', String(b.dataset.t === t))
+        )
+      })
+      $('#ctxBtn').addEventListener('click', () => {
+        const p = $('#ctxPop')
+        p.hidden = !p.hidden
+        $('#ctxBtn').setAttribute('aria-expanded', String(!p.hidden))
+      })
+      $('#detailsBtn').addEventListener('click', () => {
+        $('#detailsPanel').hidden = !$('#detailsPanel').hidden
+      })
+      $('#ctxPop').addEventListener('change', () => {
+        const sel = $$('#ctxPop input[type=checkbox]:checked').map((c) => c.dataset.ctx)
+        $('#ctxCount').textContent = sel.length ? `(${sel.length})` : ''
+        $('#ctxSummary').textContent = sel.length
+          ? 'Context: ' + sel.join(', ')
+          : 'No llm-wiki context'
+        $('#ctxProv').textContent = sel.length ? sel.join(', ') : 'none'
+      })
+      $('#queueBtn').addEventListener('click', () => {
+        qPhase = 'preview'
+        renderQueue()
+        $('#queueSheet').hidden = false
+      })
+      $$('[data-close]').forEach((b) =>
+        b.addEventListener('click', () => {
+          $('#' + b.dataset.close).hidden = true
+        })
+      )
+      $('#qCancel').addEventListener('click', () => {
+        $('#queueSheet').hidden = true
+      })
+      $('#qGo').addEventListener('click', () => {
+        if (qPhase === 'preview') qPhase = 'running'
+        else if (qPhase === 'running') qPhase = 'done'
+        else {
+          $('#queueSheet').hidden = true
+          return
+        }
+        renderQueue()
+      })
+      renderVault()
+    </script>
+  </body>
+</html>
