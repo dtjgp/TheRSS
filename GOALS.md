@@ -1,5 +1,22 @@
 # TheRSS Goals
 
+## Current local work: llm-wiki handoff (verified, not installed)
+
+The user's 2026-10-28 scope is implemented on `codex/llm-wiki-state`: repair the reviewed
+runtime compatibility, show collected paper state in the native reader, and open existing
+notes/records in Obsidian. The [delivery report](docs/audits/2026-10-28-llm-wiki-status/REPORT.md)
+records passing local gates and the actual read-only vault/Obsidian check. The requested
+continuation verifies native button actions and visible postconditions for Recheck and Open,
+including record-only, absent and non-paper states. Human physical-input/VoiceOver acceptance
+is not claimed. No actual paper write, local install, commit,
+push or release was performed. Existing broader collaboration proposals remain deferred.
+
+The [prioritized follow-up list](docs/audits/2026-10-28-llm-wiki-status/PRIORITIES.md)
+records the user's requested planning reference. These are proposed next steps, not completed capabilities.
+On 2026-10-29 the user selected item P0-2. The native reader now rechecks llm-wiki status after a
+confirmed promotion write ends ([change contract](docs/audits/2026-10-29-llm-wiki-post-promotion-refresh/CHANGE_CONTRACT.md)).
+It is verified with fixtures only; a real promotion (P0-1) has not run.
+
 ## Current stage: v0.4.0 unsigned pre-release (published)
 
 On 2026-10-27 the user chose to publish `v0.4.0` after PRs #67, #68 and #70 merged, and to

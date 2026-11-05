@@ -22,6 +22,12 @@ provenance without copying secrets.
 - Eligible arXiv papers expose a separate, confirmation-gated llm-wiki promotion. Its preview shows
   the live vault, L1/L2 route, verified PDF facts, evidence boundary, and exact intended paths before
   Electron main may write anything.
+- The native paper reader shows the last checked llm-wiki membership state from bounded local
+  paper metadata. It distinguishes record-only, linked note, missing note, ambiguous identity,
+  unavailable and no matching record. Recheck refreshes the observation, and a confirmed promotion
+  write rechecks main-window readers that show the same paper. Open in Obsidian resolves
+  and validates the existing note or paper record again in main. No note-body indexing or vault
+  write is part of this read-only handoff.
 - Semantic expansion search exposes the executed terms and per-source outcome instead of presenting opaque model answers as search evidence.
 - A bounded Personal Prompt can supply stable research fields, evidence preferences, and exclusions
   without replacing the explicit question for each Discover run.

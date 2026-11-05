@@ -32,6 +32,12 @@ import {
   llmWikiPromotionPreviewRequestSchema
 } from '../shared/llmWikiPromotion'
 import type { ProviderConnectionResult } from '../shared/models'
+import type { LlmWikiLibrary } from '../core/integrations/llmWikiLibrary'
+import {
+  llmWikiArxivIdSchema,
+  llmWikiLibraryStatusSchema,
+  llmWikiStatusRequestSchema
+} from '../shared/llmWikiLibrary'
 
 const itemId = z.string().trim().min(1).max(300)
 const source = z
@@ -53,6 +59,7 @@ export interface ApplicationServices {
   readonly analysis: AnalysisService
   readonly agents: LocalAgentService
   readonly promotion: LlmWikiPromotionService
+  readonly wiki: Pick<LlmWikiLibrary, 'status' | 'open'>
   readonly credentials?: () => { githubToken?: string; huggingFaceToken?: string }
   readonly testProvider: (
     profile: Awaited<ReturnType<ProviderService['getConnectionTestProfile']>>
@@ -248,7 +255,15 @@ export class WindowApplication {
             context.ownerId
           )
         ),
-      getLatestLlmWikiPromotion: (id) => task(() => promotion.getLatest(itemId.parse(id)))
+      getLatestLlmWikiPromotion: (id) => task(() => promotion.getLatest(itemId.parse(id))),
+      getLlmWikiStatus: (candidate) =>
+        task(async () =>
+          llmWikiLibraryStatusSchema.parse(
+            await services.wiki.status(llmWikiStatusRequestSchema.parse(candidate))
+          )
+        ),
+      openLlmWikiNote: (candidate) =>
+        task(() => services.wiki.open(llmWikiArxivIdSchema.parse(candidate)))
     }
   }
 

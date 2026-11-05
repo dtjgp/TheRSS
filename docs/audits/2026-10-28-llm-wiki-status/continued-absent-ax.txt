@@ -1,0 +1,85 @@
+Window: "Saved", App: TheRSS.
+0 standard window TheRSS, Secondary Actions: Raise
+	1 split group
+		2 scroll area Description: Workspaces, ID: native-navigation
+			3 table Workspaces
+				4 row (selectable)
+					5 cell Discover
+						6 image Sparkle in a magnifying glass
+						7 text Discover
+				8 row (selected)
+					9 cell (selected) Saved
+						10 image favorite
+						11 text Saved
+				12 row (selectable)
+					13 cell Data Analytics
+						14 image chart column
+						15 text Data Analytics
+				16 row (selectable)
+					17 cell Sources
+						18 image Stack of squares
+						19 text Sources
+		20 splitter (disabled, settable, float) 223.5
+		21 scroll area native-main
+			22 pop up button Description: Filter saved sources, Value: All sources (4), ID: saved-source-filter
+			23 pop up button Description: Analysis runner, Value: Model provider, ID: saved-runner
+			24 button (disabled) Update saved snapshot, ID: saved-update-source
+			25 text Value: No newer local snapshot. Search again to retrieve fresh metadata., ID: saved-source-update-status
+			26 split group Description: Resize list and reading panes, ID: saved-workspace
+				27 scroll area Description: Saved research, ID: saved-items
+					28 table
+						29 row (selected)
+							30 cell (selected) Absent record — verification sample (synthetic ID). Paper. arXiv · Oct 8, 2026.
+								31 text Absent record — verification sample (synthetic ID) arXiv · Oct 8, 2026
+								32 image Paper
+						33 row (selectable)
+							34 cell Non-paper — read-only llm-wiki verification. Repository. GitHub · Oct 8, 2026.
+								35 text Non-paper — read-only llm-wiki verification GitHub · Oct 8, 2026
+								36 image Repository
+						37 row (selectable)
+							38 cell Record only — read-only llm-wiki verification. Paper. arXiv · Oct 8, 2026.
+								39 text Record only — read-only llm-wiki verification arXiv · Oct 8, 2026
+								40 image Paper
+						41 row (selectable)
+							42 cell iCATS — read-only llm-wiki verification. Paper. arXiv · Oct 8, 2026.
+								43 text iCATS — read-only llm-wiki verification arXiv · Oct 8, 2026
+								44 image Paper
+				45 splitter (disabled, settable, float) 320
+				46 scroll area saved-reading-scroll
+					47 text Value: Absent record — verification sample (synthetic ID) arXiv · Oct 8, 2026 · Saved, ID: saved-reading-title
+					48 button Open original, ID: saved-open
+					49 button Share, Help: Share the link with another app, ID: saved-share
+					50 button Unsave, ID: saved-save
+					51 button (disabled) Analyze, ID: saved-analyze
+					52 button Dismiss, ID: saved-dismiss
+					53 text Value: No llm-wiki paper record found, ID: saved-wiki-status
+					54 button Recheck llm-wiki, ID: saved-wiki-refresh
+					55 text ID: saved-wiki-checked, Value: Checked 10/29/26, 10:54 AM · Paper metadata only Model provider is not configured. Choose an available runner or open Settings.
+					56 button Open Settings, ID: saved-analysis-configure-runner
+					57 text entry area Description: Research content, ID: saved-summary, Value: Validation sample: opens an existing local paper note. No new source search or analysis was run.
+
+					58 text Value: Evidence: paper discovery metadata and retrieved summary. Full-paper results are not verified here., ID: saved-evidence
+					59 button Source details, ID: saved-metadata-toggle
+					60 button Preview llm-wiki promotion, ID: saved-promote
+					61 text Value: No stored analysis for this item., ID: saved-no-analysis
+	62 toolbar
+		63 button Description: Hide Sidebar, Help: Show or hide the sidebar (Control-Command-S), Secondary Actions: Move next, Remove from toolbar
+		64 search text field (settable) Description: Search local research, Placeholder: Search saved items, sessions and analyses
+			65 button Search
+		66 button (disabled) Description: Undo triage, Help: Undo the last Save, Unsave or Dismiss action, Secondary Actions: Move previous, Remove from toolbar
+	67 close button
+	68 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	69 minimize button
+70 menu bar
+	71 TheRSS
+	72 File
+	73 Edit
+	74 View
+	75 Signal
+	76 Window
+	77 Help
+
+Selected:
+	8 row (selected)
+
+Note: Pay special attention to the content selected by the user. If the user asks a question or refers to the content they are looking at on-screen, they might be referring to the selected content (but they might be referring to something else that's visible, too).

@@ -6,7 +6,7 @@ export const AUTOMATION_ID = 'therss-paper-promotion'
 export const MAX_NOTE_BYTES = 500_000
 export const MAX_KNOWLEDGE_PAGES = 500
 export const TRUSTED_AUTOMATION_RUNTIME_SHA256 =
-  'aa5b24060b0169010e165b5c392eb41c6f57fa97ec5bc39eed2d41762017366e'
+  'bdbf13e28523f1ba9679fdd6230a44f85c21426cade6a3af5c05a29e41f7da61'
 export const REQUIRED_FILES = [
   'AGENTS.md',
   '_schema.md',

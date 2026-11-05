@@ -213,7 +213,10 @@ export async function confirmLlmWikiPromotion(
       const existing = mutableContents.get(sidecarPath)
       if (existing === undefined)
         throw new Error(`Missing mutable llm-wiki content: ${sidecarPath}`)
-      replacements.set(sidecarPath, mergeSidecarArchiveLinks(existing, handle.sourceItem, pdfPath))
+      replacements.set(
+        sidecarPath,
+        mergeSidecarArchiveLinks(existing, handle.sourceItem, pdfPath, notePath)
+      )
     }
     for (const path of handle.analysis.relatedPaths) {
       const content = mutableContents.get(path)

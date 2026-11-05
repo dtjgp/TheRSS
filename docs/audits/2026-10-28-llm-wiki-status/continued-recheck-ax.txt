@@ -1,0 +1,72 @@
+Window: "Saved", App: TheRSS.
+0 standard window TheRSS, Secondary Actions: Raise
+	1 split group
+		2 scroll area Description: Workspaces, ID: native-navigation
+			3 table Workspaces
+				4 row (selectable)
+					5 cell Discover
+						6 image Sparkle in a magnifying glass
+						7 text Discover
+				8 row (selected)
+					9 cell (selected) Saved
+						10 image favorite
+						11 text Saved
+				12 row (selectable)
+					13 cell Data Analytics
+						14 image chart column
+						15 text Data Analytics
+				16 row (selectable)
+					17 cell Sources
+						18 image Stack of squares
+						19 text Sources
+		20 splitter (disabled, settable, float) 223.5
+		21 scroll area native-main
+			22 pop up button Description: Filter saved sources, Value: All sources (1), ID: saved-source-filter
+			23 pop up button Description: Analysis runner, Value: Model provider, ID: saved-runner
+			24 button (disabled) Update saved snapshot, ID: saved-update-source
+			25 text Value: No newer local snapshot. Search again to retrieve fresh metadata., ID: saved-source-update-status
+			26 split group Description: Resize list and reading panes, ID: saved-workspace
+				27 scroll area Description: Saved research, ID: saved-items
+					28 table
+						29 row (selected)
+							30 cell (selected) iCATS — read-only llm-wiki verification. Paper. arXiv · Oct 8, 2026.
+								31 text iCATS — read-only llm-wiki verification arXiv · Oct 8, 2026
+								32 image Paper
+				33 splitter (disabled, settable, float) 320
+				34 scroll area saved-reading-scroll
+					35 text Value: iCATS — read-only llm-wiki verification arXiv · Oct 8, 2026 · Saved, ID: saved-reading-title
+					36 button Open original, ID: saved-open
+					37 button Share, Help: Share the link with another app, ID: saved-share
+					38 button Unsave, ID: saved-save
+					39 button (disabled) Analyze, ID: saved-analyze
+					40 button Dismiss, ID: saved-dismiss
+					41 text Value: In llm-wiki · L2 · Vault status: unread, ID: saved-wiki-status
+					42 button Recheck llm-wiki, ID: saved-wiki-refresh
+					43 button Open in Obsidian, ID: saved-wiki-open
+					44 text ID: saved-wiki-path, Value: Literature/Paper_Notes/L2_Structured/Model_Compression/Han_2026_iCATS.md Checked 10/29/26, 10:50 AM · Paper metadata only Model provider is not configured. Choose an available runner or open Settings.
+					45 button Open Settings, ID: saved-analysis-configure-runner
+					46 text entry area Description: Research content, ID: saved-summary, Value: Validation sample: opens an existing local paper note. No new source search or analysis was run.
+
+					47 text Value: Evidence: paper discovery metadata and retrieved summary. Full-paper results are not verified here., ID: saved-evidence
+					48 button Source details, ID: saved-metadata-toggle
+					49 button Preview llm-wiki promotion, ID: saved-promote
+					50 text Value: No stored analysis for this item., ID: saved-no-analysis
+	51 toolbar
+		52 button Description: Hide Sidebar, Help: Show or hide the sidebar (Control-Command-S), Secondary Actions: Move next, Remove from toolbar
+		53 search text field (settable) Description: Search local research, Placeholder: Search saved items, sessions and analyses
+			54 button Search
+		55 button (disabled) Description: Undo triage, Help: Undo the last Save, Unsave or Dismiss action, Secondary Actions: Move previous, Remove from toolbar
+	56 menu button Window sharing
+57 menu bar
+	58 TheRSS
+	59 File
+	60 Edit
+	61 View
+	62 Signal
+	63 Window
+	64 Help
+
+Selected:
+	8 row (selected)
+
+Note: Pay special attention to the content selected by the user. If the user asks a question or refers to the content they are looking at on-screen, they might be referring to the selected content (but they might be referring to something else that's visible, too).

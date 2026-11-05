@@ -2,7 +2,7 @@
 
 ## Product identity
 
-TheRSS is a single-user, local-first academic discovery desktop application. Its primary outcome is a daily, explainable inbox of arXiv papers and GitHub repositories matched to the user's declared interests.
+TheRSS is a single-user, local-first academic discovery desktop application. Its primary workflow is user-initiated Discover search across configured research sources, with inspectable search plans, typed provenance, independent source outcomes, and explicitly saved results. `PRODUCT.md` owns the current capabilities, navigation, and source scope.
 
 The app is not a generic news reader, an autonomous research author, or a replacement for Zotero, Obsidian, Codex, or Claude Code.
 

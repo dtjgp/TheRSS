@@ -230,7 +230,7 @@ export async function preflightVault(
   }
 }
 
-export function buildSidecar(item: DiscoveryItem, pdfPath: string): string {
+export function buildSidecar(item: DiscoveryItem, pdfPath: string, notePath?: string): string {
   const categories = JSON.stringify([...item.categories])
   const matchedKeywords = JSON.stringify([...item.topics])
   return `---
@@ -245,7 +245,7 @@ matched_keywords: ${matchedKeywords}
 relevance_index: null
 relevance_label: ${jsonString('manual-promotion')}
 source_pdf: ${jsonString(`[[${pdfPath.replace(/\.pdf$/u, '')}]]`)}
-source: therss
+${notePath ? `paper_note: ${jsonString(`[[${notePath.replace(/\.md$/u, '')}]]`)}\n` : ''}source: therss
 prompt_version: ${LLM_WIKI_PROMOTION_PROMPT_VERSION}
 ---
 
@@ -258,7 +258,8 @@ Promoted from TheRSS after explicit local confirmation. The canonical analysis i
 export function mergeSidecarArchiveLinks(
   current: string,
   item: DiscoveryItem,
-  pdfPath: string
+  pdfPath: string,
+  notePath?: string
 ): string {
   const end = current.indexOf('\n---\n', 4)
   if (end < 0) throw new Error('The existing paper record frontmatter is not terminated')
@@ -266,7 +267,8 @@ export function mergeSidecarArchiveLinks(
   const fields: Readonly<Record<string, string>> = {
     arxiv_link: jsonString(item.url),
     pdf_link: jsonString(`https://arxiv.org/pdf/${item.externalId}`),
-    source_pdf: jsonString(`[[${pdfPath.replace(/\.pdf$/u, '')}]]`)
+    source_pdf: jsonString(`[[${pdfPath.replace(/\.pdf$/u, '')}]]`),
+    ...(notePath ? { paper_note: jsonString(`[[${notePath.replace(/\.md$/u, '')}]]`) } : {})
   }
   for (const [key, value] of Object.entries(fields)) {
     const pattern = new RegExp(`^(?:"${key}"|'${key}'|${key}):[ \\t]*.*$`, 'gmu')

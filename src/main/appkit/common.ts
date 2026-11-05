@@ -62,6 +62,8 @@ export interface NativeScreen {
   /** Closes the popover without an event, e.g. when a sheet opens or the workspace changes. */
   closePopover?(): void
   load?(): Promise<void>
+  /** A promotion write for this arXiv ID ended; a reader that shows it rechecks llm-wiki. */
+  llmWikiChanged?(arxivId: string): void
   dispose?(): void
 }
 

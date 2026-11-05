@@ -257,7 +257,9 @@ export function createApi(snapshot: DashboardSnapshot = emptyDashboard): TheRSSA
     previewLlmWikiPromotion: vi.fn(),
     confirmLlmWikiPromotion: vi.fn(),
     cancelLlmWikiPromotion: vi.fn(),
-    getLatestLlmWikiPromotion: vi.fn().mockResolvedValue(null)
+    getLatestLlmWikiPromotion: vi.fn().mockResolvedValue(null),
+    getLlmWikiStatus: vi.fn(),
+    openLlmWikiNote: vi.fn()
   }
 }
 

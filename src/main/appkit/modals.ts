@@ -45,7 +45,11 @@ export class NativeModals {
   private disposed = false
   focus: string | undefined
 
-  constructor(private readonly context: NativeContext) {
+  constructor(
+    private readonly context: NativeContext,
+    /** Called after a confirmed write ends, even with an error: the vault may have changed. */
+    private readonly onPromotionSettled?: (arxivId: string) => void
+  ) {
     this.controls = new Controls(context)
   }
   get visible(): boolean {
@@ -301,8 +305,9 @@ export class NativeModals {
       : []
   }
   private async confirmPromotion(): Promise<void> {
-    const id = this.preview?.previewId
-    if (!id || !this.preview?.ready || this.consumed || this.busy) return
+    const id = this.preview?.previewId,
+      arxivId = this.preview?.arxivId
+    if (!id || !arxivId || !this.preview?.ready || this.consumed || this.busy) return
     this.consumed = true
     this.busy = true
     this.confirming = true
@@ -318,6 +323,7 @@ export class NativeModals {
       this.confirming = false
       this.focus = 'modal-close'
       this.context.redraw()
+      if (!this.disposed) this.onPromotionSettled?.(arxivId)
     }
   }
   private async cancelPromotion(): Promise<void> {

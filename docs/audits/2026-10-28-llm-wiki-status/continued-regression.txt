@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /Users/dtjgp/Projects/TheRSS
+
+
+ Test Files  6 passed (6)
+      Tests  51 passed (51)
+   Start at  10:57:09
+   Duration  901ms (transform 395ms, setup 810ms, import 520ms, tests 1.57s, environment 0ms)
+

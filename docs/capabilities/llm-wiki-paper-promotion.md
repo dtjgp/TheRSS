@@ -49,6 +49,16 @@ index/log entries, and automation audit in the live llm-wiki paths.
 - `log.md`
 - `Automation_Conversations/YYYY-MM-DD__therss-paper-promotion__*.md`
 
+Newly confirmed sidecars include the exact canonical `paper_note` link. The native reader's
+read-only membership check can open that note (or a record-only sidecar) in Obsidian. Its bounded
+metadata cache and explicit Recheck action are described in ADR 0012; old receipts alone never
+establish current membership. No existing vault record is migrated by a membership check.
+
+The reviewed runtime baseline is the strict terminal-audit version `f5c32763` (SHA-256
+`bdbf13e28523f1ba9679fdd6230a44f85c21426cade6a3af5c05a29e41f7da61`). Compatibility tests run
+that exact snapshot against disposable state and verify release with matching app-generated
+audits. Unknown runtime bytes still block before a preview.
+
 QMD, Zotero, Git, publication, credentials, taxonomy creation/refactoring, and arbitrary renderer-
 selected paths are outside this transaction.
 

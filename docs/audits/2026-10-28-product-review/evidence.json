@@ -1,0 +1,134 @@
+{
+  "date": "2026-10-28",
+  "timezone": "Europe/Rome",
+  "scope": "Product review of functions, native UI, user experience, and market prospects; no product implementation",
+  "installed_app": "/Users/dtjgp/Applications/TheRSS Dev.app",
+  "observed_bundle_version": "0.4.0",
+  "observed_source_head": "41c5aaf",
+  "binary_source_equivalence_verified": false,
+  "objective": "Deliver a source-backed product review with eight captured interface states, prioritized recommendations, and explicit verification limits",
+  "stop_condition": "All four dimensions assessed; screenshots inspected; report links and rendering checked; limitations disclosed",
+  "allowed_writes": "This audit directory only",
+  "screenshots": [
+    {
+      "file": "01-discover.jpg",
+      "width": 2612,
+      "height": 1696,
+      "sha256": "2c63bb26e1247cb75ee3e7f8d175166afa36a4e34a6f6998532e5b1cd83c6f83",
+      "saved_file_visually_inspected": true
+    },
+    {
+      "file": "02-search-details.jpg",
+      "width": 1640,
+      "height": 1360,
+      "sha256": "9f97e1f9de79fb012275e113b7697f03cb55f57544f9cbd969dcf74b73048539",
+      "saved_file_visually_inspected": true
+    },
+    {
+      "file": "03-source-picker.jpg",
+      "width": 2612,
+      "height": 1696,
+      "sha256": "5062eb62a68e2c22753ab62750cac94fdcc519c1176a4a4185f5095780569eff",
+      "saved_file_visually_inspected": true
+    },
+    {
+      "file": "04-saved.jpg",
+      "width": 2612,
+      "height": 1696,
+      "sha256": "856e37a69b804a21eeab1d7e6cb18f4f5364a66638fd3c8b8845c03a7748eb71",
+      "saved_file_visually_inspected": true
+    },
+    {
+      "file": "05-provider-settings.jpg",
+      "width": 1280,
+      "height": 1576,
+      "sha256": "2d5a2d3ce9d7ba0246f5d2fbe000e873f14ab3317e48232691a9ae07dc3cf1ca",
+      "saved_file_visually_inspected": true
+    },
+    {
+      "file": "06-analytics.jpg",
+      "width": 2612,
+      "height": 1696,
+      "sha256": "9305500de427564031459f567db5df2a87714c18dd0ccad28a808033387d424b",
+      "saved_file_visually_inspected": true
+    },
+    {
+      "file": "07-local-search.jpg",
+      "width": 2612,
+      "height": 1696,
+      "sha256": "ceec661e1cd651cf2648a7be9703340bcdc278b29b03e3af6ec8a113e0fba394",
+      "saved_file_visually_inspected": true
+    },
+    {
+      "file": "08-sources.jpg",
+      "width": 2612,
+      "height": 1696,
+      "sha256": "89541f6bd66bb5e01bc29d5103ee8dae527b4dc19cf802522afa1cb24624d4ee",
+      "saved_file_visually_inspected": true
+    }
+  ],
+  "focused_test": {
+    "command": "./node_modules/.bin/vitest run src/core/ranking/rankDiscoveryItem.test.ts src/core/discover/discoverService.test.ts src/core/storage/localSearchRepository.test.ts src/main/appkit/discover.test.ts src/main/appkit/workflows.test.ts src/main/appkit/localSearch.test.ts",
+    "exit_code": 0,
+    "files_passed": 6,
+    "tests_passed": 53,
+    "observed_vitest_version": "4.1.11",
+    "declared_vitest_range": "^5.0.5",
+    "release_gate": false
+  },
+  "observed_session": {
+    "kind": "existing persisted session, not newly executed",
+    "records": 100,
+    "arxiv": 45,
+    "github": 55,
+    "sources_no_results": 19,
+    "sources_partial": 1,
+    "recorded_at": "2026-10-28T11:35:07.656Z"
+  },
+  "market_sources": [
+    {
+      "url": "https://www.researchrabbit.ai/pricing",
+      "method": "Firecrawl full page markdown retrieved",
+      "used_for": "Free and paid discovery, collections, project capabilities"
+    },
+    {
+      "url": "https://feedly.com/ai",
+      "method": "Firecrawl full page markdown retrieved",
+      "used_for": "Cross-source topic monitoring and prioritization"
+    },
+    {
+      "url": "https://elicit.com/pricing",
+      "method": "Firecrawl search excerpt from official pricing page",
+      "used_for": "Free paper search and paid systematic review/extraction workflows"
+    }
+  ],
+  "historical_quality_baseline": "../2026-09-07-source-quality/REPORT.md",
+  "historical_quality_retested": false,
+  "checks": {
+    "html_parsed": true,
+    "screenshot_count": 8,
+    "all_local_links_and_anchors_resolve": true,
+    "jpeg_headers_dimensions_valid": true,
+    "all_images_have_alt_text": true,
+    "report_rendering": {
+      "status": "passed",
+      "method": "Codex in-app browser via cua_repl",
+      "viewport_width": 1280,
+      "native_screenshots_loaded": 8,
+      "horizontal_overflow": false,
+      "visual_inspection": "Report header and text layout inspected; each of eight source images independently inspected from disk."
+    }
+  },
+  "not_run": [
+    "Live Discover or analysis",
+    "Source refresh",
+    "llm-wiki promotion",
+    "Save/unsave/dismiss mutations",
+    "Full check and release gate",
+    "Fresh profile onboarding",
+    "Narrow window and complete appearance matrix",
+    "VoiceOver and accessibility compliance",
+    "User retention and payment validation"
+  ],
+  "interruptions": "Host marked several tool invocations aborted by user. Triggering actor not independently established. Interrupted calls are not successful evidence."
+}

@@ -472,6 +472,15 @@ try {
       /Full fixture summary ends here\.$/
     )
     assert(!find(result.root, 'discover-expand'))
+    await wait('discover-wiki-status', (node) => node?.text?.includes('In llm-wiki'))
+    const wikiState = await inspect()
+    assert.equal(find(wikiState.root, 'discover-wiki-open').title, 'Open in Obsidian')
+    assert.match(find(wikiState.root, 'discover-wiki-checked').text, /Paper metadata only/u)
+    await click('discover-wiki-refresh')
+    await wait('discover-wiki-refresh', (node) => node?.enabled !== false)
+    await click('discover-wiki-open')
+    await wait('discover-wiki-open', (node) => node?.title === 'Open in Obsidian')
+    await capture('discover-llm-wiki-status')
     assert.match(
       find(result.root, 'discover-result-status').text,
       /^Complete · \d+ of \d+ sources succeeded · [A-Z][a-z]{2} \d{1,2}, \d{4}$/u

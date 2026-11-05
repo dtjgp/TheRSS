@@ -84,6 +84,7 @@ export class TriageHistory {
 }
 
 export class ResearchReader implements NativeScreen {
+  private readonly wiki: WikiStatus
   runner: AnalysisRunner = 'model-provider'
   private readonly controls: Controls
   private item: DashboardItem | null = null
@@ -109,6 +110,7 @@ export class ResearchReader implements NativeScreen {
     private readonly options: { readonly readOnly?: boolean } = {}
   ) {
     this.controls = new Controls(context)
+    this.wiki = new WikiStatus(context, scope)
   }
 
   select(item: DashboardItem | null, sessionId?: string, extra = ''): void {
@@ -118,6 +120,7 @@ export class ResearchReader implements NativeScreen {
     this.item = item
     this.sessionId = sessionId
     this.extra = extra
+    this.wiki.select(item)
     if (!changed && !sourceChanged) return
     if (changed) {
       this.metadataExpanded = false
@@ -130,7 +133,11 @@ export class ResearchReader implements NativeScreen {
     this.version++
     if (item) void this.loadStoredAnalysis()
   }
+  llmWikiChanged(arxivId: string): void {
+    void this.wiki.refreshIfShowing(arxivId)
+  }
   dispose(): void {
+    this.wiki.dispose()
     this.disposed = true
     this.version++
   }
@@ -234,6 +241,7 @@ export class ResearchReader implements NativeScreen {
                     : [])
                 ])
           ]),
+          ...(this.wiki.visible ? [this.wiki.render()] : []),
           ...(!readOnly && !this.canAnalyze() && !analyzing
             ? [
                 label(
@@ -499,3 +507,4 @@ export class ResearchReader implements NativeScreen {
     else if (result.action === 'promote') await this.context.promote(item.id, sessionId)
   }
 }
+import { WikiStatus } from './wikiStatus'

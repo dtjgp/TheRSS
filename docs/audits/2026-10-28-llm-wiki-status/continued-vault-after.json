@@ -1,0 +1,24 @@
+{
+  "capturedAt": "2026-10-29T09:59:28.379Z",
+  "allUnchanged": true,
+  "files": [
+    {
+      "path": "Literature/Paper_Notes/L2_Structured/Model_Compression/Han_2026_iCATS.md",
+      "sha256": "1f65cb876b0c371a45ee63fbe125d535311c340a2d29146502b8630a1b4f29a9",
+      "mtime": "2026-10-29T09:52:01.652Z",
+      "unchanged": true
+    },
+    {
+      "path": "raw/paper_records/arxiv_2602.03060.md",
+      "sha256": "dc6e5776595787a181f2ec878bd5392ae3382363af9e6ce8d9af1e9e1cf19a6f",
+      "mtime": "2026-04-15T16:53:05.000Z",
+      "unchanged": true
+    },
+    {
+      "path": "raw/paper_records/Han et al. - 2026 - iCATS.md",
+      "sha256": "44206d3bd9fb9cbfc011df085d9eac69b270461b8072dac466ff67bcd9b5d8c0",
+      "mtime": "2026-10-09T07:09:13.720Z",
+      "unchanged": true
+    }
+  ]
+}
