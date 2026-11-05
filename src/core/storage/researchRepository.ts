@@ -29,6 +29,7 @@ import { migrateResearchDatabase } from './researchSchema'
 import {
   clearModelProviderCredential,
   getModelProvider,
+  replaceModelProviderCredential,
   saveModelProvider,
   type StoredModelProvider
 } from './modelProviderStore'
@@ -600,6 +601,10 @@ export class ResearchRepository {
     updatedAt = new Date().toISOString()
   ): StoredModelProvider {
     return clearModelProviderCredential(this.#database, id, updatedAt)
+  }
+
+  replaceModelProviderCredential(id: string, expected: Buffer, replacement: Buffer): boolean {
+    return replaceModelProviderCredential(this.#database, id, expected, replacement)
   }
 
   saveAnalysis(

@@ -1,29 +1,86 @@
 import Database from 'better-sqlite3'
 import { describe, expect, it } from 'vitest'
 import { ResearchRepository } from '../storage/researchRepository'
-import { ProviderService, type SecretCipher } from './providerService'
+import { ProviderService, type DecryptedSecret, type SecretCipher } from './providerService'
 
 const placeholderCredential = ['test', 'credential'].join('-')
 const existingPlaceholder = ['existing', 'placeholder'].join('-')
+const replacementPlaceholder = ['replacement', 'placeholder'].join('-')
 
 /** Resolves on a later task, like Electron's asynchronous safeStorage. */
 const later = <T>(value: T): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), 0))
 
+/** Lets pending fake-cipher work run for several event-loop turns. */
+const flush = async (): Promise<void> => {
+  for (let turn = 0; turn < 10; turn += 1) await later(undefined)
+}
+
+interface Gate {
+  readonly promise: Promise<void>
+  open(): void
+}
+
+function gate(): Gate {
+  let open!: () => void
+  const promise = new Promise<void>((resolve) => {
+    open = resolve
+  })
+  return { promise, open }
+}
+
+/** Ciphertext prefixed `legacy:` decrypts with Electron's rotated-key signal. */
 class FakeSecretCipher implements SecretCipher {
+  readonly #gates = new Map<string, Gate>()
+  failEncrypt = false
+
   constructor(private readonly available = true) {}
+
+  /** Holds `encrypt(value)` until the returned gate opens. */
+  hold(value: string): Gate {
+    const held = gate()
+    this.#gates.set(value, held)
+    return held
+  }
 
   isAvailable(): Promise<boolean> {
     return later(this.available)
   }
 
-  encrypt(value: string): Promise<Buffer> {
+  async encrypt(value: string): Promise<Buffer> {
+    await this.#gates.get(value)?.promise
+    if (this.failEncrypt) throw new Error('Fake encryption failure')
     return later(Buffer.from(`encrypted:${value}`, 'utf8'))
   }
 
-  decrypt(value: Buffer): Promise<string> {
-    return later(value.toString('utf8').replace(/^encrypted:/, ''))
+  decrypt(value: Buffer): Promise<DecryptedSecret> {
+    const text = value.toString('utf8')
+    return later({
+      value: text.replace(/^(encrypted|legacy):/, ''),
+      shouldReEncrypt: text.startsWith('legacy:')
+    })
   }
+}
+
+const provider = {
+  name: 'Provider',
+  protocol: 'openai-compatible',
+  baseUrl: 'https://example.net/v1',
+  model: 'model-a'
+} as const
+
+function storedCiphertext(database: Database.Database): string | null {
+  const row = database
+    .prepare('SELECT secret_ciphertext FROM model_provider WHERE id = ?')
+    .get('default') as { secret_ciphertext: Buffer | null }
+  return row.secret_ciphertext?.toString('utf8') ?? null
+}
+
+function seedLegacyCredential(repository: ResearchRepository, updatedAt: string): void {
+  repository.saveModelProvider(
+    { id: 'default', ...provider, updatedAt },
+    Buffer.from(`legacy:${existingPlaceholder}`, 'utf8')
+  )
 }
 
 describe('ProviderService', () => {
@@ -100,7 +157,7 @@ describe('ProviderService', () => {
       apiKey: existingPlaceholder
     })
 
-    const summary = service.clearCredential('2026-08-24T12:00:00.000Z')
+    const summary = await service.clearCredential('2026-08-24T12:00:00.000Z')
 
     expect(summary).toMatchObject({
       name: 'Provider',
@@ -123,7 +180,6 @@ describe('ProviderService', () => {
       model: 'model-a',
       apiKey: existingPlaceholder
     })
-    const replacementPlaceholder = ['replacement', 'placeholder'].join('-')
 
     await expect(
       service.getConnectionTestProfile({
@@ -203,6 +259,154 @@ describe('ProviderService', () => {
       })
     ).rejects.toThrow('OS-backed credential encryption is unavailable')
     expect(service.getSummary()).toBeNull()
+    repository.close()
+  })
+
+  it('lets a clear that follows a pending keyed save win', async () => {
+    const database = new Database(':memory:')
+    const repository = new ResearchRepository(database)
+    const cipher = new FakeSecretCipher()
+    const service = new ProviderService(repository, cipher)
+    await service.save({ ...provider, apiKey: existingPlaceholder })
+    const encryption = cipher.hold(replacementPlaceholder)
+
+    const saving = service.save({ ...provider, apiKey: replacementPlaceholder })
+    const clearing = service.clearCredential('2026-11-05T12:00:00.000Z')
+    await flush()
+    encryption.open()
+    await saving
+
+    expect(await clearing).toMatchObject({ hasCredential: false })
+    expect(storedCiphertext(database)).toBeNull()
+    expect(service.getSummary()?.hasCredential).toBe(false)
+    repository.close()
+  })
+
+  it('stores the key from the later of two overlapping saves', async () => {
+    const database = new Database(':memory:')
+    const repository = new ResearchRepository(database)
+    const cipher = new FakeSecretCipher()
+    const service = new ProviderService(repository, cipher)
+    const firstEncryption = cipher.hold(existingPlaceholder)
+
+    const first = service.save({ ...provider, apiKey: existingPlaceholder })
+    const second = service.save({ ...provider, model: 'model-b', apiKey: replacementPlaceholder })
+    await Promise.race([second, flush()])
+    firstEncryption.open()
+    await Promise.all([first, second])
+
+    expect(storedCiphertext(database)).toBe(`encrypted:${replacementPlaceholder}`)
+    await expect(service.getExecutionProfile()).resolves.toMatchObject({
+      model: 'model-b',
+      apiKey: replacementPlaceholder
+    })
+    repository.close()
+  })
+
+  it('keeps later credential writes running after a rejected save', async () => {
+    const repository = new ResearchRepository(new Database(':memory:'))
+    const service = new ProviderService(repository, new FakeSecretCipher())
+    await service.save({ ...provider, apiKey: existingPlaceholder })
+
+    await expect(
+      service.save({ ...provider, baseUrl: 'https://other.example.net/v1' })
+    ).rejects.toThrow('replacement credential')
+
+    expect((await service.clearCredential()).hasCredential).toBe(false)
+    repository.close()
+  })
+
+  it('re-encrypts rotated-key ciphertext on an execution read without a user edit', async () => {
+    const database = new Database(':memory:')
+    const repository = new ResearchRepository(database)
+    const service = new ProviderService(repository, new FakeSecretCipher())
+    seedLegacyCredential(repository, '2026-08-15T12:00:00.000Z')
+
+    await expect(service.getExecutionProfile()).resolves.toMatchObject({
+      apiKey: existingPlaceholder,
+      updatedAt: '2026-08-15T12:00:00.000Z'
+    })
+
+    expect(storedCiphertext(database)).toBe(`encrypted:${existingPlaceholder}`)
+    expect(service.getSummary()?.updatedAt).toBe('2026-08-15T12:00:00.000Z')
+    repository.close()
+  })
+
+  it('re-encrypts rotated-key ciphertext on a connection-test read', async () => {
+    const database = new Database(':memory:')
+    const repository = new ResearchRepository(database)
+    const service = new ProviderService(repository, new FakeSecretCipher())
+    seedLegacyCredential(repository, '2026-08-15T12:00:00.000Z')
+
+    await expect(service.getConnectionTestProfile(provider)).resolves.toMatchObject({
+      apiKey: existingPlaceholder
+    })
+
+    expect(storedCiphertext(database)).toBe(`encrypted:${existingPlaceholder}`)
+    repository.close()
+  })
+
+  it('lets a clear queued after a re-encryption still win', async () => {
+    const database = new Database(':memory:')
+    const repository = new ResearchRepository(database)
+    const cipher = new FakeSecretCipher()
+    const service = new ProviderService(repository, cipher)
+    seedLegacyCredential(repository, '2026-08-15T12:00:00.000Z')
+    const reEncryption = cipher.hold(existingPlaceholder)
+
+    const reading = service.getExecutionProfile()
+    await flush()
+    const clearing = service.clearCredential('2026-11-05T12:00:00.000Z')
+    reEncryption.open()
+
+    expect((await reading).apiKey).toBe(existingPlaceholder)
+    expect((await clearing).hasCredential).toBe(false)
+    expect(storedCiphertext(database)).toBeNull()
+    repository.close()
+  })
+
+  it('never lets a re-encryption overwrite a clear that reached the row first', async () => {
+    const database = new Database(':memory:')
+    const repository = new ResearchRepository(database)
+    const service = new ProviderService(repository, new FakeSecretCipher())
+    seedLegacyCredential(repository, '2026-08-15T12:00:00.000Z')
+
+    const reading = service.getExecutionProfile()
+    const clearing = service.clearCredential('2026-11-05T12:00:00.000Z')
+    await clearing
+
+    expect((await reading).apiKey).toBe(existingPlaceholder)
+    expect(storedCiphertext(database)).toBeNull()
+    repository.close()
+  })
+
+  it('never lets a re-encryption overwrite a new key that reached the row first', async () => {
+    const database = new Database(':memory:')
+    const repository = new ResearchRepository(database)
+    const service = new ProviderService(repository, new FakeSecretCipher())
+    seedLegacyCredential(repository, '2026-08-15T12:00:00.000Z')
+
+    const reading = service.getExecutionProfile()
+    await service.save({ ...provider, apiKey: replacementPlaceholder })
+
+    expect((await reading).apiKey).toBe(existingPlaceholder)
+    expect(storedCiphertext(database)).toBe(`encrypted:${replacementPlaceholder}`)
+    repository.close()
+  })
+
+  it('returns the key and keeps the old ciphertext when re-encryption fails', async () => {
+    const database = new Database(':memory:')
+    const repository = new ResearchRepository(database)
+    const cipher = new FakeSecretCipher()
+    const service = new ProviderService(repository, cipher)
+    seedLegacyCredential(repository, '2026-08-15T12:00:00.000Z')
+    cipher.failEncrypt = true
+
+    await expect(service.getExecutionProfile()).resolves.toMatchObject({
+      apiKey: existingPlaceholder
+    })
+
+    expect(storedCiphertext(database)).toBe(`legacy:${existingPlaceholder}`)
     repository.close()
   })
 })

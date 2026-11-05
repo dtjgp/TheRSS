@@ -3,11 +3,17 @@ import { validateProviderBaseUrl } from '../security/providerUrl'
 import type { ResearchRepository, StoredModelProvider } from '../storage/researchRepository'
 import type { ModelProviderSummary } from '../../shared/models'
 
+/** A decrypted credential; `shouldReEncrypt` means the OS key changed since encryption. */
+export interface DecryptedSecret {
+  readonly value: string
+  readonly shouldReEncrypt: boolean
+}
+
 /** OS-backed encryption for provider credentials; Electron exposes it only asynchronously. */
 export interface SecretCipher {
   isAvailable(): Promise<boolean>
   encrypt(value: string): Promise<Buffer>
-  decrypt(value: Buffer): Promise<string>
+  decrypt(value: Buffer): Promise<DecryptedSecret>
 }
 
 export interface ModelExecutionProfile extends ModelProviderSummary {
@@ -41,9 +47,13 @@ function hasSameCredentialScope(
   return existing?.protocol === candidate.protocol && existing.baseUrl === candidate.baseUrl
 }
 
+const providerId = 'default'
+
 export class ProviderService {
   readonly #repository: ResearchRepository
   readonly #cipher: SecretCipher
+  /** Credential writes for the single provider run in call order, so the last call wins. */
+  #credentialWrites: Promise<unknown> = Promise.resolve()
 
   constructor(repository: ResearchRepository, cipher: SecretCipher) {
     this.#repository = repository
@@ -52,6 +62,13 @@ export class ProviderService {
 
   async save(input: unknown, updatedAt = new Date().toISOString()): Promise<ModelProviderSummary> {
     const validated = providerInputSchema.parse(input)
+    return this.#serializeCredentialWrite(() => this.#save(validated, updatedAt))
+  }
+
+  async #save(
+    validated: z.infer<typeof providerInputSchema>,
+    updatedAt: string
+  ): Promise<ModelProviderSummary> {
     const apiKey = validated.apiKey || undefined
     const existing = this.#repository.getModelProvider()
     if (existing?.secretCiphertext && !apiKey && !hasSameCredentialScope(existing, validated)) {
@@ -66,7 +83,7 @@ export class ProviderService {
 
     const provider = this.#repository.saveModelProvider(
       {
-        id: 'default',
+        id: providerId,
         name: validated.name,
         protocol: validated.protocol,
         baseUrl: validated.baseUrl,
@@ -83,8 +100,10 @@ export class ProviderService {
     return provider ? toSummary(provider) : null
   }
 
-  clearCredential(updatedAt = new Date().toISOString()): ModelProviderSummary {
-    return toSummary(this.#repository.clearModelProviderCredential('default', updatedAt))
+  clearCredential(updatedAt = new Date().toISOString()): Promise<ModelProviderSummary> {
+    return this.#serializeCredentialWrite(() =>
+      toSummary(this.#repository.clearModelProviderCredential(providerId, updatedAt))
+    )
   }
 
   async getConnectionTestProfile(input: unknown): Promise<ModelExecutionProfile> {
@@ -93,7 +112,7 @@ export class ProviderService {
     const replacementKey = validated.apiKey || null
     const existingKey =
       hasSameCredentialScope(existing, validated) && existing?.secretCiphertext
-        ? await this.#cipher.decrypt(existing.secretCiphertext)
+        ? await this.#readCredential(existing.secretCiphertext)
         : null
     const apiKey = replacementKey ?? existingKey
 
@@ -116,8 +135,35 @@ export class ProviderService {
     return {
       ...toSummary(provider),
       apiKey: provider.secretCiphertext
-        ? await this.#cipher.decrypt(provider.secretCiphertext)
+        ? await this.#readCredential(provider.secretCiphertext)
         : null
     }
+  }
+
+  async #readCredential(ciphertext: Buffer): Promise<string> {
+    const { value, shouldReEncrypt } = await this.#cipher.decrypt(ciphertext)
+    if (shouldReEncrypt) await this.#reEncrypt(ciphertext, value)
+    return value
+  }
+
+  /**
+   * Moves the credential to the current OS key. The swap fails closed when a clear or a new key
+   * reached the row first. On failure the old ciphertext stays valid and the next read retries.
+   */
+  async #reEncrypt(previous: Buffer, value: string): Promise<void> {
+    try {
+      await this.#serializeCredentialWrite(async () => {
+        const replacement = await this.#cipher.encrypt(value)
+        this.#repository.replaceModelProviderCredential(providerId, previous, replacement)
+      })
+    } catch {
+      // Silent by design: no log may carry the credential, and the read must still succeed.
+    }
+  }
+
+  #serializeCredentialWrite<T>(operation: () => T | Promise<T>): Promise<T> {
+    const write = this.#credentialWrites.then(() => operation())
+    this.#credentialWrites = write.catch(() => undefined)
+    return write
   }
 }
