@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import { describe, expect, it, vi } from 'vitest'
 import type { RankedDiscoveryItem } from '../../shared/discovery'
-import { ProviderService, type SecretCipher } from '../models/providerService'
+import { ProviderService, type DecryptedSecret, type SecretCipher } from '../models/providerService'
 import { ResearchRepository } from '../storage/researchRepository'
 import { AnalysisService } from './analysisService'
 
@@ -12,8 +12,8 @@ class FakeSecretCipher implements SecretCipher {
   async encrypt(value: string): Promise<Buffer> {
     return Buffer.from(value)
   }
-  async decrypt(value: Buffer): Promise<string> {
-    return value.toString()
+  async decrypt(value: Buffer): Promise<DecryptedSecret> {
+    return { value: value.toString(), shouldReEncrypt: false }
   }
 }
 

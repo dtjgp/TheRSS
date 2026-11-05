@@ -95,3 +95,23 @@ export function clearModelProviderCredential(
   if (result.changes !== 1) throw new Error('Configure a model provider first')
   return getModelProvider(database, id)!
 }
+
+/**
+ * Replaces the credential only while the row still holds `expected`, so a clear or a newer key
+ * written meanwhile is never overwritten. `updated_at` is kept: this is not a user edit.
+ */
+export function replaceModelProviderCredential(
+  database: Database.Database,
+  id: string,
+  expected: Buffer,
+  replacement: Buffer
+): boolean {
+  const result = database
+    .prepare(
+      `UPDATE model_provider
+         SET secret_ciphertext = ?
+         WHERE id = ? AND secret_ciphertext = ?`
+    )
+    .run(replacement, id, expected)
+  return result.changes === 1
+}

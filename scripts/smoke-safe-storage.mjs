@@ -28,10 +28,11 @@ try {
     const decrypted = await safeStorage.decryptStringAsync(ciphertext)
     return {
       plaintextAbsent: !ciphertext.includes(Buffer.from(sample, 'utf8')),
-      roundTrip: decrypted.result === sample
+      roundTrip: decrypted.result === sample,
+      reEncryptSignal: typeof decrypted.shouldReEncrypt === 'boolean'
     }
   }, profile)
-  assert.deepEqual(result, { plaintextAbsent: true, roundTrip: true })
+  assert.deepEqual(result, { plaintextAbsent: true, roundTrip: true, reEncryptSignal: true })
   process.stdout.write('TheRSS application safeStorage encryption round trip passed\n')
 } finally {
   await application.close()

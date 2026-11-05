@@ -31,7 +31,11 @@ import { DiscoverPlannerService } from '../core/discover/discoverPlanner'
 import { DiscoverService } from '../core/discover/discoverService'
 import { DiscoveryService } from '../core/discovery/discoveryService'
 import { runPromptWithModel, testModelProviderConnection } from '../core/models/modelGateway'
-import { ProviderService, type SecretCipher } from '../core/models/providerService'
+import {
+  ProviderService,
+  type DecryptedSecret,
+  type SecretCipher
+} from '../core/models/providerService'
 import { ResearchRepository } from '../core/storage/researchRepository'
 import { LlmWikiPromotionService } from '../core/integrations/llmWikiPromotionService'
 import { LlmWikiVaultAdapter } from '../core/integrations/llmWikiVaultAdapter'
@@ -65,8 +69,9 @@ class ElectronSecretCipher implements SecretCipher {
     return safeStorage.encryptStringAsync(value)
   }
 
-  async decrypt(value: Buffer): Promise<string> {
-    return (await safeStorage.decryptStringAsync(value)).result
+  async decrypt(value: Buffer): Promise<DecryptedSecret> {
+    const { result, shouldReEncrypt } = await safeStorage.decryptStringAsync(value)
+    return { value: result, shouldReEncrypt }
   }
 }
 
