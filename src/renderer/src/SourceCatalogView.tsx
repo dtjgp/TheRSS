@@ -256,7 +256,7 @@ function SourceDetail({
         )}
         <p>Last recorded outcome; cached content below is separate from this observation.</p>
         <p className="source-detail-scope">
-          {isArxiv ? "Today's latest batch" : 'Rolling 30 days'}
+          {isArxiv ? 'Latest submission-day sample' : 'Rolling 30 days'}
         </p>
         <div className="source-detail-actions">
           {isActive && (
@@ -312,7 +312,7 @@ function SourceDetail({
 
       <p className="source-detail-boundary">
         {isArxiv
-          ? "This desk shows today's newest available arXiv daily batch without applying a Discover plan. arXiv can timestamp that batch on the previous submission day; use Discover for intent-based retrieval and ranking."
+          ? 'This desk shows up to 200 papers from the latest indexed arXiv submission day (UTC) without applying a Discover plan. For a shortlist from official announcements, open Daily Papers in Discover.'
           : 'TheRSS shows bounded source-provided titles and summaries from the rolling 30 days. Some feeds expose less than 30 days; this view does not claim a complete publisher archive or a verified full article.'}
       </p>
 
@@ -344,7 +344,7 @@ function SourceDetail({
       {isLoading && (
         <div className="source-detail-loading" role="status">
           {isArxiv
-            ? "Opening today's local arXiv index…"
+            ? 'Opening the local arXiv submission index…'
             : 'Opening the local 30-day source index…'}
         </div>
       )}
@@ -383,12 +383,12 @@ function SourceDetail({
             <div className="source-detail-empty">
               <strong>
                 {isArxiv
-                  ? 'No papers from the latest available arXiv daily batch are indexed yet.'
+                  ? 'No papers from a recent arXiv submission day are indexed yet.'
                   : 'No indexed records fall inside this rolling 30-day window.'}
               </strong>
               <p>
                 {isArxiv
-                  ? 'Refresh again after arXiv publishes its next daily batch.'
+                  ? 'Refresh to check for newer indexed submissions.'
                   : 'The source may not have published recently, or its public endpoint may expose a shorter history.'}
               </p>
             </div>

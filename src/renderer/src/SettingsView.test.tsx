@@ -71,7 +71,9 @@ function settingsApi(): TheRSSApi {
     cancelLlmWikiPromotion: vi.fn(),
     getLatestLlmWikiPromotion: vi.fn(),
     getLlmWikiStatus: vi.fn(),
-    openLlmWikiNote: vi.fn()
+    openLlmWikiNote: vi.fn(),
+    getLlmWikiDaily: vi.fn(),
+    openLlmWikiDaily: vi.fn()
   }
 }
 

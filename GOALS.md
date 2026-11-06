@@ -19,6 +19,10 @@ Next, in order:
    A downgrade to Electron 44 can require the user to enter the API key again.
 3. P1 items 3-6 of the follow-up list, one change contract each.
 
+[Daily Papers product audit](docs/audits/2026-11-06-research-workflow/REPORT.md) records
+the Discover entry for the existing llm-wiki daily shortlist, UI references, and follow-up
+acceptance for real promotion and the installed app.
+
 ## Previous stage: llm-wiki handoff (merged in #85)
 
 The user's 2026-10-28 scope is implemented on `codex/llm-wiki-state`: repair the reviewed

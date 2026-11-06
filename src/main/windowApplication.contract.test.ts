@@ -121,6 +121,35 @@ describe('shared application contract parity', () => {
     expect(f.repository.materializeDiscoverResultForLlmWikiPromotion).not.toHaveBeenCalled()
     await app.shutdown()
   })
+  it('exposes only typed daily snapshots and opens a paper by date and arXiv ID', async () => {
+    const f = fixture()
+    const snapshot = {
+      requestedDate: '2026-11-06',
+      checkedAt: '2026-11-06T11:00:00Z',
+      status: 'no-source' as const,
+      edition: { date: '2026-11-06', selected: 0, scanned: null, papers: [] }
+    }
+    const daily = {
+      snapshot: vi.fn(async () => snapshot),
+      open: vi.fn(async () => ({ opened: true as const }))
+    }
+    const api = new WindowApplication({ ...f.services, daily }, f.context).api
+    expect(await api.getLlmWikiDaily()).toEqual(snapshot)
+    await expect(api.openLlmWikiDaily({ date: '2026-02-30' })).rejects.toThrow()
+    await expect(
+      api.openLlmWikiDaily({ date: '2026-11-06', path: 'Life/private.md' } as never)
+    ).rejects.toThrow()
+    expect(daily.open).not.toHaveBeenCalled()
+    await expect(
+      api.openLlmWikiDaily({ date: '2026-11-06', arxivId: '2611.08290v2' })
+    ).resolves.toEqual({
+      opened: true
+    })
+    expect(daily.open).toHaveBeenCalledWith({ date: '2026-11-06', arxivId: '2611.08290' })
+    daily.snapshot.mockResolvedValueOnce({ ...snapshot, edition: null } as never)
+    await expect(api.getLlmWikiDaily()).rejects.toThrow()
+    expect(f.repository.materializeDiscoverResultForLlmWikiPromotion).not.toHaveBeenCalled()
+  })
   it('resolves exact local targets read-only, rejects foreign fields and preserves missing outcomes', async () => {
     const f = fixture()
     f.repository.getDiscoveryItem.mockReturnValue({ id: f.item, triageState: 'saved' })

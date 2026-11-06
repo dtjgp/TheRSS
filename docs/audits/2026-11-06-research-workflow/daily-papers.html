@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>TheRSS · Daily Papers prototype</title>
+    <style>
+      :root {
+        font:
+          14px/1.5 system-ui,
+          sans-serif;
+        color-scheme: light dark;
+        --page: light-dark(#f6f7fa, #1b1d22);
+        --panel: light-dark(#fff, #24272d);
+        --inset: light-dark(#f1f4f9, #2c313a);
+        --line: light-dark(#d3d8e2, #4c5261);
+        --text: light-dark(#19202a, #f1f3f7);
+        --muted: light-dark(#4e5a6b, #bdc7d7);
+        --accent: light-dark(#0b53aa, #92c2ff);
+        --selection: light-dark(#e3efff, #193f68);
+        --warning: light-dark(#705011, #ffda91);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--text);
+      }
+      button,
+      select,
+      textarea {
+        font: inherit;
+        color: inherit;
+      }
+      button,
+      select {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        border-radius: 6px;
+        padding: 6px 10px;
+        cursor: pointer;
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.65;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+      h1 {
+        font-size: 24px;
+      }
+      h2 {
+        font-size: 19px;
+      }
+      h3 {
+        font-size: 13px;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .fixture {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+      }
+      .fixture label {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .app {
+        min-height: calc(100vh - 54px);
+        display: grid;
+        grid-template-columns: 172px minmax(0, 1fr);
+      }
+      aside {
+        border-right: 1px solid var(--line);
+        padding: 18px 12px;
+      }
+      aside strong {
+        display: block;
+        margin: 0 8px 12px;
+      }
+      aside p {
+        padding: 6px 8px;
+        border-radius: 6px;
+      }
+      aside .current {
+        background: var(--inset);
+        font-weight: 600;
+      }
+      main {
+        padding: 20px;
+        min-width: 0;
+      }
+      .toolbar {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+      .primary {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      #discover textarea {
+        display: block;
+        width: min(100%, 720px);
+        min-height: 90px;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--panel);
+      }
+      #discover label {
+        display: block;
+        margin-top: 16px;
+      }
+      #back {
+        margin-bottom: 12px;
+      }
+      .status {
+        padding: 10px 12px;
+        margin: 14px 0;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--inset);
+      }
+      .status[data-level='warning'] strong {
+        color: var(--warning);
+      }
+      .workspace {
+        display: grid;
+        grid-template-columns: minmax(200px, 0.8fr) minmax(0, 1.7fr);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+      #list {
+        border-right: 1px solid var(--line);
+        padding: 12px;
+        min-width: 0;
+      }
+      .list-tools {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin: 4px 0 12px;
+      }
+      .list-tools button[aria-pressed='true'],
+      .paper[aria-pressed='true'] {
+        background: var(--selection);
+        border-color: var(--accent);
+      }
+      .group {
+        margin: 8px 0;
+        color: var(--muted);
+      }
+      .paper {
+        display: block;
+        text-align: left;
+        width: 100%;
+        margin: 0 0 6px;
+        overflow-wrap: anywhere;
+      }
+      .paper span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      #detail {
+        padding: 16px 20px;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      #detail h3 {
+        margin: 12px 0 3px;
+      }
+      #detail .actions {
+        margin-top: 14px;
+      }
+      #list-back {
+        display: none;
+        margin-bottom: 12px;
+      }
+      #feedback {
+        margin-top: 10px;
+        min-height: 1.5em;
+      }
+      @media (max-width: 740px) {
+        .app,
+        .workspace {
+          display: block;
+        }
+        aside {
+          display: none;
+        }
+        main {
+          padding: 12px;
+        }
+        #list {
+          border-right: 0;
+        }
+        #detail {
+          padding: 12px;
+        }
+        #daily[data-reading='false'] #detail,
+        #daily[data-reading='true'] #list {
+          display: none;
+        }
+        #daily[data-reading='true'] #list-back {
+          display: inline-block;
+        }
+      }
+      @media (forced-colors: active) {
+        .paper[aria-pressed='true'],
+        .list-tools button[aria-pressed='true'] {
+          border-color: Highlight;
+          outline: 1px solid Highlight;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="fixture">
+      <strong>Interactive prototype · synthetic examples · no live data or vault writes</strong>
+      <label for="fixture">
+        Sample state
+        <select id="fixture">
+          <option value="current">Current edition</option>
+          <option value="previous">Previous edition</option>
+          <option value="partial">Partial, papers available</option>
+          <option value="no-source">Partial, no source batch</option>
+          <option value="zero">Completed, zero selections</option>
+          <option value="missing">No edition</option>
+          <option value="unavailable">Edition unavailable</option>
+        </select>
+      </label>
+    </div>
+    <div class="app">
+      <aside aria-label="Workspace context">
+        <strong>TheRSS</strong>
+        <p class="current">Discover</p>
+        <p class="muted">Saved</p>
+        <p class="muted">Data Analytics</p>
+        <p class="muted">Sources</p>
+      </aside>
+      <main>
+        <section id="discover" aria-labelledby="discover-title">
+          <div class="toolbar">
+            <div>
+              <h1 id="discover-title">Discover</h1>
+              <p class="muted">
+                Search for a research question or review the latest daily shortlist.
+              </p>
+            </div>
+            <button id="open-daily" type="button" class="primary">Daily Papers</button>
+          </div>
+          <label for="draft">Research question</label>
+          <textarea id="draft">Structured pruning for edge inference</textarea>
+        </section>
+        <section id="daily" aria-labelledby="daily-title" data-reading="false" hidden>
+          <button id="back" type="button">← Back to Discover</button>
+          <div class="toolbar">
+            <div>
+              <h1 id="daily-title" tabindex="-1">Daily Papers</h1>
+              <p class="muted">Requested Nov 6, 2026 · Europe/Rome</p>
+            </div>
+            <div class="actions">
+              <button id="refresh" type="button">Refresh</button>
+              <button id="open-digest" type="button">Open digest in Obsidian</button>
+            </div>
+          </div>
+          <div class="status" id="status" role="status"></div>
+          <div class="workspace" id="workspace">
+            <section id="list" aria-labelledby="list-title">
+              <h2 id="list-title">Shortlist</h2>
+              <div class="list-tools" role="group" aria-label="Relevance filter">
+                <button type="button" data-filter="all" aria-pressed="true">All</button>
+                <button type="button" data-filter="direct" aria-pressed="false">Direct</button>
+                <button type="button" data-filter="adjacent" aria-pressed="false">Adjacent</button>
+              </div>
+              <div id="papers" aria-label="Paper results"></div>
+            </section>
+            <article id="detail" aria-labelledby="paper-title">
+              <button id="list-back" type="button">← Back to shortlist</button>
+              <p class="muted" id="paper-meta"></p>
+              <h2 id="paper-title" tabindex="-1"></h2>
+              <h3>Why it was selected</h3>
+              <p id="paper-reason"></p>
+              <h3>Evidence</h3>
+              <p id="paper-evidence"></p>
+              <div class="actions">
+                <button type="button" id="open-note" class="primary">Open note in Obsidian</button>
+                <button type="button" id="open-arxiv">Open on arXiv</button>
+              </div>
+            </article>
+          </div>
+          <p id="feedback" role="status"></p>
+        </section>
+      </main>
+    </div>
+    <script>
+      const $ = (id) => document.getElementById(id)
+      const papers = [
+        {
+          id: 'pruning',
+          title: 'Fixture paper: Channel pruning for edge inference',
+          relevance: 'direct',
+          priority: 8,
+          date: 'Nov 4, 2026',
+          reason: 'Matches model compression and structured pruning.',
+          note: true
+        },
+        {
+          id: 'sparsity',
+          title: 'Fixture paper: Sparse attention on mobile hardware',
+          relevance: 'direct',
+          priority: 6,
+          date: 'Nov 5, 2026',
+          reason: 'Matches efficient inference and hardware constraints.',
+          note: true
+        },
+        {
+          id: 'scheduling',
+          title: 'Fixture paper: Energy-aware inference scheduling',
+          relevance: 'adjacent',
+          priority: 5,
+          date: 'Nov 4, 2026',
+          reason: 'Matches energy-aware scheduling, an adjacent research topic.',
+          note: false
+        }
+      ]
+      const editions = {
+        current: {
+          heading: 'Current edition · Nov 6, 2026',
+          outcome: 'Completed · 3 selections · arXiv announcement batch Nov 5',
+          papers
+        },
+        previous: {
+          heading: 'Previous edition · Nov 5, 2026',
+          outcome: 'No edition for Nov 6 yet. Showing the closest earlier edition · 3 selections',
+          papers,
+          warning: true
+        },
+        partial: {
+          heading: 'Current edition · Nov 6, 2026',
+          outcome: 'Partial · 1 selection · some source coverage could not be verified',
+          papers: papers.slice(0, 1),
+          warning: true
+        },
+        'no-source': {
+          heading: 'Current edition · Nov 6, 2026',
+          outcome: 'Partial · no current source batch verified. Check again when it is available.',
+          papers: [],
+          warning: true
+        },
+        zero: {
+          heading: 'Current edition · Nov 6, 2026',
+          outcome: 'Completed · verified scan recorded zero selections',
+          papers: []
+        },
+        missing: {
+          heading: 'No daily edition available',
+          outcome: 'No digest was found for Nov 6 or the previous 14 days.',
+          papers: [],
+          noDigest: true,
+          warning: true
+        },
+        unavailable: {
+          heading: 'Daily edition unavailable',
+          outcome: 'A file exists for Nov 6, but its content could not be read safely.',
+          papers: [],
+          noDigest: true,
+          warning: true
+        }
+      }
+      let selected = null
+      let filter = 'all'
+      const compact = matchMedia('(max-width: 740px)')
+      const activeEdition = () => editions[$('fixture').value]
+      const visiblePapers = () =>
+        activeEdition().papers.filter((paper) => filter === 'all' || paper.relevance === filter)
+      const paperButtons = () => Array.from($('papers').querySelectorAll('button'))
+
+      function renderSelection() {
+        const paper = visiblePapers().find((item) => item.id === selected)
+        $('detail').hidden = !paper
+        if (!paper) return
+        $('paper-meta').textContent =
+          `arXiv · Original date ${paper.date} · Reading priority ${paper.priority}`
+        $('paper-title').textContent = paper.title
+        $('paper-reason').textContent = paper.reason
+        $('paper-evidence').textContent = paper.note
+          ? 'Abstract-based selection · Vault note linked · Unread in llm-wiki'
+          : 'Abstract-based selection · No linked vault note in this sample'
+        $('open-note').hidden = !paper.note
+        for (const button of paperButtons()) {
+          const current = button.dataset.paper === selected
+          button.tabIndex = current ? 0 : -1
+          button.setAttribute('aria-pressed', String(current))
+        }
+      }
+
+      function activate(id, read) {
+        selected = id
+        if (read) $('daily').dataset.reading = 'true'
+        $('feedback').textContent = ''
+        renderSelection()
+        if (read && compact.matches) $('paper-title').focus()
+        else
+          paperButtons()
+            .find((button) => button.dataset.paper === id)
+            ?.focus()
+      }
+
+      function renderPapers() {
+        const visible = visiblePapers()
+        if (!visible.some((paper) => paper.id === selected)) selected = visible[0]?.id ?? null
+        $('papers').replaceChildren()
+        for (const [group, name] of [
+          ['direct', 'Direct matches'],
+          ['adjacent', 'Adjacent matches']
+        ]) {
+          const matching = visible.filter((paper) => paper.relevance === group)
+          if (!matching.length) continue
+          const heading = document.createElement('h3')
+          heading.className = 'group'
+          heading.textContent = `${name} (${matching.length})`
+          $('papers').append(heading)
+          for (const paper of matching) {
+            const button = document.createElement('button')
+            button.type = 'button'
+            button.className = 'paper'
+            button.dataset.paper = paper.id
+            button.textContent = paper.title
+            const meta = document.createElement('span')
+            meta.textContent = `arXiv · ${paper.note ? 'Vault note' : 'No linked vault note'}`
+            button.append(meta)
+            button.addEventListener('click', () => activate(paper.id, true))
+            $('papers').append(button)
+          }
+        }
+        if (!visible.length) $('papers').textContent = 'No papers match this filter.'
+        renderSelection()
+      }
+
+      function renderEdition() {
+        const edition = activeEdition()
+        const heading = document.createElement('strong')
+        heading.textContent = edition.heading
+        const outcome = document.createElement('p')
+        outcome.textContent = edition.outcome
+        const checked = document.createElement('p')
+        checked.className = 'muted'
+        checked.textContent = 'Fixture check time: Nov 6, 2026, 09:20 CET'
+        $('status').replaceChildren(heading, outcome, checked)
+        $('status').dataset.level = edition.warning ? 'warning' : 'normal'
+        $('open-digest').disabled = Boolean(edition.noDigest)
+        $('workspace').hidden = edition.papers.length === 0
+        $('daily').dataset.reading = 'false'
+        $('feedback').textContent = ''
+        renderPapers()
+      }
+
+      $('open-daily').addEventListener('click', () => {
+        $('discover').hidden = true
+        $('daily').hidden = false
+        renderEdition()
+        $('daily-title').focus()
+      })
+      $('back').addEventListener('click', () => {
+        $('daily').hidden = true
+        $('discover').hidden = false
+        $('open-daily').focus()
+      })
+      $('fixture').addEventListener('change', () => {
+        filter = 'all'
+        selected = null
+        for (const button of document.querySelectorAll('[data-filter]')) {
+          button.setAttribute('aria-pressed', String(button.dataset.filter === filter))
+        }
+        if (!$('daily').hidden) renderEdition()
+      })
+      $('refresh').addEventListener('click', () => {
+        renderEdition()
+        $('feedback').textContent = 'Refreshed the same local fixture.'
+      })
+      $('list-back').addEventListener('click', () => {
+        $('daily').dataset.reading = 'false'
+        paperButtons()
+          .find((button) => button.dataset.paper === selected)
+          ?.focus()
+      })
+      for (const button of document.querySelectorAll('[data-filter]')) {
+        button.addEventListener('click', () => {
+          filter = button.dataset.filter
+          for (const other of document.querySelectorAll('[data-filter]')) {
+            other.setAttribute('aria-pressed', String(other === button))
+          }
+          $('daily').dataset.reading = 'false'
+          $('feedback').textContent = ''
+          renderPapers()
+        })
+      }
+      $('papers').addEventListener('keydown', (event) => {
+        const options = paperButtons()
+        const index = options.indexOf(event.target)
+        if (index < 0) return
+        const next = {
+          ArrowDown: Math.min(index + 1, options.length - 1),
+          ArrowUp: Math.max(index - 1, 0),
+          Home: 0,
+          End: options.length - 1
+        }[event.key]
+        if (next === undefined) return
+        event.preventDefault()
+        activate(options[next].dataset.paper, false)
+      })
+      $('open-digest').addEventListener('click', () => {
+        $('feedback').textContent =
+          `Simulated: Open digest in Obsidian · ${activeEdition().heading}`
+      })
+      $('open-note').addEventListener('click', () => {
+        $('feedback').textContent =
+          `Simulated: Open linked Obsidian note · ${$('paper-title').textContent}`
+      })
+      $('open-arxiv').addEventListener('click', () => {
+        $('feedback').textContent =
+          `Simulated: Open official arXiv record · ${$('paper-title').textContent}`
+      })
+    </script>
+  </body>
+</html>

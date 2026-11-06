@@ -32,6 +32,8 @@ import {
   llmWikiPromotionPreviewRequestSchema
 } from '../shared/llmWikiPromotion'
 import type { ProviderConnectionResult } from '../shared/models'
+import type { LlmWikiDaily } from '../core/integrations/llmWikiDaily'
+import { llmWikiDailyOpenRequestSchema, llmWikiDailySnapshotSchema } from '../shared/llmWikiDaily'
 import type { LlmWikiLibrary } from '../core/integrations/llmWikiLibrary'
 import {
   llmWikiArxivIdSchema,
@@ -60,6 +62,7 @@ export interface ApplicationServices {
   readonly agents: LocalAgentService
   readonly promotion: LlmWikiPromotionService
   readonly wiki: Pick<LlmWikiLibrary, 'status' | 'open'>
+  readonly daily: Pick<LlmWikiDaily, 'snapshot' | 'open'>
   readonly credentials?: () => { githubToken?: string; huggingFaceToken?: string }
   readonly testProvider: (
     profile: Awaited<ReturnType<ProviderService['getConnectionTestProfile']>>
@@ -263,7 +266,11 @@ export class WindowApplication {
           )
         ),
       openLlmWikiNote: (candidate) =>
-        task(() => services.wiki.open(llmWikiArxivIdSchema.parse(candidate)))
+        task(() => services.wiki.open(llmWikiArxivIdSchema.parse(candidate))),
+      getLlmWikiDaily: () =>
+        task(async () => llmWikiDailySnapshotSchema.parse(await services.daily.snapshot())),
+      openLlmWikiDaily: (candidate) =>
+        task(() => services.daily.open(llmWikiDailyOpenRequestSchema.parse(candidate)))
     }
   }
 

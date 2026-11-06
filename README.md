@@ -20,6 +20,7 @@ macOS 26 及以上默认使用完整 AppKit 界面：侧栏中的 Discover、Sav
 
 ## 当前可用能力
 
+- 在 **Discover → Daily Papers** 打开 llm-wiki 的每日 arXiv 精选。查看批次日期、扫描状态和入选理由，直接打开 Obsidian 笔记、当日简报或 arXiv 原文。Refresh 重新读取本地简报。
 - 在 **Discover** 中输入自然语言研究问题，选择自定义模型、Codex 或 Claude Code 生成受限、可检查的扩展计划。
 - 在 **Settings** 的 Personal context pane 中保存本机 Personal Prompt；Discover 会将它作为辅助上下文，但当前问题始终是主指令。
 - 从当前 22 个已验证信息源中全选或逐项选择。arXiv/GitHub 执行定向查询；Hugging Face 与 19 个固定 RSS/HTML 来源先获取有界近期内容，再由 TheRSS 本地确定性筛选。

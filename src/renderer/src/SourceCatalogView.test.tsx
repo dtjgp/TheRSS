@@ -369,7 +369,7 @@ describe('SourceCatalogView', () => {
     expect(screen.getByRole('option', { name: 'Browse GitHub recent content' })).toBeVisible()
   })
 
-  it("refreshes today's arXiv papers without requiring or applying Interests", async () => {
+  it('refreshes the arXiv submission-day sample without requiring or applying Interests', async () => {
     const user = userEvent.setup()
     const api = createSourceApi(
       sourceSnapshot('arxiv', {
@@ -385,7 +385,7 @@ describe('SourceCatalogView', () => {
 
     expect(api.getSourceContent).toHaveBeenCalledWith('arxiv')
     expect(api.refreshSourceContent).toHaveBeenCalledWith('arxiv')
-    expect(await screen.findByText(/today's newest available arXiv daily batch/i)).toBeVisible()
+    expect(await screen.findByText(/latest indexed arXiv submission day/i)).toBeVisible()
     expect(screen.getByText(/without applying a Discover plan/i)).toBeVisible()
     expect(screen.queryByText(/Configure Interests before refreshing/i)).not.toBeInTheDocument()
   })

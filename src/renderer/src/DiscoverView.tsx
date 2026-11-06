@@ -11,6 +11,7 @@ import { sourceDisplayName } from '../../shared/sourceIdentity'
 import type { AnalysisArtifact, LocalAgentStatus } from '../../shared/models'
 import { DiscoverResultWorkspace } from './DiscoverResultWorkspace'
 import { DiscoverRunStatus, DiscoverRunSummary } from './DiscoverRunStatus'
+import { DailyPapersView } from './DailyPapersView'
 
 interface DiscoverViewProps {
   readonly api: TheRSSApi
@@ -66,6 +67,9 @@ function ChipGroup({
 }
 
 export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverViewProps) {
+  const [isDailyOpen, setIsDailyOpen] = useState(false)
+  const dailyEntryRef = useRef<HTMLButtonElement>(null)
+  const shouldRestoreFocus = useRef(false)
   const [intent, setIntent] = useState('')
   const [runner, setRunner] = useState<DiscoverRunner>('model-provider')
   const [sources, setSources] = useState<readonly DiscoverSource[]>(DISCOVER_SOURCE_IDS)
@@ -342,13 +346,32 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
     }
   }
 
-  return (
-    <section className="discover-view">
+  useEffect(() => {
+    if (!isDailyOpen && shouldRestoreFocus.current) {
+      shouldRestoreFocus.current = false
+      dailyEntryRef.current?.focus()
+    }
+  }, [isDailyOpen])
+
+  const searchWorkspace = (
+    <section className="discover-view" hidden={isDailyOpen}>
       <div className="today-view__heading">
         <div>
           <h1>Discover research</h1>
           <p className="discover-copy">Search selected research sources and keep useful results.</p>
         </div>
+        <button
+          ref={dailyEntryRef}
+          type="button"
+          className="secondary-button"
+          disabled={isSearching}
+          onClick={() => {
+            shouldRestoreFocus.current = true
+            setIsDailyOpen(true)
+          }}
+        >
+          Daily Papers
+        </button>
       </div>
 
       <form
@@ -574,6 +597,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
                     analyzingItemId={analyzingItemId}
                     savingItemId={savingItemId}
                     isSaveDisabled={savingItemId !== null}
+                    isActive={!isDailyOpen}
                     sessionId={snapshot.id}
                     onToggleSave={toggleSaveResult}
                     onAnalyze={analyzeResult}
@@ -691,5 +715,12 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
         </div>
       )}
     </section>
+  )
+
+  return (
+    <>
+      {searchWorkspace}
+      {isDailyOpen && <DailyPapersView api={api} onBack={() => setIsDailyOpen(false)} />}
+    </>
   )
 }

@@ -95,8 +95,9 @@ Compatibility renderer → typed preload IPC ----+
 - Use `export.arxiv.org/api/query` Atom results.
 - Build queries from explicit category and keyword settings.
 - Discover sends transient plan categories and keywords to arXiv. The Sources desk uses a separate
-  bounded `submittedDate` day-range query. If arXiv has not yet formed a batch for the current UTC
-  day, retry the nearest preceding non-empty day with three-second request spacing.
+  bounded `submittedDate` day-range query, with three-second request spacing and fallback to an
+  earlier UTC submission day. This sample does not establish announcement coverage. Daily Papers
+  reads the existing llm-wiki announcement scan as a separate local source.
 - Sort by submitted or updated date descending.
 - The initial client sends one bounded combined query on the first eligible app open per local day or on explicit manual refresh; cross-request caching/cooldown remains required before background refresh.
 - Retain arXiv ID/version, title, authors, abstract, categories, published/updated timestamps, and abstract URL. DOI/journal reference and PDF URL enrichment are deferred.
