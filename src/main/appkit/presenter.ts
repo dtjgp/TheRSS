@@ -232,7 +232,7 @@ export class NativePresenter {
     else if (!this.modals.visible && this.ready) {
       const reader =
         this.route === 'discover'
-          ? (this.screens.discover as DiscoverScreen).reader
+          ? (this.screens.discover as DiscoverScreen).commandReader
           : this.route === 'saved'
             ? (this.screens.saved as SavedScreen).reader
             : null

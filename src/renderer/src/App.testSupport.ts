@@ -259,7 +259,14 @@ export function createApi(snapshot: DashboardSnapshot = emptyDashboard): TheRSSA
     cancelLlmWikiPromotion: vi.fn(),
     getLatestLlmWikiPromotion: vi.fn().mockResolvedValue(null),
     getLlmWikiStatus: vi.fn(),
-    openLlmWikiNote: vi.fn()
+    openLlmWikiNote: vi.fn(),
+    getLlmWikiDaily: vi.fn().mockResolvedValue({
+      requestedDate: '2026-11-06',
+      checkedAt: '2026-11-06T08:00:00.000Z',
+      status: 'missing',
+      edition: null
+    }),
+    openLlmWikiDaily: vi.fn().mockResolvedValue({ opened: true })
   }
 }
 

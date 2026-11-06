@@ -11,6 +11,7 @@ interface PaperPromotionActionProps {
   readonly itemId: string
   readonly sessionId?: string
   readonly statusTargetId?: string
+  readonly onConfirmationSettled?: () => void
 }
 
 function errorMessage(error: unknown): string {
@@ -21,7 +22,8 @@ export function PaperPromotionAction({
   api,
   itemId,
   sessionId,
-  statusTargetId
+  statusTargetId,
+  onConfirmationSettled
 }: PaperPromotionActionProps) {
   const [preview, setPreview] = useState<LlmWikiPromotionPreview | null>(null)
   const [receipt, setReceipt] = useState<LlmWikiPromotionReceipt | null>(null)
@@ -67,6 +69,7 @@ export function PaperPromotionAction({
     } finally {
       setPreview(null)
       setBusy(null)
+      onConfirmationSettled?.()
     }
   }
 

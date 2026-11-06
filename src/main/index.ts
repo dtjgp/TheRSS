@@ -39,6 +39,7 @@ import {
 import { ResearchRepository } from '../core/storage/researchRepository'
 import { LlmWikiPromotionService } from '../core/integrations/llmWikiPromotionService'
 import { LlmWikiVaultAdapter } from '../core/integrations/llmWikiVaultAdapter'
+import { LlmWikiDaily } from '../core/integrations/llmWikiDaily'
 import { LlmWikiLibrary } from '../core/integrations/llmWikiLibrary'
 import type { SystemAccentName } from '../shared/appearance'
 import {
@@ -49,6 +50,7 @@ import {
 import { createApplicationMenuTemplate } from './applicationMenu'
 import {
   createE2eDiscoverFetchers,
+  e2eLlmWikiDaily,
   e2eAnalysis,
   e2eRecentConfiguredArticle,
   e2ePaper,
@@ -523,6 +525,22 @@ app.whenReady().then(async () => {
             open: async () => ({ opened: true })
           }
         : new LlmWikiLibrary({ openExternal: (url) => shell.openExternal(url) }),
+      daily: useE2eFixtures
+        ? {
+            snapshot: async () => e2eLlmWikiDaily,
+            open: async ({ date, arxivId }) => {
+              if (
+                date !== e2eLlmWikiDaily.edition?.date ||
+                (arxivId &&
+                  !e2eLlmWikiDaily.edition?.papers.some(
+                    (paper) => paper.arxivId === arxivId && paper.canOpenNote
+                  ))
+              )
+                throw new Error('Daily paper fixture target is unavailable.')
+              return { opened: true }
+            }
+          }
+        : new LlmWikiDaily({ openExternal: (url) => shell.openExternal(url) }),
       credentials: () => {
         const githubToken = githubTokenFromEnvironment(env)
         const huggingFaceToken = huggingFaceTokenFromEnvironment(env)

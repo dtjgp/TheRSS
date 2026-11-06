@@ -189,7 +189,9 @@ export class WindowApplicationRuntime {
       'getAnalysisArtifact',
       'getLatestLlmWikiPromotion',
       'getLlmWikiStatus',
-      'openLlmWikiNote'
+      'openLlmWikiNote',
+      'getLlmWikiDaily',
+      'openLlmWikiDaily'
     ] as const
     for (const method of methods) {
       ipcMain.handle(IPC_CHANNELS[method], (event, ...args: unknown[]) =>

@@ -11,10 +11,13 @@ import type { AnalysisArtifact } from '../../shared/models'
 import { sourceDisplayName, sourceStyleToken } from '../../shared/sourceIdentity'
 import { AnalysisPanel } from './AppSections'
 import { PaperPromotionAction } from './PaperPromotionAction'
+import { PaperWikiStatus } from './PaperWikiStatus'
+import { llmWikiArxivId } from '../../shared/llmWikiLibrary'
 import { ResizableSplitPane } from './ResizableSplitPane'
 import { SaveStar } from './SaveStar'
 
 interface DiscoverResultWorkspaceProps {
+  readonly isActive?: boolean
   readonly api: TheRSSApi
   readonly items: readonly DiscoverResultItem[]
   readonly analysis: AnalysisArtifact | null
@@ -99,12 +102,16 @@ export function DiscoverResultWorkspace({
   analyzingItemId,
   savingItemId,
   isSaveDisabled,
+  isActive = true,
   sessionId,
   onToggleSave,
   onAnalyze
 }: DiscoverResultWorkspaceProps) {
   const workspaceRef = useRef<HTMLDivElement>(null)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(items[0]?.id ?? null)
+  const [promotionAttempt, setPromotionAttempt] = useState<{ id: string; count: number } | null>(
+    null
+  )
   const resolvedSelectedItemId = items.some((item) => item.id === selectedItemId)
     ? selectedItemId
     : (items[0]?.id ?? null)
@@ -126,6 +133,7 @@ export function DiscoverResultWorkspace({
   }, [])
 
   useEffect(() => {
+    if (!isActive) return
     const handleKeyboardNavigation = (event: KeyboardEvent) => {
       const target = event.target
       if (
@@ -154,7 +162,7 @@ export function DiscoverResultWorkspace({
 
     window.addEventListener('keydown', handleKeyboardNavigation)
     return () => window.removeEventListener('keydown', handleKeyboardNavigation)
-  }, [items, selectItem, selectedIndex, selectedItem])
+  }, [isActive, items, selectItem, selectedIndex, selectedItem])
 
   const showItemContextMenu = useCallback(
     (item: DiscoverResultItem) => {
@@ -185,6 +193,7 @@ export function DiscoverResultWorkspace({
   )
 
   if (!selectedItem) return null
+  const arxivId = llmWikiArxivId(selectedItem)
 
   const selectedAnalysis = analysis?.itemId === selectedItem.id ? analysis : null
   const promotionStatusTargetId = `discover-promotion-status-${selectedItem.id.replaceAll(
@@ -289,6 +298,12 @@ export function DiscoverResultWorkspace({
                 itemId={selectedItem.id}
                 sessionId={sessionId}
                 statusTargetId={promotionStatusTargetId}
+                onConfirmationSettled={() =>
+                  setPromotionAttempt((previous) => ({
+                    id: selectedItem.id,
+                    count: (previous?.count ?? 0) + 1
+                  }))
+                }
               />
             ) : null}
           </div>
@@ -300,6 +315,16 @@ export function DiscoverResultWorkspace({
 
           <p className="signal-detail__summary">{selectedItem.summary}</p>
 
+          {arxivId && (
+            <PaperWikiStatus
+              key={selectedItem.id}
+              api={api}
+              arxivId={arxivId}
+              promotionAttempt={
+                promotionAttempt?.id === selectedItem.id ? promotionAttempt.count : 0
+              }
+            />
+          )}
           {selectedAnalysis ? <AnalysisPanel artifact={selectedAnalysis} /> : null}
 
           <section className="signal-detail__reasons" aria-label="Discover match reasons">

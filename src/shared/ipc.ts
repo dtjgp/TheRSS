@@ -65,5 +65,7 @@ export const IPC_CHANNELS = {
   cancelLlmWikiPromotion: 'llm-wiki-promotion:cancel',
   getLatestLlmWikiPromotion: 'llm-wiki-promotion:get-latest',
   getLlmWikiStatus: 'llm-wiki-library:status',
-  openLlmWikiNote: 'llm-wiki-library:open'
+  openLlmWikiNote: 'llm-wiki-library:open',
+  getLlmWikiDaily: 'llm-wiki-daily:get',
+  openLlmWikiDaily: 'llm-wiki-daily:open'
 } as const

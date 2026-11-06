@@ -7,6 +7,32 @@
   border-right: 1px solid var(--line);
 }
 
+.paper-wiki-status {
+  display: grid;
+  gap: 6px;
+  margin-block: 12px;
+  padding: 10px;
+  color: var(--label);
+  background: var(--secondary-system-grouped-background);
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+}
+
+.paper-wiki-status p {
+  margin: 0;
+}
+
+.paper-wiki-status__meta {
+  color: var(--secondary-label);
+  font-size: 12px;
+}
+
+.paper-wiki-status__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .signal-list-pane__heading {
   display: flex;
   flex: 0 0 auto;

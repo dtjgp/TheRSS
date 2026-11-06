@@ -28,6 +28,7 @@ import {
   researchRowGlyph,
   researchSubtitle
 } from './researchMetadata'
+import { DailyPapersScreen } from './dailyPapers'
 import { ReadingWorkspace } from './readingWorkspace'
 import { discoverSources } from './discoverSources'
 import {
@@ -84,12 +85,15 @@ export class DiscoverScreen implements NativeScreen {
   private version = 0
   private disposed = false
   private readonly workspace: ReadingWorkspace
+  private readonly dailyPapers: DailyPapersScreen
+  private showingDaily = false
 
   constructor(
     private readonly context: NativeContext,
     private readonly triage: TriageHistory
   ) {
     this.controls = new Controls(context)
+    this.dailyPapers = new DailyPapersScreen(context)
     this.reader = new ResearchReader(context, 'discover', triage)
     this.workspace = new ReadingWorkspace(
       context,
@@ -135,10 +139,14 @@ export class DiscoverScreen implements NativeScreen {
     this.disposed = true
     this.version++
     this.unsubscribe()
+    this.dailyPapers.leave()
     this.reader.dispose()
   }
   get searching(): boolean {
     return this.activeRun !== null
+  }
+  get commandReader(): ResearchReader | null {
+    return this.showingDaily ? null : this.reader
   }
   openLocal(snapshot: DiscoverSnapshot, itemId: string): () => void {
     if (this.activeRun)
@@ -154,8 +162,10 @@ export class DiscoverScreen implements NativeScreen {
       selected: this.selected,
       picker: this.picker,
       message: this.message,
-      progress: this.progress
+      progress: this.progress,
+      showingDaily: this.showingDaily
     }
+    this.showingDaily = false
     const restoreWorkspace = this.workspace.checkpoint()
     this.version++
     this.snapshot = snapshot
@@ -180,6 +190,14 @@ export class DiscoverScreen implements NativeScreen {
   }
 
   render(): NativeNode {
+    if (this.showingDaily) {
+      return this.dailyPapers.render(() => {
+        this.dailyPapers.leave()
+        this.showingDaily = false
+        this.context.focus('discover-daily-papers')
+        this.context.redraw()
+      })
+    }
     const b = this.controls,
       busy = !!this.activeRun,
       snapshot = this.snapshot
@@ -456,11 +474,23 @@ export class DiscoverScreen implements NativeScreen {
               })
             ]
           : []),
-        label(
-          'discover-personalization',
-          `${this.query.length}/2000 characters · ${this.context.data.personalPrompt.trim() ? 'Personal context active' : 'No personal context saved'}`,
-          { weight: 'secondary', textStyle: 'subheadline' }
-        )
+        row('discover-secondary-actions', [
+          label(
+            'discover-personalization',
+            `${this.query.length}/2000 characters · ${this.context.data.personalPrompt.trim() ? 'Personal context active' : 'No personal context saved'}`,
+            { weight: 'secondary', textStyle: 'subheadline', flex: 1 }
+          ),
+          b.button(
+            'discover-daily-papers',
+            'Daily Papers',
+            () => {
+              this.picker = false
+              this.showingDaily = true
+              return this.dailyPapers.enter()
+            },
+            !busy
+          )
+        ])
       ],
       { surface: 'panel', padding: 12, gap: 6 }
     )

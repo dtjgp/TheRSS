@@ -22,10 +22,10 @@ provenance without copying secrets.
 - Eligible arXiv papers expose a separate, confirmation-gated llm-wiki promotion. Its preview shows
   the live vault, L1/L2 route, verified PDF facts, evidence boundary, and exact intended paths before
   Electron main may write anything.
-- The native paper reader shows the last checked llm-wiki membership state from bounded local
+- The Discover and Saved paper readers show the last checked llm-wiki membership state from bounded local
   paper metadata. It distinguishes record-only, linked note, missing note, ambiguous identity,
   unavailable and no matching record. Recheck refreshes the observation, and a confirmed promotion
-  write rechecks main-window readers that show the same paper. Open in Obsidian resolves
+  write rechecks the affected main-window reader. Open in Obsidian resolves
   and validates the existing note or paper record again in main. No note-body indexing or vault
   write is part of this read-only handoff.
 - Semantic expansion search exposes the executed terms and per-source outcome instead of presenting opaque model answers as search evidence.
@@ -92,12 +92,20 @@ freshness from a verified empty result. Public signing and distribution remain s
    Discover outcome with its time, context and bounded reason. Failed and partial observations are
    distinct and have an explicit filter; global navigation does not show a persistent attention badge.
    No query matches is a normal outcome, and recorded status is separate from cached content. Selecting a source opens an in-app rolling 30-day view;
-   arXiv opens the newest available official daily batch. The larger raw catalog remains dormant
-   versioned metadata and is not exposed or scheduled.
+   arXiv shows a bounded sample by UTC submission day. It does not show the official announcement
+   batch. The larger raw catalog remains dormant versioned metadata and is not exposed or scheduled.
 6. **Find Local Research** — a Command-F overlay that filters as the user types, with a short
    debounce and no separate submit step. It searches bounded fields across Saved items,
    persisted Discover sessions, and analysis content in local SQLite. It uses no model, embedding,
    telemetry, or network request.
+
+**Daily Papers** is a secondary view in Discover on both desktop routes. It reads the existing
+llm-wiki Daily ArXiv Scan shortlist on demand. It shows the requested date, the displayed edition,
+the scan outcome, and the reported selection and screening counts. A previous edition is explicitly
+dated. Paper rows retain the scan's reading priority and any recorded reason. The user can open the
+exact digest or an identity-checked paper note in Obsidian, or open the official arXiv page. Returning
+to Discover restores the search draft. No model, separate schedule, paper import, or vault write is
+triggered by this view.
 
 Dedicated full-item reading, source weighting, background refresh, and in-app update controls
 remain later surfaces. Legacy Interest profiles,

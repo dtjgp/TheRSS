@@ -1677,6 +1677,57 @@ try {
       assert.match(find(partial.root, 'source-health-error').text, /seven entries/)
     }
   )
+  await step(
+    'Daily Papers reads a shortlist and returns to the retained Discover draft',
+    async () => {
+      await application.evaluate(({ nativeTheme }) => {
+        globalThis.__nativeWindow.setBounds({ width: 1360, height: 880 })
+        nativeTheme.themeSource = 'light'
+      })
+      await go('discover')
+      await wait('discover-query', (node) => node?.enabled === true)
+      await act('discover-query', 'fill', 'Fixture unsent daily paper query')
+      await click('discover-daily-papers')
+      const state = await wait('daily-papers-status', (node) => node?.text?.includes('2 selected'))
+      assert.equal(find(state.root, 'daily-papers-list').selected, '2611.00001')
+      assert.equal(
+        find(state.root, 'daily-papers-reason').text,
+        'Fixture match for structured pruning.'
+      )
+      await click('daily-papers-open-note')
+      await wait('daily-papers-open-note', (node) => node?.enabled === true)
+      await click('daily-papers-open-digest')
+      await wait('daily-papers-open-digest', (node) => node?.enabled === true)
+      await capture('daily-papers-wide')
+      await application.evaluate(({ nativeTheme }) => {
+        globalThis.__nativeWindow.setBounds({ width: 820, height: 720 })
+        nativeTheme.themeSource = 'dark'
+      })
+      await wait('daily-papers-split', (node) => node?.compactPane === 'list')
+      await act('daily-papers-list', 'select', '2611.00002')
+      await act('daily-papers-list', 'key', 'enter')
+      const narrow = await wait('daily-papers-split', (node) => node?.compactPane === 'detail')
+      assert.equal(
+        find(narrow.root, 'daily-papers-paper-title').text,
+        'Fixture adjacent quantization paper'
+      )
+      assert.equal(find(narrow.root, 'daily-papers-open-note'), null)
+      assert.equal(narrow.firstResponderId, 'daily-papers-open-original')
+      await click('daily-papers-open-original')
+      assert.equal(
+        await application.evaluate(() => globalThis.__nativeOpened.at(-1)),
+        'https://arxiv.org/abs/2611.00002'
+      )
+      await capture('daily-papers-narrow-dark')
+      await click('daily-papers-back-to-results')
+      await wait('daily-papers-split', (node) => node?.compactPane === 'list')
+      await click('daily-papers-refresh')
+      const refreshed = await wait('daily-papers-refresh', (node) => node?.enabled === true)
+      assert.equal(find(refreshed.root, 'daily-papers-list').selected, '2611.00002')
+      await click('daily-papers-back')
+      await wait('discover-query', (node) => node?.value === 'Fixture unsent daily paper query')
+    }
+  )
   const final = await inspect()
   assert.deepEqual(
     captureFailures,

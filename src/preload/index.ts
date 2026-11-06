@@ -150,6 +150,8 @@ const api: TheRSSApi = {
     ipcRenderer.invoke(IPC_CHANNELS.cancelLlmWikiPromotion, { previewId }),
   getLatestLlmWikiPromotion: (itemId) =>
     ipcRenderer.invoke(IPC_CHANNELS.getLatestLlmWikiPromotion, itemId),
+  getLlmWikiDaily: () => ipcRenderer.invoke(IPC_CHANNELS.getLlmWikiDaily),
+  openLlmWikiDaily: (request) => ipcRenderer.invoke(IPC_CHANNELS.openLlmWikiDaily, request),
   getLlmWikiStatus: (request) => ipcRenderer.invoke(IPC_CHANNELS.getLlmWikiStatus, request),
   openLlmWikiNote: (arxivId) => ipcRenderer.invoke(IPC_CHANNELS.openLlmWikiNote, arxivId)
 }

@@ -8,6 +8,69 @@
   box-sizing: border-box;
 }
 
+.discover-view[hidden] {
+  display: none;
+}
+
+.discover-view > .today-view__heading {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.daily-papers__edition {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 12px 16px;
+  background: var(--secondary-system-grouped-background);
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+}
+
+.daily-papers__edition p {
+  margin: 0;
+}
+
+.daily-papers__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--secondary-label);
+  font-size: 12px;
+}
+
+.daily-papers__workspace .signal-row__select {
+  min-height: 60px;
+}
+
+.daily-papers__workspace .signal-list {
+  max-block-size: clamp(180px, 44vh, 440px);
+}
+
+.daily-papers__workspace .signal-detail {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.daily-papers__workspace .detail-action {
+  text-decoration: none;
+}
+
+.daily-papers__note {
+  color: var(--secondary-label);
+  font-size: 12px;
+}
+
+@media (max-width: 920px) {
+  .daily-papers .daily-papers__workspace.resizable-split-pane {
+    grid-template-rows: auto auto;
+  }
+
+  .daily-papers__workspace .signal-list {
+    max-block-size: clamp(140px, 32vh, 250px);
+  }
+}
+
 .discover-copy {
   max-width: 56rem;
   margin: 10px 0 0;

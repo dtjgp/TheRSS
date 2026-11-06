@@ -3,7 +3,7 @@ import {
   sourcePublicationLabel,
   sourceMatchReasons
 } from '../../shared/sourceDate'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ExternalLink, EyeOff, Sparkles } from 'lucide-react'
 import type { DashboardItem, TheRSSApi, TriageState } from '../../shared/api'
 import type { AnalysisArtifact } from '../../shared/models'
@@ -12,6 +12,8 @@ import { AnalysisPanel } from './AppSections'
 import { SaveStar } from './SaveStar'
 import { sourceDisplayName, sourceStyleToken } from '../../shared/sourceIdentity'
 import { PaperPromotionAction } from './PaperPromotionAction'
+import { PaperWikiStatus } from './PaperWikiStatus'
+import { llmWikiArxivId } from '../../shared/llmWikiLibrary'
 import { ResizableSplitPane } from './ResizableSplitPane'
 import { SavedSourceUpdate } from './SavedSourceUpdate'
 import type { SavedSourceUpdateResult } from '../../shared/savedSourceUpdate'
@@ -114,6 +116,9 @@ export function SignalWorkspace({
   onSourceUpdated
 }: SignalWorkspaceProps) {
   const workspaceRef = useRef<HTMLDivElement>(null)
+  const [promotionAttempt, setPromotionAttempt] = useState<{ id: string; count: number } | null>(
+    null
+  )
   const selectedIndex = useMemo(() => {
     const matchedIndex = items.findIndex((item) => item.id === selectedItemId)
     return matchedIndex >= 0 ? matchedIndex : 0
@@ -221,6 +226,7 @@ export function SignalWorkspace({
 
   if (!selectedItem) return null
 
+  const arxivId = llmWikiArxivId(selectedItem)
   const isSaved = selectedItem.triageState === 'saved'
   const isPaper = isPaperAnalysisCandidate(selectedItem)
   const selectedAnalysis = analysis?.itemId === selectedItem.id ? analysis : null
@@ -308,6 +314,12 @@ export function SignalWorkspace({
                 api={api}
                 itemId={selectedItem.id}
                 statusTargetId={promotionStatusTargetId}
+                onConfirmationSettled={() =>
+                  setPromotionAttempt((previous) => ({
+                    id: selectedItem.id,
+                    count: (previous?.count ?? 0) + 1
+                  }))
+                }
               />
             ) : null}
             <button
@@ -350,6 +362,16 @@ export function SignalWorkspace({
 
           <p className="signal-detail__summary">{selectedItem.summary}</p>
 
+          {arxivId && (
+            <PaperWikiStatus
+              key={selectedItem.id}
+              api={api}
+              arxivId={arxivId}
+              promotionAttempt={
+                promotionAttempt?.id === selectedItem.id ? promotionAttempt.count : 0
+              }
+            />
+          )}
           {isPaper && (
             <section className="paper-l1-analysis" aria-label="L1 paper analysis">
               <div className="paper-l1-analysis__heading">

@@ -351,7 +351,7 @@ export class SourcesScreen implements NativeScreen {
             source === 'github'
               ? 'Use Discover for query-based GitHub retrieval. This source view is read-only.'
               : source === 'arxiv'
-                ? 'arXiv content covers the latest source day.'
+                ? 'arXiv shows a bounded sample by UTC submission day. For the announcement shortlist, use Daily Papers in Discover.'
                 : entry.id === 'folo:611'
                   ? 'Publication months overlapping the 30-day window are included; exact days may be unavailable.'
                   : 'Source content covers a rolling 30-day window.',

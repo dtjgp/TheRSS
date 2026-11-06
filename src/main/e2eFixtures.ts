@@ -143,3 +143,32 @@ export async function e2eAnalysis(): Promise<ModelAnalysisResponse> {
     outputTokens: 12
   }
 }
+
+export const e2eLlmWikiDaily = {
+  requestedDate: '2026-11-06',
+  checkedAt: '2026-11-06T11:00:00Z',
+  status: 'completed',
+  edition: {
+    date: '2026-11-06',
+    selected: 2,
+    scanned: 8,
+    papers: [
+      {
+        arxivId: '2611.00001',
+        title: 'Fixture direct pruning paper',
+        priority: 'direct',
+        score: 9,
+        reason: 'Fixture match for structured pruning.',
+        canOpenNote: true
+      },
+      {
+        arxivId: '2611.00002',
+        title: 'Fixture adjacent quantization paper',
+        priority: 'adjacent',
+        score: 6,
+        reason: null,
+        canOpenNote: false
+      }
+    ]
+  }
+} satisfies import('../shared/llmWikiDaily').LlmWikiDailySnapshot
