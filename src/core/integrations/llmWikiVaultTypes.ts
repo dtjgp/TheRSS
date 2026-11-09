@@ -47,7 +47,7 @@ export const llmWikiPromotionAnalysisSchema = z
         z
           .string()
           .max(512)
-          .regex(/^(?:Topics|Methods)\/.+\.md$/u)
+          .regex(/^Topics\/.+\.md$/u)
       )
       .min(1)
       .max(4)

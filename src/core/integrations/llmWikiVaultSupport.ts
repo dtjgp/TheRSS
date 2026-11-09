@@ -149,7 +149,6 @@ async function listKnowledgePaths(root: string): Promise<string[]> {
     }
   }
   await visit('Topics')
-  await visit('Methods')
   return found
 }
 
@@ -196,7 +195,6 @@ export async function preflightVault(
     'Automation_Conversations',
     'Literature/Paper_Notes',
     'Topics',
-    'Methods',
     'raw/papers',
     'raw/paper_records',
     'index.md',
