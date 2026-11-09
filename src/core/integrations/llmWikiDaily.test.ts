@@ -8,7 +8,7 @@ const roots: string[] = []
 const date = '2026-11-06'
 const id = '2611.08290'
 const note = 'Literature/Paper_Notes/L2_Structured/Model_Compression/Liang_2026_部署 #1 & more.md'
-const digestPath = (day: string) => `Inbox/Research_Feeds/ArXiv_Daily/ArXiv_Daily_${day}.md`
+const digestPath = (day: string) => `Literature/Digests/ArXiv_Daily/ArXiv_Daily_${day}.md`
 const frontmatter = (day: string, status = 'completed', selected = 1) =>
   `---\ntype: feed\nsource: arxiv\ndate: '${day}'\nrun_status: ${status}\nscanned: 566\nselected: ${selected}\n---\n`
 const paper = (target = note, url = `https://arxiv.org/abs/${id}v2`) =>

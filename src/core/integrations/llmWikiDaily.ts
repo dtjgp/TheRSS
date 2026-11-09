@@ -13,7 +13,7 @@ import { llmWikiArxivId, llmWikiArxivIdSchema } from '../../shared/llmWikiLibrar
 import { isSafeLlmWikiRelativePath } from '../../shared/llmWikiPromotion'
 import { assertSafePathChain } from './llmWikiVaultSupport'
 
-const DIGEST_DIRECTORY = 'Inbox/Research_Feeds/ArXiv_Daily'
+const DIGEST_DIRECTORY = 'Literature/Digests/ArXiv_Daily'
 const MAX_LOOKBACK_DAYS = 14
 const DIGEST_BYTES = 256 * 1024
 const NOTE_HEADER_BYTES = 16 * 1024

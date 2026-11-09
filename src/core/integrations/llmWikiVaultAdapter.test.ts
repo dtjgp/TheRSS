@@ -37,7 +37,7 @@ const requiredFileContents: Readonly<Record<string, string>> = {
   'Literature/Paper_Notes/Paper_Notes_Index.md': '# Paper notes\n',
   'Topics/Edge_AI.md':
     '---\ntype: topic\ndate: 2026-01-01\nupdated: 2026-01-01\ntags:\n  - type/topic\nrelated: []\n---\n# Edge AI\n',
-  'Methods/Structured_Pruning.md':
+  'Topics/Methods/Structured_Pruning.md':
     '---\ntype: method\ndate: 2026-01-01\nupdated: 2026-01-01\ntags:\n  - type/method\nrelated: []\n---\n# Structured Pruning\n',
   'index.md': '# Vault index\n',
   'log.md': '# Log\n'
@@ -57,7 +57,6 @@ async function makeVault(registerScope = true): Promise<string> {
               'Automation_Conversations',
               'Literature/Paper_Notes',
               'Topics',
-              'Methods',
               'raw/papers',
               'raw/paper_records',
               'index.md',
@@ -574,7 +573,7 @@ describe('LlmWikiVaultAdapter', () => {
   it('validates an L1 note and updates an existing Method related list', async () => {
     const root = await makeVault()
     await writeFile(
-      join(root, 'Methods/Structured_Pruning.md'),
+      join(root, 'Topics/Methods/Structured_Pruning.md'),
       '---\ntype: method\ndate: 2026-01-01\nupdated: 2026-01-01\ntags:\n  - type/method\nrelated:\n  - "[[Topics/Edge_AI]]"\n---\n# Structured Pruning\n'
     )
     const options = fixtureOptions(root)
@@ -583,7 +582,7 @@ describe('LlmWikiVaultAdapter', () => {
       routingRationale: 'Foundational fixture.',
       domain: 'Model_Compression',
       shortIdentifier: 'L1Fixture',
-      relatedPaths: ['Methods/Structured_Pruning.md'],
+      relatedPaths: ['Topics/Methods/Structured_Pruning.md'],
       noteMarkdown:
         '---\ntype: paper-note\nlevel: L1\ndate: 2026-08-21\nupdated: 2026-08-21\nstatus: unread\nread_date:\nsource_access: full-text\ntags:\n  - type/paper-note\n  - level/l1\n  - status/unread\nrelated:\n  - "[[Methods/Structured_Pruning]]"\n---\n# L1 fixture\n\narXiv 2608.00001\nhttps://arxiv.org/abs/2608.00001\nraw/papers/Researcher et al. - 2026 - Structured pruning edge deployment.pdf\n\n## Provenance\nVerified full-text fixture.\n'
     }))
@@ -596,7 +595,7 @@ describe('LlmWikiVaultAdapter', () => {
     expect(prepared.preview).toMatchObject({ ready: true, level: 'L1' })
     const receipt = await adapter.confirm(prepared)
     expect(receipt.status).toBe('completed')
-    expect(await readFile(join(root, 'Methods/Structured_Pruning.md'), 'utf8')).toContain(
+    expect(await readFile(join(root, 'Topics/Methods/Structured_Pruning.md'), 'utf8')).toContain(
       'Researcher_2026_L1Fixture'
     )
     const note = await readFile(join(root, receipt.notePath!), 'utf8')

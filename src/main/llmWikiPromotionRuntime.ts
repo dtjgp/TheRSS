@@ -176,7 +176,7 @@ export function codexOutputSchema(): object {
         type: 'array',
         minItems: 1,
         maxItems: 4,
-        items: { type: 'string', pattern: '^(Topics|Methods)/.+\\.md$' }
+        items: { type: 'string', pattern: '^Topics/.+\\.md$' }
       },
       noteMarkdown: { type: 'string', minLength: 100, maxLength: MAX_NOTE_BYTES }
     }

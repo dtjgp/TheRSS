@@ -25,4 +25,28 @@ describe('llm-wiki promotion runtime', () => {
       }).success
     ).toBe(false)
   })
+
+  it('accepts related paths only under Topics after the 2026-11-09 vault layout', () => {
+    const analysis = (relatedPaths: string[]) => ({
+      level: 'L2',
+      routingRationale: 'Useful adjacent method.',
+      domain: 'Edge_AI',
+      shortIdentifier: 'TestPaper',
+      relatedPaths,
+      noteMarkdown: 'x'.repeat(100)
+    })
+    expect(
+      llmWikiPromotionAnalysisSchema.safeParse(analysis(['Topics/Methods/Structured_Pruning.md']))
+        .success
+    ).toBe(true)
+    expect(
+      llmWikiPromotionAnalysisSchema.safeParse(analysis(['Methods/Structured_Pruning.md'])).success
+    ).toBe(false)
+    const schema = codexOutputSchema() as {
+      properties: { relatedPaths: { items: { pattern: string } } }
+    }
+    const pattern = new RegExp(schema.properties.relatedPaths.items.pattern, 'u')
+    expect(pattern.test('Topics/Edge_AI/Overview.md')).toBe(true)
+    expect(pattern.test('Methods/Structured_Pruning.md')).toBe(false)
+  })
 })
