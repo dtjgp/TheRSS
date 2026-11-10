@@ -1,6 +1,11 @@
 import { z } from 'zod'
 
-export const LLM_WIKI_PROMOTION_PROMPT_VERSION = 'llm-wiki-promotion-v1' as const
+export const LLM_WIKI_PROMOTION_PROMPT_VERSION = 'llm-wiki-promotion-v2' as const
+/** Prompt versions a stored receipt may carry: v1 (before 2026-11-10) and the current one. */
+export const LLM_WIKI_PROMOTION_PROMPT_VERSIONS = [
+  'llm-wiki-promotion-v1',
+  LLM_WIKI_PROMOTION_PROMPT_VERSION
+] as const
 export const LLM_WIKI_PROMOTION_PREVIEW_VERSION = 'llm-wiki-promotion-preview-v1' as const
 export const LLM_WIKI_PROMOTION_RECEIPT_VERSION = 'llm-wiki-promotion-v1' as const
 
@@ -120,7 +125,7 @@ export const llmWikiPromotionReceiptSchema = z
     arxivId: z.string().regex(/^\d{4}\.\d{4,5}$/u),
     status: z.enum(LLM_WIKI_PROMOTION_STATUSES),
     runner: z.literal('codex'),
-    promptVersion: z.literal(LLM_WIKI_PROMOTION_PROMPT_VERSION),
+    promptVersion: z.enum(LLM_WIKI_PROMOTION_PROMPT_VERSIONS),
     sourceHash: hashSchema,
     contractHash: hashSchema,
     evidenceTier: z.enum(['pending', 'full-text-verified', 'partial', 'no-source']),

@@ -263,7 +263,8 @@ Discover paper cards expose the same contract directly; an unsaved result is mat
 ## Confirmation-gated llm-wiki promotion
 
 The paper-specific Analyze action above remains abstract-bounded and SQLite-owned. An eligible
-`source === "arxiv" && kind === "paper"` record may separately enter `llm-wiki-promotion-v1` from
+`source === "arxiv" && kind === "paper"` record may separately enter `llm-wiki-promotion-v2` (stored
+`v1` receipts remain valid) from
 Discover or Saved. Discover supplies a bounded session ID so Electron main can materialize the
 persisted source record before promotion; the renderer never supplies paper metadata or a vault
 path.
