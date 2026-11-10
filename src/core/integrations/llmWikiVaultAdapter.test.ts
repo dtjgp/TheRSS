@@ -324,6 +324,9 @@ describe('LlmWikiVaultAdapter', () => {
     expect(await readFile(join(root, receipt.auditPath!), 'utf8')).toContain(
       '- **Status:** completed'
     )
+    expect(await readFile(join(root, 'log.md'), 'utf8')).toMatch(
+      /\n## \[\d{4}-\d{2}-\d{2}\] therss \| Paper promotion — Structured pruning edge deployment\n\n- \*\*THRSS_PAPER_PROMOTION\*\* \| \d{4}-\d{2}-\d{2} \| \[\[Literature\/Paper_Notes\/L2_Structured\/Model_Compression\/Researcher_2026_StructuredPruningEdge\|/u
+    )
     expect(options.runRuntime).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('therss-vault-adapter-test-'),
