@@ -449,7 +449,6 @@ app.whenReady().then(async () => {
             'Literature/Paper_Notes/L2_Structured/Model_Compression/Fixture_2026_DeterministicPromotion.md',
             'Topics/Edge_AI/Model_Compression/Structured_Pruning.md',
             'Literature/Paper_Notes/Paper_Notes_Index.md',
-            'index.md',
             'log.md',
             'Automation_Conversations/2026-08-21__therss-paper-promotion__fixture.md'
           ]

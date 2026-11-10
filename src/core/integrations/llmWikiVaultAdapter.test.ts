@@ -43,6 +43,8 @@ const requiredFileContents: Readonly<Record<string, string>> = {
   'log.md': '# Log\n'
 }
 
+const PAPER_INDEX = 'Literature/Paper_Notes/Paper_Notes_Index.md'
+
 async function makeVault(registerScope = true): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'therss-vault-adapter-test-'))
   roots.push(root)
@@ -306,9 +308,9 @@ describe('LlmWikiVaultAdapter', () => {
     expect(receipt.updatedPaths).toEqual([
       'Topics/Edge_AI.md',
       'Literature/Paper_Notes/Paper_Notes_Index.md',
-      'index.md',
       'log.md'
     ])
+    expect(await readFile(join(root, 'index.md'), 'utf8')).toBe('# Vault index\n')
     expect(await readFile(join(root, receipt.sidecarPath!), 'utf8')).toContain(
       'arxiv_id: "2608.00001"'
     )
@@ -497,7 +499,7 @@ describe('LlmWikiVaultAdapter', () => {
       if (args[0] === 'begin') return { status: 'acquired' }
       finishCalls += 1
       if (finishCalls === 1) {
-        await writeFile(join(root, 'index.md'), '# Concurrent user index edit\n')
+        await writeFile(join(root, PAPER_INDEX), '# Concurrent user index edit\n')
         await writeFile(join(root, notePath), '# Concurrent user note edit\n')
         await writeFile(join(root, auditPath), '# Concurrent user audit edit\n')
         return { status: 'rejected' }
@@ -515,11 +517,11 @@ describe('LlmWikiVaultAdapter', () => {
     const receipt = await adapter.confirm(prepared)
 
     expect(receipt).toMatchObject({ status: 'partial' })
-    expect(receipt.updatedPaths).toContain('index.md')
+    expect(receipt.updatedPaths).toContain(PAPER_INDEX)
     expect(receipt.createdPaths).toContain(notePath)
     expect(receipt.createdPaths).toContain(auditPath)
     expect(receipt.auditPath).toBeNull()
-    expect(await readFile(join(root, 'index.md'), 'utf8')).toBe('# Concurrent user index edit\n')
+    expect(await readFile(join(root, PAPER_INDEX), 'utf8')).toBe('# Concurrent user index edit\n')
     expect(await readFile(join(root, notePath), 'utf8')).toBe('# Concurrent user note edit\n')
     expect(await readFile(join(root, auditPath), 'utf8')).toBe('# Concurrent user audit edit\n')
     await adapter.dispose(prepared)

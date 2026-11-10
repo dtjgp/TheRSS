@@ -17,12 +17,10 @@ export const REQUIRED_FILES = [
   'Templates/Paper_Note_L1.md',
   'Templates/Paper_Note_L2.md',
   'Literature/Paper_Notes/Paper_Notes_Index.md',
-  'index.md',
   'log.md'
 ] as const
 export const MUTABLE_INDEX_PATHS = [
   'Literature/Paper_Notes/Paper_Notes_Index.md',
-  'index.md',
   'log.md'
 ] as const
 

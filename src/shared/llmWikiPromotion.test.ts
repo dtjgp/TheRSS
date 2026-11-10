@@ -69,6 +69,11 @@ describe('llm-wiki promotion contract', () => {
     } as const
 
     expect(llmWikiPromotionReceiptSchema.parse(receipt)).toEqual(receipt)
+    const current = { ...receipt, promptVersion: 'llm-wiki-promotion-v2' }
+    expect(llmWikiPromotionReceiptSchema.parse(current)).toEqual(current)
+    expect(() =>
+      llmWikiPromotionReceiptSchema.parse({ ...receipt, promptVersion: 'llm-wiki-promotion-v3' })
+    ).toThrow()
     expect(() =>
       llmWikiPromotionReceiptSchema.parse({
         ...receipt,

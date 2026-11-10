@@ -197,7 +197,6 @@ export async function preflightVault(
     'Topics',
     'raw/papers',
     'raw/paper_records',
-    'index.md',
     'log.md'
   ]
   if (!scopes || requiredScopes.some((scope) => !scopes.includes(scope))) {
@@ -298,7 +297,7 @@ Rules:
 - shortIdentifier must use ASCII letters, digits, and underscores only.
 - Choose 1-4 genuinely related existing Topic/Method pages as relatedPaths, using exact values from this catalog: ${JSON.stringify(preflight.knowledgePaths)}.
 - Fill the matching live template faithfully. Remove template instructions/placeholders, retain honest [TBD] values, and separate author-reported claims from reproduction.
-- Preserve all level-two sections from the chosen live template. Set status to unread, leave read_date empty, and include type/paper-note plus the matching level/l1 or level/l2 tag. Include status/unread only for L2 because the live L1 template forbids duplicating status in tags. Include every relatedPaths link in frontmatter related.
+- Preserve all level-two sections from the chosen live template. Set status to unread, leave read_date empty, set queue to must-read, and include type/paper-note, the matching level/l1 or level/l2 tag, and status/unread for both levels. Include every relatedPaths link in frontmatter related.
 - In YAML frontmatter, add the exact unquoted scalar line source_access: full-text for both L1 and L2. No result has been reproduced. Do not claim code, supplement, or experiments were independently verified unless the PDF itself establishes that fact.
 - Include these exact literal values verbatim: canonical arXiv ID ${item.externalId.replace(/v\d+$/u, '')}, official URL ${item.url}, and PDF path ${pdfPath}. Include a Provenance section stating that the PDF was verified locally and analyzed by Codex under ${LLM_WIKI_PROMOTION_PROMPT_VERSION}.
 

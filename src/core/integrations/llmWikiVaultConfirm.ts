@@ -234,16 +234,7 @@ export async function confirmLlmWikiPromotion(
     )
     replacements.set(
       MUTABLE_INDEX_PATHS[1],
-      appendPromotionEntry(
-        mutableContents.get(MUTABLE_INDEX_PATHS[1]) ?? '',
-        '## TheRSS promoted papers',
-        entry,
-        noteLink
-      )
-    )
-    replacements.set(
-      MUTABLE_INDEX_PATHS[2],
-      `${(mutableContents.get(MUTABLE_INDEX_PATHS[2]) ?? '').trimEnd()}\n\n## [${romeDate(completedAt)}] therss | Paper promotion — ${safeTitle}\n\n- **THRSS_PAPER_PROMOTION** | ${romeDate(completedAt)} | [[${noteLink}|${safeTitle}]] archived with verified PDF and ${handle.analysis.level} analysis; backlinks: ${handle.analysis.relatedPaths.map((path) => `[[${path.replace(/\.md$/u, '')}]]`).join(', ')}.\n`
+      `${(mutableContents.get(MUTABLE_INDEX_PATHS[1]) ?? '').trimEnd()}\n\n## [${romeDate(completedAt)}] therss | Paper promotion — ${safeTitle}\n\n- **THRSS_PAPER_PROMOTION** | ${romeDate(completedAt)} | [[${noteLink}|${safeTitle}]] archived with verified PDF and ${handle.analysis.level} analysis; backlinks: ${handle.analysis.relatedPaths.map((path) => `[[${path.replace(/\.md$/u, '')}]]`).join(', ')}.\n`
     )
     for (const [path, content] of replacements) {
       const absolutePath = join(preflight.root, path)

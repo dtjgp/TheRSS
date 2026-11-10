@@ -92,10 +92,11 @@ export THERSS_LLM_WIKI_PATH=/absolute/path/to/llm-wiki
 - `pdfinfo` 与 `pdftotext` 可执行；
 - vault 的 `System/Configs/Automation_Runtime_Scopes.json` 已注册
   `therss-paper-promotion`，覆盖 `Automation_Conversations`、`Literature/Paper_Notes`、
-  `Topics`、`Methods`、`raw/papers`、`raw/paper_records`、`index.md` 与 `log.md`；这两个知识图谱
-  目录的持久 writer-scope 扩展必须由 vault 所有者显式授权，否则 live preview 会 fail closed；
-- vault 的 AGENTS、schema、paper-ingest SOP、write-governance、L1/L2 templates 与三个索引文件
-  均为可读取的普通文件。
+  `Topics`、`raw/papers`、`raw/paper_records` 与 `log.md`；`Topics` 知识图谱目录的持久
+  writer-scope 扩展必须由 vault 所有者显式授权，否则 live preview 会 fail closed；
+- vault 的 AGENTS、schema、paper-ingest SOP、write-governance、L1/L2 templates、
+  `Literature/Paper_Notes/Paper_Notes_Index.md` 与 `log.md` 均为可读取的普通文件。TheRSS 不读写
+  `index.md`（llm-wiki 规定它是内容目录，不逐篇记录论文）。
 
 首次点击只在临时目录下载/核验 PDF、运行只读 Codex 分析并显示精确相对路径；只有 renderer
 确认并通过 Electron main 的原生确认后，才会获取 vault writer lease 并落盘。自动化测试使用
