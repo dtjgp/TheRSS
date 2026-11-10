@@ -374,11 +374,13 @@ function normalizeControlledFrontmatter(
       : []),
     'status: unread',
     'read_date:',
+    'queue: must-read',
+    `queue_date: ${date}`,
     'source_access: full-text',
     'tags:',
     '  - type/paper-note',
     `  - level/${analysis.level.toLowerCase()}`,
-    ...(analysis.level === 'L2' ? ['  - status/unread'] : []),
+    '  - status/unread',
     'aliases: []',
     'related:',
     ...analysis.relatedPaths.map((path) => `  - "[[${path.replace(/\.md$/u, '')}]]"`)
@@ -449,6 +451,7 @@ export function validateNoteMarkdown(
     level: analysis.level,
     status: 'unread',
     read_date: '',
+    queue: 'must-read',
     source_access: 'full-text'
   }
   for (const [key, expected] of Object.entries(requiredScalars)) {
@@ -459,22 +462,18 @@ export function validateNoteMarkdown(
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(frontmatterScalar(metadata, 'date') ?? '')) {
     throw new Error('The paper note has no valid date')
   }
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(frontmatterScalar(metadata, 'queue_date') ?? '')) {
+    throw new Error('The paper note has no valid queue_date')
+  }
   if (
     analysis.level === 'L1' &&
     !/^\d{4}-\d{2}-\d{2}$/u.test(frontmatterScalar(metadata, 'updated') ?? '')
   ) {
     throw new Error('The L1 paper note has no valid updated date')
   }
-  const requiredTags = [
-    'type/paper-note',
-    `level/${analysis.level.toLowerCase()}`,
-    ...(analysis.level === 'L2' ? ['status/unread'] : [])
-  ]
+  const requiredTags = ['type/paper-note', `level/${analysis.level.toLowerCase()}`, 'status/unread']
   if (requiredTags.some((tag) => !tags.includes(tag))) {
     throw new Error('The paper note read-state and level tags are inconsistent')
-  }
-  if (analysis.level === 'L1' && tags.includes('status/unread')) {
-    throw new Error('The L1 paper note must not duplicate status in tags')
   }
   for (const relatedPath of analysis.relatedPaths) {
     const link = `[[${relatedPath.replace(/\.md$/u, '')}]]`

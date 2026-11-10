@@ -368,6 +368,7 @@ describe('LlmWikiVaultAdapter', () => {
     const note = await readFile(join(root, receipt.notePath!), 'utf8')
     expect(note).toContain('\nsource_access: full-text\n')
     expect(note).toContain('\n  - type/paper-note\n  - level/l2\n  - status/unread\n')
+    expect(note).toMatch(/\nread_date:\nqueue: must-read\nqueue_date: \d{4}-\d{2}-\d{2}\n/u)
     expect(note).toContain('\n  - "[[Topics/Edge_AI]]"\n')
     expect(note).toContain('\n- Official source: https://arxiv.org/abs/2608.00001\n')
     expect(note).toContain(
@@ -599,8 +600,8 @@ describe('LlmWikiVaultAdapter', () => {
       'Researcher_2026_L1Fixture'
     )
     const note = await readFile(join(root, receipt.notePath!), 'utf8')
-    expect(note).toContain('  - type/paper-note\n  - level/l1\n')
-    expect(note).not.toContain('  - status/unread\n')
+    expect(note).toContain('  - type/paper-note\n  - level/l1\n  - status/unread\n')
+    expect(note).toMatch(/\nqueue: must-read\nqueue_date: \d{4}-\d{2}-\d{2}\n/u)
     await adapter.dispose(prepared)
   })
 
