@@ -15,7 +15,7 @@ import {
   type DiscoverStatus
 } from '../../shared/discover'
 import type { ArxivInterest, GitHubInterest, InterestProfile } from '../interests/interestProfile'
-import { sourceRejectionDetail } from '../sources/catalog/sourceBatchStatus'
+import { classifySourceBatch, sourceRejectionDetail } from '../sources/catalog/sourceBatchStatus'
 import { rankDiscoveryItem } from '../ranking/rankDiscoveryItem'
 import { fetchArxivItems } from '../sources/arxiv/arxivClient'
 import {
@@ -476,15 +476,14 @@ export class DiscoverService {
             .filter(
               (candidate) => !candidate.excluded && (!job.browseOnly || hasSemanticMatch(candidate))
             )
+          const batchStatus = classifySourceBatch(result.value)
           outcome = {
             status:
-              result.value.items.length === 0 && result.value.rejectedCount > 0
-                ? 'failed'
-                : result.value.rejectedCount > 0
-                  ? 'partial'
-                  : ranked.length === 0
-                    ? 'no_results'
-                    : 'healthy',
+              batchStatus === 'failed' || batchStatus === 'partial'
+                ? batchStatus
+                : ranked.length === 0
+                  ? 'no_results'
+                  : 'healthy',
             resultCount: ranked.length,
             error: result.value.rejectedCount > 0 ? sourceRejectionDetail(result.value) : null
           }

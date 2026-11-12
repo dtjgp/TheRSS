@@ -89,6 +89,29 @@ describe('DiscoveryService', () => {
     repository.close()
   })
 
+  it('does not record a source failure when every entry was omitted by date policy', async () => {
+    const repository = setup()
+    const service = new DiscoveryService(repository, {
+      fetchArxiv: async () => [],
+      fetchGitHub: async () => [],
+      configuredDefinitions: [getConfiguredSourceDefinition('folo:611')],
+      fetchConfiguredSource: vi.fn().mockResolvedValue({
+        items: [],
+        rejectedCount: 6,
+        omittedCount: 6,
+        rejectionReason: 'issue numbers were not converted to dates'
+      })
+    })
+    const now = new Date('2026-11-12T06:00:00Z')
+
+    expect((await service.refresh({ now })).sourceHealth['folo:611']).toBe('no_results')
+    await expect(service.refreshSourceContent('folo:611', { now })).resolves.toMatchObject({
+      status: 'no_results',
+      returnedCount: 0
+    })
+    repository.close()
+  })
+
   it('records source-only failures and preserves the last cached records', async () => {
     const repository = setup()
     const item = { ...paper, id: 'folo:302:article:cached', source: 'folo:302' as const }

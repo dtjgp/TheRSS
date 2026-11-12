@@ -52,6 +52,39 @@ describe('normalizeNcpssdDocument', () => {
     })
   })
 
+  it('counts issue-numbered entries as omitted, not invalid', () => {
+    const entry = (title: string, date: string) =>
+      `<li><a onclick="openDetail('/Literature/articleinfo?id=${title}')" title="${title}">${title}</a><span>《期刊》${date}</span></li>`
+    const document: ConfiguredHttpDocument = {
+      sourceId: 'folo:611',
+      transport: 'html',
+      endpoint: 'https://www.ncpssd.cn/',
+      contentType: 'text/html',
+      retrievedAt: '2026-11-12T06:00:00.000Z',
+      body: `<ul class="latest-list">${entry('A', '2026年9期')}${entry('B', '2026年5期')}</ul>`
+    }
+
+    expect(normalizeNcpssdDocument(document)).toEqual({
+      items: [],
+      rejectedCount: 2,
+      omittedCount: 2,
+      rejectionReason:
+        '2 entries lack a publication month; issue numbers were not converted to dates'
+    })
+    expect(
+      normalizeNcpssdDocument({
+        ...document,
+        body: `<ul class="latest-list">${entry('A', '2026年9期')}<li><a onclick="openDetail('/x')" title=""></a><span>2026年9期</span></li></ul>`
+      })
+    ).toMatchObject({ items: [], rejectedCount: 2, omittedCount: 1 })
+    expect(
+      normalizeNcpssdDocument({
+        ...document,
+        body: `<ul class="latest-list"><li><a onclick="openDetail('https://evil.example/x')" title="C">C</a><span>2026年9期</span></li></ul>`
+      })
+    ).toEqual({ items: [], rejectedCount: 1 })
+  })
+
   it('rejects documents outside the fixed NCPSD identity', () => {
     expect(() =>
       normalizeNcpssdDocument({

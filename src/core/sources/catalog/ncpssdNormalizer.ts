@@ -56,15 +56,18 @@ export function normalizeNcpssdDocument(document: ConfiguredHttpDocument): Norma
         itemHtml.match(/<span\b[^>]*>([\s\S]*?)<\/span>/iu)?.[1] ?? '',
         1_000
       )
-      const month = summary.match(/(\d{4})年(\d{1,2})月/u)
-      if (!month) missingMonthCount++
-      if (!title || !month) throw new Error('NCPSD entry is missing title or publication month')
-      if (Number(month[2]) < 1 || Number(month[2]) > 12 || Number(month[1]) < 1000)
-        throw new Error('NCPSD entry has an invalid publication month')
+      if (!title) throw new Error('NCPSD entry is missing a title')
       const url = new URL(decodeHtml(path), document.endpoint)
       if (url.protocol !== 'https:' || url.origin !== new URL(document.endpoint).origin) {
         throw new Error('NCPSD detail route is outside the fixed official origin')
       }
+      const month = summary.match(/(\d{4})年(\d{1,2})月/u)
+      if (!month) {
+        missingMonthCount++
+        throw new Error('NCPSD entry has no publication month')
+      }
+      if (Number(month[2]) < 1 || Number(month[2]) > 12 || Number(month[1]) < 1000)
+        throw new Error('NCPSD entry has an invalid publication month')
       const publishedAt = new Date(
         Date.UTC(Number(month[1]), Number(month[2]) - 1, 1)
       ).toISOString()
@@ -92,6 +95,7 @@ export function normalizeNcpssdDocument(document: ConfiguredHttpDocument): Norma
     rejectedCount,
     ...(missingMonthCount
       ? {
+          omittedCount: missingMonthCount,
           rejectionReason: `${missingMonthCount} entries lack a publication month; issue numbers were not converted to dates`
         }
       : {})

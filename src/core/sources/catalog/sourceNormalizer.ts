@@ -8,6 +8,8 @@ import type { ConfiguredSourceItem } from './configuredSourceItem'
 export interface NormalizedSourceBatch {
   readonly items: readonly DiscoveryItem[]
   readonly rejectedCount: number
+  /** Rejected entries excluded by an evidence policy rather than invalid; included in rejectedCount. */
+  readonly omittedCount?: number
   readonly rejectionReason?: string
 }
 
