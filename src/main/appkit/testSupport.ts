@@ -42,6 +42,18 @@ export function nativeHarness(overrides: Partial<TheRSSApi> = {}) {
     getLatestDiscover: vi.fn(async () => null),
     getModelProvider: vi.fn(async () => null),
     getDiscoverPersonalizationSettings: vi.fn(async () => null),
+    getDiscoverSourcePreference: vi.fn(async () => ({
+      sources: DISCOVER_SOURCE_IDS,
+      unavailable: [],
+      origin: 'all-sources',
+      updatedAt: '2026-11-12T00:00:00.000Z'
+    })),
+    saveDiscoverSourcePreference: vi.fn(async (sources: readonly string[]) => ({
+      sources,
+      unavailable: [],
+      origin: 'user',
+      updatedAt: '2026-11-12T01:00:00.000Z'
+    })),
     onDiscoverProgress: vi.fn(() => () => undefined),
     onAppCommand: vi.fn(() => () => undefined),
     ...overrides

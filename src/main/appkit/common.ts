@@ -52,8 +52,24 @@ export interface NativeContext {
   openRecord(record: NativeRecord): void
   /** Opens the Settings window (native route), optionally on one pane. */
   openSettings(section?: SettingsSection): void
+  /** Shows a native sheet over the window (native workspace only). */
+  openSheet?(sheet: NativeSheet): void
+  /** Closes the current sheet; the sheet's `dismissed` runs. */
+  closeSheet?(): void
   width(key: 'sidebar' | 'discover' | 'saved'): number
   setWidth(key: 'sidebar' | 'discover' | 'saved', width: number): void
+}
+/** A sheet owned by a screen. Cancel, Escape and navigation end it through `dismissed`. */
+export interface NativeSheet {
+  readonly title: string
+  /** Body and footer; the sheet's heading is added by the window. */
+  render(): NativeNode[]
+  dismissed(): void
+  /** While true (for example during a save), Escape, navigation and another sheet cannot end it. */
+  readonly busy?: boolean
+  readonly initialFocus?: string
+  /** Where keyboard focus returns after the sheet closes. */
+  readonly returnFocus?: string
 }
 export interface NativeScreen {
   render(): NativeNode

@@ -197,21 +197,23 @@ test('Discover-first search across every deployed source', async () => {
       }
       await sourcePicker.click()
       const sourceGroup = page.getByRole('group', { name: 'Search sources' })
-      await expect(sourceGroup.getByRole('checkbox')).toHaveCount(22)
+      const sourceChecks = sourceGroup.getByRole('checkbox', { name: /^Search / })
+      await expect(sourceChecks).toHaveCount(22)
       expect(
-        await sourceGroup
-          .getByRole('checkbox')
-          .evaluateAll((inputs) => inputs.every((input) => (input as HTMLInputElement).checked))
+        await sourceChecks.evaluateAll((inputs) =>
+          inputs.every((input) => (input as HTMLInputElement).checked)
+        )
       ).toBe(true)
       await expect(sourceGroup.getByRole('checkbox', { name: 'Search arXiv' })).toBeChecked()
       await expect(sourceGroup.getByRole('checkbox', { name: 'Search GitHub' })).toBeChecked()
       await expect(
         sourceGroup.getByRole('checkbox', { name: 'Search 北京智源人工智能研究院' })
       ).toBeChecked()
-      await sourceGroup.getByRole('button', { name: 'Clear all sources' }).click()
-      await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeDisabled()
-      await sourceGroup.getByRole('button', { name: 'Select all sources' }).click()
-      await sourcePicker.click()
+      // 2026-11-12 My sources contract: the chooser edits a draft; Apply changes this search.
+      await sourceGroup.getByRole('button', { name: 'Clear shown' }).click()
+      await expect(sourceGroup.getByRole('button', { name: 'Apply to this search' })).toBeDisabled()
+      await sourceGroup.getByRole('button', { name: 'Select shown' }).click()
+      await sourceGroup.getByRole('button', { name: 'Apply to this search' }).click()
       await expect(sourcePicker).toHaveAttribute('aria-expanded', 'false')
       await page
         .getByRole('textbox', { name: 'Research question' })

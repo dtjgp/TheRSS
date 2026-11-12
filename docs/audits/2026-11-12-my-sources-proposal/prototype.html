@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TheRSS · 我的信息源交互原型</title>
+  <style>
+    :root {
+      font:
+        14px/1.5 -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        sans-serif;
+      color: #252528;
+      background: #e9e9ed;
+      color-scheme: light;
+      --accent: #086ad8;
+      --line: #dedee3;
+      --muted: #69696f;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+    }
+    button,
+    input {
+      font: inherit;
+    }
+    button {
+      cursor: pointer;
+      border: 1px solid #d5d5da;
+      background: #f7f7f9;
+      border-radius: 7px;
+      padding: 6px 12px;
+      color: inherit;
+    }
+    button:hover {
+      background: #ededf1;
+    }
+    button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+    button.primary {
+      color: white;
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    button:focus-visible,
+    input:focus-visible {
+      outline: 3px solid #80b9fa;
+      outline-offset: 2px;
+    }
+    input[type='checkbox'] {
+      accent-color: var(--accent);
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+    }
+    input[type='search'],
+    input[type='text'] {
+      padding: 8px 10px;
+      border: 1px solid #c8c8d0;
+      border-radius: 7px;
+      background: white;
+      min-width: 0;
+      width: 100%;
+    }
+    .demo {
+      max-width: 1240px;
+      margin: 18px auto 10px;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      padding: 0 10px;
+    }
+    .demo strong {
+      font-size: 14px;
+    }
+    .demo small {
+      color: var(--muted);
+    }
+    .demo .grow {
+      flex: 1;
+    }
+    .window {
+      max-width: 1240px;
+      margin: 0 auto 25px;
+      min-height: 650px;
+      display: grid;
+      grid-template-columns: 175px minmax(0, 1fr);
+      background: #fff;
+      border: 1px solid #d2d2d8;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .sidebar {
+      background: #f2f2f5;
+      border-right: 1px solid var(--line);
+      padding: 18px 12px;
+    }
+    .brand {
+      font-weight: 650;
+      padding: 10px 10px 22px;
+    }
+    .sidebar button {
+      width: 100%;
+      text-align: left;
+      margin-bottom: 5px;
+      border: 0;
+      background: none;
+    }
+    .sidebar button.active {
+      background: #dfe5ef;
+      color: #135aa5;
+    }
+    .content {
+      min-width: 0;
+      padding: 24px;
+    }
+    .heading {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 23px;
+      margin: 0;
+    }
+    h2 {
+      font-size: 19px;
+      margin: 0;
+    }
+    h3 {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0;
+    }
+    p {
+      margin: 8px 0;
+    }
+    .muted {
+      color: var(--muted);
+    }
+    .small {
+      font-size: 12px;
+    }
+    .catalog {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      max-height: 480px;
+      overflow: auto;
+    }
+    .catalog-row {
+      padding: 10px 14px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .catalog-row:last-child {
+      border: 0;
+    }
+    .source-text {
+      flex: 1;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .source-text strong {
+      display: block;
+    }
+    .tag {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 5px;
+      background: #ecf2fc;
+      color: #2b5f9d;
+      white-space: nowrap;
+    }
+    .tag.off {
+      background: #f2f2f5;
+      color: #777;
+    }
+    .composer,
+    .session {
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      margin-top: 16px;
+    }
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .status {
+      margin: 12px 0 0;
+      min-height: 24px;
+      color: #235b37;
+    }
+    .notice {
+      padding: 10px 12px;
+      background: #f3f6fb;
+      border-radius: 6px;
+      margin: 12px 0;
+    }
+    .session ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    .session-list {
+      max-height: 190px;
+      overflow: auto;
+    }
+    .pill {
+      padding: 2px 7px;
+      background: #f2f2f6;
+      border-radius: 4px;
+    }
+    .footnote {
+      padding: 12px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    dialog {
+      width: min(720px, calc(100vw - 24px));
+      padding: 0;
+      border: 1px solid #c8c8ce;
+      border-radius: 12px;
+      box-shadow: 0 16px 70px #0004;
+      max-height: calc(100vh - 28px);
+      overflow: hidden;
+    }
+    dialog::backdrop {
+      background: #0003;
+    }
+    .sheet {
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 30px);
+    }
+    .sheet-head {
+      padding: 18px 20px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .finder {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 12px;
+    }
+    .finder label {
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .bulk {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .bulk button {
+      font-size: 12px;
+    }
+    .picker-body {
+      overflow: auto;
+      min-height: 110px;
+      max-height: 340px;
+      padding: 8px 20px 14px;
+    }
+    .group-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 13px 0 5px;
+    }
+    .choice {
+      display: flex;
+      gap: 10px;
+      padding: 9px 7px;
+      border-bottom: 1px solid #f0f0f3;
+      align-items: center;
+    }
+    .choice:hover {
+      background: #f7f8fb;
+    }
+    .choice input {
+      margin: 0;
+    }
+    .choice .name {
+      font-weight: 550;
+    }
+    .sheet-footer {
+      padding: 13px 20px;
+      border-top: 1px solid var(--line);
+      background: #fafafa;
+    }
+    .footer-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .footer-actions {
+      display: flex;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .error {
+      color: #b42318;
+      min-height: 20px;
+      margin: 4px 0 0;
+    }
+    .empty {
+      padding: 30px 5px;
+      text-align: center;
+      color: var(--muted);
+    }
+    @media (max-width: 850px) {
+      .window {
+        border-radius: 0;
+        grid-template-columns: 140px minmax(0, 1fr);
+        min-height: calc(100vh - 80px);
+        margin: 0;
+      }
+      .content {
+        padding: 17px;
+      }
+      .demo {
+        flex-wrap: wrap;
+      }
+      .demo small {
+        display: none;
+      }
+      .heading {
+        align-items: flex-start;
+      }
+      .finder {
+        flex-wrap: wrap;
+      }
+      .finder input {
+        flex: 1 1 200px;
+      }
+      .picker-body {
+        max-height: 260px;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        scroll-behavior: auto;
+      }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color: #eee;
+        background: #202023;
+        color-scheme: dark;
+        --line: #4a4a50;
+        --muted: #b0b0b8;
+      }
+      .window {
+        background: #29292d;
+        border-color: #555;
+      }
+      .sidebar,
+      .sheet-footer {
+        background: #303034;
+      }
+      .sidebar button.active {
+        background: #3a4d64;
+        color: #c9e4ff;
+      }
+      button {
+        background: #3b3b40;
+        border-color: #5e5e66;
+      }
+      button:hover {
+        background: #48484e;
+      }
+      input[type='search'],
+      input[type='text'],
+      dialog {
+        background: #29292e;
+        color: #eee;
+      }
+      .catalog-row,
+      .choice {
+        border-color: #404046;
+      }
+      .choice:hover {
+        background: #35353b;
+      }
+      .tag,
+      .pill {
+        background: #38485e;
+        color: #d0e6ff;
+      }
+      .tag.off {
+        background: #3a3a40;
+        color: #c1c1c8;
+      }
+      .notice {
+        background: #343f50;
+      }
+      .status {
+        color: #a1dab3;
+      }
+      .error {
+        color: #ffad9f;
+      }
+    }
+  </style>
+  <div class="demo">
+    <strong>交互原型 · 不获取真实内容</strong><small>只演示默认组合、本次选择与旧结果的关系</small
+    ><span class="grow"></span><button id="restart">模拟重启</button
+    ><button id="reset">重置演示</button>
+  </div>
+  <div class="window">
+    <nav class="sidebar" aria-label="工作区">
+      <div class="brand">TheRSS</div>
+      <button id="navDiscover">Discover</button><button id="navSources">Sources · 信息源</button>
+    </nav>
+    <main class="content" id="main"></main>
+  </div>
+  <dialog id="picker" aria-labelledby="pickerTitle" aria-describedby="pickerHint">
+    <div class="sheet">
+      <header class="sheet-head">
+        <h2 id="pickerTitle"></h2>
+        <p class="muted" id="pickerHint"></p>
+        <div class="finder">
+          <input
+            type="search"
+            id="find"
+            aria-label="查找来源"
+            placeholder="查找来源名称、用途或分组"
+          /><label><input type="checkbox" id="selectedOnly" />仅看已选</label>
+        </div>
+        <div class="bulk">
+          <button id="selectVisible">选择当前显示</button
+          ><button id="clearVisible">取消当前显示</button><button id="restore"></button>
+        </div>
+        <p class="muted small">批量操作只作用于当前显示的来源；查找不会改变其他勾选。</p>
+      </header>
+      <div class="picker-body" id="choices"></div>
+      <footer class="sheet-footer">
+        <div class="footer-line">
+          <strong id="selectionCount"></strong>
+          <div class="footer-actions">
+            <button id="cancel">取消</button><button id="apply" class="primary"></button>
+          </div>
+        </div>
+        <p class="error" id="error" role="status"></p>
+        <div class="muted small" id="saveBoundary"></div>
+      </footer>
+    </div>
+  </dialog>
+  <script id="data" type="application/json">
+    {
+      "sources": [
+        { "id": "arxiv", "name": "arXiv", "role": "预印本与论文发现", "group": "papers" },
+        {
+          "id": "folo:611",
+          "name": "国家哲学社会科学文献中心",
+          "role": "社科文献",
+          "group": "papers"
+        },
+        {
+          "id": "folo:444",
+          "name": "National Bureau of Economic Research",
+          "role": "工作论文",
+          "group": "papers"
+        },
+        { "id": "folo:792", "name": "MDPI", "role": "开放出版平台", "group": "papers" },
+        { "id": "github", "name": "GitHub", "role": "代码与复现", "group": "code" },
+        { "id": "folo:64", "name": "Huggingface", "role": "模型与论文平台", "group": "code" },
+        {
+          "id": "folo:302",
+          "name": "北京智源人工智能研究院",
+          "role": "研究机构",
+          "group": "organizations"
+        },
+        { "id": "folo:182", "name": "OpenAI", "role": "官方研究", "group": "organizations" },
+        { "id": "folo:77", "name": "科学网", "role": "科研社区", "group": "technology" },
+        { "id": "folo:208", "name": "量子位", "role": "AI 媒体", "group": "technology" },
+        { "id": "folo:93", "name": "麻省理工科技评论", "role": "科技媒体", "group": "technology" },
+        { "id": "folo:67", "name": "AIbase", "role": "AI 产业媒体", "group": "technology" },
+        { "id": "folo:523", "name": "C114 通信网", "role": "通信行业媒体", "group": "technology" },
+        { "id": "folo:44", "name": "Hacker News", "role": "工程社区", "group": "technology" },
+        { "id": "folo:79", "name": "Solidot", "role": "科技媒体", "group": "technology" },
+        { "id": "folo:172", "name": "TechCrunch", "role": "产业媒体", "group": "technology" },
+        { "id": "folo:1104", "name": "TechPowerUp", "role": "硬件媒体", "group": "technology" },
+        { "id": "folo:257", "name": "The Verge", "role": "科技媒体", "group": "technology" },
+        { "id": "folo:312", "name": "WIRED", "role": "科技媒体", "group": "technology" },
+        { "id": "folo:84", "name": "麦肯锡", "role": "产业研究", "group": "business" },
+        { "id": "folo:253", "name": "CNBC", "role": "市场新闻", "group": "business" },
+        {
+          "id": "folo:177",
+          "name": "The Nikkei 日本経済新聞",
+          "role": "产业新闻",
+          "group": "business"
+        }
+      ],
+      "groups": [
+        {
+          "id": "papers",
+          "title": "论文与文献",
+          "sources": ["arxiv", "folo:611", "folo:444", "folo:792"]
+        },
+        { "id": "code", "title": "代码与模型", "sources": ["github", "folo:64"] },
+        { "id": "organizations", "title": "研究机构", "sources": ["folo:302", "folo:182"] },
+        {
+          "id": "technology",
+          "title": "科技与社区",
+          "sources": [
+            "folo:77",
+            "folo:208",
+            "folo:93",
+            "folo:67",
+            "folo:523",
+            "folo:44",
+            "folo:79",
+            "folo:172",
+            "folo:1104",
+            "folo:257",
+            "folo:312"
+          ]
+        },
+        { "id": "business", "title": "产业与政策", "sources": ["folo:84", "folo:253", "folo:177"] }
+      ]
+    }
+  </script>
+  <script>
+    'use strict'
+    const { sources, groups } = JSON.parse(document.getElementById('data').textContent)
+    const $ = (id) => document.getElementById(id),
+      all = sources.map((s) => s.id),
+      key = 'therss-my-sources-proposal-v1'
+    const labels = new Map(groups.map((g) => [g.id, g.title]))
+    const esc = (value) =>
+      String(value).replace(
+        /[&<>"']/g,
+        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+      )
+    const equal = (a, b) => a.size === b.size && [...a].every((id) => b.has(id))
+    function load() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(key))
+        if (Array.isArray(raw) && raw.length && raw.every((id) => all.includes(id)))
+          return new Set(raw)
+      } catch {}
+      return new Set(all)
+    }
+    let defaults = load(),
+      run = new Set(defaults),
+      history = new Set(all),
+      page = 'sources',
+      question = '寻找与 structured pruning 和 edge intelligence 相关的研究',
+      message = '',
+      mode = '',
+      editing = new Set(),
+      lastTrigger = ''
+    function names(set) {
+      return sources.filter((s) => set.has(s.id)).map((s) => s.name)
+    }
+    function render() {
+      $('navDiscover').classList.toggle('active', page === 'discover')
+      $('navSources').classList.toggle('active', page === 'sources')
+      const common = '<div class="status" role="status">' + esc(message) + '</div>'
+      if (page === 'sources') {
+        $('main').innerHTML =
+          '<div class="heading"><div><h1>信息源</h1><p class="muted">当前支持的 22 个来源</p></div><button id="manage">我的信息源 · ' +
+          defaults.size +
+          '/22</button></div><p>选择默认参与新 Discover 检索的来源。保存选择不会立即获取内容。</p>' +
+          common +
+          '<div class="catalog">' +
+          sources
+            .map(
+              (s) =>
+                '<div class="catalog-row"><div class="source-text"><strong>' +
+                esc(s.name) +
+                '</strong><span class="muted small">' +
+                esc(labels.get(s.group) + ' · ' + s.role) +
+                '</span></div><span class="tag ' +
+                (defaults.has(s.id) ? '' : 'off') +
+                '">' +
+                (defaults.has(s.id) ? '默认选用' : '不默认选用') +
+                '</span></div>'
+            )
+            .join('') +
+          '</div><p class="footnote">原型中的目录仅展示本地来源说明。实际应用的单独浏览与刷新保留原有行为。</p>'
+        $('manage').onclick = () => openPicker('default', 'manage')
+      } else {
+        const custom = !equal(run, defaults)
+        $('main').innerHTML =
+          '<div class="heading"><h1>Discover</h1><span class="pill">默认组合 ' +
+          defaults.size +
+          '/22</span></div><div class="composer"><label for="question"><strong>研究问题</strong></label><input id="question" type="text" value="' +
+          esc(question) +
+          '"><div class="actions"><button id="editRun">本次来源 · ' +
+          run.size +
+          '/22</button><span class="muted small">' +
+          (custom ? '临时调整' : '使用默认组合') +
+          '</span><button class="primary" id="search">演示搜索</button></div><p class="muted small">' +
+          (custom ? '临时调整只用于本次，不改写默认组合。' : '下次搜索将使用我的信息源。') +
+          '</p></div>' +
+          common +
+          (equal(run, history)
+            ? ''
+            : '<p class="notice">来源已调整，搜索后生效。下方旧结果仍保留原来的来源范围。</p>') +
+          '<section class="session"><h2>旧结果范围（演示）</h2><p>记录的来源：' +
+          history.size +
+          '/22 · 下一次搜索：' +
+          run.size +
+          '/22</p><div class="session-list"><ul>' +
+          names(history)
+            .map((name) => '<li>' + esc(name) + '</li>')
+            .join('') +
+          '</ul></div><p class="muted small">此处只演示会话范围，没有真实检索结果。</p></section>'
+        $('question').oninput = (e) => {
+          question = e.target.value
+          $('search').disabled = !question.trim() || !run.size
+        }
+        $('editRun').onclick = () => openPicker('run', 'editRun')
+        $('search').disabled = !question.trim() || !run.size
+        $('search').onclick = () => {
+          history = new Set(run)
+          message = '已模拟一次搜索：范围摘要已更新，没有调用任何来源或模型。'
+          render()
+        }
+      }
+    }
+    function visible() {
+      const q = $('find').value.trim().toLocaleLowerCase()
+      return sources.filter(
+        (s) =>
+          (!$('selectedOnly').checked || editing.has(s.id)) &&
+          (!q || [s.name, s.role, labels.get(s.group)].join(' ').toLocaleLowerCase().includes(q))
+      )
+    }
+    function renderPicker() {
+      const shown = visible()
+      $('selectionCount').textContent = '已选 ' + editing.size + '/22 · 当前显示 ' + shown.length
+      $('apply').disabled = editing.size === 0
+      $('selectVisible').disabled = !shown.length
+      $('clearVisible').disabled = !shown.length
+      $('error').textContent = editing.size ? '' : '至少选择一个来源，才能保存或应用。'
+      $('choices').innerHTML = shown.length
+        ? groups
+            .map((g) => {
+              const list = shown.filter((s) => s.group === g.id)
+              if (!list.length) return ''
+              const total = sources.filter((s) => s.group === g.id)
+              return (
+                '<div class="group-title"><h3>' +
+                esc(g.title) +
+                '</h3><span class="muted small">' +
+                total.filter((s) => editing.has(s.id)).length +
+                '/' +
+                total.length +
+                ' 已选</span></div>' +
+                list
+                  .map(
+                    (s) =>
+                      '<label class="choice"><input type="checkbox" data-source="' +
+                      s.id +
+                      '" ' +
+                      (editing.has(s.id) ? 'checked' : '') +
+                      '><span class="source-text"><span class="name">' +
+                      esc(s.name) +
+                      '</span><br><span class="muted small">' +
+                      esc(s.role) +
+                      '</span></span></label>'
+                  )
+                  .join('')
+              )
+            })
+            .join('')
+        : '<div class="empty">没有符合条件的来源。清空查找或关闭“仅看已选”。</div>'
+      $('choices')
+        .querySelectorAll('input')
+        .forEach(
+          (input) =>
+            (input.onchange = () => {
+              if (input.checked) editing.add(input.dataset.source)
+              else editing.delete(input.dataset.source)
+              renderPicker()
+            })
+        )
+    }
+    function openPicker(nextMode, trigger) {
+      mode = nextMode
+      lastTrigger = trigger
+      editing = new Set(mode === 'default' ? defaults : run)
+      $('find').value = ''
+      $('selectedOnly').checked = false
+      $('pickerTitle').textContent = mode === 'default' ? '默认检索来源' : '本次检索来源'
+      $('pickerHint').textContent =
+        mode === 'default'
+          ? '保存一套常用来源，重启后仍会记住。'
+          : '临时调整下一次搜索；不会修改我的默认组合。'
+      $('restore').textContent = mode === 'default' ? '恢复全部 22 个' : '使用默认组合'
+      $('apply').textContent = mode === 'default' ? '保存默认来源' : '应用到本次搜索'
+      $('saveBoundary').textContent =
+        mode === 'default'
+          ? '保存仅更新默认组合，不启动检索。'
+          : '应用仅更新搜索草稿；仍需点击 Search 开始检索。'
+      renderPicker()
+      $('picker').showModal()
+      $('find').focus()
+    }
+    function dismiss() {
+      $('picker').close()
+      render()
+      $(lastTrigger)?.focus()
+    }
+    $('find').oninput = renderPicker
+    $('selectedOnly').onchange = renderPicker
+    $('selectVisible').onclick = () => {
+      visible().forEach((s) => editing.add(s.id))
+      renderPicker()
+    }
+    $('clearVisible').onclick = () => {
+      visible().forEach((s) => editing.delete(s.id))
+      renderPicker()
+    }
+    $('restore').onclick = () => {
+      editing = new Set(mode === 'default' ? all : defaults)
+      renderPicker()
+    }
+    $('cancel').onclick = dismiss
+    $('picker').oncancel = (e) => {
+      e.preventDefault()
+      dismiss()
+    }
+    $('apply').onclick = () => {
+      if (!editing.size) return
+      if (mode === 'default') {
+        const wasDefault = equal(run, defaults)
+        try {
+          localStorage.setItem(key, JSON.stringify([...editing]))
+        } catch {
+          $('error').textContent = '演示默认组合无法保存，勾选仍保留，请重试。'
+          return
+        }
+        defaults = new Set(editing)
+        if (wasDefault) run = new Set(defaults)
+        message = wasDefault
+          ? '默认来源已保存，下次新搜索使用。'
+          : '默认来源已保存；已临时调整的本次组合保持不变。'
+      } else {
+        run = new Set(editing)
+        message = '本次来源已更新。点击 Search 后生效。'
+      }
+      dismiss()
+    }
+    $('navSources').onclick = () => {
+      page = 'sources'
+      message = ''
+      render()
+    }
+    $('navDiscover').onclick = () => {
+      page = 'discover'
+      message = ''
+      render()
+    }
+    $('restart').onclick = () => {
+      defaults = load()
+      run = new Set(defaults)
+      page = 'discover'
+      message = '已模拟重启：默认组合保留，临时选择已恢复为默认；旧结果不变。'
+      render()
+    }
+    $('reset').onclick = () => {
+      localStorage.removeItem(key)
+      defaults = new Set(all)
+      run = new Set(all)
+      history = new Set(all)
+      page = 'sources'
+      message = '演示已重置：22 个来源全部选中。'
+      render()
+    }
+    window.sourcePrototypeState = () => ({
+      defaults: [...defaults],
+      run: [...run],
+      history: [...history],
+      page,
+      editing: [...editing]
+    })
+    render()
+  </script>
+</html>

@@ -1,0 +1,80 @@
+# Engineer workspace before the My sources round (2026-11-12). HEAD:
+b1ea9222ee73ba8d8ca5d501846ed2d1e9ced6c0
+## git status --short
+ M PRODUCT.md
+ M src/core/storage/localSearchStore.ts
+ M src/core/storage/researchRepository.ts
+ M src/main/appkit/acceptancePolish.test.ts
+ M src/main/appkit/dailyPapers.test.ts
+ M src/main/appkit/dailyPapers.ts
+ M src/main/appkit/directInteraction.test.ts
+ M src/main/appkit/emptyState.test.ts
+ M src/main/appkit/localNavigation.test.ts
+ M src/main/appkit/localSearch.test.ts
+ M src/main/appkit/localSearch.ts
+ M src/main/appkit/localizedDates.test.ts
+ M src/main/appkit/presenter.test.ts
+ M src/main/windowApplication.contract.test.ts
+ M src/main/windowApplication.ts
+ M src/preload/index.ts
+ M src/renderer/src/DailyPapersView.tsx
+ M src/renderer/src/LocalSearchPanel.direct.test.tsx
+ M src/renderer/src/LocalSearchPanel.test.tsx
+ M src/renderer/src/LocalSearchPanel.tsx
+ M src/renderer/src/styles/discover.css
+ M src/shared/api.ts
+ M src/shared/llmWikiDaily.ts
+ M src/shared/localSearch.ts
+?? docs/audits/2026-11-12-interaction-implementation/
+?? src/core/storage/localSearchScope.test.ts
+?? src/main/appkit/dailyPapersEmpty.test.ts
+?? src/main/appkit/localSearchScope.test.ts
+?? src/renderer/src/DailyPapersView.empty.test.tsx
+?? src/renderer/src/LocalSearchPanel.truncation.test.tsx
+?? src/shared/llmWikiDaily.test.ts
+?? src/shared/localSearch.test.ts
+## sha256 of each changed or untracked file
+08f5163fc6cb408cea212534907d370c2c8c5fac0976cc198d3a723e2e9e1fda  PRODUCT.md
+7acd5ca5a78a67bea358fb2ef47a9448454574ab7953dae3bc9846abff92c3c2  docs/audits/2026-11-12-interaction-implementation/CHANGE_CONTRACT.md
+67b98436389e8e1401bd8ff42d9d707064b007b6046109c95c88030deb0f2732  docs/audits/2026-11-12-interaction-implementation/REPORT.md
+e69f1cc21ae294ddb969b5d89d5395aaa2151fa323a7800240d875c3a95ccf9f  docs/audits/2026-11-12-interaction-implementation/evidence/narrow-daily-missing.png
+d2b509bcf2305f01545a40354852aabaa2ea72c099cfb0706c2f7c7e1f867d4d  docs/audits/2026-11-12-interaction-implementation/evidence/narrow-dark-daily-no-source.png
+957de3d15238cbbd57c3dacf5cc0fee4c03ddbddd0a0908f7d292b09413f502d  docs/audits/2026-11-12-interaction-implementation/evidence/narrow-local-search-saved.png
+0146fbddf4b6ff44086777c13436661af9d5c23d00fa0ba69fd80184f48e55c5  docs/audits/2026-11-12-interaction-implementation/evidence/render-check.json
+0385746dcf3ef3de5a17908919db9c64e42623b8f2b4e6444652cc5a5f9578ea  docs/audits/2026-11-12-interaction-implementation/evidence/wide-daily-no-source.png
+6fa00d6e8b723bcf389f4be3360097fba503b45aeceed1b0b2124c5331448af4  docs/audits/2026-11-12-interaction-implementation/evidence/wide-local-search-all-truncated.png
+968cc9ef8b97d9fac87d8f96106e454ba75ed2b9db7585091bcd4259b900890c  docs/audits/2026-11-12-interaction-implementation/evidence/wide-local-search-scoped-empty.png
+94553ada741a171e2e59d62920d4c4df00bc0412af5c3ce161492debbdd9a8c9  docs/audits/2026-11-12-interaction-implementation/scripts/daily-back-check.mjs
+7276cf0d3806b582483794431efd5962df03b8c51923f3bb692daea622e56201  docs/audits/2026-11-12-interaction-implementation/scripts/interaction-render.mjs
+e29503db0a5cbd5bb251b42ad7fa7dbe61c98c571ab9d39c19272a37a3d991c6  docs/audits/2026-11-12-interaction-implementation/scripts/intercept-open-external.cjs
+879d381f3eaff31c7a52457b4b0d5d5aa6727f444d4e20de0a085343e4082ec7  docs/audits/2026-11-12-interaction-implementation/scripts/open-verification-app.mjs
+d9733957fd99b7f07ed954c249938c2475ead1e30dae6565f24df9c3e6131b91  src/core/storage/localSearchScope.test.ts
+09f2777f1609b725b15c6cb6625330cb9c03d600015478c42f6a3fef225cf75f  src/core/storage/localSearchStore.ts
+7142efc98e4f4eb4582d6c034716ed00a82600131b3090cbc86d73d14b49ab0b  src/core/storage/researchRepository.ts
+a1d425d6898ee044604274f08e92cbdee4831d4cf0fe073720bc7bbfec59e788  src/main/appkit/acceptancePolish.test.ts
+9389ecf6da7dd13bfc4735dc904d7024dc41041f0417ba49c5db99c18139979f  src/main/appkit/dailyPapers.test.ts
+a9399274905d21a8797960fb319c083836408fa13d0ef1e535a4923e5d98c59d  src/main/appkit/dailyPapers.ts
+9bde989e200ac01c3d2fc7ab2c8f5f64b446d03b39cf05ccefdad4f485901152  src/main/appkit/dailyPapersEmpty.test.ts
+86e5c5ea21a577f205b423d5b7c9ac284670928e8dbc8a69cd7eaa4376788844  src/main/appkit/directInteraction.test.ts
+4e27e00b56a05f21ab0d282231741263dd68057f3421459bf3d339f0c1d26fd2  src/main/appkit/emptyState.test.ts
+042add18bbb1f9a442bc0abe42788bc939cb17147a59f3c955e3ac5d43a185b9  src/main/appkit/localNavigation.test.ts
+dffaab22281efa99cc6575275b2a993e457134435a81a432b51e5c48c4da055c  src/main/appkit/localSearch.test.ts
+681ebc8c1869f7f4d18b5e4b6135a710861e34a2e8c88d892b1685a8dde19884  src/main/appkit/localSearch.ts
+099f06a44086da0dda6b8622870fdd4218b892f18684b31ffa044913c0ce37d3  src/main/appkit/localSearchScope.test.ts
+1adbff3f99f360e55a2d65f32e6687f52f5c70509b640487e29fba6a604f6f40  src/main/appkit/localizedDates.test.ts
+46d3af2f9b73a617b1f3c3955f70c7985c2749b774509fd4b1673706ec10cc56  src/main/appkit/presenter.test.ts
+834a01fc89412c50caf5a7cea142d0101c3664cb6661f7ad2aa82893c3254cb9  src/main/windowApplication.contract.test.ts
+57ba1371e3556a3b3f43c9664efa411f7c24e234b7ec87e2a3e70408871a3efe  src/main/windowApplication.ts
+6619e80fac771efc49c81e4b529bff6ff40fcebf45494ec5eac87735d76ebd01  src/preload/index.ts
+b07b30a650adaa2a757891b1a406393e52fa58330f3576197ceb2e83f11b5a1c  src/renderer/src/DailyPapersView.empty.test.tsx
+fd6b71cb2ca06af308825658a97a84f1ab2385dc31bcf4eb1f94fdec0e9ae662  src/renderer/src/DailyPapersView.tsx
+a48d422dd29f51554e208041f1b4d15a63cd72cd66d49ea48b908d6569d9b632  src/renderer/src/LocalSearchPanel.direct.test.tsx
+6e6178340d3004567848757d4e58dd2736dc7bbdf7910980c7b80cb737e7ebe1  src/renderer/src/LocalSearchPanel.test.tsx
+cbaf63e3bf54793d27541e3d5cda33966ec98c40c9a5aa174032956230e88fa8  src/renderer/src/LocalSearchPanel.truncation.test.tsx
+8a2665813267df034ee628893e1dab81862268826f64e53e0b92ba3355f36d04  src/renderer/src/LocalSearchPanel.tsx
+1ecc494d060760ba36ba8550f78a2e37b67ad34587ae8009ff60332fe75a67cf  src/renderer/src/styles/discover.css
+5af0b70b5ab6a937bad44b8c2a3a640830f8eea7bdcfdc878ac5a7129b17d70e  src/shared/api.ts
+164343103933565bf675f47cdadefaedce8cda7f58abea3adad4162315259a16  src/shared/llmWikiDaily.test.ts
+efcf3891638a09d7a1851138b110d6f462581f8ccd4386f49e396a2679d0fca8  src/shared/llmWikiDaily.ts
+74bce3984e14f7ddbc46c2e5d7b20582dfeccfbc5388866f5ec7af4f9e05bc02  src/shared/localSearch.test.ts
+b0d7925ce10851e03bcb1ab691d5af7b5f30b2a31f015f80ff27352cb5d84fdc  src/shared/localSearch.ts

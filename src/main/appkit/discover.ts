@@ -30,7 +30,7 @@ import {
 } from './researchMetadata'
 import { DailyPapersScreen } from './dailyPapers'
 import { ReadingWorkspace } from './readingWorkspace'
-import { discoverSources } from './discoverSources'
+import { DiscoverSourceScope } from './discoverSourceScope'
 import {
   describeDiscoverRun,
   discoverOutcomeLabel,
@@ -70,9 +70,7 @@ export class DiscoverScreen implements NativeScreen {
   private readonly unsubscribe: () => void
   private query = ''
   private runner: AnalysisRunner = 'model-provider'
-  private sources = new Set<DiscoverSource>(DISCOVER_SOURCE_IDS)
-  private picker = false
-  private sourceQuery = ''
+  private readonly sourceScope: DiscoverSourceScope
   private snapshot: DiscoverSnapshot | null = null
   private filter: Filter = 'all'
   private selected = ''
@@ -93,6 +91,7 @@ export class DiscoverScreen implements NativeScreen {
     private readonly triage: TriageHistory
   ) {
     this.controls = new Controls(context)
+    this.sourceScope = new DiscoverSourceScope(context, () => !!this.activeRun)
     this.dailyPapers = new DailyPapersScreen(context)
     this.reader = new ResearchReader(context, 'discover', triage)
     this.workspace = new ReadingWorkspace(
@@ -113,16 +112,16 @@ export class DiscoverScreen implements NativeScreen {
     this.loading = true
     const version = this.version
     try {
-      const snapshot = await this.context.api.getLatestDiscover()
+      // The search sources come from the stored default; the stored session never changes them.
+      const [snapshot] = await Promise.all([
+        this.context.api.getLatestDiscover(),
+        this.sourceScope.load()
+      ])
       if (this.disposed || version !== this.version) return
       if (snapshot) {
         this.snapshot = snapshot
         this.query = snapshot.intent
         this.runner = snapshot.runner
-        const sources = DISCOVER_SOURCE_IDS.filter(
-          (source) => snapshot.sourceOutcomes[source]?.status !== 'not_searched'
-        )
-        if (sources.length) this.sources = new Set(sources)
       }
       this.loaded = true
     } catch {
@@ -139,6 +138,7 @@ export class DiscoverScreen implements NativeScreen {
     this.disposed = true
     this.version++
     this.unsubscribe()
+    this.sourceScope.dispose()
     this.dailyPapers.leave()
     this.reader.dispose()
   }
@@ -157,10 +157,8 @@ export class DiscoverScreen implements NativeScreen {
       snapshot: this.snapshot,
       query: this.query,
       runner: this.runner,
-      sources: this.sources,
       filter: this.filter,
       selected: this.selected,
-      picker: this.picker,
       message: this.message,
       progress: this.progress,
       showingDaily: this.showingDaily
@@ -171,14 +169,10 @@ export class DiscoverScreen implements NativeScreen {
     this.snapshot = snapshot
     this.query = snapshot.intent
     this.runner = snapshot.runner
-    this.sources = new Set(
-      DISCOVER_SOURCE_IDS.filter(
-        (source) => snapshot.sourceOutcomes[source]?.status !== 'not_searched'
-      )
-    )
+    // The opened session keeps its own source outcomes; the next search's sources stay as chosen.
     this.filter = 'all'
     this.selected = itemId
-    this.picker = false
+    this.sourceScope.close()
     this.message = ''
     this.progress = null
     this.workspace.open()
@@ -389,17 +383,9 @@ export class DiscoverScreen implements NativeScreen {
     const b = this.controls,
       busy = !!this.activeRun,
       snapshot = this.snapshot
-    const previousSources = snapshot
-      ? DISCOVER_SOURCE_IDS.filter(
-          (source) => snapshot.sourceOutcomes[source]?.status !== 'not_searched'
-        )
-      : []
+    // A source difference is explained by the source scope note below the actions.
     const changed =
-      snapshot &&
-      (this.query.trim() !== snapshot.intent ||
-        this.runner !== snapshot.runner ||
-        previousSources.length !== this.sources.size ||
-        previousSources.some((source) => !this.sources.has(source)))
+      snapshot && (this.query.trim() !== snapshot.intent || this.runner !== snapshot.runner)
     return column(
       'discover-composer',
       [
@@ -433,13 +419,8 @@ export class DiscoverScreen implements NativeScreen {
           ),
           b.button(
             'discover-source-picker',
-            `Sources (${this.sources.size}/22)`,
-            () => {
-              this.picker = !this.picker
-              // Keyboard users land in the source finder, as in a Safari or Mail popover.
-              if (this.picker) this.context.focus('discover-source-query')
-              this.context.redraw()
-            },
+            this.sourceScope.buttonTitle(),
+            () => this.sourceScope.toggle(),
             !busy && !this.loading
           ),
           {
@@ -474,6 +455,7 @@ export class DiscoverScreen implements NativeScreen {
               })
             ]
           : []),
+        ...this.sourceScope.status(snapshot),
         row('discover-secondary-actions', [
           label(
             'discover-personalization',
@@ -484,7 +466,7 @@ export class DiscoverScreen implements NativeScreen {
             'discover-daily-papers',
             'Daily Papers',
             () => {
-              this.picker = false
+              this.sourceScope.close()
               this.showingDaily = true
               return this.dailyPapers.enter()
             },
@@ -499,20 +481,30 @@ export class DiscoverScreen implements NativeScreen {
   private readiness(): NativeNode[] {
     if (this.activeRun || this.loading) return []
     const queryMissing = !this.query.trim()
-    const sourcesMissing = !this.sources.size
+    const sourcesMissing = !this.sourceScope.sources.size
     const runnerReason = runnerUnavailableReason(this.context, this.runner)
     // Before the first search the empty state already explains what to do.
     if (queryMissing && !this.snapshot) return []
     const reason = queryMissing
       ? 'Enter a research question to start a search.'
-      : sourcesMissing
-        ? 'Select at least one source to search.'
-        : runnerReason
+      : this.sourceScope.failed
+        ? 'Your default sources could not be read. Retry, or choose sources for this search.'
+        : sourcesMissing
+          ? 'Select at least one source to search.'
+          : runnerReason
     if (!reason) return []
     const b = this.controls
     return [
       label('discover-readiness', reason, { weight: 'secondary' }),
-      ...(!queryMissing && !sourcesMissing && runnerReason
+      ...(!queryMissing && this.sourceScope.failed
+        ? [
+            b.button('discover-sources-retry', 'Retry', async () => {
+              await this.sourceScope.load(true)
+              this.context.redraw()
+            })
+          ]
+        : []),
+      ...(!queryMissing && !sourcesMissing && !this.sourceScope.failed && runnerReason
         ? [
             b.button('discover-configure-runner', 'Open Settings', () =>
               this.context.openSettings('provider')
@@ -526,34 +518,24 @@ export class DiscoverScreen implements NativeScreen {
     // The Sources button is part of the composer, which a focused reading workspace hides;
     // hiding the anchor ends the choice so the popover never reopens on its own later.
     if (this.workspace.focused) this.closePopover()
-    if (!this.picker || this.activeRun) return undefined
+    const root = this.sourceScope.popoverRoot(!!this.activeRun)
+    if (!root || this.activeRun) return undefined
     return {
       anchor: 'discover-source-picker',
       close: this.context.presentation.action('discover-source-popover-close', () => {
         this.closePopover()
         this.context.redraw()
       }),
-      root: column('discover-source-popover', [this.sourcePicker()], { padding: 14 })
+      // Escape cancels the draft and returns focus to the button, as Cancel does.
+      cancel: this.context.presentation.action('discover-source-popover-cancel', () => {
+        this.closePopover()
+        this.context.focus('discover-source-picker')
+      }),
+      root
     }
   }
   closePopover(): void {
-    this.picker = false
-  }
-  private sourcePicker(): NativeNode {
-    return discoverSources(this.context, {
-      query: this.sourceQuery,
-      busy: !!this.activeRun,
-      selection: () => this.sources,
-      changeSelection: (next) => {
-        if (this.activeRun) return
-        this.sources = next
-        this.context.redraw()
-      },
-      changeQuery: (query) => {
-        this.sourceQuery = query
-        this.context.redraw()
-      }
-    })
+    this.sourceScope.close()
   }
   private select(id: string): void {
     const item = this.snapshot?.items.find((item) => item.id === id)
@@ -580,7 +562,7 @@ export class DiscoverScreen implements NativeScreen {
       !this.activeRun &&
       !this.loading &&
       !!this.query.trim() &&
-      this.sources.size > 0 &&
+      this.sourceScope.sources.size > 0 &&
       runnerAvailable(this.context, this.runner)
     )
   }
@@ -589,13 +571,11 @@ export class DiscoverScreen implements NativeScreen {
     if (this.activeRun || (retry ? !this.snapshot || !this.retryable().length : !this.canSearch()))
       return
     const snapshot = this.snapshot,
-      sources = retry
-        ? this.retryable()
-        : DISCOVER_SOURCE_IDS.filter((source) => this.sources.has(source))
+      sources = retry ? this.retryable() : this.sourceScope.ordered()
     const runId = `native:${randomUUID()}`
     this.version++
     this.activeRun = runId
-    this.picker = false
+    this.sourceScope.close()
     this.canceling = false
     this.message = ''
     this.progress = {
@@ -617,7 +597,7 @@ export class DiscoverScreen implements NativeScreen {
       if (this.disposed || this.activeRun !== runId) return
       this.snapshot = result
       if (result.items.length && ['completed', 'partial'].includes(result.status)) {
-        this.picker = false
+        this.sourceScope.close()
         this.context.focus('discover-results')
       }
       this.loaded = true

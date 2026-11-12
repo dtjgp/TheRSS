@@ -127,7 +127,30 @@ async function go(route) {
 }
 // Asynchronous reloads can disable a control between observing it enabled and pressing it.
 // The fixture bridge reports a press on a disabled control, so retry only that precondition.
+/**
+ * Precondition for focus-dependent steps: menu commands go to the focused window (else the first
+ * window), and AppKit drops key presses while the app is inactive. Focus the window under test
+ * and confirm it, or stop with a precondition error instead of a misleading product failure.
+ */
+async function ensureFocused(label) {
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const focused = await application.evaluate(({ app, BrowserWindow }) => {
+      const target = globalThis.__nativeWindow
+      if (BrowserWindow.getFocusedWindow() !== target) {
+        app.focus({ steal: true })
+        target.focus()
+      }
+      return BrowserWindow.getFocusedWindow() === target
+    })
+    if (focused) return
+    await delay(100)
+  }
+  throw new Error(
+    `Precondition failed before ${label}: the test window could not take focus (another app is active)`
+  )
+}
 async function press(id, action, value) {
+  if (action === 'key') await ensureFocused(`${id} ${value}`)
   for (let attempt = 0; attempt < 50; attempt++) {
     await wait(id, (node) => !!node && node.enabled !== false)
     try {
@@ -168,6 +191,7 @@ const answerAlert = async (title) => {
   throw new Error(`Native alert did not finish: ${title}`)
 }
 async function menu(label) {
+  if (/^(Zoom In|Zoom Out|Actual Size)$/u.test(label)) await ensureFocused(label)
   await application.evaluate(({ Menu }, wanted) => {
     const visit = (items) => {
       for (const item of items) {
@@ -442,25 +466,46 @@ try {
       `The source popover opens below its button (popover ${state.popover.popoverFrame}, button ${state.popover.anchorFrame}, screen ${state.popover.screenFrame})`
     )
     assert.equal(state.popover.keyWindow, true, 'The source finder takes keyboard focus')
-    assert(!find(state.root, 'discover-source-controls'), 'The picker no longer pushes results')
-    assert.equal(flatten(state.popover.root).filter((node) => node.kind === 'check').length, 22)
+    assert(!find(state.root, 'discover-source-chooser'), 'The picker no longer pushes results')
+    // 22 source checkboxes plus the Only selected filter.
+    assert.equal(flatten(state.popover.root).filter((node) => node.kind === 'check').length, 23)
     assert.equal(
-      flatten(state.popover.root).filter((node) => /^discover-group-.+-title$/u.test(node.id))
-        .length,
+      flatten(state.popover.root).filter((node) =>
+        /^discover-source-group-[a-z]+-title$/u.test(node.id)
+      ).length,
       5
     )
-    await click('discover-group-code-toggle')
+    // 2026-11-12 My sources contract: Select/Clear shown act on the shown sources of a draft;
+    // only Apply to this search changes the next search.
+    await act('discover-source-query', 'fill', 'Code & models')
+    await click('discover-source-clear-shown')
+    await act('discover-source-query', 'fill', '')
+    await wait('discover-source-arxiv', (node) => node?.checked === true)
     assert.equal(find((await inspect()).popover.root, 'discover-source-github').checked, false)
-    assert.equal(find((await inspect()).popover.root, 'discover-source-arxiv').checked, true)
-    await click('discover-group-code-toggle')
+    await click('discover-source-select-shown')
     await capture('source-picker-checked')
-    await click('discover-clear-sources')
-    await wait('discover-search', (node) => node?.enabled === false)
+    await click('discover-source-clear-shown')
+    await wait('discover-source-apply', (node) => node?.enabled === false)
     await capture('source-picker-unchecked')
-    await click('discover-all-sources')
     await act('popover', 'dismiss-popover')
-    await wait('discover-source-picker', (node) => node?.title === 'Sources (22/22)')
-    assert.equal((await inspect()).popover, null, 'Dismissing the popover keeps the selection')
+    await wait(
+      'discover-source-picker',
+      (node) => node?.title === 'Sources for this search · 22/22'
+    )
+    assert.equal((await inspect()).popover, null, 'Dismissing the popover cancels the draft')
+    // Losing the foreground (the app's own notification, posted in process) closes the popover
+    // as a cancel and does not reopen it.
+    await click('discover-source-picker')
+    await wait('discover-source-arxiv', (node) => node?.checked === true)
+    await act('discover-source-arxiv', 'click')
+    await act('popover', 'app-resign-active')
+    for (let attempt = 0; attempt < 50 && (await inspect()).popover; attempt++) await delay(100)
+    assert.equal((await inspect()).popover, null, 'Losing the foreground closes the popover')
+    assert.equal(
+      find((await inspect()).root, 'discover-source-picker').title,
+      'Sources for this search · 22/22',
+      'A background close keeps the applied sources'
+    )
     await act('discover-runner', 'choose', 'codex')
     await click('discover-search')
     await wait('discover-results')

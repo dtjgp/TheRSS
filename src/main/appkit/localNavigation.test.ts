@@ -12,6 +12,8 @@ function setup(resolve: () => Promise<LocalResearchRecord | null>) {
     searchDiscover: vi.fn(),
     searchLocal: vi.fn(async () => ({
       query: 'edge',
+      scope: 'all' as const,
+      truncated: false,
       results: [
         {
           id: 'historical:arxiv:29',

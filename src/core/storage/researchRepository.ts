@@ -43,7 +43,12 @@ import {
 } from './analysisArtifactStore'
 import { parseStringList } from './rowParsers'
 import { searchLocal as searchPersistedLocal } from './localSearchStore'
-import type { LocalSearchResponse } from '../../shared/localSearch'
+import type { LocalSearchResponse, LocalSearchScope } from '../../shared/localSearch'
+import type { DiscoverSourcePreference } from '../../shared/discoverSourcePreference'
+import {
+  readDiscoverSourcePreference,
+  saveDiscoverSourcePreference as saveStoredDiscoverSourcePreference
+} from './discoverSourcePreferenceStore'
 import {
   savedSourceUpdateRequestSchema,
   type SavedSourceUpdateRequest
@@ -512,8 +517,17 @@ export class ResearchRepository {
     return readDiscoverSnapshot(this.#database, id)
   }
 
-  searchLocal(query: string): LocalSearchResponse {
-    return searchPersistedLocal(this.#database, query)
+  getDiscoverSourcePreference(): DiscoverSourcePreference {
+    return readDiscoverSourcePreference(this.#database)
+  }
+
+  /** Validates 1–22 unique current sources; an invalid request writes nothing. */
+  saveDiscoverSourcePreference(sources: unknown, updatedAt?: string): DiscoverSourcePreference {
+    return saveStoredDiscoverSourcePreference(this.#database, sources, updatedAt)
+  }
+
+  searchLocal(query: string, scope?: LocalSearchScope): LocalSearchResponse {
+    return searchPersistedLocal(this.#database, query, scope)
   }
 
   saveDiscoverResult(

@@ -50,6 +50,8 @@ describe('LocalSearchPanel', () => {
   it('includes newly returned links in the focus cycle and skips hidden result groups', async () => {
     const searchLocal = vi.fn<TheRSSApi['searchLocal']>().mockResolvedValue({
       query: 'edge',
+      scope: 'all' as const,
+      truncated: false,
       results: ['saved', 'analysis'].map((kind, index) => ({
         target:
           kind === 'saved'
@@ -129,6 +131,8 @@ describe('LocalSearchPanel', () => {
   it('supports immediate Return, labels result kinds, and closes with Escape', async () => {
     const searchLocal = vi.fn<TheRSSApi['searchLocal']>().mockResolvedValue({
       query: 'edge pruning',
+      scope: 'all' as const,
+      truncated: false,
       results: [
         {
           id: 'discover-session-1:arxiv:1',

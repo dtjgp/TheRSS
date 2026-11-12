@@ -109,13 +109,19 @@ describe('native workflow branches', () => {
     await screen.load()
     await screen.load()
     await h.act(screen, 'discover-source-picker')
-    await h.act(screen, 'discover-clear-sources')
-    expect(h.find(h.render(screen), 'discover-search')?.enabled).toBe(false)
+    await h.act(screen, 'discover-source-clear-shown')
+    expect(h.find(h.render(screen), 'discover-source-apply')?.enabled).toBe(false)
     await h.act(screen, 'discover-source-arxiv', true)
-    expect(h.find(h.render(screen), 'discover-search')?.enabled).toBe(true)
-    await h.act(screen, 'discover-source-arxiv', false)
-    await h.act(screen, 'discover-all-sources')
-    expect(h.find(h.render(screen), 'discover-source-picker')?.title).toBe('Sources (22/22)')
+    await h.act(screen, 'discover-source-apply')
+    expect(h.find(h.render(screen), 'discover-source-picker')?.title).toBe(
+      'Sources for this search · 1/22'
+    )
+    await h.act(screen, 'discover-source-picker')
+    await h.act(screen, 'discover-source-select-shown')
+    await h.act(screen, 'discover-source-apply')
+    expect(h.find(h.render(screen), 'discover-source-picker')?.title).toBe(
+      'Sources for this search · 22/22'
+    )
     await h.act(screen, 'discover-runner', 'codex')
     await h.act(screen, 'discover-kind', 'repository')
     expect(h.find(h.render(screen), 'discover-empty-message')?.text).toContain('No results')

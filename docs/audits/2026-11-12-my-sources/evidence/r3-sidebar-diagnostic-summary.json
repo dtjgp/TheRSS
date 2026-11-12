@@ -1,0 +1,32 @@
+[
+  {
+    "run": "sidebar-diag-1794509119675.json",
+    "keydown": [["ArrowRight", false, true]],
+    "pointercancel_or_blur": [],
+    "main_window_events": ["focus", "show", "resize", "resize"]
+  },
+  {
+    "run": "sidebar-diag-1794509122580.json",
+    "keydown": [["ArrowRight", false, true]],
+    "pointercancel_or_blur": [],
+    "main_window_events": ["show", "focus", "resize", "resize"]
+  },
+  {
+    "run": "sidebar-diag-1794509125535.json",
+    "keydown": [["ArrowRight", false, true]],
+    "pointercancel_or_blur": [],
+    "main_window_events": ["show", "focus", "resize", "resize"]
+  },
+  {
+    "run": "sidebar-diag-1794509128737.json",
+    "keydown": [["ArrowRight", false, true]],
+    "pointercancel_or_blur": [],
+    "main_window_events": ["focus", "show", "resize", "resize"]
+  },
+  {
+    "run": "sidebar-diag-1794509131682.json",
+    "keydown": [["ArrowRight", false, true]],
+    "pointercancel_or_blur": [],
+    "main_window_events": ["focus", "show", "resize", "resize"]
+  }
+]

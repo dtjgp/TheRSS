@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { TheRSSApi } from '../../shared/api'
 import {
+  llmWikiDailyEmptyState,
   llmWikiDailyOriginalUrl,
   llmWikiDailyPaperLabel,
   llmWikiDailyStatusText,
@@ -53,6 +54,8 @@ export function DailyPapersView({ api, onBack }: DailyPapersViewProps) {
     edition?.papers.find(
       (paper) => edition.date === selection?.date && paper.arxivId === selection.arxivId
     ) ?? edition?.papers[0]
+  // Nothing final is explained while a read is pending.
+  const emptyState = loading ? null : llmWikiDailyEmptyState(snapshot ?? null)
   const status = loading
     ? 'Reading Daily ArXiv Scan…'
     : snapshot
@@ -139,6 +142,12 @@ export function DailyPapersView({ api, onBack }: DailyPapersViewProps) {
           <p role="alert">Obsidian could not open the digest. Refresh and try again.</p>
         )}
       </section>
+      {emptyState && (
+        <section className="daily-papers__empty" aria-label="Daily edition explanation">
+          <h2>{emptyState.title}</h2>
+          <p>{emptyState.detail}</p>
+        </section>
+      )}
       {edition && selected && (
         <ResizableSplitPane
           ariaLabel="Resize daily paper list"

@@ -1,4 +1,5 @@
 import {
+  llmWikiDailyEmptyState,
   llmWikiDailyOriginalUrl,
   llmWikiDailyPaperLabel,
   llmWikiDailyStatusText,
@@ -6,7 +7,16 @@ import {
   type LlmWikiDailyPaper,
   type LlmWikiDailySnapshot
 } from '../../shared/llmWikiDaily'
-import { column, Controls, heading, label, row, scroll, type NativeContext } from './common'
+import {
+  column,
+  Controls,
+  emptyState,
+  heading,
+  label,
+  row,
+  scroll,
+  type NativeContext
+} from './common'
 import type { NativeNode } from './presentation'
 import { ReadingWorkspace } from './readingWorkspace'
 
@@ -16,6 +26,8 @@ export class DailyPapersScreen {
   private snapshot: LlmWikiDailySnapshot | null = null
   private selected = ''
   private loading = false
+  /** The last read failed; the empty state explains it until a read succeeds. */
+  private failed = false
   private error = ''
   private opening = false
   private version = 0
@@ -41,6 +53,7 @@ export class DailyPapersScreen {
     this.version++
     this.loading = false
     this.opening = false
+    this.failed = false
     this.error = ''
   }
 
@@ -90,6 +103,7 @@ export class DailyPapersScreen {
             ]
           : []),
         ...(this.error ? [label('daily-papers-error', this.error)] : []),
+        ...this.emptyState(),
         ...(edition?.papers.length && paper
           ? [
               ...this.workspace.navigation('Back to papers'),
@@ -120,6 +134,22 @@ export class DailyPapersScreen {
       ],
       { flex: 1, padding: 12 }
     )
+  }
+
+  /** Nothing final is shown while a read is pending; the previous status line stays. */
+  private emptyState(): NativeNode[] {
+    if (this.loading || (!this.snapshot && !this.failed)) return []
+    const state = llmWikiDailyEmptyState(this.failed ? null : this.snapshot)
+    if (!state) return []
+    const problem = this.failed || this.snapshot?.status === 'unavailable'
+    return [
+      emptyState(
+        'daily-papers-empty',
+        problem ? 'exclamationmark.circle' : 'doc.text',
+        state.title,
+        state.detail
+      )
+    ]
   }
 
   private details(paper: LlmWikiDailyPaper, date: string): NativeNode {
@@ -191,12 +221,13 @@ export class DailyPapersScreen {
       const edition = snapshot.edition
       if (edition?.date !== this.snapshot?.edition?.date) this.selected = ''
       this.snapshot = snapshot
+      this.failed = false
       if (!edition?.papers.some(({ arxivId }) => arxivId === this.selected))
         this.selected = edition?.papers[0]?.arxivId ?? ''
     } catch {
       if (this.version !== version) return
       this.snapshot = null
-      this.error = 'Daily Papers could not be loaded. Try Refresh.'
+      this.failed = true
     } finally {
       if (this.version === version) {
         this.loading = false

@@ -28,6 +28,8 @@ import {
 } from './common'
 import type { NativeNode } from './presentation'
 import { ReadingWorkspace } from './readingWorkspace'
+import { MySourcesSheet } from './mySources'
+import { sourcePreferences } from './sourcePreferences'
 
 export class SourcesScreen implements NativeScreen {
   attention = false
@@ -59,6 +61,41 @@ export class SourcesScreen implements NativeScreen {
     this.disposed = true
     this.version++
   }
+  /** Reads the stored default for the My sources entry; nothing is fetched from a source. */
+  async load(): Promise<void> {
+    await sourcePreferences(this.context).load()
+  }
+  private mySources(): NativeNode[] {
+    const preferences = sourcePreferences(this.context),
+      value = preferences.value
+    return [
+      row('sources-header', [
+        label(
+          'sources-summary',
+          `22 retained sources · ${SOURCE_CATALOG.filter((entry) => this.health(entry) === 'failed').length} failed · ${SOURCE_CATALOG.filter((entry) => this.health(entry) === 'partial').length} partial · ${SOURCE_CATALOG.filter((entry) => this.matches(entry)).length} match current filters`,
+          { weight: 'secondary', flex: 1 }
+        ),
+        this.controls.button(
+          'sources-my-sources',
+          value ? `My sources · ${value.sources.length}/22` : 'My sources · not loaded',
+          async () => {
+            if (preferences.value)
+              this.context.openSheet?.(new MySourcesSheet(this.context, preferences))
+            else await preferences.load(true)
+          }
+        )
+      ]),
+      ...(preferences.failed
+        ? [
+            label(
+              'sources-my-sources-error',
+              'Your default sources could not be read. Choose My sources to try again.',
+              { weight: 'secondary' }
+            )
+          ]
+        : [])
+    ]
+  }
 
   render(): NativeNode {
     const b = this.controls
@@ -74,18 +111,12 @@ export class SourcesScreen implements NativeScreen {
       this.version++
     }
     const entry = sources.find((entry) => entry.id === this.selected)
-    const failedCount = SOURCE_CATALOG.filter((entry) => this.health(entry) === 'failed').length
-    const partialCount = SOURCE_CATALOG.filter((entry) => this.health(entry) === 'partial').length
     return column(
       'sources-page',
       [
         ...(!this.workspace.focused
           ? [
-              label(
-                'sources-summary',
-                `22 retained sources · ${failedCount} failed · ${partialCount} partial · ${sources.length} match current filters`,
-                { weight: 'secondary' }
-              ),
+              ...this.mySources(),
               b.input(
                 'sources-query',
                 'Search sources',

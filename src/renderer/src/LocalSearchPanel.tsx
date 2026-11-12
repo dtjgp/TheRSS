@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { TheRSSApi } from '../../shared/api'
-import type { LocalSearchResult } from '../../shared/localSearch'
+import { localSearchTruncationText, type LocalSearchResult } from '../../shared/localSearch'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
+import { cycleFocus } from './focusTrap'
 
 interface LocalSearchPanelProps {
   readonly api: Pick<TheRSSApi, 'searchLocal'>
@@ -14,21 +15,12 @@ function kindLabel(kind: LocalSearchResult['kind']): string {
   return 'Discover'
 }
 
-function isTabbable(element: HTMLElement): boolean {
-  if (element.tabIndex < 0 || element.matches(':disabled')) return false
-  if (element.closest('[hidden], [inert], [aria-hidden="true"]')) return false
-  if (getComputedStyle(element).visibility !== 'visible') return false
-  for (let ancestor: HTMLElement | null = element; ancestor; ancestor = ancestor.parentElement) {
-    if (getComputedStyle(ancestor).display === 'none') return false
-  }
-  return true
-}
-
 export function LocalSearchPanel({ api, onClose }: LocalSearchPanelProps) {
   const panelRef = useRef<HTMLElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<readonly LocalSearchResult[]>([])
+  const [truncated, setTruncated] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,10 +45,12 @@ export function LocalSearchPanel({ api, onClose }: LocalSearchPanelProps) {
         const response = await api.searchLocal(trimmed)
         if (version !== requestVersion.current) return
         setResults(response.results)
+        setTruncated(response.truncated)
         setHasSearched(true)
       } catch {
         if (version !== requestVersion.current) return
         setResults([])
+        setTruncated(false)
         setHasSearched(false)
         setError('The local research index could not be searched.')
       } finally {
@@ -95,17 +89,7 @@ export function LocalSearchPanel({ api, onClose }: LocalSearchPanelProps) {
       const panel = panelRef.current
       if (event.key !== 'Tab' || !panel) return
       event.preventDefault()
-      const controls = Array.from(
-        panel.querySelectorAll<HTMLElement>('a[href], button, input, [tabindex]')
-      ).filter(isTabbable)
-      const currentIndex = controls.findIndex((control) => control === document.activeElement)
-      const nextIndex = event.shiftKey
-        ? currentIndex <= 0
-          ? controls.length - 1
-          : currentIndex - 1
-        : (currentIndex + 1) % controls.length
-      const nextControl = controls[nextIndex] ?? panel
-      nextControl.focus()
+      cycleFocus(panel, event.shiftKey)
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
@@ -115,6 +99,7 @@ export function LocalSearchPanel({ api, onClose }: LocalSearchPanelProps) {
     invalidateRequests()
     setQuery(value)
     setResults([])
+    setTruncated(false)
     setHasSearched(false)
     setIsSearching(false)
     setError(null)
@@ -177,6 +162,9 @@ export function LocalSearchPanel({ api, onClose }: LocalSearchPanelProps) {
         {error && <p role="alert">{error}</p>}
         {hasSearched && results.length === 0 && (
           <p role="status">No local records matched this query.</p>
+        )}
+        {hasSearched && truncated && (
+          <p className="local-search-boundary">{localSearchTruncationText('all', false)}</p>
         )}
         {results.length > 0 && (
           <ol className="local-search-results" aria-label="Local search results">

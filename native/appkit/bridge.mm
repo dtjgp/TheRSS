@@ -149,6 +149,12 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     [host.popover.popover.contentViewController.view.window makeFirstResponder:nil];
     return nothing(env);
   }
+  if ([input[@"action"] isEqual:@"app-resign-active"]) {
+    // In-process stand-in for the app losing the foreground: the app's own notification only;
+    // no other app is activated and no system-wide input is sent.
+    [NSNotificationCenter.defaultCenter postNotificationName:NSApplicationDidResignActiveNotification object:NSApp];
+    [host flush]; return nothing(env);
+  }
   if ([input[@"action"] isEqual:@"dismiss-popover"]) {
     // Same path as an outside click or Escape: the popover reports its own dismissal.
     if (![host.popover dismissFixture:[input[@"value"] isEqual:@"anchor"]]) return fail(env,"Fixture popover is not shown");
@@ -233,6 +239,12 @@ static napi_value interactFixture(napi_env env, napi_callback_info info) {
     if (![input[@"value"] isEqual:@"legacy"] && ![input[@"value"] isEqual:@"overlay"]) return fail(env,"Unsupported fixture scroller style");
     ((NSScrollView *)node.control).scrollerStyle = [input[@"value"] isEqual:@"legacy"] ? NSScrollerStyleLegacy : NSScrollerStyleOverlay;
     node.needsLayout = YES; [host.root layoutSubtreeIfNeeded];
+  } else if ([action isEqual:@"layout-divider"] && node.splitController) {
+    CGFloat value = [input[@"value"] doubleValue];
+    if (value < [node.spec[@"minWidth"] doubleValue] || value > [node.spec[@"maxWidth"] doubleValue]) return fail(env,"Invalid fixture layout position");
+    // Replay an AppKit constraint adjustment without treating it as a user preference.
+    node.applying = YES; [[node splitView] setPosition:value ofDividerAtIndex:0]; [[node splitView] layoutSubtreeIfNeeded]; node.applying = NO;
+    [node reconcileWindowSplit];
   } else if ([action isEqual:@"divider"] && [node splitView]) {
     CGFloat value = [input[@"value"] doubleValue];
     if (value < [node.spec[@"minWidth"] doubleValue] || value > [node.spec[@"maxWidth"] doubleValue]) return fail(env,"Invalid fixture divider position");

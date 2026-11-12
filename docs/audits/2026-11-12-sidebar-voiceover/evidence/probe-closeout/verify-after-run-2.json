@@ -1,0 +1,63 @@
+{
+  "root": "test-results/sidebar-diagnostics",
+  "count": 2,
+  "ok": true,
+  "results": [
+    {
+      "directory": "test-results/sidebar-diagnostics/2026-11-12T19-42-22-136Z-72b68239",
+      "correlationId": "72b68239-40b6-445c-852f-7aae82bd1f28",
+      "statusCorrelationId": "72b68239-40b6-445c-852f-7aae82bd1f28",
+      "correlated": true,
+      "directoryHasIdPrefix": true,
+      "state": "copied",
+      "sourceTrace": "test-results/sidebar-diagnostics-probe/sidebarDiagnostics.probe.t-23dff-led-failure-across-a-reload/trace.zip",
+      "bytes": 140472,
+      "sha256Matches": true,
+      "sourceSha256Matches": true,
+      "traceEntries": ["test.trace"],
+      "rendererEvents": 12,
+      "rendererEventsWithSourceTime": 12,
+      "documents": 2,
+      "eventClockTypes": ["performance.now", "event.timeStamp"],
+      "codeFiles": [
+        "src/renderer/src/App.tsx unmodified fb242a4d2ad4",
+        "src/renderer/src/AppTopbar.tsx unmodified 726279fcfa4e",
+        "src/renderer/src/styles.css unmodified 192d03395fc4",
+        "e2e/sidebar-resize.spec.ts M 8f0f020e0876",
+        "e2e/support/sidebarDiagnostics.ts ?? 339a5a6d5dda",
+        "e2e/support/sidebarTraceArchiveReporter.ts ?? 7b56e30eff37",
+        "playwright.config.ts M 58ff45a4c627",
+        "package-lock.json unmodified a678daa2afe5"
+      ],
+      "passed": true
+    },
+    {
+      "directory": "test-results/sidebar-diagnostics/2026-11-12T19-42-41-709Z-b0515daa",
+      "correlationId": "b0515daa-8e95-452a-9606-f7d27007c54c",
+      "statusCorrelationId": "b0515daa-8e95-452a-9606-f7d27007c54c",
+      "correlated": true,
+      "directoryHasIdPrefix": true,
+      "state": "copied",
+      "sourceTrace": "test-results/sidebar-diagnostics-probe/sidebarDiagnostics.probe.t-23dff-led-failure-across-a-reload/trace.zip",
+      "bytes": 140274,
+      "sha256Matches": true,
+      "sourceSha256Matches": true,
+      "traceEntries": ["test.trace"],
+      "rendererEvents": 12,
+      "rendererEventsWithSourceTime": 12,
+      "documents": 2,
+      "eventClockTypes": ["performance.now", "event.timeStamp"],
+      "codeFiles": [
+        "src/renderer/src/App.tsx unmodified fb242a4d2ad4",
+        "src/renderer/src/AppTopbar.tsx unmodified 726279fcfa4e",
+        "src/renderer/src/styles.css unmodified 192d03395fc4",
+        "e2e/sidebar-resize.spec.ts M 8f0f020e0876",
+        "e2e/support/sidebarDiagnostics.ts ?? 339a5a6d5dda",
+        "e2e/support/sidebarTraceArchiveReporter.ts ?? 7b56e30eff37",
+        "playwright.config.ts M 58ff45a4c627",
+        "package-lock.json unmodified a678daa2afe5"
+      ],
+      "passed": true
+    }
+  ]
+}

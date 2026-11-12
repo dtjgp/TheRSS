@@ -94,7 +94,14 @@ describe('native empty states', () => {
   })
 
   it('names the query when local search finds nothing', async () => {
-    const h = nativeHarness({ searchLocal: vi.fn(async () => ({ query: 'pruning', results: [] })) })
+    const h = nativeHarness({
+      searchLocal: vi.fn(async () => ({
+        query: 'pruning',
+        scope: 'all' as const,
+        truncated: false,
+        results: []
+      }))
+    })
     const screen = localSearchHarness(h.context)
     await h.act(screen, 'local-search-query', 'pruning')
     await h.context.presentation.dispatch(

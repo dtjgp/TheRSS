@@ -1,0 +1,190 @@
+{
+  "kind": "sidebar-e2e-failure-diagnostics",
+  "recordedAt": "2026-11-12T19:30:30.855Z",
+  "test": {
+    "title": "sidebar diagnostics record a controlled failure across a reload",
+    "file": "~/orca/workspaces/TheRSS/Engineer/e2e/probes/sidebarDiagnostics.probe.ts",
+    "retry": 0,
+    "timeout": 45000
+  },
+  "config": {
+    "workers": 1,
+    "retries": 0,
+    "projectTimeout": 45000,
+    "flags": {
+      "probe": "controlled-failure"
+    }
+  },
+  "code": {
+    "head": "b1ea9222ee73ba8d8ca5d501846ed2d1e9ced6c0",
+    "changedPaths": 86,
+    "electron": "45.2.3"
+  },
+  "error": "Error: Intentional failure of the diagnostics probe\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"\u001b[7mintentional-probe-failur\u001b[27me\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mprobe stat\u001b[27me\"\u001b[39m\n    at ~/orca/workspaces/TheRSS/Engineer/e2e/probes/sidebarDiagnostics.probe.ts:32:75",
+  "final": {
+    "renderer": {
+      "sidebarWidth": "232px",
+      "resizer": {
+        "valuenow": "224",
+        "valuemax": "360",
+        "hidden": false,
+        "tabindex": "0"
+      },
+      "shellClass": "app-shell  ",
+      "stored": "224",
+      "activeElement": "Resize sidebar",
+      "documentHasFocus": true,
+      "visibility": "visible",
+      "viewport": {
+        "width": 1360,
+        "height": 880
+      }
+    },
+    "window": {
+      "bounds": {
+        "x": 80,
+        "y": 60,
+        "width": 1360,
+        "height": 880
+      },
+      "focused": true
+    }
+  },
+  "eventLimit": 3000,
+  "droppedEvents": 0,
+  "events": [
+    {
+      "type": "document-start",
+      "timeOrigin": 1794511830583,
+      "t": 1794511830756,
+      "source": "renderer",
+      "ms": 0
+    },
+    {
+      "type": "resizer-initial",
+      "valuenow": "224",
+      "hidden": false,
+      "stored": null,
+      "focused": true,
+      "t": 1794511830756,
+      "source": "renderer",
+      "ms": 0
+    },
+    {
+      "t": 1794511830762,
+      "source": "test",
+      "type": "diagnostics-started",
+      "ms": 6
+    },
+    {
+      "t": 1794511830762,
+      "type": "recorder-attached",
+      "windowFocused": true,
+      "source": "main",
+      "ms": 6
+    },
+    {
+      "t": 1794511830784,
+      "source": "test",
+      "type": "phase",
+      "name": "probe-before-reload",
+      "ms": 28
+    },
+    {
+      "type": "window-focus",
+      "t": 1794511830788,
+      "source": "renderer",
+      "ms": 32
+    },
+    {
+      "type": "keydown",
+      "key": "ArrowRight",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "t": 1794511830790,
+      "source": "renderer",
+      "ms": 34
+    },
+    {
+      "type": "store",
+      "value": "232",
+      "t": 1794511830804,
+      "source": "renderer",
+      "ms": 48
+    },
+    {
+      "type": "attribute",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "232",
+      "t": 1794511830804,
+      "source": "renderer",
+      "ms": 48
+    },
+    {
+      "type": "keyup",
+      "key": "ArrowRight",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "t": 1794511830805,
+      "source": "renderer",
+      "ms": 49
+    },
+    {
+      "t": 1794511830806,
+      "source": "test",
+      "type": "phase",
+      "name": "probe-reload",
+      "ms": 50
+    },
+    {
+      "type": "document-start",
+      "timeOrigin": 1794511830808,
+      "t": 1794511830815,
+      "source": "renderer",
+      "ms": 59
+    },
+    {
+      "t": 1794511830843,
+      "source": "test",
+      "type": "phase",
+      "name": "probe-after-reload",
+      "ms": 87
+    },
+    {
+      "type": "window-focus",
+      "t": 1794511830847,
+      "source": "renderer",
+      "ms": 91
+    },
+    {
+      "type": "keydown",
+      "key": "ArrowLeft",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "t": 1794511830848,
+      "source": "renderer",
+      "ms": 92
+    },
+    {
+      "type": "store",
+      "value": "224",
+      "t": 1794511830849,
+      "source": "renderer",
+      "ms": 93
+    },
+    {
+      "type": "keyup",
+      "key": "ArrowLeft",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "t": 1794511830850,
+      "source": "renderer",
+      "ms": 94
+    }
+  ]
+}

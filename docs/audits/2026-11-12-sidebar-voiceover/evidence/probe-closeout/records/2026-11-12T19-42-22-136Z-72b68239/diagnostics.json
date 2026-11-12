@@ -1,0 +1,306 @@
+{
+  "kind": "sidebar-e2e-failure-diagnostics",
+  "correlationId": "72b68239-40b6-445c-852f-7aae82bd1f28",
+  "recordedAt": "2026-11-12T19:42:22.136Z",
+  "test": {
+    "title": "sidebar diagnostics record a controlled failure across a reload",
+    "file": "e2e/probes/sidebarDiagnostics.probe.ts",
+    "retry": 0,
+    "timeout": 45000
+  },
+  "config": {
+    "workers": 1,
+    "retries": 0,
+    "projectTimeout": 45000,
+    "flags": {
+      "probe": "controlled-failure"
+    }
+  },
+  "code": {
+    "head": "b1ea9222ee73ba8d8ca5d501846ed2d1e9ced6c0",
+    "changedPaths": 87,
+    "files": [
+      {
+        "path": "src/renderer/src/App.tsx",
+        "sha256": "fb242a4d2ad4828cd5c651e4d9b02f237c8cb264e0039aad72a55d67f9d037ec",
+        "bytes": 27776,
+        "git": "unmodified"
+      },
+      {
+        "path": "src/renderer/src/AppTopbar.tsx",
+        "sha256": "726279fcfa4e37569b14c5303c0231b15cd94a54f5695216637864b616e83b81",
+        "bytes": 5377,
+        "git": "unmodified"
+      },
+      {
+        "path": "src/renderer/src/styles.css",
+        "sha256": "192d03395fc42c6a6bfe5f71906c61d298246ca9f7c2b7351659135da0c2f509",
+        "bytes": 37358,
+        "git": "unmodified"
+      },
+      {
+        "path": "e2e/sidebar-resize.spec.ts",
+        "sha256": "8f0f020e08764c9d8203b53fa6a944116c4014befd5e55d034c6a523d3089664",
+        "bytes": 6155,
+        "git": "M"
+      },
+      {
+        "path": "e2e/support/sidebarDiagnostics.ts",
+        "sha256": "339a5a6d5dda54c34f8e9066985961f8ba79f7849a284832972b8877432d8b61",
+        "bytes": 16959,
+        "git": "??"
+      },
+      {
+        "path": "e2e/support/sidebarTraceArchiveReporter.ts",
+        "sha256": "7b56e30eff37ef9cd506071d6fa9b9e1e34e69ddfba4f0a36d5a435f7c3dbe14",
+        "bytes": 4113,
+        "git": "??"
+      },
+      {
+        "path": "playwright.config.ts",
+        "sha256": "58ff45a4c627399692325c02c33953beaf12eab359b31bdbc879443aadce4a3f",
+        "bytes": 841,
+        "git": "M"
+      },
+      {
+        "path": "package-lock.json",
+        "sha256": "a678daa2afe5fe2e438acc64ebb540df9cdf1aa08b58773ac79d02bd502d2da8",
+        "bytes": 336150,
+        "git": "unmodified"
+      }
+    ],
+    "electron": "45.2.3"
+  },
+  "error": "Error: Intentional failure of the diagnostics probe\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: \"intentional-probe-failure\"\nReceived: \"probe state\"\n    at ~/orca/workspaces/TheRSS/Engineer/e2e/probes/sidebarDiagnostics.probe.ts:38:75",
+  "trace": {
+    "mode": "retain-on-failure",
+    "archiveDirectory": "test-results/sidebar-diagnostics/2026-11-12T19-42-22-136Z-72b68239",
+    "archivedTrace": "trace.zip",
+    "archiveStatus": "trace-archive.json",
+    "archivedBy": "e2e/support/sidebarTraceArchiveReporter.ts"
+  },
+  "clocks": {
+    "t": "Date.now() in the Playwright test process when a renderer event arrived through the binding (source renderer) or a phase was marked (source test); Date.now() in the Electron main process when it recorded the event (source main)",
+    "ms": "t minus the first t of the timeline",
+    "sourceTimeStamp": "renderer only: event.timeStamp (sourceClock \"event.timeStamp\") or performance.now() (sourceClock \"performance.now\"), ms relative to sourceTimeOrigin",
+    "sourceTimeOrigin": "renderer only: performance.timeOrigin of the document that sent the event (epoch ms); it changes on reload",
+    "sourceEpochMs": "renderer only: sourceTimeOrigin + sourceTimeStamp, the renderer clock time of the event"
+  },
+  "final": {
+    "renderer": {
+      "sidebarWidth": "231.789px",
+      "resizer": {
+        "valuenow": "224",
+        "valuemax": "360",
+        "hidden": false,
+        "tabindex": "0"
+      },
+      "shellClass": "app-shell  ",
+      "stored": "224",
+      "activeElement": "Resize sidebar",
+      "documentHasFocus": true,
+      "visibility": "visible",
+      "viewport": {
+        "width": 1360,
+        "height": 880
+      },
+      "timeOrigin": 1794512542084.8,
+      "now": 51.100000001490116
+    },
+    "window": {
+      "bounds": {
+        "x": 80,
+        "y": 60,
+        "width": 1360,
+        "height": 880
+      },
+      "focused": true
+    }
+  },
+  "eventLimit": 3000,
+  "droppedEvents": 0,
+  "events": [
+    {
+      "type": "document-start",
+      "readyState": "complete",
+      "sourceClock": "performance.now",
+      "sourceTimeStamp": 175.7,
+      "sourceTimeOrigin": 1794512541858,
+      "t": 1794512542035,
+      "source": "renderer",
+      "sourceEpochMs": 1794512542033.7,
+      "ms": 0
+    },
+    {
+      "type": "resizer-initial",
+      "valuenow": "224",
+      "hidden": false,
+      "stored": null,
+      "focused": true,
+      "sourceClock": "performance.now",
+      "sourceTimeStamp": 176.3,
+      "sourceTimeOrigin": 1794512541858,
+      "t": 1794512542036,
+      "source": "renderer",
+      "sourceEpochMs": 1794512542034.3,
+      "ms": 1
+    },
+    {
+      "t": 1794512542039,
+      "source": "test",
+      "type": "diagnostics-started",
+      "correlationId": "72b68239-40b6-445c-852f-7aae82bd1f28",
+      "ms": 4
+    },
+    {
+      "t": 1794512542039,
+      "type": "recorder-attached",
+      "windowFocused": true,
+      "source": "main",
+      "ms": 4
+    },
+    {
+      "t": 1794512542068,
+      "source": "test",
+      "type": "phase",
+      "name": "probe-before-reload",
+      "ms": 33
+    },
+    {
+      "type": "window-focus",
+      "sourceClock": "event.timeStamp",
+      "sourceTimeStamp": 217.8,
+      "sourceTimeOrigin": 1794512541858,
+      "t": 1794512542076,
+      "source": "renderer",
+      "sourceEpochMs": 1794512542075.8,
+      "ms": 41
+    },
+    {
+      "type": "keydown",
+      "key": "ArrowRight",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "sourceClock": "event.timeStamp",
+      "sourceTimeStamp": 219.3,
+      "sourceTimeOrigin": 1794512541858,
+      "t": 1794512542078,
+      "source": "renderer",
+      "sourceEpochMs": 1794512542077.3,
+      "ms": 43
+    },
+    {
+      "type": "store",
+      "value": "232",
+      "sourceClock": "performance.now",
+      "sourceTimeStamp": 220.5,
+      "sourceTimeOrigin": 1794512541858,
+      "t": 1794512542079,
+      "source": "renderer",
+      "sourceEpochMs": 1794512542078.5,
+      "ms": 44
+    },
+    {
+      "type": "attribute",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "232",
+      "sourceClock": "performance.now",
+      "sourceTimeStamp": 220.9,
+      "sourceTimeOrigin": 1794512541858,
+      "t": 1794512542079,
+      "source": "renderer",
+      "sourceEpochMs": 1794512542078.9,
+      "ms": 44
+    },
+    {
+      "type": "keyup",
+      "key": "ArrowRight",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "sourceClock": "event.timeStamp",
+      "sourceTimeStamp": 222.1,
+      "sourceTimeOrigin": 1794512541858,
+      "t": 1794512542081,
+      "source": "renderer",
+      "sourceEpochMs": 1794512542080.1,
+      "ms": 46
+    },
+    {
+      "t": 1794512542082,
+      "source": "test",
+      "type": "phase",
+      "name": "probe-reload",
+      "ms": 47
+    },
+    {
+      "type": "document-start",
+      "readyState": "loading",
+      "sourceClock": "performance.now",
+      "sourceTimeStamp": 5.8,
+      "sourceTimeOrigin": 1794512542084.8,
+      "t": 1794512542095,
+      "source": "renderer",
+      "sourceEpochMs": 1794512542090.6,
+      "ms": 60
+    },
+    {
+      "t": 1794512542120,
+      "source": "test",
+      "type": "phase",
+      "name": "probe-after-reload",
+      "ms": 85
+    },
+    {
+      "type": "window-focus",
+      "sourceClock": "event.timeStamp",
+      "sourceTimeStamp": 39.3,
+      "sourceTimeOrigin": 1794512542084.8,
+      "t": 1794512542124,
+      "source": "renderer",
+      "sourceEpochMs": 1794512542124.1,
+      "ms": 89
+    },
+    {
+      "type": "keydown",
+      "key": "ArrowLeft",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "sourceClock": "event.timeStamp",
+      "sourceTimeStamp": 40.3,
+      "sourceTimeOrigin": 1794512542084.8,
+      "t": 1794512542125,
+      "source": "renderer",
+      "sourceEpochMs": 1794512542125.1,
+      "ms": 90
+    },
+    {
+      "type": "store",
+      "value": "224",
+      "sourceClock": "performance.now",
+      "sourceTimeStamp": 40.6,
+      "sourceTimeOrigin": 1794512542084.8,
+      "t": 1794512542126,
+      "source": "renderer",
+      "sourceEpochMs": 1794512542125.4,
+      "ms": 91
+    },
+    {
+      "type": "keyup",
+      "key": "ArrowLeft",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "sourceClock": "event.timeStamp",
+      "sourceTimeStamp": 42.1,
+      "sourceTimeOrigin": 1794512542084.8,
+      "t": 1794512542128,
+      "source": "renderer",
+      "sourceEpochMs": 1794512542126.9,
+      "ms": 93
+    }
+  ]
+}

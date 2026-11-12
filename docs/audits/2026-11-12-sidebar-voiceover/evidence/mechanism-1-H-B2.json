@@ -1,0 +1,244 @@
+{
+  "outcome": {
+    "duringDrag": "288",
+    "showError": "TimeoutError: locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Show sidebar' })\u001b[22m\n",
+    "after": "321",
+    "width": "321px",
+    "stored": null
+  },
+  "events": [
+    {
+      "t": 1794511237291,
+      "source": "renderer",
+      "type": "resizer-initial",
+      "valuenow": "224",
+      "hidden": false,
+      "stored": null,
+      "focused": true,
+      "ms": 0
+    },
+    {
+      "t": 1794511237294,
+      "source": "main",
+      "type": "recorder-attached",
+      "focused": true,
+      "ms": 3
+    },
+    {
+      "t": 1794511237337,
+      "source": "test",
+      "type": "phase",
+      "name": "mouse-down-no-up",
+      "ms": 46
+    },
+    {
+      "t": 1794511237339,
+      "source": "renderer",
+      "type": "pointermove",
+      "pointerId": 1,
+      "buttons": 0,
+      "x": 224,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 48
+    },
+    {
+      "t": 1794511237340,
+      "source": "renderer",
+      "type": "pointerdown",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 224,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 49
+    },
+    {
+      "t": 1794511237341,
+      "source": "renderer",
+      "type": "attr",
+      "node": "shell",
+      "name": "class",
+      "value": "app-shell  app-shell--sidebar-resizing",
+      "ms": 50
+    },
+    {
+      "t": 1794511237355,
+      "source": "renderer",
+      "type": "gotpointercapture",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 240,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 64
+    },
+    {
+      "t": 1794511237355,
+      "source": "renderer",
+      "type": "pointermove",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 240,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 64
+    },
+    {
+      "t": 1794511237356,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "240",
+      "ms": 65
+    },
+    {
+      "t": 1794511237363,
+      "source": "renderer",
+      "type": "pointermove",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 256,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 72
+    },
+    {
+      "t": 1794511237364,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "256",
+      "ms": 73
+    },
+    {
+      "t": 1794511237371,
+      "source": "renderer",
+      "type": "pointermove",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 272,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 80
+    },
+    {
+      "t": 1794511237373,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "272",
+      "ms": 82
+    },
+    {
+      "t": 1794511237380,
+      "source": "renderer",
+      "type": "pointermove",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 288,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 89
+    },
+    {
+      "t": 1794511237381,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "288",
+      "ms": 90
+    },
+    {
+      "t": 1794511237385,
+      "source": "test",
+      "type": "phase",
+      "name": "click-hide",
+      "ms": 94
+    },
+    {
+      "t": 1794511237413,
+      "source": "renderer",
+      "type": "pointermove",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 321,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 122
+    },
+    {
+      "t": 1794511237413,
+      "source": "renderer",
+      "type": "pointerdown",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 321,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 122
+    },
+    {
+      "t": 1794511237414,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "321",
+      "ms": 123
+    },
+    {
+      "t": 1794511237415,
+      "source": "renderer",
+      "type": "pointerup",
+      "pointerId": 1,
+      "buttons": 0,
+      "x": 321,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 124
+    },
+    {
+      "t": 1794511237415,
+      "source": "renderer",
+      "type": "attr",
+      "node": "shell",
+      "name": "class",
+      "value": "app-shell  ",
+      "ms": 124
+    },
+    {
+      "t": 1794511237416,
+      "source": "renderer",
+      "type": "lostpointercapture",
+      "pointerId": 1,
+      "buttons": 0,
+      "x": 321,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 125
+    },
+    {
+      "t": 1794511237719,
+      "source": "test",
+      "type": "phase",
+      "name": "click-show",
+      "ms": 428
+    },
+    {
+      "t": 1794511243238,
+      "source": "renderer",
+      "type": "pointerup",
+      "pointerId": 1,
+      "buttons": 0,
+      "x": 321,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 5947
+    }
+  ]
+}

@@ -57,7 +57,10 @@ daily-value tables preserve every displayed count. Stored analyses distinguish l
 freshness from a verified empty result. Public signing and distribution remain separate release gates.
 
 1. **Discover** — the primary semantic expansion search through the configured model provider,
-   Codex CLI, or Claude Code. The user can search any subset of all 22 deployed sources, inspect the
+   Codex CLI, or Claude Code. The user can search any subset of all 22 deployed sources. The
+   sources for this search start from the stored default (My sources) and can be changed for one
+   search with Apply to this search, which never changes the default; a stored session never
+   replaces them. Search still requires an explicit Search action. The user can inspect the
    executed plan and each source outcome, and filter the persisted result session by record type
    without rerunning the model or adapters. The research question remains directly editable after
    a search, with unsubmitted changes distinguished from the current result session. Source selection
@@ -91,18 +94,29 @@ freshness from a verified empty result. Public signing and distribution remain s
    full research-area labels, dated registry provenance, and the latest locally recorded source or
    Discover outcome with its time, context and bounded reason. Failed and partial observations are
    distinct and have an explicit filter; global navigation does not show a persistent attention badge.
+   My sources edits the default sources of new Discover searches in local SQLite, shared by both
+   routes. Saving starts no search and does not hide Saved items, old results, browsing or refresh;
+   it is not a network switch. The first default comes once from the latest searched session, or
+   all 22 sources; new sources are not added automatically.
    No query matches is a normal outcome, and recorded status is separate from cached content. Selecting a source opens an in-app rolling 30-day view;
    arXiv shows a bounded sample by UTC submission day. It does not show the official announcement
    batch. The larger raw catalog remains dormant versioned metadata and is not exposed or scheduled.
 6. **Find Local Research** — a Command-F overlay that filters as the user types, with a short
    debounce and no separate submit step. It searches bounded fields across Saved items,
    persisted Discover sessions, and analysis content in local SQLite. It uses no model, embedding,
-   telemetry, or network request.
+   telemetry, or network request. On the native route a click or Return opens a result in TheRSS;
+   the Web fallback opens the original link. On the native route a scope control limits the query
+   itself to Saved items, search sessions or analyses (up to 50 records); All keeps up to 25
+   records of each kind and 50 in total. Both routes state when the query layer found more
+   matches than it lists.
 
 **Daily Papers** is a secondary view in Discover on both desktop routes. It reads the existing
 llm-wiki Daily ArXiv Scan shortlist on demand. It shows the requested date, the displayed edition,
 the scan outcome, and the reported selection and screening counts. A previous edition is explicitly
-dated. Paper rows retain the scan's reading priority and any recorded reason. The user can open the
+dated. Paper rows retain the scan's reading priority and any recorded reason. An edition without
+papers, a missing or unreadable edition, and a failed read each have a short explanation from the
+scan record; an unavailable announcement batch is not presented as an absence of relevant papers.
+Refresh rereads the local scan result and does not run the scan. The user can open the
 exact digest or an identity-checked paper note in Obsidian, or open the official arXiv page. Returning
 to Discover restores the search draft. No model, separate schedule, paper import, or vault write is
 triggered by this view.
@@ -148,7 +162,8 @@ Paper promotion remains a separate branch:
   derives deep-analysis history only from persisted artifacts, reopens immutable historical
   content, and labels source-hash mismatches without rewriting old evidence.
 - Local unified search is parameterized, bounded to 50 results and local indexed data, and never
-  calls a source adapter, model provider, or local agent.
+  calls a source adapter, model provider, or local agent. A chosen scope is applied in the query,
+  and truncation is reported only when more matching records exist.
 - The Sources directory and Discover selector expose exactly 22 unique retained HTTPS sources
   (A=7, B=15, C=0) that passed the dated deployment-verification gate; current recorded health and
   observation time remain separate, and deferred catalog entries are absent from the product surface.

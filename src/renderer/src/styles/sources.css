@@ -676,3 +676,47 @@
     overflow-y: visible;
   }
 }
+
+/* My sources entry and dialog. */
+.my-sources-entry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.my-sources-entry p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.my-sources-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  padding: 8vh 16px 16px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.my-sources-dialog {
+  display: grid;
+  gap: 12px;
+  width: min(680px, 100%);
+  max-height: 84vh;
+  padding: 18px;
+  overflow: auto;
+  color: var(--label);
+  background: var(--secondary-system-grouped-background);
+  border: 1px solid var(--opaque-separator);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.my-sources-dialog h2,
+.my-sources-dialog > p {
+  margin: 0;
+}

@@ -15,9 +15,10 @@
 
 @implementation TRPopover {
   __weak TRHost *_host;
-  NSString *_anchor, *_close;
+  NSString *_anchor, *_close, *_cancel;
   __weak NSView *_anchorView;
-  BOOL _programmatic, _fixtureAnchorDismissal, _fixtureSuppress;
+  BOOL _programmatic, _fixtureAnchorDismissal, _fixtureSuppress, _background;
+  id _resignObserver;
   NSString *_suppressedAnchor;
   NSInteger _suppressedEvent;
 }
@@ -32,6 +33,7 @@
   // A rebuilt anchor view (new scene root) needs a fresh positioning view.
   if (self.popover.shown && anchor != _anchorView) [self close];
   _anchor = spec[@"anchor"]; _close = spec[@"close"];
+  _cancel = [spec[@"cancel"] isKindOfClass:NSString.class] ? spec[@"cancel"] : nil;
   NSDictionary *content = spec[@"root"];
   if (!self.node || ![self.node.identifier isEqual:content[@"id"]]) {
     self.node = [[TRNode alloc] initWithHost:_host spec:content];
@@ -45,8 +47,8 @@
   if (screen) cap = MAX(240, MIN(cap, NSMinY(anchorOnScreen) - NSMinY(screen.visibleFrame) - 40));
   if (!self.popover) {
     NSPopover *popover = [NSPopover new];
-    // Semi-transient: a click in the window or Escape closes it, but switching to another app
-    // keeps an in-progress choice open (and keeps fixture captures deterministic).
+    // Semi-transient handles window clicks and Escape. The foreground observer below also
+    // discards an unapplied choice when the application becomes inactive.
     popover.behavior = NSPopoverBehaviorSemitransient; popover.delegate = self;
     TRPopoverScroll *scroll = [[TRPopoverScroll alloc] initWithFrame:NSMakeRect(0,0,width,cap)]; scroll.owner = self;
     scroll.hasVerticalScroller = YES; scroll.autohidesScrollers = YES; scroll.drawsBackground = NO; scroll.borderType = NSNoBorder;
@@ -69,11 +71,26 @@
     self.popover.animates = !_host.fixture && !NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion;
     _anchorView = anchor;
     [self.popover showRelativeToRect:anchor.bounds ofView:anchor preferredEdge:anchor.isFlipped ? NSRectEdgeMaxY : NSRectEdgeMinY];
+    // When the app loses the foreground the popover closes as a cancel: returning to the app
+    // must not find a popover whose field no longer receives typing. It never reopens itself.
+    if (!_resignObserver) {
+      __weak TRPopover *weakSelf = self;
+      _resignObserver = [NSNotificationCenter.defaultCenter addObserverForName:NSApplicationDidResignActiveNotification object:NSApp queue:nil usingBlock:^(NSNotification *notification) { [weakSelf closeForBackground]; }];
+    }
   }
 }
+- (void)closeForBackground {
+  if (!self.popover.shown) return;
+  _background = YES; [self.popover performClose:nil]; _background = NO;
+}
+- (void)stopObservingBackground {
+  if (_resignObserver) [NSNotificationCenter.defaultCenter removeObserver:_resignObserver];
+  _resignObserver = nil;
+}
+- (void)dealloc { [self stopObservingBackground]; }
 - (void)close {
   if (self.popover.shown) { _programmatic = YES; [self.popover close]; _programmatic = NO; }
-  self.node = nil; _anchorView = nil;
+  self.node = nil; _anchorView = nil; [self stopObservingBackground];
 }
 - (BOOL)eventHitsAnchor:(NSEvent *)event {
   NSView *anchor = _anchorView;
@@ -84,12 +101,15 @@
   if (_programmatic) return;
   // A mouse-down on the anchor dismisses the popover; that click's mouse-up would toggle it open
   // again. Ignore exactly that mouse-up (same event number), not later clicks or Escape.
-  NSEvent *event = NSApp.currentEvent; BOOL onAnchor = [self eventHitsAnchor:event];
+  NSEvent *event = NSApp.currentEvent; BOOL onAnchor = !_background && [self eventHitsAnchor:event];
   _suppressedAnchor = onAnchor || _fixtureAnchorDismissal ? _anchor : nil;
   _suppressedEvent = onAnchor ? event.eventNumber : -1; _fixtureSuppress = _fixtureAnchorDismissal;
-  [_host emit:_close value:nil secret:NO];
+  // Escape is a cancel with its own action (for example to return focus to the anchor); an
+  // outside click keeps the plain close so the clicked control keeps its focus.
+  BOOL escape = !_background && event.type == NSEventTypeKeyDown && event.keyCode == 53;
+  [_host emit:(escape && _cancel.length ? _cancel : _close) value:nil secret:NO];
 }
-- (void)popoverDidClose:(NSNotification *)notification { if (!self.popover.shown) { self.node = nil; _anchorView = nil; } }
+- (void)popoverDidClose:(NSNotification *)notification { if (!self.popover.shown) { self.node = nil; _anchorView = nil; [self stopObservingBackground]; } }
 - (BOOL)suppressesTriggerFrom:(NSString *)identifier {
   if (!_suppressedAnchor || ![identifier isEqual:_suppressedAnchor]) return NO;
   NSEvent *event = NSApp.currentEvent;
@@ -103,6 +123,10 @@
   _fixtureAnchorDismissal = fromAnchor; [self.popover performClose:nil]; _fixtureAnchorDismissal = NO;
   return YES;
 }
+- (NSWindow *)inputClientWindow {
+  id client = NSTextInputContext.currentInputContext.client;
+  return [client isKindOfClass:NSView.class] ? ((NSView *)client).window : nil;
+}
 - (NSDictionary *)inspect {
   if (!self.popover.shown || !self.node) return nil;
   NSRect anchor = _anchorView ? [_anchorView.window convertRectToScreen:[_anchorView convertRect:_anchorView.bounds toView:nil]] : NSZeroRect;
@@ -114,6 +138,8 @@
            @"below":@(NSMidY(frame) < NSMidY(anchor)),@"popoverFrame":NSStringFromRect(frame),@"anchorFrame":NSStringFromRect(anchor),
            @"screenFrame":NSStringFromRect((window.screen ?: NSScreen.mainScreen).visibleFrame),@"contentSize":NSStringFromSize(self.popover.contentSize),
            @"documentHeight":@(scroll.documentView.frame.size.height),@"visibleHeight":@(scroll.contentSize.height),
-           @"keyWindow":@(window.isKeyWindow),@"windowNumber":@(window.windowNumber),@"firstResponder":NSStringFromClass(window.firstResponder.class)};
+           @"keyWindow":@(window.isKeyWindow),@"windowNumber":@(window.windowNumber),@"firstResponder":NSStringFromClass(window.firstResponder.class),
+           // Where typed text goes: the active text input context's client window.
+           @"inputInPopover":@([self inputClientWindow] == window),@"appKeyIsPopover":@(NSApp.keyWindow == window)};
 }
 @end

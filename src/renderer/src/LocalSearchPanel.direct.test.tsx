@@ -20,10 +20,19 @@ describe('direct local lookup in the compatibility UI', () => {
       expect(input).toBeEnabled()
       fireEvent.change(input, { target: { value: 'new query' } })
       await act(() => vi.advanceTimersByTimeAsync(250))
-      await act(async () => complete.get('new query')!({ query: 'new query', results: [] }))
+      await act(async () =>
+        complete.get('new query')!({
+          query: 'new query',
+          scope: 'all' as const,
+          truncated: false,
+          results: []
+        })
+      )
       await act(async () =>
         complete.get('old query')!({
           query: 'old query',
+          scope: 'all' as const,
+          truncated: false,
           results: [
             {
               id: 'obsolete',
@@ -55,6 +64,8 @@ describe('direct local lookup in the compatibility UI', () => {
     try {
       const searchLocal = vi.fn(async (query: string) => ({
         query,
+        scope: 'all' as const,
+        truncated: false,
         results: [
           {
             id: 'paper',

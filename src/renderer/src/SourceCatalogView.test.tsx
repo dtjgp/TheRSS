@@ -3,7 +3,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import type { DashboardSnapshot, SourceContentSnapshot, TheRSSApi } from '../../shared/api'
+import type { DashboardSnapshot, SourceContentSnapshot } from '../../shared/api'
 import { SourceCatalogView } from './SourceCatalogView'
 
 function sourceSnapshot(
@@ -26,7 +26,7 @@ function sourceSnapshot(
 
 function createSourceApi(
   initial: SourceContentSnapshot = sourceSnapshot('folo:302')
-): Pick<TheRSSApi, 'getDashboard' | 'getSourceContent' | 'refreshSourceContent'> {
+): Parameters<typeof SourceCatalogView>[0]['api'] {
   return {
     getDashboard: vi.fn().mockResolvedValue({
       date: '2026-08-24',
@@ -47,15 +47,19 @@ function createSourceApi(
       savedItems: []
     }),
     getSourceContent: vi.fn().mockResolvedValue(initial),
-    refreshSourceContent: vi.fn().mockResolvedValue(initial)
+    refreshSourceContent: vi.fn().mockResolvedValue(initial),
+    getDiscoverSourcePreference: vi.fn().mockResolvedValue({
+      sources: ['arxiv'],
+      unavailable: [],
+      origin: 'user',
+      updatedAt: '2026-11-12T00:00:00.000Z'
+    }),
+    saveDiscoverSourcePreference: vi.fn()
   }
 }
 
 function renderCatalog(
-  api: Pick<
-    TheRSSApi,
-    'getDashboard' | 'getSourceContent' | 'refreshSourceContent'
-  > = createSourceApi(),
+  api: Parameters<typeof SourceCatalogView>[0]['api'] = createSourceApi(),
   sourceHealth?: DashboardSnapshot['sourceHealth'],
   sourceHealthDetails?: DashboardSnapshot['sourceHealthDetails'],
   attentionOnly = false,

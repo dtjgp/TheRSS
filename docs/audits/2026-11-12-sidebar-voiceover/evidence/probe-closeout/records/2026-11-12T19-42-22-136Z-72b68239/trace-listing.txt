@@ -1,0 +1,11 @@
+Archive:  2026-11-12T19-42-22-136Z-72b68239//trace.zip
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+     5999  11-12-2026 20:42   src/2ab4e8172596b501fdd7e38e8de2d8df84f6cf92.ts
+    16959  11-12-2026 20:42   src/9a2cefda85fb1d3e31ac5a67af78327a25a66bf9.ts
+     8814  11-12-2026 20:42   attachments/3246721850ffb10d73d1bee40a02933a1c95233f
+   148690  11-12-2026 20:42   attachments/4e0050ceab65ce72ebd03ccb28f505c6f1730e7b
+     7659  11-12-2026 20:42   attachments/5dc0525d6d27fbdff95a36c9ecf88de11e01526b
+    12854  11-12-2026 20:42   test.trace
+---------                     -------
+   200975                     6 files

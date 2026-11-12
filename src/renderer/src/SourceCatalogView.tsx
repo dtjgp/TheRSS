@@ -20,12 +20,17 @@ import {
 import { discoverySourceFromCatalogId } from '../../shared/sourceIdentity'
 
 import { sourceHealthLabel, sourceObservationLabel } from '../../shared/sourceHealth'
+import { MySourcesEntry } from './MySourcesDialog'
 
 type PriorityFilter = 'all' | SourcePriority
 type ResearchAxisFilter = 'all' | ResearchAxis
 type SourceCatalogApi = Pick<
   TheRSSApi,
-  'getDashboard' | 'getSourceContent' | 'refreshSourceContent'
+  | 'getDashboard'
+  | 'getSourceContent'
+  | 'refreshSourceContent'
+  | 'getDiscoverSourcePreference'
+  | 'saveDiscoverSourcePreference'
 >
 
 interface SourceCatalogViewProps {
@@ -508,6 +513,7 @@ export function SourceCatalogView({
       <header className="source-catalog-heading">
         <h1>Sources</h1>
         <p>Inspect the 22 retained sources, recorded health, and recent local content.</p>
+        <MySourcesEntry api={api} />
       </header>
 
       <div className="source-catalog-summary" role="group" aria-label="Source catalog summary">

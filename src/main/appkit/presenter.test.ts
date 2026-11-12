@@ -73,7 +73,7 @@ describe('AppKit application shell', () => {
     await presenter.presentation.dispatch(JSON.stringify({ action: picker.action }))
     parsed = JSON.parse(scene)
     expect(parsed.popover).toMatchObject({ anchor: 'discover-source-picker' })
-    expect(h.find(parsed.popover.root, 'discover-source-controls')).toBeDefined()
+    expect(h.find(parsed.popover.root, 'discover-source-chooser')).toBeDefined()
     const navigation = h.find(parsed.root, 'native-navigation')!
     await presenter.presentation.dispatch(
       JSON.stringify({ action: navigation.action, value: 'saved' })
@@ -114,7 +114,12 @@ describe('AppKit application shell', () => {
   it('shows toolbar search results in the content area and ends search on clear or navigation', async () => {
     const h = nativeHarness({
       getLocalAgentStatuses: vi.fn(async () => []),
-      searchLocal: vi.fn(async (query: string) => ({ query, results: [] }))
+      searchLocal: vi.fn(async (query: string) => ({
+        query,
+        scope: 'all' as const,
+        truncated: false,
+        results: []
+      }))
     })
     let scene = ''
     const presenter = new NativePresenter(h.api, {

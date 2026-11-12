@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 import type { DashboardSnapshot, TheRSSApi } from '../../shared/api'
 import type { DiscoverSnapshot, DiscoverSource, DiscoverSourceOutcome } from '../../shared/discover'
 import { ACTIVE_TODAY_SOURCE_IDS } from '../../shared/sourceIdentity'
+import { DISCOVER_SOURCE_IDS } from '../../shared/discover'
 
 export const emptyDashboard: DashboardSnapshot = {
   date: '2026-08-19',
@@ -216,6 +217,20 @@ export function createApi(snapshot: DashboardSnapshot = emptyDashboard): TheRSSA
     }),
     setSettingsDirty: vi.fn(),
     confirmDiscardSettings: vi.fn().mockResolvedValue(true),
+    getDiscoverSourcePreference: vi.fn().mockResolvedValue({
+      sources: DISCOVER_SOURCE_IDS,
+      unavailable: [],
+      origin: 'all-sources',
+      updatedAt: '2026-11-12T00:00:00.000Z'
+    }),
+    saveDiscoverSourcePreference: vi
+      .fn()
+      .mockImplementation(async (sources: readonly string[]) => ({
+        sources,
+        unavailable: [],
+        origin: 'user',
+        updatedAt: '2026-11-12T01:00:00.000Z'
+      })),
     getDiscoverPersonalizationSettings: vi.fn().mockResolvedValue({
       prompt: '',
       updatedAt: '2026-08-19T12:00:00.000Z'

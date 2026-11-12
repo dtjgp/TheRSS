@@ -63,23 +63,41 @@ describe('native search workspace hierarchy', () => {
     screen.dispose()
   })
 
-  it('selects and clears one complete group while preserving every other source choice', async () => {
+  // 2026-11-12 My sources contract: group toggles are replaced by Select/Clear shown, which act
+  // only on the sources a find shows; changes apply with Apply to this search.
+  it('clears the shown group only while preserving every other source choice', async () => {
     const h = nativeHarness()
     const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
     await screen.load()
     await h.act(screen, 'discover-source-picker')
     for (const group of SOURCE_GROUPS) {
-      expect(h.find(h.render(screen), `discover-group-${group.id}-title`)?.text).toContain(
-        group.title
+      expect(h.find(h.render(screen), `discover-source-group-${group.id}-title`)?.text).toBe(
+        `${group.title} · ${group.sources.length}/${group.sources.length} selected`
       )
     }
-    await h.act(screen, 'discover-group-code-toggle')
+    await h.act(screen, 'discover-source-query', 'Code & models')
+    await h.act(screen, 'discover-source-clear-shown')
+    await h.act(screen, 'discover-source-query', '')
     expect(h.find(h.render(screen), 'discover-source-github')?.checked).toBe(false)
     expect(h.find(h.render(screen), 'discover-source-folo:64')?.checked).toBe(false)
     expect(h.find(h.render(screen), 'discover-source-arxiv')?.checked).toBe(true)
-    expect(h.find(h.render(screen), 'discover-source-picker')?.title).toBe('Sources (20/22)')
-    await h.act(screen, 'discover-group-code-toggle')
-    expect(h.find(h.render(screen), 'discover-source-picker')?.title).toBe('Sources (22/22)')
+    expect(h.find(h.render(screen), 'discover-source-group-code-title')?.text).toBe(
+      'Code & models · 0/2 selected'
+    )
+    await h.act(screen, 'discover-source-apply')
+    expect(h.find(h.render(screen), 'discover-source-picker')?.title).toBe(
+      'Sources for this search · 20/22'
+    )
+    await h.act(screen, 'discover-source-picker')
+    await h.act(screen, 'discover-source-only-selected', true)
+    await h.act(screen, 'discover-source-select-shown')
+    expect(h.find(h.render(screen), 'discover-source-github')).toBeUndefined()
+    await h.act(screen, 'discover-source-only-selected', false)
+    await h.act(screen, 'discover-source-select-shown')
+    await h.act(screen, 'discover-source-apply')
+    expect(h.find(h.render(screen), 'discover-source-picker')?.title).toBe(
+      'Sources for this search · 22/22'
+    )
     screen.dispose()
   })
 })

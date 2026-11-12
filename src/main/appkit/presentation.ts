@@ -66,8 +66,10 @@ export interface NativeToolbar {
 /** Transient content shown in an NSPopover below the `anchor` node of the scene root. */
 export interface NativePopover {
   readonly anchor: string
-  /** Emitted when the user dismisses the popover (outside click or Escape). */
+  /** Emitted when the user dismisses the popover (outside click, or Escape without `cancel`). */
   readonly close: string
+  /** Emitted instead of `close` when Escape dismisses the popover. */
+  readonly cancel?: string | undefined
   readonly root: NativeNode
 }
 export interface NativeColumn {
@@ -514,6 +516,9 @@ export class NativePresentation {
             popover: {
               anchor: z.string().min(1).max(300).parse(popover.anchor),
               close: z.string().min(1).max(100).parse(popover.close),
+              ...(popover.cancel
+                ? { cancel: z.string().min(1).max(100).parse(popover.cancel) }
+                : {}),
               root: nodeSchema.parse(popover.root)
             }
           }
@@ -543,6 +548,7 @@ export class NativePresentation {
     if (popover) {
       visit(popover.root)
       liveActions.add(popover.close)
+      if (popover.cancel) liveActions.add(popover.cancel)
     }
     // A sheet is window-modal: toolbar commands stay inert until it closes.
     if (!modal)

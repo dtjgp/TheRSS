@@ -1,0 +1,15 @@
+{
+  "kind": "sidebar-e2e-trace-archive",
+  "correlationId": "b0515daa-8e95-452a-9606-f7d27007c54c",
+  "test": "sidebar diagnostics record a controlled failure across a reload",
+  "testStatus": "failed",
+  "record": "diagnostics.json",
+  "archivedAt": "2026-11-12T19:42:41.995Z",
+  "recordMatches": true,
+  "sourceTrace": "test-results/sidebar-diagnostics-probe/sidebarDiagnostics.probe.t-23dff-led-failure-across-a-reload/trace.zip",
+  "state": "copied",
+  "archivedTrace": "test-results/sidebar-diagnostics/2026-11-12T19-42-41-709Z-b0515daa/trace.zip",
+  "bytes": 140274,
+  "sha256": "385a809e61ac6eaa1e688d6f6cfe1bc5816ae0cad582432a45c5a0a358691452",
+  "sourceSha256": "385a809e61ac6eaa1e688d6f6cfe1bc5816ae0cad582432a45c5a0a358691452"
+}

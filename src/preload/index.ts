@@ -101,7 +101,10 @@ const api: TheRSSApi = {
   getInterestProfile: () => ipcRenderer.invoke(IPC_CHANNELS.getInterestProfile),
   saveInterestProfile: (profile) => ipcRenderer.invoke(IPC_CHANNELS.saveInterestProfile, profile),
   refresh: () => ipcRenderer.invoke(IPC_CHANNELS.refresh),
-  searchLocal: (query) => ipcRenderer.invoke(IPC_CHANNELS.searchLocal, query),
+  searchLocal: (query, scope) =>
+    scope === undefined
+      ? ipcRenderer.invoke(IPC_CHANNELS.searchLocal, query)
+      : ipcRenderer.invoke(IPC_CHANNELS.searchLocal, query, scope),
   getLocalResearch: (target) => ipcRenderer.invoke(IPC_CHANNELS.getLocalResearch, target),
   onDiscoverProgress: (listener) => {
     const handleProgress = (_event: Electron.IpcRendererEvent, progress: unknown) => {
@@ -135,6 +138,9 @@ const api: TheRSSApi = {
     ipcRenderer.invoke(IPC_CHANNELS.getDiscoverPersonalizationSettings),
   saveDiscoverPersonalizationPrompt: (prompt) =>
     ipcRenderer.invoke(IPC_CHANNELS.saveDiscoverPersonalizationPrompt, prompt),
+  getDiscoverSourcePreference: () => ipcRenderer.invoke(IPC_CHANNELS.getDiscoverSourcePreference),
+  saveDiscoverSourcePreference: (sources) =>
+    ipcRenderer.invoke(IPC_CHANNELS.saveDiscoverSourcePreference, sources),
   getLocalAgentStatuses: () => ipcRenderer.invoke(IPC_CHANNELS.getLocalAgentStatuses),
   analyzeItem: (id, runner) => ipcRenderer.invoke(IPC_CHANNELS.analyzeItem, id, runner),
   analyzeDiscoverResult: (sessionId, itemId, runner) =>

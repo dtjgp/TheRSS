@@ -83,3 +83,59 @@ export function llmWikiDailyStatusText(snapshot: LlmWikiDailySnapshot): string {
   const coverage = edition.scanned === null ? '' : ` · ${edition.scanned} screened`
   return `${freshness} · ${outcome} · ${edition.selected} selected${coverage}`
 }
+
+export const LLM_WIKI_DAILY_REFRESH_NOTE =
+  'Refresh rereads the local scan result. It does not run the scan.'
+
+export interface LlmWikiDailyEmptyState {
+  readonly title: string
+  readonly detail: string
+}
+
+/**
+ * Why Daily Papers shows no shortlist, from the scan record only. `null` input is a failed read.
+ * It returns `null` when the edition has papers. Callers do not call it while a read is pending.
+ * TheRSS never infers why a batch was unavailable and never presents it as an absence of papers.
+ */
+export function llmWikiDailyEmptyState(
+  snapshot: LlmWikiDailySnapshot | null
+): LlmWikiDailyEmptyState | null {
+  const state = (title: string, reason: string) => ({
+    title,
+    detail: `${reason} ${LLM_WIKI_DAILY_REFRESH_NOTE}`
+  })
+  if (!snapshot)
+    return state('Daily Papers could not be loaded', 'TheRSS could not get the local scan result.')
+  const { status, edition, requestedDate } = snapshot
+  if (edition?.papers.length) return null
+  const digest = 'Open the digest to see the scan record.'
+  switch (status) {
+    // The schema requires papers for `completed`; both read as a completed scan with none.
+    case 'completed':
+    case 'no-results':
+      return state(
+        'No papers selected',
+        `The scan completed and selected no papers for this edition. ${digest}`
+      )
+    case 'no-source':
+      return state(
+        'Announcement batch unavailable to the scan',
+        `The scan recorded that the arXiv announcement batch was not available to it. This does not show that no relevant papers were announced. ${digest}`
+      )
+    case 'partial':
+      return state(
+        'Scan incomplete; no papers selected',
+        `The scan did not finish, so this empty shortlist can be incomplete. ${digest}`
+      )
+    case 'missing':
+      return state(
+        'No daily edition found',
+        `The local llm-wiki vault has no Daily ArXiv Scan digest for ${requestedDate} or the prior 14 days. Daily Papers shows only scans that llm-wiki has already written.`
+      )
+    case 'unavailable':
+      return state(
+        'Daily scan could not be read',
+        'The local llm-wiki vault or its latest digest could not be read safely. Check that the vault is available and the digest is intact.'
+      )
+  }
+}

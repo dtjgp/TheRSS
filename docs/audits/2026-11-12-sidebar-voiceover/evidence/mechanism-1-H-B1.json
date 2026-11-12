@@ -1,0 +1,111 @@
+{
+  "outcome": {
+    "after": "240",
+    "stored": "240"
+  },
+  "events": [
+    {
+      "t": 1794511236205,
+      "source": "renderer",
+      "type": "resizer-initial",
+      "valuenow": "224",
+      "hidden": false,
+      "stored": null,
+      "focused": true,
+      "ms": 0
+    },
+    {
+      "t": 1794511236208,
+      "source": "main",
+      "type": "recorder-attached",
+      "focused": true,
+      "ms": 3
+    },
+    {
+      "t": 1794511236239,
+      "source": "test",
+      "type": "phase",
+      "name": "press-right",
+      "ms": 34
+    },
+    {
+      "t": 1794511236245,
+      "source": "renderer",
+      "type": "keydown",
+      "key": "ArrowRight",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "ms": 40
+    },
+    {
+      "t": 1794511236245,
+      "source": "renderer",
+      "type": "store",
+      "value": "232",
+      "ms": 40
+    },
+    {
+      "t": 1794511236246,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "232",
+      "ms": 41
+    },
+    {
+      "t": 1794511236248,
+      "source": "renderer",
+      "type": "keyup",
+      "key": "ArrowRight",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "ms": 43
+    },
+    {
+      "t": 1794511236254,
+      "source": "test",
+      "type": "phase",
+      "name": "send-input-right",
+      "ms": 49
+    },
+    {
+      "t": 1794511236257,
+      "source": "renderer",
+      "type": "keydown",
+      "key": "ArrowRight",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "ms": 52
+    },
+    {
+      "t": 1794511236258,
+      "source": "renderer",
+      "type": "store",
+      "value": "240",
+      "ms": 53
+    },
+    {
+      "t": 1794511236259,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "240",
+      "ms": 54
+    },
+    {
+      "t": 1794511236260,
+      "source": "renderer",
+      "type": "keyup",
+      "key": "ArrowRight",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "ms": 55
+    }
+  ]
+}

@@ -1,0 +1,145 @@
+{
+  "records": [
+    {
+      "kind": "assertion",
+      "name": "fresh database: all 22 sources by default",
+      "ok": true,
+      "detail": "Sources for this search · 22/22"
+    },
+    {
+      "kind": "assertion",
+      "name": "apply changes only this search",
+      "ok": true,
+      "detail": "Custom for this search · default 22/22"
+    },
+    {
+      "kind": "assertion",
+      "name": "a finished search keeps the custom draft",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "kind": "capture",
+      "name": "1-wide-light-discover-custom-after-search",
+      "ok": true
+    },
+    {
+      "kind": "assertion",
+      "name": "the search requested only the 3 applied sources",
+      "ok": true,
+      "detail": "[\"arxiv\",\"folo:302\",\"github\"]"
+    },
+    {
+      "kind": "assertion",
+      "name": "applying for one search did not change the stored default",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "kind": "assertion",
+      "name": "upgrade: default initialized from the latest searched session",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "kind": "capture",
+      "name": "2-wide-light-sources-entry",
+      "ok": true
+    },
+    {
+      "kind": "assertion",
+      "name": "sheet opens with focus in the finder",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "kind": "capture",
+      "name": "3-wide-light-my-sources-sheet",
+      "ok": true
+    },
+    {
+      "kind": "assertion",
+      "name": "Select shown changed only the shown group and kept hidden choices",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "kind": "assertion",
+      "name": "Escape cancels without saving and returns focus to the entry",
+      "ok": true,
+      "detail": "sources-my-sources"
+    },
+    {
+      "kind": "assertion",
+      "name": "zero sources: Save disabled with a nearby reason",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "kind": "capture",
+      "name": "4-wide-light-my-sources-zero",
+      "ok": true
+    },
+    {
+      "kind": "assertion",
+      "name": "an unchanged draft follows the new default",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "kind": "assertion",
+      "name": "a custom draft is kept when the default changes",
+      "ok": true,
+      "detail": "Default sources saved. This search keeps its current sources; choose Use defaults to switch."
+    },
+    {
+      "kind": "capture",
+      "name": "5-wide-light-discover-custom-kept",
+      "ok": true
+    },
+    {
+      "kind": "capture",
+      "name": "6-narrow-dark-discover-popover",
+      "ok": true
+    },
+    {
+      "kind": "capture",
+      "name": "7-narrow-dark-my-sources-sheet",
+      "ok": true
+    },
+    {
+      "kind": "capture",
+      "name": "8-narrow-dark-my-sources-long-name",
+      "ok": true
+    },
+    {
+      "kind": "assertion",
+      "name": "the saved default is in SQLite with origin user",
+      "ok": true,
+      "detail": "{\"sources_json\":\"[\\\"arxiv\\\",\\\"github\\\"]\",\"origin\":\"user\"}"
+    },
+    {
+      "kind": "assertion",
+      "name": "restart: the draft starts from the saved default",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "kind": "assertion",
+      "name": "restart: the old session keeps its scope and results",
+      "ok": true,
+      "detail": "These results searched 3 of 22 sources. The next search uses 2 of 22 sources."
+    },
+    {
+      "kind": "capture",
+      "name": "9-wide-light-discover-after-restart",
+      "ok": true
+    },
+    {
+      "kind": "assertion",
+      "name": "no external URL was opened",
+      "ok": true,
+      "detail": "[]"
+    }
+  ]
+}
