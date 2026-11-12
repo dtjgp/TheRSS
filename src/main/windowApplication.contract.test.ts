@@ -25,6 +25,8 @@ function fixture() {
     saveDiscoverResult: vi.fn(),
     setTriageState: vi.fn(),
     getDiscoverPersonalizationSettings: vi.fn(() => null),
+    getDiscoverSourcePreference: vi.fn(() => ({ sources: ['arxiv'], unavailable: [] })),
+    saveDiscoverSourcePreference: vi.fn((sources) => ({ sources, unavailable: [] })),
     saveDiscoverPersonalizationPrompt: vi.fn((prompt) => ({ prompt })),
     materializeDiscoverResultForAnalysis: vi.fn(),
     getLatestAnalysis: vi.fn(() => null),
@@ -93,6 +95,21 @@ function fixture() {
 }
 
 describe('shared application contract parity', () => {
+  it('reads and saves the shared default sources with main-process validation', async () => {
+    const f = fixture()
+    await expect(f.api.getDiscoverSourcePreference()).resolves.toMatchObject({
+      sources: ['arxiv']
+    })
+    await f.api.saveDiscoverSourcePreference(['github', 'arxiv'])
+    expect(f.repository.saveDiscoverSourcePreference).toHaveBeenCalledExactlyOnceWith([
+      'github',
+      'arxiv'
+    ])
+    for (const invalid of [[], ['arxiv', 'arxiv'], ['folo:999999'], 'arxiv', null, [7]])
+      await expect(f.api.saveDiscoverSourcePreference(invalid as never)).rejects.toThrow()
+    expect(f.repository.saveDiscoverSourcePreference).toHaveBeenCalledTimes(1)
+    await f.app.shutdown()
+  })
   it('validates read-only wiki requests and accepts no caller-selected open path', async () => {
     const f = fixture()
     const status = {
@@ -210,8 +227,15 @@ describe('shared application contract parity', () => {
       expect.objectContaining({ arxiv: expect.objectContaining({ keywords: ['edge'] }) })
     )
     await api.searchLocal('  edge  ')
-    expect(f.repository.searchLocal).toHaveBeenCalledWith('edge')
+    // An omitted scope is the mixed `all` search; an explicit scope reaches the query layer.
+    expect(f.repository.searchLocal).toHaveBeenLastCalledWith('edge', 'all')
+    await api.searchLocal('edge', 'saved')
+    expect(f.repository.searchLocal).toHaveBeenLastCalledWith('edge', 'saved')
+    f.repository.searchLocal.mockClear()
     await expect(api.searchLocal('a')).rejects.toThrow()
+    for (const scope of ['recent', null, 7, 'SAVED'])
+      await expect(api.searchLocal('edge', scope as never)).rejects.toThrow()
+    expect(f.repository.searchLocal).not.toHaveBeenCalled()
     await expect(api.refreshSourceContent('unknown' as 'arxiv')).rejects.toThrow()
     await f.app.shutdown()
   })

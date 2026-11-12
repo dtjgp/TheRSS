@@ -1,0 +1,158 @@
+{
+  "engineerHead": "b1ea9222ee73ba8d8ca5d501846ed2d1e9ced6c0",
+  "archive": "/private/tmp/therss-my-sources-baseline-20261112",
+  "files": [
+    {
+      "path": "PRODUCT.md",
+      "sha256": "08f5163fc6cb408cea212534907d370c2c8c5fac0976cc198d3a723e2e9e1fda"
+    },
+    {
+      "path": "docs/audits/2026-11-12-interaction-implementation/CHANGE_CONTRACT.md",
+      "sha256": "7acd5ca5a78a67bea358fb2ef47a9448454574ab7953dae3bc9846abff92c3c2"
+    },
+    {
+      "path": "docs/audits/2026-11-12-interaction-implementation/REPORT.md",
+      "sha256": "67b98436389e8e1401bd8ff42d9d707064b007b6046109c95c88030deb0f2732"
+    },
+    {
+      "path": "docs/audits/2026-11-12-interaction-implementation/evidence/render-check.json",
+      "sha256": "0146fbddf4b6ff44086777c13436661af9d5c23d00fa0ba69fd80184f48e55c5"
+    },
+    {
+      "path": "docs/audits/2026-11-12-interaction-implementation/scripts/daily-back-check.mjs",
+      "sha256": "94553ada741a171e2e59d62920d4c4df00bc0412af5c3ce161492debbdd9a8c9"
+    },
+    {
+      "path": "docs/audits/2026-11-12-interaction-implementation/scripts/interaction-render.mjs",
+      "sha256": "7276cf0d3806b582483794431efd5962df03b8c51923f3bb692daea622e56201"
+    },
+    {
+      "path": "docs/audits/2026-11-12-interaction-implementation/scripts/intercept-open-external.cjs",
+      "sha256": "e29503db0a5cbd5bb251b42ad7fa7dbe61c98c571ab9d39c19272a37a3d991c6"
+    },
+    {
+      "path": "docs/audits/2026-11-12-interaction-implementation/scripts/open-verification-app.mjs",
+      "sha256": "879d381f3eaff31c7a52457b4b0d5d5aa6727f444d4e20de0a085343e4082ec7"
+    },
+    {
+      "path": "src/core/storage/localSearchScope.test.ts",
+      "sha256": "d9733957fd99b7f07ed954c249938c2475ead1e30dae6565f24df9c3e6131b91"
+    },
+    {
+      "path": "src/core/storage/localSearchStore.ts",
+      "sha256": "09f2777f1609b725b15c6cb6625330cb9c03d600015478c42f6a3fef225cf75f"
+    },
+    {
+      "path": "src/core/storage/researchRepository.ts",
+      "sha256": "7142efc98e4f4eb4582d6c034716ed00a82600131b3090cbc86d73d14b49ab0b"
+    },
+    {
+      "path": "src/main/appkit/acceptancePolish.test.ts",
+      "sha256": "a1d425d6898ee044604274f08e92cbdee4831d4cf0fe073720bc7bbfec59e788"
+    },
+    {
+      "path": "src/main/appkit/dailyPapers.test.ts",
+      "sha256": "9389ecf6da7dd13bfc4735dc904d7024dc41041f0417ba49c5db99c18139979f"
+    },
+    {
+      "path": "src/main/appkit/dailyPapers.ts",
+      "sha256": "a9399274905d21a8797960fb319c083836408fa13d0ef1e535a4923e5d98c59d"
+    },
+    {
+      "path": "src/main/appkit/dailyPapersEmpty.test.ts",
+      "sha256": "9bde989e200ac01c3d2fc7ab2c8f5f64b446d03b39cf05ccefdad4f485901152"
+    },
+    {
+      "path": "src/main/appkit/directInteraction.test.ts",
+      "sha256": "86e5c5ea21a577f205b423d5b7c9ac284670928e8dbc8a69cd7eaa4376788844"
+    },
+    {
+      "path": "src/main/appkit/emptyState.test.ts",
+      "sha256": "4e27e00b56a05f21ab0d282231741263dd68057f3421459bf3d339f0c1d26fd2"
+    },
+    {
+      "path": "src/main/appkit/localNavigation.test.ts",
+      "sha256": "042add18bbb1f9a442bc0abe42788bc939cb17147a59f3c955e3ac5d43a185b9"
+    },
+    {
+      "path": "src/main/appkit/localSearch.test.ts",
+      "sha256": "dffaab22281efa99cc6575275b2a993e457134435a81a432b51e5c48c4da055c"
+    },
+    {
+      "path": "src/main/appkit/localSearch.ts",
+      "sha256": "681ebc8c1869f7f4d18b5e4b6135a710861e34a2e8c88d892b1685a8dde19884"
+    },
+    {
+      "path": "src/main/appkit/localSearchScope.test.ts",
+      "sha256": "099f06a44086da0dda6b8622870fdd4218b892f18684b31ffa044913c0ce37d3"
+    },
+    {
+      "path": "src/main/appkit/localizedDates.test.ts",
+      "sha256": "1adbff3f99f360e55a2d65f32e6687f52f5c70509b640487e29fba6a604f6f40"
+    },
+    {
+      "path": "src/main/appkit/presenter.test.ts",
+      "sha256": "46d3af2f9b73a617b1f3c3955f70c7985c2749b774509fd4b1673706ec10cc56"
+    },
+    {
+      "path": "src/main/windowApplication.contract.test.ts",
+      "sha256": "834a01fc89412c50caf5a7cea142d0101c3664cb6661f7ad2aa82893c3254cb9"
+    },
+    {
+      "path": "src/main/windowApplication.ts",
+      "sha256": "57ba1371e3556a3b3f43c9664efa411f7c24e234b7ec87e2a3e70408871a3efe"
+    },
+    {
+      "path": "src/preload/index.ts",
+      "sha256": "6619e80fac771efc49c81e4b529bff6ff40fcebf45494ec5eac87735d76ebd01"
+    },
+    {
+      "path": "src/renderer/src/DailyPapersView.empty.test.tsx",
+      "sha256": "b07b30a650adaa2a757891b1a406393e52fa58330f3576197ceb2e83f11b5a1c"
+    },
+    {
+      "path": "src/renderer/src/DailyPapersView.tsx",
+      "sha256": "fd6b71cb2ca06af308825658a97a84f1ab2385dc31bcf4eb1f94fdec0e9ae662"
+    },
+    {
+      "path": "src/renderer/src/LocalSearchPanel.direct.test.tsx",
+      "sha256": "a48d422dd29f51554e208041f1b4d15a63cd72cd66d49ea48b908d6569d9b632"
+    },
+    {
+      "path": "src/renderer/src/LocalSearchPanel.test.tsx",
+      "sha256": "6e6178340d3004567848757d4e58dd2736dc7bbdf7910980c7b80cb737e7ebe1"
+    },
+    {
+      "path": "src/renderer/src/LocalSearchPanel.truncation.test.tsx",
+      "sha256": "cbaf63e3bf54793d27541e3d5cda33966ec98c40c9a5aa174032956230e88fa8"
+    },
+    {
+      "path": "src/renderer/src/LocalSearchPanel.tsx",
+      "sha256": "8a2665813267df034ee628893e1dab81862268826f64e53e0b92ba3355f36d04"
+    },
+    {
+      "path": "src/renderer/src/styles/discover.css",
+      "sha256": "1ecc494d060760ba36ba8550f78a2e37b67ad34587ae8009ff60332fe75a67cf"
+    },
+    {
+      "path": "src/shared/api.ts",
+      "sha256": "5af0b70b5ab6a937bad44b8c2a3a640830f8eea7bdcfdc878ac5a7129b17d70e"
+    },
+    {
+      "path": "src/shared/llmWikiDaily.test.ts",
+      "sha256": "164343103933565bf675f47cdadefaedce8cda7f58abea3adad4162315259a16"
+    },
+    {
+      "path": "src/shared/llmWikiDaily.ts",
+      "sha256": "efcf3891638a09d7a1851138b110d6f462581f8ccd4386f49e396a2679d0fca8"
+    },
+    {
+      "path": "src/shared/localSearch.test.ts",
+      "sha256": "74bce3984e14f7ddbc46c2e5d7b20582dfeccfbc5388866f5ec7af4f9e05bc02"
+    },
+    {
+      "path": "src/shared/localSearch.ts",
+      "sha256": "b0d7925ce10851e03bcb1ab691d5af7b5f30b2a31f015f80ff27352cb5d84fdc"
+    }
+  ]
+}

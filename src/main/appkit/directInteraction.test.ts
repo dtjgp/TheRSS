@@ -8,10 +8,15 @@ describe('direct native interaction', () => {
   it('keeps local typing responsive and discards obsolete or closed-query responses', async () => {
     vi.useFakeTimers()
     try {
-      const complete = new Map<string, (value: { query: string; results: [] }) => void>()
+      const complete = new Map<
+        string,
+        (value: { query: string; scope: 'all'; truncated: false; results: [] }) => void
+      >()
       const search = vi.fn(
         (query: string) =>
-          new Promise<{ query: string; results: [] }>((resolve) => complete.set(query, resolve))
+          new Promise<{ query: string; scope: 'all'; truncated: false; results: [] }>((resolve) =>
+            complete.set(query, resolve)
+          )
       )
       const h = nativeHarness({ searchLocal: search })
       const screen = localSearchHarness(h.context)
@@ -20,9 +25,19 @@ describe('direct native interaction', () => {
       expect(h.find(h.render(screen), 'local-search-query')?.enabled).toBe(true)
       await h.act(screen, 'local-search-query', 'second')
       await vi.advanceTimersByTimeAsync(250)
-      complete.get('second')!({ query: 'second', results: [] })
+      complete.get('second')!({
+        query: 'second',
+        scope: 'all' as const,
+        truncated: false,
+        results: []
+      })
       await vi.advanceTimersByTimeAsync(0)
-      complete.get('first')!({ query: 'first', results: [] })
+      complete.get('first')!({
+        query: 'first',
+        scope: 'all' as const,
+        truncated: false,
+        results: []
+      })
       await vi.advanceTimersByTimeAsync(0)
       expect(h.find(h.render(screen), 'local-search-result-count')?.text).toContain('second')
       await h.act(screen, 'local-search-query', 'x')
@@ -114,7 +129,12 @@ describe('direct native interaction', () => {
         target
       }
       const h = nativeHarness({
-        searchLocal: vi.fn(async (query) => ({ query, results: [result] }))
+        searchLocal: vi.fn(async (query) => ({
+          query,
+          scope: 'all' as const,
+          truncated: false,
+          results: [result]
+        }))
       })
       const screen = localSearchHarness(h.context)
       await h.act(screen, 'local-search-query', 'edge')

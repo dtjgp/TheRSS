@@ -1013,8 +1013,11 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   CGFloat desired = MAX(TRNumber(self.spec,@"minWidth",180), MIN(self.preferredSplit, room));
   CGFloat actual = split.arrangedSubviews.firstObject.frame.size.width;
   if (!self.lastWidth && split.bounds.size.width > 0) self.lastWidth = desired;
-  // One attempt per split width and target: when the window cannot fit the target, AppKit keeps
-  // its own width and the next layout must not schedule the same move again.
+  // A settled layout ends this attempt. A later constraints pass or a return from a narrow
+  // window must be able to restore the same target again at the same window width.
+  if (fabs(actual - desired) <= 0.5) { self.reconcileAttempt = 0; return; }
+  // One attempt per unresolved split width and target: when the window cannot fit the target,
+  // AppKit keeps its own width and the next layout must not schedule the same move again.
   CGFloat attempt = split.bounds.size.width * 4096 + desired;
   if (room > 0 && fabs(actual - desired) > 0.5 && !self.reconcilePending && attempt != self.reconcileAttempt) {
     self.reconcilePending = YES; self.reconcileAttempt = attempt;
@@ -1027,7 +1030,11 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
       NSSplitView *current = node.splitController.splitView;
       CGFloat space = current.bounds.size.width - TRNumber(node.spec,@"minContentWidth",200) - current.dividerThickness;
       CGFloat target = MAX(TRNumber(node.spec,@"minWidth",180), MIN(node.preferredSplit, space));
-      node.lastWidth = target; node.applying = YES; [current setPosition:target ofDividerAtIndex:0]; node.applying = NO;
+      node.lastWidth = target; node.applying = YES;
+      [current setPosition:target ofDividerAtIndex:0]; [current layoutSubtreeIfNeeded];
+      node.applying = NO;
+      // The controller need not issue another viewDidLayout after a successful move.
+      if (fabs(current.arrangedSubviews.firstObject.frame.size.width - target) <= 0.5) node.reconcileAttempt = 0;
     });
   }
 }

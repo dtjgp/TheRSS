@@ -1,9 +1,13 @@
 import type Database from 'better-sqlite3'
 import {
+  LOCAL_SEARCH_KIND_LIMIT,
+  LOCAL_SEARCH_RESULT_LIMIT,
   localSearchQuerySchema,
+  optionalLocalSearchScopeSchema,
   type LocalSearchResponse,
   type LocalSearchResult,
-  type LocalSearchResultKind
+  type LocalSearchResultKind,
+  type LocalSearchScope
 } from '../../shared/localSearch'
 import type { DiscoverySource } from '../../shared/discovery'
 import { isDiscoverySource } from '../../shared/sourceIdentity'
@@ -50,12 +54,9 @@ function parseRows(rows: readonly LocalSearchRow[]): LocalSearchResult[] {
   })
 }
 
-export function searchLocal(database: Database.Database, candidate: string): LocalSearchResponse {
-  const query = localSearchQuerySchema.parse(candidate)
-  const pattern = escapedLikePattern(query)
-  const savedRows = database
-    .prepare(
-      `SELECT d.id AS id, 'saved' AS kind, d.id AS item_id, d.title,
+const KIND_QUERIES: Record<LocalSearchResultKind, { sql: string; patterns: number }> = {
+  saved: {
+    sql: `SELECT d.id AS id, 'saved' AS kind, d.id AS item_id, d.title,
               substr(d.summary, 1, 300) || CASE WHEN length(d.summary) > 300 THEN '…' ELSE '' END AS detail, d.url, d.source,
               d.triage_updated_at AS created_at
        FROM discovery_item d
@@ -64,12 +65,11 @@ export function searchLocal(database: Database.Database, candidate: string): Loc
               OR d.summary LIKE ? ESCAPE '\\' COLLATE NOCASE
               OR d.reasons_json LIKE ? ESCAPE '\\' COLLATE NOCASE)
        ORDER BY d.triage_updated_at DESC, d.id ASC
-       LIMIT 25`
-    )
-    .all(pattern, pattern, pattern) as LocalSearchRow[]
-  const discoverRows = database
-    .prepare(
-      `WITH matched AS (
+       LIMIT ?`,
+    patterns: 3
+  },
+  discover: {
+    sql: `WITH matched AS (
          SELECT s.id || ':' || r.item_id AS id, 'discover' AS kind, r.item_id,
                 r.title, substr(r.summary, 1, 300) || CASE WHEN length(r.summary) > 300 THEN '…' ELSE '' END AS detail, r.url, r.source,
                 s.created_at, s.id AS session_id,
@@ -87,12 +87,11 @@ export function searchLocal(database: Database.Database, candidate: string): Loc
        FROM matched
        WHERE item_rank = 1
        ORDER BY created_at DESC, item_id ASC
-       LIMIT 25`
-    )
-    .all(pattern, pattern, pattern, pattern) as LocalSearchRow[]
-  const analysisRows = database
-    .prepare(
-      `SELECT a.id AS id, 'analysis' AS kind, a.item_id, d.title,
+       LIMIT ?`,
+    patterns: 4
+  },
+  analysis: {
+    sql: `SELECT a.id AS id, 'analysis' AS kind, a.item_id, d.title,
               a.provider_name || ' · ' || a.model AS detail, d.url, d.source,
               a.created_at
        FROM analysis_artifact a
@@ -102,17 +101,41 @@ export function searchLocal(database: Database.Database, candidate: string): Loc
           OR a.model LIKE ? ESCAPE '\\' COLLATE NOCASE
           OR a.content LIKE ? ESCAPE '\\' COLLATE NOCASE
        ORDER BY a.created_at DESC, a.id ASC
-       LIMIT 25`
-    )
-    .all(pattern, pattern, pattern, pattern) as LocalSearchRow[]
+       LIMIT ?`,
+    patterns: 4
+  }
+}
 
-  const results = parseRows([...savedRows, ...discoverRows, ...analysisRows])
-    .sort(
-      (left, right) =>
-        right.createdAt.localeCompare(left.createdAt) ||
-        left.kind.localeCompare(right.kind) ||
-        left.id.localeCompare(right.id)
-    )
-    .slice(0, 50)
-  return { query, results }
+const KINDS: readonly LocalSearchResultKind[] = ['saved', 'discover', 'analysis']
+
+/**
+ * Search bounded local fields. The scope selects which kinds SQL reads, so a narrow scope is not
+ * a filter over the mixed list. Each query reads one row past its limit: `truncated` is a fact.
+ */
+export function searchLocal(
+  database: Database.Database,
+  candidate: string,
+  scopeCandidate?: LocalSearchScope
+): LocalSearchResponse {
+  const query = localSearchQuerySchema.parse(candidate)
+  const scope = optionalLocalSearchScopeSchema.parse(scopeCandidate)
+  const pattern = escapedLikePattern(query)
+  const kindLimit = scope === 'all' ? LOCAL_SEARCH_KIND_LIMIT : LOCAL_SEARCH_RESULT_LIMIT
+  let truncated = false
+  const rows = KINDS.filter((kind) => scope === 'all' || scope === kind).flatMap((kind) => {
+    const { sql, patterns } = KIND_QUERIES[kind]
+    const matched = database
+      .prepare(sql)
+      .all(...Array<string>(patterns).fill(pattern), kindLimit + 1) as LocalSearchRow[]
+    if (matched.length > kindLimit) truncated = true
+    return matched.slice(0, kindLimit)
+  })
+  const sorted = parseRows(rows).sort(
+    (left, right) =>
+      right.createdAt.localeCompare(left.createdAt) ||
+      left.kind.localeCompare(right.kind) ||
+      left.id.localeCompare(right.id)
+  )
+  if (sorted.length > LOCAL_SEARCH_RESULT_LIMIT) truncated = true
+  return { query, scope, results: sorted.slice(0, LOCAL_SEARCH_RESULT_LIMIT), truncated }
 }

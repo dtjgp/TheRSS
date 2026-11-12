@@ -12,6 +12,8 @@ import type { AnalysisArtifact, LocalAgentStatus } from '../../shared/models'
 import { DiscoverResultWorkspace } from './DiscoverResultWorkspace'
 import { DiscoverRunStatus, DiscoverRunSummary } from './DiscoverRunStatus'
 import { DailyPapersView } from './DailyPapersView'
+import { DiscoverSourceStatus, DiscoverSourcesControl } from './DiscoverSourcesControl'
+import { useDiscoverSources } from './useDiscoverSources'
 
 interface DiscoverViewProps {
   readonly api: TheRSSApi
@@ -70,10 +72,15 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
   const [isDailyOpen, setIsDailyOpen] = useState(false)
   const dailyEntryRef = useRef<HTMLButtonElement>(null)
   const shouldRestoreFocus = useRef(false)
-  const [intent, setIntent] = useState('')
-  const [runner, setRunner] = useState<DiscoverRunner>('model-provider')
-  const [sources, setSources] = useState<readonly DiscoverSource[]>(DISCOVER_SOURCE_IDS)
-  const [isSourcePickerOpen, setIsSourcePickerOpen] = useState(false)
+  // The window session keeps an unsubmitted question, runner and this search's sources across
+  // page changes; the sources start from the stored default, never from a stored session.
+  const sourceState = useDiscoverSources(api)
+  const session = sourceState.session
+  const sources = sourceState.sources
+  // A run started before this view was rebuilt (page change) still blocks a second start.
+  const sharedRun = sourceState.activeRun
+  const [intent, setIntent] = useState(session.intent ?? '')
+  const [runner, setRunner] = useState<DiscoverRunner>(session.runner ?? 'model-provider')
   const [snapshot, setSnapshot] = useState<DiscoverSnapshot | null>(null)
   const [resultFilter, setResultFilter] = useState<DiscoverResultFilter>('all')
   const [visibleResultCount, setVisibleResultCount] = useState(DISCOVER_RESULT_BATCH_SIZE)
@@ -87,7 +94,10 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
   const [error, setError] = useState<string | null>(null)
   const activeRunId = useRef<string | null>(null)
   const cancellationRequested = useRef(false)
-  const editedFields = useRef({ intent: false, runner: false, sources: false })
+  const editedFields = useRef({
+    intent: session.intent !== null,
+    runner: session.runner !== null
+  })
   const searchGeneration = useRef(0)
 
   useEffect(() => {
@@ -97,16 +107,10 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
       .getLatestDiscover()
       .then((latest) => {
         if (active && latest && generation === searchGeneration.current) {
-          const latestSources = DISCOVER_SOURCE_IDS.filter(
-            (source) => latest.sourceOutcomes[source]?.status !== 'not_searched'
-          )
           setSnapshot(latest)
           setVisibleResultCount(DISCOVER_RESULT_BATCH_SIZE)
           if (!editedFields.current.intent) setIntent(latest.intent)
           if (!editedFields.current.runner) setRunner(latest.runner)
-          if (!editedFields.current.sources && latestSources.length > 0) {
-            setSources(latestSources)
-          }
         }
       })
       .catch(() => {
@@ -117,6 +121,29 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
       active = false
     }
   }, [api])
+
+  // A rebuilt view adopts the window's running search (progress and Cancel); when that run ends
+  // elsewhere, it reads the finished session instead of showing the older one.
+  useEffect(() => {
+    if (sharedRun && !activeRunId.current) {
+      activeRunId.current = sharedRun
+      return
+    }
+    if (!sharedRun && activeRunId.current && !isSearching) {
+      activeRunId.current = null
+      setProgress(null)
+      const generation = ++searchGeneration.current
+      void api.getLatestDiscover().then(
+        (latest) => {
+          if (latest && generation === searchGeneration.current) {
+            setSnapshot(latest)
+            setVisibleResultCount(DISCOVER_RESULT_BATCH_SIZE)
+          }
+        },
+        () => undefined
+      )
+    }
+  }, [api, sharedRun, isSearching])
 
   useEffect(
     () =>
@@ -141,16 +168,10 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
     }
   }, [api])
 
-  const canSearch = intent.trim().length > 0 && sources.length > 0 && !isSearching
-  const sourceSet = useMemo(() => new Set(sources), [sources])
-  const draftChanged =
-    snapshot &&
-    (intent.trim() !== snapshot.intent ||
-      runner !== snapshot.runner ||
-      DISCOVER_SOURCE_IDS.some(
-        (source) =>
-          (snapshot.sourceOutcomes[source]?.status !== 'not_searched') !== sourceSet.has(source)
-      ))
+  const searching = isSearching || sharedRun !== null
+  const canSearch = intent.trim().length > 0 && sources.length > 0 && !searching
+  // A source difference is explained by the source status line instead.
+  const draftChanged = snapshot && (intent.trim() !== snapshot.intent || runner !== snapshot.runner)
   const filteredItems = useMemo(
     () =>
       snapshot?.items.filter((item) => {
@@ -175,36 +196,13 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
     [snapshot]
   )
 
-  const toggleSource = (source: DiscoverSource) => {
-    if (isSearching) return
-    editedFields.current.sources = true
-    setSources((current) =>
-      current.includes(source)
-        ? current.filter((candidate) => candidate !== source)
-        : [...current, source]
-    )
-  }
-
-  const selectAllSources = () => {
-    if (!isSearching) {
-      editedFields.current.sources = true
-      setSources(DISCOVER_SOURCE_IDS)
-    }
-  }
-  const clearSources = () => {
-    if (!isSearching) {
-      editedFields.current.sources = true
-      setSources([])
-    }
-  }
-
   const search = async () => {
-    searchGeneration.current++
     const runId = createDiscoverRunId()
+    if (!session.startRun(runId)) return
+    searchGeneration.current++
     activeRunId.current = runId
     cancellationRequested.current = false
     setIsSearching(true)
-    setIsSourcePickerOpen(false)
     setError(null)
     setRunNotice(null)
     setProgress({
@@ -220,7 +218,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
         {
           intent: intent.trim(),
           runner,
-          sources: DISCOVER_SOURCE_IDS.filter((source) => sourceSet.has(source))
+          sources: [...sources]
         },
         runId
       )
@@ -240,6 +238,8 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
         )
       }
     } finally {
+      // The session outlives this view, so the run ends there even after a page change.
+      session.finishRun(runId)
       if (activeRunId.current === runId) {
         activeRunId.current = null
         cancellationRequested.current = false
@@ -251,8 +251,9 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
 
   const retryIncompleteSources = async () => {
     if (!snapshot || retryableSources.length === 0) return
-    searchGeneration.current++
     const runId = createDiscoverRunId()
+    if (!session.startRun(runId)) return
+    searchGeneration.current++
     activeRunId.current = runId
     cancellationRequested.current = false
     setIsSearching(true)
@@ -278,6 +279,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
       if (cancellationRequested.current) setRunNotice('Discover retry canceled.')
       else setError('The incomplete Discover sources could not be retried.')
     } finally {
+      session.finishRun(runId)
       if (activeRunId.current === runId) {
         activeRunId.current = null
         cancellationRequested.current = false
@@ -364,7 +366,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
           ref={dailyEntryRef}
           type="button"
           className="secondary-button"
-          disabled={isSearching}
+          disabled={searching}
           onClick={() => {
             shouldRestoreFocus.current = true
             setIsDailyOpen(true)
@@ -388,12 +390,13 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
             value={intent}
             onChange={(event) => {
               editedFields.current.intent = true
+              session.rememberIntent(event.target.value)
               setIntent(event.target.value)
             }}
             placeholder="Find work connecting structured pruning, semantic communications, and edge deployment"
             rows={3}
             maxLength={2_000}
-            disabled={isSearching}
+            disabled={searching}
           />
         </label>
         {draftChanged && (
@@ -401,6 +404,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
             Draft not searched. Results: {snapshot.intent}
           </p>
         )}
+        <DiscoverSourceStatus state={sourceState} snapshot={snapshot} />
         <div
           className={`discover-personalization-status ${
             hasPersonalContext ? 'discover-personalization-status--active' : ''
@@ -417,69 +421,16 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
           </p>
         </div>
         <div className="discover-controls">
-          <div className="discover-source-picker">
-            <button
-              type="button"
-              className="discover-source-trigger"
-              aria-label={`Choose sources, ${sources.length} of ${DISCOVER_SOURCE_IDS.length} selected`}
-              aria-expanded={isSourcePickerOpen}
-              aria-controls="discover-source-options"
-              disabled={isSearching}
-              onClick={() => setIsSourcePickerOpen((current) => !current)}
-            >
-              <span>Sources</span>
-              <strong>
-                {sources.length} of {DISCOVER_SOURCE_IDS.length} selected
-              </strong>
-              <span className="discover-source-trigger__chevron" aria-hidden="true">
-                ›
-              </span>
-            </button>
-            {isSourcePickerOpen && (
-              <fieldset
-                id="discover-source-options"
-                className="discover-source-control"
-                aria-label="Search sources"
-              >
-                <legend>
-                  <span>Search sources</span>
-                  <span className="discover-source-control__bulk">
-                    <button
-                      type="button"
-                      onClick={selectAllSources}
-                      aria-label="Select all sources"
-                    >
-                      Select all
-                    </button>
-                    <button type="button" onClick={clearSources} aria-label="Clear all sources">
-                      Clear
-                    </button>
-                  </span>
-                </legend>
-                <div className="discover-source-grid">
-                  {DISCOVER_SOURCE_IDS.map((source) => (
-                    <label key={source} title={sourceDisplayName(source)}>
-                      <input
-                        type="checkbox"
-                        aria-label={`Search ${sourceDisplayName(source)}`}
-                        checked={sourceSet.has(source)}
-                        onChange={() => toggleSource(source)}
-                      />
-                      <span>{sourceDisplayName(source)}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            )}
-          </div>
+          <DiscoverSourcesControl state={sourceState} disabled={searching} />
           <label className="analysis-runner-control">
             <span>Search with</span>
             <select
               aria-label="Search with"
-              disabled={isSearching}
+              disabled={searching}
               value={runner}
               onChange={(event) => {
                 editedFields.current.runner = true
+                session.rememberRunner(event.target.value as DiscoverRunner)
                 setRunner(event.target.value as DiscoverRunner)
               }}
             >
@@ -493,12 +444,12 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
             </select>
           </label>
           <button type="submit" className="primary-button" disabled={!canSearch}>
-            {isSearching ? 'Searching…' : 'Search'}
+            {searching ? 'Searching…' : 'Search'}
           </button>
         </div>
       </form>
 
-      {isSearching && progress && (
+      {searching && progress && (
         <DiscoverRunStatus progress={progress} onCancel={() => void cancelSearch()} />
       )}
 
@@ -632,7 +583,7 @@ export function DiscoverView({ api, localAgents, onDashboardChange }: DiscoverVi
             </p>
           </section>
 
-          {retryableSources.length > 0 && !isSearching && (
+          {retryableSources.length > 0 && !searching && (
             <div className="discover-retry" role="status" aria-label="Incomplete source recovery">
               <span>
                 {retryableSources.length}{' '}

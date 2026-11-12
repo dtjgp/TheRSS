@@ -1,0 +1,30 @@
+{
+  "data": "deterministic fixtures only",
+  "profile": "/var/folders/d9/50r202r14gbc_shcxg960xrh0000gn/T/therss-my-sources-review-CEmo14",
+  "test_processes_exited": [66212, 67163],
+  "preference": {
+    "origin": "user",
+    "sources_json": "[\"arxiv\",\"github\",\"folo:64\",\"folo:302\",\"folo:611\",\"folo:444\",\"folo:182\",\"folo:77\",\"folo:208\",\"folo:93\",\"folo:84\",\"folo:67\",\"folo:523\",\"folo:253\",\"folo:44\",\"folo:792\",\"folo:79\",\"folo:172\",\"folo:1104\",\"folo:177\",\"folo:257\",\"folo:312\"]"
+  },
+  "latest_session": {
+    "id": "discover:007839b7-af30-4623-a12c-ea01def10313",
+    "intent": "Synthetic structured pruning check CUA",
+    "runner": "codex",
+    "status": "completed",
+    "created_at": "2026-11-12T18:52:54.324Z"
+  },
+  "searched_sources": [
+    {
+      "source": "arxiv",
+      "status": "healthy",
+      "result_count": 1
+    },
+    {
+      "source": "github",
+      "status": "healthy",
+      "result_count": 1
+    }
+  ],
+  "external_open_log_present": true,
+  "profile_removed": true
+}

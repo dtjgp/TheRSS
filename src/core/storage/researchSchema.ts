@@ -1,5 +1,9 @@
 import type Database from 'better-sqlite3'
 import { DISCOVER_PERSONALIZATION_PROMPT_MAX_LENGTH } from '../../shared/personalization'
+import {
+  DISCOVER_SOURCE_PREFERENCE_TABLE,
+  initializeDiscoverSourcePreference
+} from './discoverSourcePreferenceStore'
 
 /**
  * Creates and migrates the local research schema in place.
@@ -429,6 +433,10 @@ export function migrateResearchDatabase(database: Database.Database): void {
       DROP TABLE IF EXISTS google_sync_account;
       DROP TABLE IF EXISTS sync_local_state;
     `)
+
+    // Additive: an older build ignores this table. Sessions never change an existing row.
+    database.exec(DISCOVER_SOURCE_PREFERENCE_TABLE)
+    initializeDiscoverSourcePreference(database)
   })
   try {
     migrate()

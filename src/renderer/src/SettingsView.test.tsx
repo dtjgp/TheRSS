@@ -3,6 +3,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { DISCOVER_SOURCE_IDS } from '../../shared/discover'
 import type { TheRSSApi } from '../../shared/api'
 import { SettingsView } from './SettingsView'
 
@@ -56,6 +57,20 @@ function settingsApi(): TheRSSApi {
     }),
     setSettingsDirty: vi.fn(),
     confirmDiscardSettings: vi.fn().mockResolvedValue(true),
+    getDiscoverSourcePreference: vi.fn().mockResolvedValue({
+      sources: DISCOVER_SOURCE_IDS,
+      unavailable: [],
+      origin: 'all-sources',
+      updatedAt: '2026-11-12T00:00:00.000Z'
+    }),
+    saveDiscoverSourcePreference: vi
+      .fn()
+      .mockImplementation(async (sources: readonly string[]) => ({
+        sources,
+        unavailable: [],
+        origin: 'user',
+        updatedAt: '2026-11-12T01:00:00.000Z'
+      })),
     getDiscoverPersonalizationSettings: vi.fn().mockResolvedValue({
       prompt: '',
       updatedAt: '2026-08-24T08:00:00.000Z'

@@ -24,9 +24,10 @@ import {
 } from '../shared/discover'
 import type { DiscoverySource } from '../shared/discovery'
 import { isDiscoverySource } from '../shared/sourceIdentity'
-import { localSearchQuerySchema } from '../shared/localSearch'
+import { localSearchQuerySchema, optionalLocalSearchScopeSchema } from '../shared/localSearch'
 import { localResearchTargetSchema } from '../shared/localResearch'
 import { discoverPersonalizationPromptSchema } from '../shared/personalization'
+import { discoverSourcePreferenceInputSchema } from '../shared/discoverSourcePreference'
 import {
   llmWikiPromotionConfirmRequestSchema,
   llmWikiPromotionPreviewRequestSchema
@@ -115,8 +116,13 @@ export class WindowApplication {
           return repository.getDashboardSnapshot()
         }),
       refresh: () => task(() => discovery.refresh(this.credentials())),
-      searchLocal: (candidate) =>
-        task(() => repository.searchLocal(localSearchQuerySchema.parse(candidate))),
+      searchLocal: (candidate, scope) =>
+        task(() =>
+          repository.searchLocal(
+            localSearchQuerySchema.parse(candidate),
+            optionalLocalSearchScopeSchema.parse(scope)
+          )
+        ),
       getLocalResearch: (candidate) =>
         task(async () => {
           const target = localResearchTargetSchema.parse(candidate)
@@ -216,6 +222,13 @@ export class WindowApplication {
           }
           return accepted
         }),
+      getDiscoverSourcePreference: () => task(() => repository.getDiscoverSourcePreference()),
+      saveDiscoverSourcePreference: (candidate) =>
+        task(() =>
+          repository.saveDiscoverSourcePreference(
+            discoverSourcePreferenceInputSchema.parse(candidate)
+          )
+        ),
       getDiscoverPersonalizationSettings: () =>
         task(() => repository.getDiscoverPersonalizationSettings()),
       saveDiscoverPersonalizationPrompt: (candidate) =>

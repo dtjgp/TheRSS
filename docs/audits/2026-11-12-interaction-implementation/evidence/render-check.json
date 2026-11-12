@@ -1,0 +1,272 @@
+{
+  "profile": "<temporary profile>",
+  "vault": "<temporary synthetic vault>",
+  "records": [
+    {
+      "name": "wide: all scope hides older Saved rows and reports truncation",
+      "ok": true,
+      "detail": "50 rows; notice=true"
+    },
+    {
+      "name": "wide: I1 instruction",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture wide-local-search-all-truncated",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "wide: saved scope returns the 5 older Saved rows without a truncation notice",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture wide-local-search-saved",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "wide: analysis scope returns 30 analyses",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "wide: scoped empty state names the scope",
+      "ok": true,
+      "detail": "No analyses match \u201czzqx-no-match\u201d"
+    },
+    {
+      "name": "capture wide-local-search-scoped-empty",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture wide-local-search-opened-record",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "wide: Back to search results keeps query, saved scope and selected row",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "wide: daily no-results explains reason and Refresh boundary",
+      "ok": true,
+      "detail": "No papers selected"
+    },
+    {
+      "name": "wide: daily no-results keeps Refresh, Back and digest actions",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture wide-daily-no-results",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "wide: daily no-source explains reason and Refresh boundary",
+      "ok": true,
+      "detail": "Announcement batch unavailable to the scan"
+    },
+    {
+      "name": "wide: daily no-source keeps Refresh, Back and digest actions",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture wide-daily-no-source",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "wide: daily partial explains reason and Refresh boundary",
+      "ok": true,
+      "detail": "Scan incomplete; no papers selected"
+    },
+    {
+      "name": "wide: daily partial keeps Refresh, Back and digest actions",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture wide-daily-partial",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "wide: daily missing explains reason and Refresh boundary",
+      "ok": true,
+      "detail": "No daily edition found"
+    },
+    {
+      "name": "wide: daily missing keeps Refresh, Back and digest actions",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture wide-daily-missing",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "wide: daily unavailable explains reason and Refresh boundary",
+      "ok": true,
+      "detail": "Daily scan could not be read"
+    },
+    {
+      "name": "wide: daily unavailable keeps Refresh, Back and digest actions",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture wide-daily-unavailable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "narrow: all scope hides older Saved rows and reports truncation",
+      "ok": true,
+      "detail": "50 rows; notice=true"
+    },
+    {
+      "name": "narrow: I1 instruction",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture narrow-local-search-all-truncated",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "narrow: saved scope returns the 5 older Saved rows without a truncation notice",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture narrow-local-search-saved",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "narrow: analysis scope returns 30 analyses",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "narrow: scoped empty state names the scope",
+      "ok": true,
+      "detail": "No analyses match \u201czzqx-no-match\u201d"
+    },
+    {
+      "name": "capture narrow-local-search-scoped-empty",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture narrow-local-search-opened-record",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "narrow: Back to search results keeps query, saved scope and selected row",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "narrow: daily no-results explains reason and Refresh boundary",
+      "ok": true,
+      "detail": "No papers selected"
+    },
+    {
+      "name": "narrow: daily no-results keeps Refresh, Back and digest actions",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture narrow-daily-no-results",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "narrow: daily no-source explains reason and Refresh boundary",
+      "ok": true,
+      "detail": "Announcement batch unavailable to the scan"
+    },
+    {
+      "name": "narrow: daily no-source keeps Refresh, Back and digest actions",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture narrow-daily-no-source",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "narrow: daily partial explains reason and Refresh boundary",
+      "ok": true,
+      "detail": "Scan incomplete; no papers selected"
+    },
+    {
+      "name": "narrow: daily partial keeps Refresh, Back and digest actions",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture narrow-daily-partial",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "narrow: daily missing explains reason and Refresh boundary",
+      "ok": true,
+      "detail": "No daily edition found"
+    },
+    {
+      "name": "narrow: daily missing keeps Refresh, Back and digest actions",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture narrow-daily-missing",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "narrow: daily unavailable explains reason and Refresh boundary",
+      "ok": true,
+      "detail": "Daily scan could not be read"
+    },
+    {
+      "name": "narrow: daily unavailable keeps Refresh, Back and digest actions",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture narrow-daily-unavailable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture narrow-dark-local-search-all-truncated",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "capture narrow-dark-daily-no-source",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no external URL was opened",
+      "ok": true,
+      "detail": "[]"
+    }
+  ],
+  "failures": []
+}

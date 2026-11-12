@@ -56,6 +56,24 @@
   text-decoration: none;
 }
 
+.daily-papers__empty {
+  display: grid;
+  gap: 6px;
+  max-width: 62ch;
+  padding: 18px 16px;
+  overflow-wrap: anywhere;
+}
+
+.daily-papers__empty h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.daily-papers__empty p {
+  margin: 0;
+  color: var(--secondary-label);
+}
+
 .daily-papers__note {
   color: var(--secondary-label);
   font-size: 12px;
@@ -863,4 +881,75 @@
   border-top-color: var(--view-accent);
   border-radius: 50%;
   animation: activity-spin 700ms linear infinite;
+}
+
+/* Shared source chooser (Discover sources for this search and My sources). */
+.source-chooser {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.source-chooser__finder,
+.source-chooser__bulk,
+.discover-source-control__footer,
+.my-sources-dialog__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.source-chooser__finder input[type='search'] {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.source-chooser__bulk span {
+  flex: 1 1 auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.source-chooser__groups {
+  display: grid;
+  gap: 10px;
+  max-block-size: clamp(200px, 46vh, 420px);
+  overflow: auto;
+}
+
+.source-chooser__groups h3 {
+  margin: 0 0 4px;
+  font-size: 12px;
+}
+
+.source-chooser__choice {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 4px 2px;
+  overflow-wrap: anywhere;
+}
+
+.source-chooser__choice small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.discover-source-control__hint,
+.discover-source-status p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.discover-source-control__footer,
+.my-sources-dialog__footer {
+  justify-content: flex-end;
+}
+
+.discover-source-status {
+  display: grid;
+  gap: 2px;
 }

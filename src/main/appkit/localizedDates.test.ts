@@ -38,7 +38,14 @@ describe('native display dates in the system language', () => {
         target: { kind: 'saved' as const, itemId: 'arxiv:1' }
       }
     ]
-    const h = nativeHarness({ searchLocal: vi.fn(async () => ({ query: 'paper', results })) })
+    const h = nativeHarness({
+      searchLocal: vi.fn(async () => ({
+        query: 'paper',
+        scope: 'all' as const,
+        truncated: false,
+        results
+      }))
+    })
     Object.assign(h.context, { locale: 'de-DE' })
     const screen = localSearchHarness(h.context)
     await h.act(screen, 'local-search-query', 'paper')

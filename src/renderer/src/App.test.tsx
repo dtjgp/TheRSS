@@ -46,31 +46,37 @@ describe('App', () => {
     expect(api.getInterestProfile).not.toHaveBeenCalled()
   })
 
-  it('offers all 22 active sources by default and supports clear/select all', async () => {
+  // 2026-11-12 My sources contract: the chooser edits a draft with Select/Clear shown; only
+  // Apply to this search changes the next search's sources.
+  it('offers all 22 active sources by default and supports clear/select shown', async () => {
     const user = userEvent.setup()
     render(<App api={createApi()} />)
 
-    const sourcePicker = screen.getByRole('button', {
+    const sourcePicker = await screen.findByRole('button', {
       name: 'Choose sources, 22 of 22 selected'
     })
     expect(sourcePicker).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('group', { name: 'Search sources' })).not.toBeInTheDocument()
     await user.click(sourcePicker)
     const sourceGroup = screen.getByRole('group', { name: 'Search sources' })
-    const checkboxes = within(sourceGroup).getAllByRole('checkbox')
+    const checkboxes = within(sourceGroup).getAllByRole('checkbox', { name: /^Search / })
     expect(checkboxes).toHaveLength(ACTIVE_TODAY_SOURCE_IDS.length)
     checkboxes.forEach((checkbox) => expect(checkbox).toBeChecked())
     ACTIVE_TODAY_SOURCE_IDS.forEach((source) => {
       expect(within(sourceGroup).getByText(sourceDisplayName(source))).toBeVisible()
     })
 
-    await user.click(within(sourceGroup).getByRole('button', { name: 'Clear all sources' }))
-    checkboxes.forEach((checkbox) => expect(checkbox).not.toBeChecked())
-    expect(sourcePicker).toHaveAccessibleName('Choose sources, 0 of 22 selected')
-    expect(screen.getByRole('button', { name: 'Search' })).toBeDisabled()
+    await user.click(within(sourceGroup).getByRole('button', { name: 'Clear shown' }))
+    within(sourceGroup)
+      .getAllByRole('checkbox', { name: /^Search / })
+      .forEach((checkbox) => expect(checkbox).not.toBeChecked())
+    expect(within(sourceGroup).getByRole('button', { name: 'Apply to this search' })).toBeDisabled()
+    expect(sourcePicker).toHaveAccessibleName('Choose sources, 22 of 22 selected')
 
-    await user.click(within(sourceGroup).getByRole('button', { name: 'Select all sources' }))
-    checkboxes.forEach((checkbox) => expect(checkbox).toBeChecked())
+    await user.click(within(sourceGroup).getByRole('button', { name: 'Select shown' }))
+    within(sourceGroup)
+      .getAllByRole('checkbox', { name: /^Search / })
+      .forEach((checkbox) => expect(checkbox).toBeChecked())
   })
 
   it('searches every source and renders truthful outcomes and actual item identities', async () => {
@@ -455,7 +461,9 @@ describe('App', () => {
     ).toHaveTextContent('abstract-only / provisional')
   })
 
-  it('restores the exact source subset from the latest Discover session', async () => {
+  // 2026-11-12 My sources contract: the next search starts from the stored default; the latest
+  // session no longer replaces it.
+  it('starts from the stored default source subset, not from the latest Discover session', async () => {
     const api = createApi()
     vi.mocked(api.getLatestDiscover).mockResolvedValue({
       ...createDiscoverSnapshot(),
@@ -467,6 +475,12 @@ describe('App', () => {
             : { status: 'not_searched', resultCount: 0, error: null }
         ])
       ) as DiscoverSnapshot['sourceOutcomes']
+    })
+    vi.mocked(api.getDiscoverSourcePreference).mockResolvedValue({
+      sources: ['arxiv', 'folo:302'],
+      unavailable: [],
+      origin: 'latest-session',
+      updatedAt: '2026-11-12T00:00:00.000Z'
     })
     const user = userEvent.setup()
     render(<App api={api} />)

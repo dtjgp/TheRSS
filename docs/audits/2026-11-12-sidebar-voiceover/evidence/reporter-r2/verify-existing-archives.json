@@ -1,0 +1,27 @@
+{
+  "count": 3,
+  "ok": true,
+  "results": [
+    {
+      "directory": "test-results/sidebar-diagnostics/2026-11-12T19-42-22-136Z-72b68239",
+      "correlated": true,
+      "state": "copied",
+      "sha256Matches": true,
+      "passed": true
+    },
+    {
+      "directory": "test-results/sidebar-diagnostics/2026-11-12T19-42-41-709Z-b0515daa",
+      "correlated": true,
+      "state": "copied",
+      "sha256Matches": true,
+      "passed": true
+    },
+    {
+      "directory": "test-results/sidebar-diagnostics/2026-11-12T19-43-24-727Z-53b9b9ec",
+      "correlated": true,
+      "state": "copied",
+      "sha256Matches": true,
+      "passed": true
+    }
+  ]
+}

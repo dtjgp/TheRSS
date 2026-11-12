@@ -11,7 +11,8 @@ import {
   readableError,
   row,
   scroll,
-  type NativeContext
+  type NativeContext,
+  type NativeSheet
 } from './common'
 import type { NativeNode } from './presentation'
 
@@ -29,7 +30,8 @@ const RECEIPT_STATUS: Record<LlmWikiPromotionStatus, readonly [string, boolean]>
 
 export class NativeModals {
   private readonly controls: Controls
-  private kind: 'promotion' | 'document' | null = null
+  private kind: 'promotion' | 'document' | 'sheet' | null = null
+  private sheet: NativeSheet | null = null
   private version = 0
   private busy = false
   private message = ''
@@ -56,13 +58,14 @@ export class NativeModals {
     return this.kind !== null
   }
   get blocksNavigation(): boolean {
-    return this.kind === 'promotion' && this.busy
+    return (this.kind === 'promotion' && this.busy) || (this.kind === 'sheet' && !!this.sheet?.busy)
   }
+  /** Local search would hide a promotion or a busy sheet, whose result must stay visible. */
   get canOpenSearch(): boolean {
-    return this.kind !== 'promotion'
+    return this.kind !== 'promotion' && !this.blocksNavigation
   }
   openDocument(title: string, content: string): void {
-    if (this.kind === 'promotion') return
+    if (this.kind === 'promotion' || this.blocksNavigation) return
     this.version++
     this.kind = 'document'
     this.document = { title, content }
@@ -71,19 +74,34 @@ export class NativeModals {
     this.focus = 'modal-close'
     this.context.redraw()
   }
+  /** A screen's own sheet; Cancel, Escape and navigation end it through `dismissed`. */
+  async openSheet(sheet: NativeSheet): Promise<void> {
+    if (this.blocksNavigation) return
+    await this.close()
+    this.version++
+    this.kind = 'sheet'
+    this.sheet = sheet
+    this.message = ''
+    this.focus = sheet.initialFocus
+    this.context.redraw()
+  }
   dispose(): void {
     this.disposed = true
     this.version++
     this.kind = null
+    this.sheet = null
   }
   async close(): Promise<void> {
     if (this.blocksNavigation) return
     if (this.kind === 'promotion' && this.preview?.previewId && !this.consumed)
       await this.cancelPromotion()
+    const sheet = this.kind === 'sheet' ? this.sheet : null
     this.version++
     this.kind = null
+    this.sheet = null
     this.busy = false
-    this.focus = undefined
+    this.focus = sheet?.returnFocus
+    sheet?.dismissed()
     this.context.redraw()
   }
 
@@ -118,6 +136,18 @@ export class NativeModals {
   render(): NativeNode | undefined {
     if (!this.kind || this.confirming) return undefined
     const b = this.controls
+    if (this.kind === 'sheet' && this.sheet) {
+      const sheet = this.sheet
+      return column('modal-sheet', [heading('modal-heading', sheet.title), ...sheet.render()], {
+        title: sheet.title,
+        padding: 22,
+        flex: 1,
+        // Escape (the sheet's cancel) closes without saving.
+        context: this.context.presentation.action(`modal-close:sheet:${this.version}`, () =>
+          this.close()
+        )
+      })
+    }
     const title = this.kind === 'promotion' ? 'Promote paper to llm-wiki' : this.document.title
     const closeAction = this.context.presentation.action(
       `modal-close:${this.kind}:${this.version}`,

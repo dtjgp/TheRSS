@@ -14,7 +14,14 @@ describe('toolbar local research search', () => {
       createdAt: 'now',
       target: kind === 'saved' ? { kind, itemId: 'arxiv:1' } : { kind, analysisId: 'same-id' }
     }))
-    const h = nativeHarness({ searchLocal: vi.fn(async () => ({ query: 'paper', results })) })
+    const h = nativeHarness({
+      searchLocal: vi.fn(async () => ({
+        query: 'paper',
+        scope: 'all' as const,
+        truncated: false,
+        results
+      }))
+    })
     const screen = localSearchHarness(h.context)
     await h.act(screen, 'local-search-query', 'paper')
     await h.context.presentation.dispatch(
@@ -36,10 +43,10 @@ describe('toolbar local research search', () => {
     expect(h.context.openExternal).not.toHaveBeenCalled()
   })
   it('supports immediate Return, validates length, and hides late results after the field is cleared', async () => {
-    let finish!: (value: { query: string; results: [] }) => void
+    let finish!: (value: { query: string; scope: 'all'; truncated: false; results: [] }) => void
     const search = vi.fn(
       () =>
-        new Promise<{ query: string; results: [] }>((resolve) => {
+        new Promise<{ query: string; scope: 'all'; truncated: false; results: [] }>((resolve) => {
           finish = resolve
         })
     )
@@ -53,7 +60,7 @@ describe('toolbar local research search', () => {
       JSON.stringify({ action: h.find(h.render(screen), 'local-search-query')!.activate })
     )
     screen.search.clear()
-    finish({ query: 'edge', results: [] })
+    finish({ query: 'edge', scope: 'all' as const, truncated: false, results: [] })
     await running
     expect(screen.search.showing).toBe(false)
     expect(h.find(h.render(screen), 'local-search-result-count')).toBeUndefined()

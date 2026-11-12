@@ -151,7 +151,12 @@ describe('acceptance polish', () => {
       getLocalAgentStatuses: vi.fn(async () => h.context.data.agents),
       getLatestDiscover: vi.fn(async () => nativeDiscoverFixture),
       saveDiscoverResult: vi.fn(async () => h.dashboard),
-      searchLocal: vi.fn(async () => ({ query: 'edge', results: [] }))
+      searchLocal: vi.fn(async () => ({
+        query: 'edge',
+        scope: 'all' as const,
+        truncated: false,
+        results: []
+      }))
     })
     let json = ''
     const presenter = new NativePresenter(h.api, {

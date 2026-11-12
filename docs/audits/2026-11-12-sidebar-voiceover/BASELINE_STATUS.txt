@@ -1,0 +1,86 @@
+# Engineer workspace at the start of the sidebar diagnosis (2026-11-12). HEAD:
+b1ea9222ee73ba8d8ca5d501846ed2d1e9ced6c0
+## git status --short (unchanged by this read-only phase)
+ M PRODUCT.md
+ M e2e/desktop.spec.ts
+ M native/appkit/bridge.mm
+ M native/appkit/popover.mm
+ M scripts/smoke-native-appkit.mjs
+ M src/core/storage/localSearchStore.ts
+ M src/core/storage/researchRepository.ts
+ M src/core/storage/researchSchema.ts
+ M src/main/appkit/acceptancePolish.test.ts
+ M src/main/appkit/common.ts
+ M src/main/appkit/dailyPapers.test.ts
+ M src/main/appkit/dailyPapers.ts
+ M src/main/appkit/directInteraction.test.ts
+ M src/main/appkit/discover.polish.test.ts
+ M src/main/appkit/discover.recovery.test.ts
+ M src/main/appkit/discover.test.ts
+ M src/main/appkit/discover.ts
+ D src/main/appkit/discoverSources.ts
+ M src/main/appkit/emptyState.test.ts
+ M src/main/appkit/localNavigation.test.ts
+ M src/main/appkit/localSearch.test.ts
+ M src/main/appkit/localSearch.ts
+ M src/main/appkit/localizedDates.test.ts
+ M src/main/appkit/modals.ts
+ M src/main/appkit/presentation.ts
+ M src/main/appkit/presenter.test.ts
+ M src/main/appkit/presenter.ts
+ M src/main/appkit/sources.ts
+ M src/main/appkit/testSupport.ts
+ M src/main/appkit/workflows.test.ts
+ M src/main/windowApplication.contract.test.ts
+ M src/main/windowApplication.ts
+ M src/main/windowApplicationRuntime.ts
+ M src/preload/index.ts
+ M src/renderer/src/App.test.tsx
+ M src/renderer/src/App.testSupport.ts
+ M src/renderer/src/DailyPapersView.tsx
+ M src/renderer/src/DiscoverView.tsx
+ M src/renderer/src/LocalSearchPanel.direct.test.tsx
+ M src/renderer/src/LocalSearchPanel.test.tsx
+ M src/renderer/src/LocalSearchPanel.tsx
+ M src/renderer/src/SettingsView.test.tsx
+ M src/renderer/src/SourceCatalogView.test.tsx
+ M src/renderer/src/SourceCatalogView.tsx
+ M src/renderer/src/styles/discover.css
+ M src/renderer/src/styles/sources.css
+ M src/shared/api.ts
+ M src/shared/ipc.ts
+ M src/shared/llmWikiDaily.ts
+ M src/shared/localSearch.ts
+?? docs/audits/2026-11-12-interaction-implementation/
+?? docs/audits/2026-11-12-my-sources/
+?? docs/audits/2026-11-12-sidebar-voiceover/
+?? src/core/storage/discoverSourcePreference.test.ts
+?? src/core/storage/discoverSourcePreferenceStore.ts
+?? src/core/storage/localSearchScope.test.ts
+?? src/main/appkit/dailyPapersEmpty.test.ts
+?? src/main/appkit/discoverSourceScope.test.ts
+?? src/main/appkit/discoverSourceScope.ts
+?? src/main/appkit/localSearchScope.test.ts
+?? src/main/appkit/mySources.presenter.test.ts
+?? src/main/appkit/mySources.saving.test.ts
+?? src/main/appkit/mySources.test.ts
+?? src/main/appkit/mySources.ts
+?? src/main/appkit/sourceChooser.ts
+?? src/main/appkit/sourcePreferences.ts
+?? src/renderer/src/App.discoverSession.test.tsx
+?? src/renderer/src/App.mySources.test.tsx
+?? src/renderer/src/DailyPapersView.empty.test.tsx
+?? src/renderer/src/DiscoverSourcesControl.tsx
+?? src/renderer/src/LocalSearchPanel.truncation.test.tsx
+?? src/renderer/src/MySourcesDialog.focus.test.tsx
+?? src/renderer/src/MySourcesDialog.tsx
+?? src/renderer/src/SourceChooser.tsx
+?? src/renderer/src/discoverSession.test.ts
+?? src/renderer/src/discoverSession.ts
+?? src/renderer/src/focusTrap.ts
+?? src/renderer/src/useDiscoverSources.ts
+?? src/shared/discoverSourcePreference.ts
+?? src/shared/llmWikiDaily.test.ts
+?? src/shared/localSearch.test.ts
+?? src/shared/sourceChoice.test.ts
+?? src/shared/sourceChoice.ts

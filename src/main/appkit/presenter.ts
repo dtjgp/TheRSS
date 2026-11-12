@@ -98,6 +98,8 @@ export class NativePresenter {
       },
       openExternal: (url) => port.openExternal(url),
       showDocument: (title, content) => this.modals.openDocument(title, content),
+      openSheet: (sheet) => void this.modals.openSheet(sheet),
+      closeSheet: () => void this.modals.close(),
       promote: (itemId, sessionId) => this.modals.openPromotion(itemId, sessionId),
       openRecord: (record) => port.openRecord?.(record),
       openSettings: (section) => port.openSettings?.(section),

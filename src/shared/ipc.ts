@@ -55,6 +55,8 @@ export const IPC_CHANNELS = {
   confirmDiscardSettings: 'settings:confirm-discard',
   getDiscoverPersonalizationSettings: 'models:get-discover-personalization',
   saveDiscoverPersonalizationPrompt: 'models:save-discover-personalization',
+  getDiscoverSourcePreference: 'discover:get-source-preference',
+  saveDiscoverSourcePreference: 'discover:save-source-preference',
   getLocalAgentStatuses: 'agents:get-statuses',
   analyzeItem: 'analysis:run',
   analyzeDiscoverResult: 'analysis:run-discover-result',

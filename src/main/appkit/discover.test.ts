@@ -56,11 +56,13 @@ describe('AppKit Discover', () => {
     await h.act(screen, 'discover-source-picker')
     const popover = h.popover(screen)
     expect(popover).toMatchObject({ anchor: 'discover-source-picker' })
-    expect(h.find(popover!.root, 'discover-source-controls')).toBeDefined()
-    expect(h.find(screen.render(), 'discover-source-controls')).toBeUndefined()
-    await h.act(screen, 'discover-clear-sources')
-    expect(h.find(h.render(screen), 'discover-source-picker')?.title).toBe('Sources (0/22)')
-    await h.act(screen, 'discover-all-sources')
+    expect(h.find(popover!.root, 'discover-source-chooser')).toBeDefined()
+    expect(h.find(screen.render(), 'discover-source-chooser')).toBeUndefined()
+    await h.act(screen, 'discover-source-clear-shown')
+    expect(h.find(h.render(screen), 'discover-source-shown-count')?.text).toBe(
+      '22 of 22 shown · 0 selected'
+    )
+    await h.act(screen, 'discover-source-select-shown')
     await h.context.presentation.dispatch(JSON.stringify({ action: popover!.close }))
     expect(h.popover(screen)).toBeUndefined()
     await h.act(screen, 'discover-source-picker')

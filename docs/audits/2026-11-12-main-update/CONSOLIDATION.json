@@ -1,0 +1,122 @@
+[
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-interaction-review/DECISION.md",
+    "sha256": "03cf488f51dbac44c96476c08eb8aaa80d0dc9fa2ece0530c4d214a385c0b21e"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-interaction-review/ENGINEER_IMPLEMENTATION_TASK.md",
+    "sha256": "01d2cb4e14a0fe93eb43333069a24c5aba7a9e351304fe3192c92543c49ff1cb"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-interaction-review/ENGINEER_REVIEW.md",
+    "sha256": "6d40ddfcec955f855cd153a1d6a4cf4e6c69320f9ce630a8fed517cd4e2893da"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-interaction-review/ENGINEER_REVIEW_TASK.md",
+    "sha256": "b53e90ed00e854ba78754388964411d485c861a6bdb244a90a7359cc98123e56"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-interaction-review/IMPLEMENTATION_REVIEW.md",
+    "sha256": "f2aaf5ff6b4888048c3e5af666d9ea978ddb6a811c85c2463da9ee249f536cf7"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-interaction-review/REVIEW.md",
+    "sha256": "746a9d74e33325dd70cb7863608e962a5ded8e8dc79b61d3056592452bc6f717"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-my-sources-proposal/BASELINE.json",
+    "sha256": "a2c30c2dabf229204bf772c76b0529a3a9d5f5922fcea8879bc2c03f38af550c"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-my-sources-proposal/CHANGE_CONTRACT.md",
+    "sha256": "cbd870b4bfeaaceb11fa5abf8280088706a98d91dd4c68a4c93303adc27caf0f"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-my-sources-proposal/CONTINUATION_CONTRACT.md",
+    "sha256": "1e10bae2732fa6c0f9d721eac4bd6dc2472d33dc250b3b05e26a4ee8ad6e3203"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-my-sources-proposal/ENGINEER_TASK.md",
+    "sha256": "3c02c30aff72de49fc4efd1d6a6d15affd3ea5d892287021a1b8737c830ad519"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-my-sources-proposal/FINAL_VERIFICATION.md",
+    "sha256": "9e389c69bf15269556bc513a5f4f74cff128873f169e424fbfad5604a4610f0c"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-my-sources-proposal/IMPLEMENTATION_REVIEW.md",
+    "sha256": "acfb2617f78406231ed0d65bf30e31697643833190c6ec9a3a90a3994ed2039e"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-my-sources-proposal/evidence/manager-native-final.json",
+    "sha256": "3144673243c401f3782dddd872b07a9c9484b44da6edbf640a762c2b4053965d"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-my-sources-proposal/evidence/narrow-820x600.png",
+    "sha256": "e1e864813682602de8d45bed20ba87e0a3a6971e864290207480501a89f7e9e8"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-my-sources-proposal/evidence/wide-1180x780.png",
+    "sha256": "b9fe1c858be880b1663ed88cc00c260d61bbec2cfef26f6735468d25c9e035a3"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-my-sources-proposal/prototype.html",
+    "sha256": "cac4e56f6ef9acc14f24619c0c1b098a2c33b4eac16cab94afa7b8c9e478a898"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-my-sources-proposal/prototype.template.html",
+    "sha256": "10be9925eca2b0a094cf852fac201e84909349ec970f5a59dbedd5b2629e0be1"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-sidebar-voiceover/CHANGE_CONTRACT.md",
+    "sha256": "bc2e272b137312e8d0dc995b313b2b63332d097e39b11c0dade1335f6fef7683"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-sidebar-voiceover/REVIEW.md",
+    "sha256": "3880ddf7264a0779b8951e2db3e98b58632adc1f93207aca9926cf2bcd0eb667"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-sidebar-voiceover/VOICEOVER_ROLLBACK.md",
+    "sha256": "71d69d2d7bb100703629282ca00f452dc05970ef56461f34ab61a53d2fc15581"
+  },
+  {
+    "source": "manager",
+    "path": "docs/audits/2026-11-12-sidebar-voiceover/evidence/rollback-preserved-code.json",
+    "sha256": "43f333433ddfbe5c5804b3e1ce0a65238c653aac9f62b7e116b146d1cc041082"
+  },
+  {
+    "source": "project",
+    "path": "e2e/native-sidebar-resize.spec.ts",
+    "sha256": "7242e52cedc477f50c19ffebfaba52b045f94d61ce1d23faf5f61378fdbf82e0"
+  },
+  {
+    "source": "project",
+    "path": "docs/audits/2026-11-12-ci-sidebar-restore/CHANGE_CONTRACT.md",
+    "sha256": "3a7586fe95977d566a5adb5a94d9252a4bd3fbc2c39098dd4512b2814e047a8e"
+  },
+  {
+    "source": "project",
+    "path": "docs/audits/2026-11-12-ci-sidebar-restore/REPORT.md",
+    "sha256": "4f35dc6b0062b56d2ca462954033118bec79bbf4ed58abf1ac8135820752cc57"
+  }
+]

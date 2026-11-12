@@ -1,0 +1,463 @@
+{
+  "outcome": "passed",
+  "events": [
+    {
+      "t": 1794511268801,
+      "source": "renderer",
+      "type": "resizer-initial",
+      "valuenow": "224",
+      "hidden": false,
+      "stored": null,
+      "focused": true,
+      "ms": 0
+    },
+    {
+      "t": 1794511268805,
+      "source": "main",
+      "type": "recorder-attached",
+      "focused": true,
+      "ms": 4
+    },
+    {
+      "t": 1794511268806,
+      "source": "test",
+      "type": "phase",
+      "name": "window-ready",
+      "ms": 5
+    },
+    {
+      "t": 1794511268857,
+      "source": "test",
+      "type": "phase",
+      "name": "focus-before-drag",
+      "ms": 56
+    },
+    {
+      "t": 1794511268874,
+      "source": "renderer",
+      "type": "pointermove",
+      "pointerId": 1,
+      "buttons": 0,
+      "x": 224,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 73
+    },
+    {
+      "t": 1794511268875,
+      "source": "test",
+      "type": "phase",
+      "name": "mouse-down",
+      "ms": 74
+    },
+    {
+      "t": 1794511268879,
+      "source": "renderer",
+      "type": "pointerdown",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 224,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 78
+    },
+    {
+      "t": 1794511268879,
+      "source": "renderer",
+      "type": "attr",
+      "node": "shell",
+      "name": "class",
+      "value": "app-shell  app-shell--sidebar-resizing",
+      "ms": 78
+    },
+    {
+      "t": 1794511268888,
+      "source": "renderer",
+      "type": "gotpointercapture",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 240,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 87
+    },
+    {
+      "t": 1794511268889,
+      "source": "renderer",
+      "type": "pointermove",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 240,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 88
+    },
+    {
+      "t": 1794511268890,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "240",
+      "ms": 89
+    },
+    {
+      "t": 1794511268896,
+      "source": "renderer",
+      "type": "pointermove",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 256,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 95
+    },
+    {
+      "t": 1794511268899,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "256",
+      "ms": 98
+    },
+    {
+      "t": 1794511268904,
+      "source": "renderer",
+      "type": "pointermove",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 272,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 103
+    },
+    {
+      "t": 1794511268905,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "272",
+      "ms": 104
+    },
+    {
+      "t": 1794511268913,
+      "source": "renderer",
+      "type": "pointermove",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 288,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 112
+    },
+    {
+      "t": 1794511268915,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "288",
+      "ms": 114
+    },
+    {
+      "t": 1794511268915,
+      "source": "test",
+      "type": "phase",
+      "name": "mouse-up",
+      "ms": 114
+    },
+    {
+      "t": 1794511268918,
+      "source": "renderer",
+      "type": "pointerup",
+      "pointerId": 1,
+      "buttons": 0,
+      "x": 288,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 117
+    },
+    {
+      "t": 1794511268921,
+      "source": "renderer",
+      "type": "store",
+      "value": "288",
+      "ms": 120
+    },
+    {
+      "t": 1794511268923,
+      "source": "renderer",
+      "type": "attr",
+      "node": "shell",
+      "name": "class",
+      "value": "app-shell  ",
+      "ms": 122
+    },
+    {
+      "t": 1794511268924,
+      "source": "renderer",
+      "type": "lostpointercapture",
+      "pointerId": 1,
+      "buttons": 0,
+      "x": 288,
+      "trusted": true,
+      "target": "Resize sidebar",
+      "ms": 123
+    },
+    {
+      "t": 1794511268924,
+      "source": "test",
+      "type": "phase",
+      "name": "expect-288",
+      "ms": 123
+    },
+    {
+      "t": 1794511268929,
+      "source": "test",
+      "type": "phase",
+      "name": "press-right-wide",
+      "ms": 128
+    },
+    {
+      "t": 1794511268938,
+      "source": "renderer",
+      "type": "keydown",
+      "key": "ArrowRight",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "ms": 137
+    },
+    {
+      "t": 1794511268939,
+      "source": "renderer",
+      "type": "store",
+      "value": "296",
+      "ms": 138
+    },
+    {
+      "t": 1794511268939,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "296",
+      "ms": 138
+    },
+    {
+      "t": 1794511268941,
+      "source": "renderer",
+      "type": "keyup",
+      "key": "ArrowRight",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "ms": 140
+    },
+    {
+      "t": 1794511268944,
+      "source": "test",
+      "type": "phase",
+      "name": "click-hide",
+      "ms": 143
+    },
+    {
+      "t": 1794511269153,
+      "source": "renderer",
+      "type": "pointermove",
+      "pointerId": 1,
+      "buttons": 0,
+      "x": 329,
+      "trusted": true,
+      "target": "[object SVGAnimatedString]",
+      "ms": 352
+    },
+    {
+      "t": 1794511269153,
+      "source": "renderer",
+      "type": "pointerdown",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 329,
+      "trusted": true,
+      "target": "[object SVGAnimatedString]",
+      "ms": 352
+    },
+    {
+      "t": 1794511269153,
+      "source": "renderer",
+      "type": "pointerup",
+      "pointerId": 1,
+      "buttons": 0,
+      "x": 329,
+      "trusted": true,
+      "target": "[object SVGAnimatedString]",
+      "ms": 352
+    },
+    {
+      "t": 1794511269154,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "hidden",
+      "value": "",
+      "ms": 353
+    },
+    {
+      "t": 1794511269154,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "tabindex",
+      "value": "-1",
+      "ms": 353
+    },
+    {
+      "t": 1794511269154,
+      "source": "renderer",
+      "type": "attr",
+      "node": "shell",
+      "name": "class",
+      "value": "app-shell app-shell--sidebar-collapsed ",
+      "ms": 353
+    },
+    {
+      "t": 1794511269157,
+      "source": "test",
+      "type": "phase",
+      "name": "click-show",
+      "ms": 356
+    },
+    {
+      "t": 1794511269348,
+      "source": "renderer",
+      "type": "pointermove",
+      "pointerId": 1,
+      "buttons": 0,
+      "x": 117,
+      "trusted": true,
+      "target": "[object SVGAnimatedString]",
+      "ms": 547
+    },
+    {
+      "t": 1794511269348,
+      "source": "renderer",
+      "type": "pointerdown",
+      "pointerId": 1,
+      "buttons": 1,
+      "x": 117,
+      "trusted": true,
+      "target": "[object SVGAnimatedString]",
+      "ms": 547
+    },
+    {
+      "t": 1794511269349,
+      "source": "renderer",
+      "type": "pointerup",
+      "pointerId": 1,
+      "buttons": 0,
+      "x": 117,
+      "trusted": true,
+      "target": "[object SVGAnimatedString]",
+      "ms": 548
+    },
+    {
+      "t": 1794511269349,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "hidden",
+      "value": null,
+      "ms": 548
+    },
+    {
+      "t": 1794511269349,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "tabindex",
+      "value": "0",
+      "ms": 548
+    },
+    {
+      "t": 1794511269350,
+      "source": "renderer",
+      "type": "attr",
+      "node": "shell",
+      "name": "class",
+      "value": "app-shell  ",
+      "ms": 549
+    },
+    {
+      "t": 1794511269636,
+      "source": "test",
+      "type": "phase",
+      "name": "reload",
+      "ms": 835
+    },
+    {
+      "t": 1794511269668,
+      "source": "renderer",
+      "type": "pointermove",
+      "pointerId": 1,
+      "buttons": 0,
+      "x": 765,
+      "trusted": true,
+      "target": "MAIN",
+      "ms": 867
+    },
+    {
+      "t": 1794511269676,
+      "source": "main",
+      "type": "window-resize",
+      "ms": 875
+    },
+    {
+      "t": 1794511269704,
+      "source": "renderer",
+      "type": "resizer-initial",
+      "valuenow": "184",
+      "hidden": false,
+      "stored": "296",
+      "focused": true,
+      "ms": 903
+    },
+    {
+      "t": 1794511269900,
+      "source": "renderer",
+      "type": "keydown",
+      "key": "ArrowRight",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "ms": 1099
+    },
+    {
+      "t": 1794511269901,
+      "source": "renderer",
+      "type": "keyup",
+      "key": "ArrowRight",
+      "repeat": false,
+      "trusted": true,
+      "active": "Resize sidebar",
+      "ms": 1100
+    },
+    {
+      "t": 1794511269905,
+      "source": "main",
+      "type": "window-resize",
+      "ms": 1104
+    },
+    {
+      "t": 1794511269914,
+      "source": "renderer",
+      "type": "attr",
+      "node": "resizer",
+      "name": "aria-valuenow",
+      "value": "296",
+      "ms": 1113
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import type { NativeGlassApi } from './nativeGlass'
 import type { InterestProfile } from '../core/interests/interestProfile'
 import type { DiscoverPersonalizationSettings } from './personalization'
+import type { DiscoverSourcePreference } from './discoverSourcePreference'
 import type {
   AnalysisArtifact,
   AnalysisArtifactState,
@@ -23,7 +24,7 @@ import type { SystemAccentName } from './appearance'
 import type { ContextMenuOutcome, ContextMenuTarget } from './contextMenu'
 import type { DiscoveryItemKind, DiscoverySource } from './discovery'
 import type { LlmWikiPromotionPreview, LlmWikiPromotionReceipt } from './llmWikiPromotion'
-import type { LocalSearchResponse } from './localSearch'
+import type { LocalSearchResponse, LocalSearchScope } from './localSearch'
 import type { LocalResearchRecord, LocalResearchTarget } from './localResearch'
 import type { LlmWikiLibraryStatus, LlmWikiStatusRequest } from './llmWikiLibrary'
 import type { LlmWikiDailyOpenRequest, LlmWikiDailySnapshot } from './llmWikiDaily'
@@ -109,7 +110,8 @@ export interface TheRSSApi {
   getInterestProfile(): Promise<InterestProfile | null>
   saveInterestProfile(profile: InterestProfile): Promise<DashboardSnapshot>
   refresh(): Promise<DashboardSnapshot>
-  searchLocal(query: string): Promise<LocalSearchResponse>
+  /** An omitted scope searches all local record kinds within their bounded limits. */
+  searchLocal(query: string, scope?: LocalSearchScope): Promise<LocalSearchResponse>
   getLocalResearch(target: LocalResearchTarget): Promise<LocalResearchRecord | null>
   onDiscoverProgress(listener: (progress: DiscoverRunProgress) => void): () => void
   searchDiscover(request: DiscoverSearchRequest, runId: string): Promise<DiscoverSnapshot>
@@ -133,6 +135,12 @@ export interface TheRSSApi {
   confirmDiscardSettings(): Promise<boolean>
   getDiscoverPersonalizationSettings(): Promise<DiscoverPersonalizationSettings | null>
   saveDiscoverPersonalizationPrompt(prompt: string): Promise<DiscoverPersonalizationSettings>
+  /** The default sources new Discover searches start from (local SQLite, shared by both routes). */
+  getDiscoverSourcePreference(): Promise<DiscoverSourcePreference>
+  /** Saves 1–22 unique current sources; it starts no search. */
+  saveDiscoverSourcePreference(
+    sources: readonly DiscoverSource[]
+  ): Promise<DiscoverSourcePreference>
   getLocalAgentStatuses(): Promise<readonly LocalAgentStatus[]>
   analyzeItem(id: string, runner: AnalysisRunner): Promise<AnalysisArtifact>
   analyzeDiscoverResult(

@@ -73,7 +73,9 @@ describe('Daily Papers in native Discover', () => {
         .mockResolvedValue(e2eLlmWikiDaily)
     )
     await h.act('discover-daily-papers')
-    expect(h.find('daily-papers-error')?.text).toContain('could not be loaded')
+    // A failed read is explained in the shared empty state, not as an empty edition.
+    expect(h.find('daily-papers-empty-title')?.text).toContain('could not be loaded')
+    expect(h.find('daily-papers-empty-message')?.text).not.toMatch(/no papers/iu)
     expect(h.find('daily-papers-status')).toBeUndefined()
     await h.act('daily-papers-refresh')
     expect(h.find('daily-papers-error')).toBeUndefined()

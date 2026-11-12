@@ -1,7 +1,10 @@
 import {
   localSearchQuerySchema,
+  localSearchTruncationText,
+  localSearchScopeSchema,
   type LocalSearchResponse,
-  type LocalSearchResult
+  type LocalSearchResult,
+  type LocalSearchScope
 } from '../../shared/localSearch'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
 import { formatDisplayDate } from '../../shared/sourceDate'
@@ -19,6 +22,17 @@ import type { NativeNode, NativeToolbarItem } from './presentation'
 const resultKey = (item: LocalSearchResult): string => `${item.kind}:${item.id}`
 export const LOCAL_SEARCH_FIELD = 'local-search-query'
 
+const SCOPES: Record<LocalSearchScope, { title: string; empty: string; area: string }> = {
+  all: { title: 'All', empty: 'results', area: '' },
+  saved: { title: 'Saved', empty: 'Saved items', area: 'Saved research' },
+  discover: {
+    title: 'Search sessions',
+    empty: 'search-session results',
+    area: 'Discover sessions'
+  },
+  analysis: { title: 'Analyses', empty: 'analyses', area: 'stored analyses' }
+}
+
 /**
  * Local research search driven by the window toolbar field (Notes/Mail pattern). A non-empty
  * query shows results in the content area; the search keeps its query and results after a
@@ -28,6 +42,7 @@ export class LocalSearchScreen {
   private readonly controls: Controls
   private version = 0
   private query = ''
+  private scope: LocalSearchScope = 'all'
   private response: LocalSearchResponse | null = null
   private selectedResult = ''
   private busy = false
@@ -60,6 +75,7 @@ export class LocalSearchScreen {
     this.clearSearchTimer()
     this.version++
     this.query = ''
+    this.scope = 'all'
     this.response = null
     this.selectedResult = ''
     this.message = ''
@@ -107,9 +123,19 @@ export class LocalSearchScreen {
             ? 'Opening local record…'
             : this.busy
               ? 'Searching local records…'
-              : 'Type 2–200 characters. Choose a result and press Return to open it.',
+              : 'Type 2–200 characters. Click a result or press Return to open it in TheRSS. Open original opens the selected result’s original link.',
           { weight: 'secondary' }
         ),
+        // In a row the control keeps its natural width, as the Discover result-kind control does.
+        row('local-search-scope-row', [
+          b.segmented(
+            'local-search-scope',
+            'Search scope',
+            this.scope,
+            localSearchScopeSchema.options.map((id) => ({ id, title: SCOPES[id].title })),
+            (value) => this.changeScope(localSearchScopeSchema.parse(value))
+          )
+        ]),
         ...(this.message ? [label('local-search-message', this.message)] : []),
         ...(response
           ? [
@@ -117,7 +143,18 @@ export class LocalSearchScreen {
                 'local-search-result-count',
                 `${response.results.length} ${response.results.length === 1 ? 'result' : 'results'} for “${response.query}”`,
                 { weight: 'bold' }
-              )
+              ),
+              ...(response.truncated
+                ? [
+                    label(
+                      'local-search-truncated',
+                      localSearchTruncationText(response.scope, true),
+                      {
+                        weight: 'secondary'
+                      }
+                    )
+                  ]
+                : [])
             ]
           : []),
         ...(response?.results.length
@@ -162,8 +199,10 @@ export class LocalSearchScreen {
                 ? emptyState(
                     'local-search-empty',
                     'magnifyingglass',
-                    `No results for “${response.query}”`,
-                    'No matching local records. Search looks in Saved research, Discover sessions and stored analyses on this Mac.'
+                    `No ${SCOPES[response.scope].empty} ${response.scope === 'all' ? 'for' : 'match'} “${response.query}”`,
+                    response.scope === 'all'
+                      ? 'No matching local records. Search looks in Saved research, Discover sessions and stored analyses on this Mac.'
+                      : `This scope searches only ${SCOPES[response.scope].area} on this Mac. Choose All to search every kind of local record.`
                   )
                 : emptyState(
                     'local-search-empty',
@@ -205,6 +244,21 @@ export class LocalSearchScreen {
       }, 250)
     this.context.redraw()
   }
+  /** A new scope keeps the query and searches again; a late response for the old scope is dropped. */
+  private changeScope(scope: LocalSearchScope): void {
+    // While a result opens, the redraw restores the control to the unchanged scope.
+    if (!this.opening && scope !== this.scope) {
+      this.clearSearchTimer()
+      this.version++
+      this.scope = scope
+      this.response = null
+      this.selectedResult = ''
+      this.message = ''
+      this.busy = false
+      void this.search()
+    }
+    this.context.redraw()
+  }
   private async openLocalResult(): Promise<void> {
     const selected =
       this.response?.results.find((item) => resultKey(item) === this.selectedResult) ??
@@ -238,7 +292,10 @@ export class LocalSearchScreen {
     this.message = ''
     this.context.redraw()
     try {
-      const response = await this.context.api.searchLocal(parsed.data)
+      // The default scope keeps the original one-argument call for compatibility.
+      const response = await (this.scope === 'all'
+        ? this.context.api.searchLocal(parsed.data)
+        : this.context.api.searchLocal(parsed.data, this.scope))
       if (!this.disposed && version === this.version) {
         this.response = response
         this.selectedResult = response.results[0] ? resultKey(response.results[0]) : ''
