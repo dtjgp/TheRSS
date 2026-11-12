@@ -315,7 +315,8 @@ export class DiscoveryService {
         )
         this.#repository.recordSourceRun(
           result.source,
-          result.rejectedCount > 0 ? 'partial' : 'healthy',
+          // A zero-item batch here is empty or fully omitted by policy; neither is partial.
+          result.rejectedCount > 0 && result.returnedCount > 0 ? 'partial' : 'healthy',
           completedAt,
           result.rejectedCount > 0 ? sourceRejectionDetail(result) : null,
           result.returnedCount

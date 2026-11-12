@@ -754,6 +754,26 @@ describe('DiscoverService', () => {
     })
   })
 
+  it('reports a configured payload omitted only by date policy as no_results', async () => {
+    const { service } = setup({
+      configuredDefinitions: [getConfiguredSourceDefinition('folo:611')],
+      fetchConfiguredSource: vi.fn().mockResolvedValue({
+        items: [],
+        rejectedCount: 6,
+        omittedCount: 6,
+        rejectionReason: 'issue numbers were not converted to dates'
+      })
+    })
+
+    const result = await service.search({ intent: 'edge', runner: 'codex', sources: ['folo:611'] })
+
+    expect(result.sourceOutcomes['folo:611']).toEqual({
+      status: 'no_results',
+      resultCount: 0,
+      error: '6 entries omitted. issue numbers were not converted to dates'
+    })
+  })
+
   it('rejects unsafe concurrency bounds at construction', () => {
     expect(() => setup({ concurrency: 0 })).toThrow(
       'Discover source concurrency must be between 1 and 8'
