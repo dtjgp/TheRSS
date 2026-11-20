@@ -1,0 +1,207 @@
+{
+  "version": "1.1.0",
+  "project": "TheRSS",
+  "orchestrator": "orca",
+  "repoId": "a07f0780-c0a8-44cf-834c-850450395c6c",
+  "orchestrationRunId": "run_d5f974bdbf63",
+  "workflowAuthority": [
+    "AGENTS.md",
+    "PRODUCT.md",
+    "GOALS.md",
+    "docs/DEVELOPMENT_WORKFLOW.md",
+    "docs/DESIGN.md"
+  ],
+  "permissionRouting": {
+    "mode": "coordinator-supervised",
+    "coordinatorRole": "technical-pm",
+    "approveCommand": "orca orchestration approve --dispatch <dispatch_id> --prompt <approval_id> --reason \"<reason>\"",
+    "denyCommand": "orca orchestration deny --dispatch <dispatch_id> --prompt <approval_id> --reason \"<reason>\"",
+    "allowOnceScope": [
+      "Reading repository files, ADRs, audits, and role charters",
+      "Editing files strictly inside the assigned role ownedPaths and active CHANGE_CONTRACT.md",
+      "Running local deterministic verification commands (npm run check, vitest, eslint, prettier, typecheck, smoke:mcp, smoke:appkit, smoke:native, test:e2e, evaluate:discovery)",
+      "Read-only git inspection (git status, git diff, git log) and Orca worker_done/ask reporting"
+    ],
+    "autoDenyScope": [
+      "Editing files outside the role ownedPaths or active task scope without PM contract revision",
+      "Any write/edit tool requested by read-only qa-security-reviewer",
+      "Weakening, deleting, or skipping frozen acceptance tests to make an implementation pass",
+      "Reading, logging, or exposing plaintext secrets, credentials, keychains, or auth files",
+      "Unprompted external mutations (git push, gh release, npm publish, live llm-wiki vault writes, live paid API calls)"
+    ],
+    "escalateToHumanScope": [
+      "Product scope or non-goal changes in PRODUCT.md",
+      "Real llm-wiki vault writes or vault writer-scope expansion",
+      "Replacing the installed local TheRSS Dev.app",
+      "git push, GitHub Release publication, or paid Apple Developer signing/notarization",
+      "Any prompt explicitly restricted by the agent runtime to human-only approval"
+    ]
+  },
+  "humanApprovalGates": [
+    "product-scope-or-nongoal-changes",
+    "real-research-quality-and-human-ux-voiceover-acceptance",
+    "real-llm-wiki-vault-writes-or-scope-expansion",
+    "local-installed-app-replacement",
+    "git-push-and-github-release-publication",
+    "paid-apple-developer-signing-and-notarization"
+  ],
+  "roles": [
+    {
+      "id": "technical-pm",
+      "name": "Technical PM / 架构协调者",
+      "kind": "coordinator",
+      "agent": "antigravity",
+      "model": "gemini-4-neon-high",
+      "effort": null,
+      "displayModel": "Gemini 4 Neon (High)",
+      "worktreePolicy": "current",
+      "keepOpen": true,
+      "charter": ".agents/team/roles/01-technical-pm.md",
+      "ownedPaths": [
+        "PRODUCT.md",
+        "GOALS.md",
+        "docs/ROADMAP.md",
+        "docs/decisions/",
+        "docs/audits/",
+        "src/shared/",
+        "src/main/windowApplication.ts"
+      ],
+      "verificationGates": ["npm run check:architecture", "npm run check"]
+    },
+    {
+      "id": "native-ui",
+      "name": "Native & Desktop UI Agent",
+      "kind": "specialist",
+      "agent": "antigravity",
+      "model": "gemini-4-neon-high",
+      "effort": null,
+      "displayModel": "Gemini 4 Neon (High)",
+      "worktreePolicy": "name:native-ui",
+      "activeDispatchId": "ctx_53f788a43620",
+      "keepOpen": true,
+      "charter": ".agents/team/roles/02-native-ui.md",
+      "ownedPaths": [
+        "native/appkit/",
+        "native/glass/",
+        "src/main/appkit/",
+        "src/main/auxiliaryWindows.ts",
+        "src/main/windowState.ts",
+        "src/main/nativeAppKitRuntime.ts",
+        "src/main/nativeGlassRuntime.ts",
+        "src/main/nativeGlassSession.ts",
+        "src/main/applicationMenu.ts",
+        "src/main/recordWindowRouting.ts",
+        "src/preload/",
+        "src/renderer/"
+      ],
+      "requiredSkills": ["skills/therss-ui-improvement/SKILL.md"],
+      "verificationGates": [
+        "npm run check",
+        "npm run test:appkit",
+        "npm run smoke:appkit",
+        "npm run smoke:native",
+        "npm run test:e2e"
+      ]
+    },
+    {
+      "id": "core-retrieval-storage",
+      "name": "Core Retrieval & Storage Agent",
+      "kind": "specialist",
+      "agent": "codex",
+      "model": "gpt-6.2-sol",
+      "effort": "high",
+      "displayModel": "GPT-6.2-Sol (High)",
+      "worktreePolicy": "name:core-retrieval-storage",
+      "activeDispatchId": "ctx_98d352b41503",
+      "keepOpen": true,
+      "charter": ".agents/team/roles/03-core-retrieval-storage.md",
+      "ownedPaths": [
+        "src/core/sources/",
+        "src/core/ranking/",
+        "src/core/storage/",
+        "src/core/discovery/",
+        "src/core/evaluation/",
+        "src/core/interests/",
+        "src/core/personalization/"
+      ],
+      "verificationGates": ["npm run check", "npm run evaluate:discovery"]
+    },
+    {
+      "id": "ai-wiki-integration",
+      "name": "AI & Knowledge Integration Agent",
+      "kind": "specialist",
+      "agent": "claude",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "displayModel": "Claude Opus 5.5 (High)",
+      "worktreePolicy": "name:ai-wiki-integration",
+      "activeDispatchId": "ctx_89a44950521e",
+      "keepOpen": true,
+      "charter": ".agents/team/roles/04-ai-wiki-integration.md",
+      "ownedPaths": [
+        "src/core/discover/",
+        "src/core/models/",
+        "src/core/agents/",
+        "src/core/analysis/",
+        "src/core/integrations/",
+        "src/main/llmWikiPromotionRuntime.ts",
+        "src/main/sourceCredentials.ts",
+        "src/mcp/"
+      ],
+      "verificationGates": ["npm run check", "npm run smoke:mcp"]
+    },
+    {
+      "id": "qa-security-reviewer",
+      "name": "Independent QA & Security Reviewer",
+      "kind": "reviewer",
+      "agent": "claude",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "displayModel": "Claude Opus 5.5 (High)",
+      "worktreePolicy": "name:qa-security-reviewer",
+      "activeDispatchId": "ctx_f3ab05549783",
+      "keepOpen": true,
+      "readOnly": true,
+      "maxRounds": 3,
+      "crossFamilyFallback": {
+        "whenAuthorAgent": "claude",
+        "agent": "codex",
+        "model": "gpt-6.2-sol",
+        "effort": "high",
+        "displayModel": "GPT-6.2-Sol (High)",
+        "reason": "Avoid same-family blind spots when reviewing Claude-authored diffs."
+      },
+      "charter": ".agents/team/roles/05-qa-security-reviewer.md",
+      "ownedPaths": ["src/core/security/", "e2e/", "docs/SECURITY.md", "docs/PRIVACY.md"],
+      "verificationGates": ["npm run check", "npm run test:e2e", "npm audit --audit-level=high"]
+    },
+    {
+      "id": "release-devops",
+      "name": "Release / DevOps Agent",
+      "kind": "on-demand",
+      "agent": "codex",
+      "model": "gpt-6.2-sol",
+      "effort": "high",
+      "displayModel": "GPT-6.2-Sol (High)",
+      "worktreePolicy": "name:release-devops",
+      "activeDispatchId": "ctx_0a60da98b469",
+      "keepOpen": true,
+      "charter": ".agents/team/roles/06-release-devops.md",
+      "ownedPaths": [
+        ".github/workflows/",
+        "scripts/",
+        "package.json",
+        "package-lock.json",
+        "docs/MARKET_RELEASE.md",
+        "docs/LOCAL_UPDATE.md",
+        "CHANGELOG.md"
+      ],
+      "verificationGates": [
+        "npm run check",
+        "npm audit --audit-level=high",
+        "npm run package:mac",
+        "npm run smoke:package"
+      ]
+    }
+  ]
+}

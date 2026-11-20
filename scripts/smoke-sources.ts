@@ -19,7 +19,7 @@ interface SourceProbe {
 // One line per probe in the same `id<TAB>status<TAB>detail` form as
 // smoke:configured-sources, so the Source Health issue step can grep failed lines.
 // A rejected probe must not hide the outcome of the others.
-const probes: readonly SourceProbe[] = [
+const arxivProbes: readonly SourceProbe[] = [
   {
     id: 'arxiv:interest',
     source: 'arxiv',
@@ -35,18 +35,19 @@ const probes: readonly SourceProbe[] = [
     source: 'arxiv',
     urlPrefix: 'https://arxiv.org/',
     run: () => fetchArxivRecentItems({ maxResults: 200 })
-  },
-  {
-    id: 'github:radar',
-    source: 'github',
-    urlPrefix: 'https://github.com/',
-    run: () =>
-      fetchGitHubRadarItems(
-        { keywords: [], topics: ['model-compression'], languages: [] },
-        { maxQueries: 1, ...(githubToken ? { token: githubToken } : {}) }
-      )
   }
 ]
+const githubProbe: SourceProbe = {
+  id: 'github:radar',
+  source: 'github',
+  urlPrefix: 'https://github.com/',
+  run: () =>
+    fetchGitHubRadarItems(
+      { keywords: [], topics: ['model-compression'], languages: [] },
+      { maxQueries: 1, ...(githubToken ? { token: githubToken } : {}) }
+    )
+}
+const probes = [...arxivProbes, githubProbe]
 
 async function runProbe(probe: SourceProbe): Promise<{ status: string; detail: string }> {
   const started = performance.now()
@@ -68,7 +69,14 @@ async function runProbe(probe: SourceProbe): Promise<{ status: string; detail: s
   }
 }
 
-const results = await Promise.all(probes.map(runProbe))
+async function runArxivProbes(): Promise<Awaited<ReturnType<typeof runProbe>>[]> {
+  const results = []
+  for (const probe of arxivProbes) results.push(await runProbe(probe))
+  return results
+}
+
+const [arxivResults, githubResult] = await Promise.all([runArxivProbes(), runProbe(githubProbe)])
+const results = [...arxivResults, githubResult]
 probes.forEach((probe, index) => {
   const result = results[index]!
   log(`${probe.id}\t${result.status}\t${result.detail}`)

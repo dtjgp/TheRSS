@@ -43,19 +43,29 @@ export function sourceDelay(milliseconds: number, signal?: AbortSignal): Promise
 /** One real arXiv connection at a time; queued cancellation never sends a request. */
 export class RequestPacer {
   private tail: Promise<void> = Promise.resolve()
-  private lastStarted: number | null = null
+  private nextStartAt = -Infinity
+  private cooldownUntil = -Infinity
   constructor(private readonly intervalMs: number) {}
+
+  applyCooldown(milliseconds: number): void {
+    this.cooldownUntil = Math.max(this.cooldownUntil, performance.now() + milliseconds)
+  }
 
   run<T>(operation: () => Promise<T>, signal?: AbortSignal): Promise<T> {
     if (signal?.aborted) return Promise.reject(abortReason(signal))
     const work = this.tail.then(async () => {
       signal?.throwIfAborted()
-      const remaining =
-        this.lastStarted === null ? 0 : this.intervalMs - (performance.now() - this.lastStarted)
-      if (remaining > 0) await sourceDelay(remaining, signal)
+      while (true) {
+        const remaining = Math.max(this.nextStartAt, this.cooldownUntil) - performance.now()
+        if (!(remaining > 0)) break
+        await sourceDelay(Math.ceil(remaining), signal)
+      }
       signal?.throwIfAborted()
-      this.lastStarted = performance.now()
-      return operation()
+      try {
+        return await operation()
+      } finally {
+        this.nextStartAt = performance.now() + this.intervalMs
+      }
     })
     this.tail = work.then(
       () => undefined,
