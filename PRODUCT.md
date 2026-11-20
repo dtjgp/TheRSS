@@ -180,9 +180,10 @@ Paper promotion remains a separate branch:
 
 ## Implementation status
 
-The v0.2.0 personal beta is implemented, installed, and published at
-<https://github.com/dtjgp/TheRSS>. Its local, remote-update, and CI evidence is tracked in
-`docs/REQUIREMENTS_TRACEABILITY.md`, `GOALS.md`, and `task_plan.md`.
+The `v0.4.0` unsigned pre-release is published at <https://github.com/dtjgp/TheRSS/releases/tag/v0.4.0>,
+with subsequent Electron 45, llm-wiki, Daily Papers, My sources, and local-search scope updates merged
+on `main` (`692f9e4`). Current delivery evidence and next steps are tracked in `GOALS.md`,
+`task_plan.md`, and `docs/audits/2026-11-12-main-update/REPORT.md`.
 
 ## macOS presentation
 

@@ -1,27 +1,30 @@
 # TheRSS Goals
 
-## Current stage: llm-wiki handoff and Electron 45 on `main` (not installed)
+## Current stage: Consolidated `main` (`692f9e4`, PRs #87–#99) & multi-agent workflow
+
+Since the 2026-11-05 Electron 45 / llm-wiki baseline, the following work has merged to `main`:
+
+- **PR #87 (`167c4e2`)**: Closed the Electron 45 `safeStorage` residual risks (`shouldReEncrypt` key-rotation rewrite and credential-clear write ordering).
+- **PR #90 (`c0053b7`)**: Connected Discover's Daily Papers view to the local llm-wiki Daily ArXiv Scan shortlist ([research workflow audit](docs/audits/2026-11-06-research-workflow/REPORT.md)).
+- **PRs #94–#97 (`5b08902`..`b1ea922`)**: Aligned llm-wiki promotion with the 2026-11-09 vault layout, per-promotion log headings, reading queue placement, and removal of `index.md` writes.
+- **PR #98 (`f79e7c9`)**: Fixed NCPSD issue-number-only listings to report explicit `no_results`.
+- **PR #99 (`692f9e4`)**: Consolidated My sources defaults, per-search source drafts, Daily Papers empty-state explanations (I2), native local-search wording (I1), SQL-level local-search scopes & truthful truncation (I4), and native sidebar width restoration ([consolidated report](docs/audits/2026-11-12-main-update/REPORT.md)).
+
+Next, in order:
+
+1. **Source & repo hygiene**: Fix open Issue #89 (arXiv `429` rate-limit and timeout bursts in `RequestPacer`/`arxivClient`/`smoke-sources`), triage Dependabot PRs #100/#101 and moderate audit advisories, and reconcile stale local branches.
+2. **P0-1 real-world acceptance** ([follow-up list](docs/audits/2026-10-28-llm-wiki-status/PRIORITIES.md)): Check real search quality on user research questions, promote one real paper through the existing preview/confirmation flow, and update the installed app upon user approval.
+3. **Retrieval quality & P1 workflow gaps**: Improve complex-constraint Discover retrieval quality ([quality baseline](docs/audits/2026-09-07-source-quality/REPORT.md)), then deliver P1 items (I3 time range & newest sort, I5 list-level llm-wiki collected badges/filters, P1-6 vault settings/diagnostics, P1-3 repo/news Inbox promotion, versioned Daily Papers contract).
+4. **Structural health & deferred stability**: Split oversized/near-800-line hotspots (`native/appkit/node.mm`, `App.tsx`, `llmWikiVaultSupport.ts`, `researchRepository.ts`), isolate the native smoke group-14 window-recreation hang root cause, and complete human physical-keyboard/VoiceOver acceptance.
+
+## Previous stage: llm-wiki handoff and Electron 45 on `main` (2026-11-05)
 
 On 2026-11-04 PR #84 (`c752ada`) moved the app to Electron 45.2.3, electron-vite 6.0.0 and
 lucide-react 1.68.0, and replaced the synchronous `safeStorage` calls with the async API
 ([change contract](docs/audits/2026-11-04-electron-45-safe-storage/CHANGE_CONTRACT.md)).
 Dependabot PRs #81, #82 and #83 are closed as superseded by #84. On 2026-11-05 PR #85
-(`22c818f`) merged the llm-wiki work below. CI (`quality` and `desktop`) passed for both PRs.
-The installed `TheRSS Dev.app` is still 0.4.0 from `a95e5bf`. No new release was published.
-
-Next, in order:
-
-1. P0-1 of the [follow-up list](docs/audits/2026-10-28-llm-wiki-status/PRIORITIES.md): check
-   real search quality, promote one real paper through the existing preview and confirmation,
-   then update the installed app. This step needs the user's research question and approval.
-2. Electron 45 residual risks recorded in the #84 contract: use `shouldReEncrypt` to rewrite
-   rotated-key ciphertext, and stop a pending keyed save from restoring a cleared credential.
-   A downgrade to Electron 44 can require the user to enter the API key again.
-3. P1 items 3-6 of the follow-up list, one change contract each.
-
-[Daily Papers product audit](docs/audits/2026-11-06-research-workflow/REPORT.md) records
-the Discover entry for the existing llm-wiki daily shortlist, UI references, and follow-up
-acceptance for real promotion and the installed app.
+(`22c818f`) merged the llm-wiki read-only state and Obsidian handoff work. Both residual
+`safeStorage` risks recorded in #84 were subsequently resolved in PR #87 (`167c4e2`).
 
 ## Previous stage: llm-wiki handoff (merged in #85)
 

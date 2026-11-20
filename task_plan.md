@@ -17,9 +17,17 @@ Build and publish a verified initial version of TheRSS: a local-first academic d
 
 ## Status
 
-**llm-wiki handoff and Electron 45 merged to `main` (2026-11-05), not installed.** PR #84
+**Consolidated interaction refinements and llm-wiki updates merged to `main` (2026-11-12, `692f9e4`).**
+PR #87 closed the Electron 45 `safeStorage` residual risks; PR #90 connected Daily Papers to the
+local llm-wiki shortlist; PRs #94–#97 aligned llm-wiki promotion layout/logging/reading-queue rules;
+PR #98 fixed NCPSD issue-number-only status; PR #99 merged My sources defaults, Daily Papers empty
+states (I2), native local-search wording/scopes (I1/I4), and native sidebar restoration
+([consolidated report](docs/audits/2026-11-12-main-update/REPORT.md)). `GOALS.md` owns the active
+next steps.
+
+**llm-wiki handoff and Electron 45 merged to `main` (2026-11-05).** PR #84
 (`c752ada`) moved to Electron 45 with async `safeStorage`; PR #85 (`22c818f`) merged the llm-wiki
-slice below. CI passed for both. `GOALS.md` owns the next steps.
+slice below. CI passed for both.
 
 **llm-wiki handoff implemented and locally verified (2026-10-29), merged in #85.**
 The [task report](docs/audits/2026-10-28-llm-wiki-status/REPORT.md) owns this slice:
