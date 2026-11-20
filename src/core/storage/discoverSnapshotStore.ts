@@ -58,8 +58,9 @@ function parseDiscoverProvenance(value: string): DiscoverSnapshot['provenance'] 
     typeof parsed.model !== 'string' ||
     !('promptVersion' in parsed) ||
     (parsed.promptVersion !== 'semantic-discover-v1' &&
-      parsed.promptVersion !== 'semantic-discover-v2') ||
-    (parsed.promptVersion === 'semantic-discover-v2' && !('personalizationApplied' in parsed)) ||
+      parsed.promptVersion !== 'semantic-discover-v2' &&
+      parsed.promptVersion !== 'semantic-discover-v3') ||
+    (parsed.promptVersion !== 'semantic-discover-v1' && !('personalizationApplied' in parsed)) ||
     ('personalizationApplied' in parsed && typeof parsed.personalizationApplied !== 'boolean') ||
     !('inputHash' in parsed) ||
     typeof parsed.inputHash !== 'string' ||

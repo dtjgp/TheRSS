@@ -3,6 +3,8 @@ import type { DiscoverPlan } from '../../shared/discover'
 
 const MAX_PLAN_CHARACTERS = 20_000
 const MAX_TERM_LENGTH = 100
+const MAX_CONSTRAINT_GROUPS = 4
+const MAX_CONSTRAINT_TERMS = 4
 
 function containsControlCharacter(value: string): boolean {
   return Array.from(value).some((character) => {
@@ -68,6 +70,11 @@ const discoverPlanSchema = z
         })
       })
       .strict(),
+    constraintGroups: z
+      .array(termList(MAX_CONSTRAINT_TERMS, { lowercase: true }).pipe(z.array(z.string()).min(1)))
+      .min(1)
+      .max(MAX_CONSTRAINT_GROUPS)
+      .exactOptional(),
     rationale: z.string().trim().min(1).max(1_000)
   })
   .strict()

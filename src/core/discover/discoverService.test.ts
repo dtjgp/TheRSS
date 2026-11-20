@@ -9,7 +9,10 @@ import {
   CONFIGURED_SOURCE_DEFINITIONS,
   getConfiguredSourceDefinition
 } from '../sources/catalog/configuredSources'
+import { rankDiscoveryItem } from '../ranking/rankDiscoveryItem'
 import { DiscoverService } from './discoverService'
+
+vi.mock('../ranking/rankDiscoveryItem', { spy: true })
 
 const plan: DiscoverPlan = {
   version: 'discover-plan-v1',
@@ -58,6 +61,18 @@ function item(overrides: Partial<DiscoveryItem> = {}): DiscoveryItem {
   }
 }
 
+function article(slug: string, overrides: Partial<DiscoveryItem> = {}): DiscoveryItem {
+  return item({
+    id: `folo:302:article:${slug}`,
+    source: 'folo:302',
+    kind: 'article',
+    externalId: slug,
+    url: `https://example.org/${slug}`,
+    categories: [],
+    ...overrides
+  })
+}
+
 function setup(overrides: Record<string, unknown> = {}) {
   const planner = {
     plan: vi.fn().mockResolvedValue({ plan, provenance })
@@ -91,14 +106,7 @@ function setup(overrides: Record<string, unknown> = {}) {
     createSessionId: () => 'discover-session-1',
     ...overrides
   })
-  return {
-    service,
-    planner,
-    fetchArxiv,
-    fetchGitHub,
-    fetchConfiguredSource,
-    repository
-  }
+  return { service, planner, fetchArxiv, fetchGitHub, fetchConfiguredSource, repository }
 }
 
 describe('DiscoverService', () => {
@@ -433,24 +441,10 @@ describe('DiscoverService', () => {
   })
 
   it('keeps only configured-source records with a semantic match reason', async () => {
-    const semanticMatch = item({
-      id: 'folo:302:article:semantic',
-      source: 'folo:302',
-      kind: 'article',
-      externalId: 'semantic',
-      title: 'Structured pruning reaches edge systems',
-      url: 'https://example.org/semantic',
-      categories: []
-    })
-    const recencyOnly = item({
-      id: 'folo:302:article:popular',
-      source: 'folo:302',
-      kind: 'article',
-      externalId: 'popular',
+    const semanticMatch = article('semantic', { title: 'Structured pruning reaches edge systems' })
+    const recencyOnly = article('popular', {
       title: 'Popular general technology news',
       summary: 'A broad industry update.',
-      url: 'https://example.org/popular',
-      categories: [],
       stars: 50_000
     })
     const { service } = setup({
@@ -474,6 +468,48 @@ describe('DiscoverService', () => {
     })
   })
 
+  it('forwards plan constraint groups to ranking on search and retry', async () => {
+    const constraintGroups = [['structured pruning'], ['semantic communication']]
+    const planner = {
+      plan: vi.fn().mockResolvedValue({ plan: { ...plan, constraintGroups }, provenance })
+    }
+    const { service } = setup({ planner })
+    const request = { intent: 'pruning', runner: 'codex' as const, sources: ['arxiv' as const] }
+    const rank = vi.mocked(rankDiscoveryItem)
+    const first = await service.search(request)
+    expect(rank.mock.lastCall?.[3]).toEqual({ constraintGroups })
+    rank.mockClear()
+    const failed = { status: 'failed' as const, resultCount: 0, error: 'timeout' }
+    await service.retry({ ...first, sourceOutcomes: { ...first.sourceOutcomes, arxiv: failed } }, [
+      'arxiv'
+    ])
+    expect(rank.mock.lastCall?.[3]).toEqual({ constraintGroups })
+    await setup().service.search(request)
+    expect(rank.mock.lastCall?.[3]).toEqual({})
+  })
+
+  it('never treats a constraint coverage reason alone as browse-source evidence', async () => {
+    const coverage = { kind: 'coverage' as const, value: '2/2', weight: 35, label: 'Covers 2/2' }
+    vi.mocked(rankDiscoveryItem).mockImplementationOnce((candidate) => ({
+      item: candidate,
+      score: 5,
+      excluded: false,
+      reasons: [coverage]
+    }))
+    const { service } = setup({
+      configuredDefinitions: [getConfiguredSourceDefinition('folo:302')],
+      fetchConfiguredSource: vi.fn().mockResolvedValue({
+        items: [article('x')],
+        rejectedCount: 0
+      })
+    })
+    const result = await service.search({ intent: 'x', runner: 'claude', sources: ['folo:302'] })
+    expect(result.sourceOutcomes['folo:302']).toMatchObject({
+      status: 'no_results',
+      resultCount: 0
+    })
+  })
+
   it('does not treat short keyword substrings as browse-source semantic evidence', async () => {
     const aiPlan: DiscoverPlan = {
       ...plan,
@@ -481,15 +517,9 @@ describe('DiscoverService', () => {
       github: { keywords: [], topics: [], languages: [] }
     }
     const planner = { plan: vi.fn().mockResolvedValue({ plan: aiPlan, provenance }) }
-    const substringOnly = item({
-      id: 'folo:302:article:chair',
-      source: 'folo:302',
-      kind: 'article',
-      externalId: 'chair',
+    const substringOnly = article('chair', {
       title: 'The chair said markets would recover',
-      summary: 'A general finance update.',
-      url: 'https://example.org/chair',
-      categories: []
+      summary: 'A general finance update.'
     })
     const { service } = setup({
       planner,
@@ -517,15 +547,9 @@ describe('DiscoverService', () => {
       github: { keywords: [], topics: [], languages: [] }
     }
     const planner = { plan: vi.fn().mockResolvedValue({ plan: cjkPlan, provenance }) }
-    const cjkMatch = item({
-      id: 'folo:302:article:cjk',
-      source: 'folo:302',
-      kind: 'article',
-      externalId: 'cjk',
+    const cjkMatch = article('cjk', {
       title: '面向边缘部署的结构化剪枝方法',
-      summary: '一种资源感知的神经网络压缩技术。',
-      url: 'https://example.org/cjk',
-      categories: []
+      summary: '一种资源感知的神经网络压缩技术。'
     })
     const { service } = setup({
       planner,
@@ -616,14 +640,9 @@ describe('DiscoverService', () => {
 
   it('chunks Saved lookups before applying the 100-result session cap', async () => {
     const candidates = Array.from({ length: 101 }, (_, index) =>
-      item({
-        id: `folo:302:article:${index}`,
-        source: 'folo:302',
-        kind: 'article',
-        externalId: String(index),
+      article(String(index), {
         title: `Structured pruning signal ${index}`,
-        url: `https://example.org/signals/${index}`,
-        categories: []
+        url: `https://example.org/signals/${index}`
       })
     )
     const findSavedItemIds = vi.fn((itemIds: readonly string[]) => {
@@ -702,15 +721,7 @@ describe('DiscoverService', () => {
   })
 
   it('preserves partial normalization evidence from a configured source', async () => {
-    const partialItem = item({
-      id: 'folo:302:article:partial',
-      source: 'folo:302',
-      kind: 'article',
-      externalId: 'partial',
-      title: 'Structured pruning for edge deployment',
-      url: 'https://example.org/partial',
-      categories: []
-    })
+    const partialItem = article('partial', { title: 'Structured pruning for edge deployment' })
     const { service } = setup({
       configuredDefinitions: [getConfiguredSourceDefinition('folo:302')],
       fetchConfiguredSource: vi.fn().mockResolvedValue({

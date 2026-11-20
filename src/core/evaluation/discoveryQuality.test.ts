@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { evaluateDiscoveryQuality, qualityJudgmentSchema } from './discoveryQuality'
 import { hashAnalysisSource } from '../analysis/sourceSnapshot'
+import { rankDiscoveryItem } from '../ranking/rankDiscoveryItem'
 import type { DiscoverSnapshot } from '../../shared/discover'
 const item = {
   id: 'github:owner/repo',
@@ -115,5 +116,44 @@ describe('bounded discovery quality evaluation', () => {
       evaluateDiscoveryQuality(snapshot, [{ ...label, relevance: null }], 1).assistant
     ).toMatchObject({ judged: 0, unknown: 1, precisionAtK: null })
     expect(() => evaluateDiscoveryQuality(snapshot, [], 0)).toThrow()
+  })
+
+  it('ranks a training-carbon-deadline paper ahead of a recent carbon-only distractor', () => {
+    const now = new Date('2026-09-07T00:00:00Z')
+    const profile = {
+      name: 'Carbon-aware training with deadlines',
+      arxiv: {
+        categories: ['cs.LG', 'cs.DC'],
+        keywords: ['training', 'carbon', 'deadline'],
+        excludeKeywords: []
+      },
+      github: { keywords: [], topics: [], languages: [] }
+    }
+    const paper = {
+      ...item,
+      id: 'arxiv:2608.00001',
+      source: 'arxiv' as const,
+      kind: 'paper' as const,
+      stars: null,
+      title: 'Scheduling training jobs',
+      summary: 'Optimizes carbon impact subject to a completion deadline.',
+      updatedAt: ''
+    }
+    const distractor = {
+      ...paper,
+      id: 'arxiv:2609.00002',
+      title: 'Regional carbon intensity forecasting',
+      summary: 'A survey of electric grid emissions trends.',
+      categories: ['cs.LG', 'cs.DC'],
+      publishedAt: now.toISOString()
+    }
+    expect(rankDiscoveryItem(paper, profile, now).score).toBeLessThan(
+      rankDiscoveryItem(distractor, profile, now).score
+    )
+
+    const options = { constraintGroups: [['training'], ['carbon'], ['deadline']] }
+    const directMatch = rankDiscoveryItem(paper, profile, now, options)
+    const partialMatch = rankDiscoveryItem(distractor, profile, now, options)
+    expect(directMatch.score).toBeGreaterThan(partialMatch.score)
   })
 })

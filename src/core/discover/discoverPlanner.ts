@@ -7,7 +7,7 @@ import type { ModelAnalysisResponse } from '../models/modelGateway'
 import type { ModelExecutionProfile } from '../models/providerService'
 import { parseDiscoverPlan } from './discoverPlan'
 
-export const DISCOVER_PROMPT_VERSION = 'semantic-discover-v2'
+export const DISCOVER_PROMPT_VERSION = 'semantic-discover-v3'
 
 interface DiscoverPlannerDependencies {
   readonly getModelProfile: () => ModelExecutionProfile | Promise<ModelExecutionProfile>
@@ -54,10 +54,15 @@ Required JSON shape:
     "topics": ["topic-slugs"],
     "languages": ["language names"]
   },
+  "constraintGroups": [["phrases for required facet 1"], ["phrases for required facet 2"]],
   "rationale": "why these terms cover the intent"
 }
 
 Use no more than six GitHub terms across keywords, topics, and languages. Include at least one positive category, keyword, topic, or language.
+
+If the intent combines two or more independent required constraints (for example a method, an objective, and a deployment setting), set constraintGroups to one group per required constraint facet: up to 4 groups, each with 1 to 4 alternative phrases that a title or summary would use for that facet. A result satisfies a facet when it matches any phrase in that group. Omit constraintGroups when the intent has only one facet.
+Prefer specific compound phrases (for example "structured channel pruning" or "training energy consumption") over broad single words (for example "pruning" or "energy") in keywords and constraintGroups, because broad words also match unrelated work.
+Use excludeKeywords for adjacent domains that share vocabulary with the intent but do not satisfy it. Exclude only precise phrases, and never exclude a phrase that also describes a required facet.
 
 ${
   personalContext

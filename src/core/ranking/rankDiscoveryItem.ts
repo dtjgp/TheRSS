@@ -7,9 +7,41 @@ const SUMMARY_KEYWORD_WEIGHT = 12
 const CATEGORY_WEIGHT = 18
 const TOPIC_WEIGHT = 18
 const LANGUAGE_WEIGHT = 10
+const CJK_SCRIPT_PATTERN =
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u
 
-function includesText(value: string, query: string): boolean {
-  return value.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+function includesWholeTerm(value: string, term: string): boolean {
+  const trimmed = term.trim()
+  if (!trimmed) return false
+  if (CJK_SCRIPT_PATTERN.test(trimmed)) {
+    return value.toLocaleLowerCase().includes(trimmed.toLocaleLowerCase())
+  }
+  const literal = trimmed.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${literal}(?=$|[^\\p{L}\\p{N}])`, 'iu').test(value)
+}
+
+function coverageReason(
+  text: string,
+  groups: readonly (readonly string[])[] | undefined
+): MatchReason | null {
+  if (!groups || groups.length < 2) return null
+
+  const total = groups.length
+  const matched = groups.filter((group) =>
+    group.some((term) => includesWholeTerm(text, term))
+  ).length
+  const coverage = { kind: 'coverage' as const, value: `${matched}/${total}` }
+  if (matched === total) {
+    return { ...coverage, weight: 35, label: `Covers all ${total} intent constraints` }
+  }
+  if (matched >= 2) {
+    return { ...coverage, weight: 16, label: `Covers ${matched} of ${total} intent constraints` }
+  }
+  return {
+    ...coverage,
+    weight: matched === 1 ? -20 : -35,
+    label: `Partial match: ${matched} of ${total} intent constraints`
+  }
 }
 
 function recencyReason(item: DiscoveryItem, now: Date): MatchReason | null {
@@ -68,10 +100,11 @@ export function rankDiscoveryItem(
   item: DiscoveryItem,
   profile: InterestProfile,
   now: Date,
-  _options?: RankDiscoveryItemOptions
+  options?: RankDiscoveryItemOptions
 ): RankedDiscoveryItem {
+  const searchText = `${item.title}\n${item.summary}`
   const exclusionReasons = profile.arxiv.excludeKeywords.flatMap((keyword) =>
-    includesText(`${item.title}\n${item.summary}`, keyword)
+    includesWholeTerm(searchText, keyword)
       ? [
           {
             kind: 'exclusion' as const,
@@ -90,7 +123,7 @@ export function rankDiscoveryItem(
         ? profile.github.keywords
         : [...new Set([...profile.arxiv.keywords, ...profile.github.keywords])]
   const keywordReasons = keywords.flatMap((keyword): MatchReason[] => {
-    if (includesText(item.title, keyword)) {
+    if (includesWholeTerm(item.title, keyword)) {
       return [
         {
           kind: 'keyword',
@@ -101,7 +134,7 @@ export function rankDiscoveryItem(
         }
       ]
     }
-    if (includesText(item.summary, keyword)) {
+    if (includesWholeTerm(item.summary, keyword)) {
       return [
         {
           kind: 'keyword',
@@ -160,9 +193,11 @@ export function rankDiscoveryItem(
         ]
       : []
 
-  const optionalReasons = [recencyReason(item, now), popularityReason(item)].filter(
-    (reason): reason is MatchReason => reason !== null
-  )
+  const optionalReasons = [
+    coverageReason(searchText, options?.constraintGroups),
+    recencyReason(item, now),
+    popularityReason(item)
+  ].filter((reason): reason is MatchReason => reason !== null)
   const reasons = [
     ...keywordReasons,
     ...categoryReasons,
@@ -174,7 +209,10 @@ export function rankDiscoveryItem(
   const excluded = exclusionReasons.length > 0
   const score = excluded
     ? 0
-    : Math.round(reasons.reduce((total, reason) => total + reason.weight, 0) * 100) / 100
+    : Math.max(
+        0,
+        Math.round(reasons.reduce((total, reason) => total + reason.weight, 0) * 100) / 100
+      )
 
   return {
     item,

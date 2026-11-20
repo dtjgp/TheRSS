@@ -438,6 +438,7 @@ export class DiscoverService {
     options: DiscoverOptions
   ): Promise<RankedDiscoveryItem[]> {
     const profile = profileFromPlan(plan)
+    const rankOptions = plan.constraintGroups ? { constraintGroups: plan.constraintGroups } : {}
     const rankedSourceItems: RankedDiscoveryItem[] = []
     let completedSources = 0
     const report = (source: DiscoverSource, outcome: DiscoverSourceOutcome) => {
@@ -472,7 +473,7 @@ export class DiscoverService {
         let outcome: DiscoverSourceOutcome
         if (result.status === 'fulfilled') {
           const ranked = newestByIdentity(result.value.items)
-            .map((item) => rankDiscoveryItem(item, profile, now))
+            .map((item) => rankDiscoveryItem(item, profile, now, rankOptions))
             .filter(
               (candidate) => !candidate.excluded && (!job.browseOnly || hasSemanticMatch(candidate))
             )
