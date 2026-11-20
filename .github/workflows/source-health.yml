@@ -6,9 +6,10 @@ name: Source Health
 
 on:
   schedule:
-    # 06:00 UTC daily. GitHub disables scheduled workflows after 60 days of repo
-    # inactivity; re-enable from the Actions tab if that happens.
-    - cron: '0 6 * * *'
+    # Weekly off-the-hour (06:23 UTC Mondays) to avoid 06:00 UTC shared-runner
+    # rate-limit bursts and daily notification noise. GitHub disables scheduled
+    # workflows after 60 days of repo inactivity; re-enable from Actions if needed.
+    - cron: '23 6 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -42,7 +43,7 @@ jobs:
           # project's own history records exactly this: a failing probe followed by an
           # immediate clean rerun. Retry once before believing the failure.
           probe() { npm run smoke:sources --silent >/tmp/primary.txt 2>&1; }
-          if ! probe; then sleep 30; probe || failed=1; fi
+          if ! probe; then sleep 60; probe || failed=1; fi
           tee -a source-health-report.txt < /tmp/primary.txt
           exit "${failed:-0}"
 
@@ -51,7 +52,7 @@ jobs:
         if: always()
         run: |
           probe() { npm run smoke:configured-sources --silent >/tmp/configured.txt 2>&1; }
-          if ! probe; then sleep 30; probe || failed=1; fi
+          if ! probe; then sleep 60; probe || failed=1; fi
           tee -a source-health-report.txt < /tmp/configured.txt
           exit "${failed:-0}"
 
@@ -68,7 +69,7 @@ jobs:
 
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: source-health-report
           path: source-health-report.txt
