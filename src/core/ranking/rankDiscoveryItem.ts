@@ -60,10 +60,15 @@ function popularityReason(item: DiscoveryItem): MatchReason | null {
   }
 }
 
+export interface RankDiscoveryItemOptions {
+  readonly constraintGroups?: readonly (readonly string[])[]
+}
+
 export function rankDiscoveryItem(
   item: DiscoveryItem,
   profile: InterestProfile,
-  now: Date
+  now: Date,
+  _options?: RankDiscoveryItemOptions
 ): RankedDiscoveryItem {
   const exclusionReasons = profile.arxiv.excludeKeywords.flatMap((keyword) =>
     includesText(`${item.title}\n${item.summary}`, keyword)
