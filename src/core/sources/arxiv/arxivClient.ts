@@ -7,6 +7,7 @@ import { buildArxivQueryUrl, buildArxivRecentQueryUrl } from './arxivQuery'
 import { RequestPacer, sourceDelay } from './requestPacer'
 
 const ARXIV_USER_AGENT = 'TheRSS (local academic discovery; https://github.com/dtjgp/TheRSS)'
+const MAX_RETRY_DELAY_MS = 30_000
 const realRequests = new RequestPacer(3000)
 
 interface FetchArxivOptions {
@@ -14,6 +15,7 @@ interface FetchArxivOptions {
   readonly maxResults?: number
   readonly maxResponseBytes?: number
   readonly maxAttempts?: number
+  readonly timeoutMs?: number
   readonly sleep?: (milliseconds: number) => Promise<void>
   readonly now?: Date
   readonly signal?: AbortSignal
@@ -146,15 +148,14 @@ export async function fetchArxivItems(
   return fetchArxivUrl(buildArxivQueryUrl(interest, options.maxResults ?? 50), options)
 }
 
-function retryDelay(response: Response, attempt: number): number {
+function retryAfterDelay(response: Response): number | undefined {
   const retryAfter = response.headers.get('retry-after')?.trim()
-  if (retryAfter) {
-    const seconds = Number(retryAfter)
-    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1_000, 10_000)
-    const dateDelay = Date.parse(retryAfter) - Date.now()
-    if (Number.isFinite(dateDelay) && dateDelay > 0) return Math.min(dateDelay, 10_000)
-  }
-  return Math.min(3_000 * attempt, 10_000)
+  if (!retryAfter) return undefined
+  const seconds = Number(retryAfter)
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1_000, MAX_RETRY_DELAY_MS)
+  const dateDelay = Date.parse(retryAfter) - Date.now()
+  if (Number.isFinite(dateDelay) && dateDelay > 0) return Math.min(dateDelay, MAX_RETRY_DELAY_MS)
+  return undefined
 }
 
 async function fetchArxivUrl(url: string, options: FetchArxivOptions): Promise<DiscoveryItem[]> {
@@ -163,36 +164,57 @@ async function fetchArxivUrl(url: string, options: FetchArxivOptions): Promise<D
   const sleep = options.sleep ?? ((milliseconds) => sourceDelay(milliseconds, options.signal))
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    options.signal?.throwIfAborted()
+    const backoff = Math.min(3_000 * 2 ** (attempt - 1), MAX_RETRY_DELAY_MS)
     const request = async () => {
-      const response = await fetcher(url, {
-        headers: {
-          Accept: 'application/atom+xml',
-          'User-Agent': ARXIV_USER_AGENT
-        },
-        signal: options.signal
-          ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)])
-          : AbortSignal.timeout(30_000)
-      })
-      if (response.ok)
-        return {
-          items: parseArxivFeed(
+      const timeout = AbortSignal.timeout(options.timeoutMs ?? 30_000)
+      const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout
+      try {
+        const response = await fetcher(url, {
+          headers: {
+            Accept: 'application/atom+xml',
+            'User-Agent': ARXIV_USER_AGENT
+          },
+          signal
+        })
+        if (response.ok) {
+          const items = parseArxivFeed(
             await readBoundedText(response, options.maxResponseBytes ?? 10_000_000, 'arXiv')
           )
+          return { items }
         }
-      const status = response.status,
-        delay = retryDelay(response, attempt)
-      await response.body?.cancel()
-      return { status, delay }
+        const status = response.status
+        const retryable = status === 429 || status === 503
+        const retryAfter = retryable ? retryAfterDelay(response) : undefined
+        const delay = retryAfter ?? backoff
+        // Publish the cooldown before releasing the pacer, even on the final attempt.
+        if (!options.fetcher && (status === 429 || retryAfter !== undefined))
+          realRequests.applyCooldown(delay)
+        await response.body?.cancel()
+        return { status, retryable, delay }
+      } catch (error) {
+        // A body read may reject with AbortError even when the deadline caused it.
+        signal.throwIfAborted()
+        throw error
+      }
     }
-    // Injected transports are deterministic test fixtures; all production calls
-    // share the process-wide connection and request-start pacing policy.
-    const result = options.fetcher
-      ? await request()
-      : await realRequests.run(request, options.signal)
-    if (result.items) return result.items
-    if (result.status !== 429 || attempt === maxAttempts)
-      throw new Error(`arXiv request failed with status ${result.status}`)
-    await sleep(result.delay!)
+    let delay = backoff
+    try {
+      // Injected transports bypass process-wide pacing for deterministic tests.
+      const result = options.fetcher
+        ? await request()
+        : await realRequests.run(request, options.signal)
+      options.signal?.throwIfAborted()
+      if ('items' in result) return result.items
+      if (!result.retryable || attempt === maxAttempts)
+        throw new Error(`arXiv request failed with status ${result.status}`)
+      delay = result.delay
+    } catch (error) {
+      options.signal?.throwIfAborted()
+      if (!(error instanceof Error) || error.name !== 'TimeoutError' || attempt === maxAttempts)
+        throw error
+    }
+    await sleep(delay)
   }
   throw new Error('arXiv request failed after bounded retries')
 }

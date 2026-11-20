@@ -84,12 +84,15 @@ describe('arXiv client', () => {
     expect(request.headers).toMatchObject({ 'User-Agent': expect.stringContaining('TheRSS') })
   })
 
-  it('fails with a bounded source error when arXiv rejects the request', async () => {
-    const fetcher = vi.fn().mockResolvedValue(new Response('busy', { status: 503 }))
+  it('exhausts transient 503 retries with bounded exponential backoff', async () => {
+    const fetcher = vi.fn(async () => new Response('busy', { status: 503 }))
+    const sleep = vi.fn().mockResolvedValue(undefined)
 
-    await expect(fetchArxivItems(interest, { fetcher })).rejects.toThrow(
+    await expect(fetchArxivItems(interest, { fetcher, sleep, maxAttempts: 6 })).rejects.toThrow(
       'arXiv request failed with status 503'
     )
+    expect(fetcher).toHaveBeenCalledTimes(6)
+    expect(sleep.mock.calls).toEqual([[3000], [6000], [12000], [24000], [30000]])
   })
 
   it('retries a 429 response with bounded backoff before succeeding', async () => {
@@ -104,6 +107,160 @@ describe('arXiv client', () => {
     await expect(fetchArxivItems(interest, { fetcher, sleep })).resolves.toHaveLength(1)
     expect(fetcher).toHaveBeenCalledTimes(2)
     expect(sleep).toHaveBeenCalledWith(1_000)
+  })
+
+  it.each([
+    [429, '90', 30_000],
+    [503, 'Fri, 14 Aug 2026 12:00:15 GMT', 15_000]
+  ])('honors bounded Retry-After on HTTP %i', async (status, retryAfter, expectedDelay) => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-14T12:00:00Z'))
+    try {
+      const fetcher = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(
+          new Response(null, { status, headers: { 'Retry-After': retryAfter } })
+        )
+        .mockResolvedValueOnce(new Response(atomFeed))
+      const sleep = vi.fn().mockResolvedValue(undefined)
+
+      await expect(fetchArxivItems(interest, { fetcher, sleep })).resolves.toHaveLength(1)
+      expect(sleep.mock.calls).toEqual([[expectedDelay]])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('applies Retry-After to other callers even after the last attempt', async () => {
+    vi.useFakeTimers()
+    vi.resetModules()
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 429, headers: { 'Retry-After': '15' } }))
+      .mockResolvedValueOnce(new Response(atomFeed))
+    vi.stubGlobal('fetch', fetcher)
+    try {
+      const { fetchArxivItems: fetchPaced } = await import('./arxivClient')
+      const failure = expect(fetchPaced(interest, { maxAttempts: 1 })).rejects.toThrow('status 429')
+      const queued = fetchPaced(interest)
+
+      await vi.advanceTimersByTimeAsync(14_999)
+      await failure
+      expect(fetcher).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(1)
+      await expect(queued).resolves.toHaveLength(1)
+    } finally {
+      vi.unstubAllGlobals()
+      vi.useRealTimers()
+    }
+  })
+
+  it('retries when the per-attempt deadline aborts a response body read', async () => {
+    vi.useFakeTimers()
+    const timeout = new DOMException('Timed out', 'TimeoutError')
+    const timeoutSignal = vi.spyOn(AbortSignal, 'timeout').mockImplementation((milliseconds) => {
+      const controller = new AbortController()
+      setTimeout(() => controller.abort(timeout), milliseconds)
+      return controller.signal
+    })
+    const sleep = vi.fn().mockResolvedValue(undefined)
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockImplementationOnce(async (_url, request) => {
+        const body = new ReadableStream<Uint8Array>({
+          start(stream) {
+            request?.signal?.addEventListener('abort', () => {
+              stream.error(new DOMException('Body read was aborted', 'AbortError'))
+            })
+          }
+        })
+        return new Response(body)
+      })
+      .mockResolvedValueOnce(new Response(atomFeed))
+    try {
+      const result = expect(
+        fetchArxivItems(interest, { fetcher, sleep, timeoutMs: 100 })
+      ).resolves.toHaveLength(1)
+      await vi.advanceTimersByTimeAsync(99)
+      expect(fetcher).toHaveBeenCalledTimes(1)
+      expect(sleep).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1)
+      await result
+      expect(timeoutSignal.mock.calls).toEqual([[100], [100]])
+      expect(fetcher.mock.calls[0]?.[1]?.signal).not.toBe(fetcher.mock.calls[1]?.[1]?.signal)
+      expect(sleep.mock.calls).toEqual([[3000]])
+    } finally {
+      timeoutSignal.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
+  it('preserves the timeout when attempts are exhausted', async () => {
+    const timeout = new DOMException('Timed out', 'TimeoutError')
+    const sleep = vi.fn().mockResolvedValue(undefined)
+    const fetcher = vi.fn<typeof fetch>().mockRejectedValue(timeout)
+
+    await expect(fetchArxivItems(interest, { fetcher, sleep, maxAttempts: 2 })).rejects.toBe(
+      timeout
+    )
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    expect(sleep.mock.calls).toEqual([[3000]])
+  })
+
+  it.each([400, 404, 500])('does not retry HTTP %i', async (status) => {
+    const fetcher = vi.fn(async () => new Response(null, { status }))
+    const sleep = vi.fn().mockResolvedValue(undefined)
+
+    await expect(fetchArxivItems(interest, { fetcher, sleep })).rejects.toThrow(`status ${status}`)
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    expect(sleep).not.toHaveBeenCalled()
+  })
+
+  it('does not send a request if the caller already aborted', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(atomFeed))
+    const reason = new Error('caller canceled')
+    await expect(
+      fetchArxivItems(interest, { fetcher, signal: AbortSignal.abort(reason) })
+    ).rejects.toBe(reason)
+    expect(fetcher).not.toHaveBeenCalled()
+  })
+
+  it('prefers the caller abort reason when an attempt also reports a timeout', async () => {
+    const controller = new AbortController()
+    const reason = new Error('caller canceled')
+    const fetcher = vi.fn(async () => {
+      controller.abort(reason)
+      throw new DOMException('Timed out', 'TimeoutError')
+    })
+    const sleep = vi.fn().mockResolvedValue(undefined)
+
+    await expect(
+      fetchArxivItems(interest, { fetcher, sleep, signal: controller.signal })
+    ).rejects.toBe(reason)
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    expect(sleep).not.toHaveBeenCalled()
+  })
+
+  it('cancels immediately during retry backoff', async () => {
+    vi.useFakeTimers()
+    try {
+      const controller = new AbortController()
+      const reason = new Error('caller canceled')
+      const fetcher = vi.fn(async () => new Response(null, { status: 429 }))
+      const canceled = expect(
+        fetchArxivItems(interest, { fetcher, signal: controller.signal })
+      ).rejects.toBe(reason)
+
+      await vi.advanceTimersByTimeAsync(1)
+      expect(fetcher).toHaveBeenCalledTimes(1)
+      expect(vi.getTimerCount()).toBe(1)
+      controller.abort(reason)
+      await canceled
+      expect(vi.getTimerCount()).toBe(0)
+      expect(fetcher).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('returns only papers published today for interest-independent Sources browsing', async () => {
@@ -176,6 +333,21 @@ describe('arXiv client', () => {
 
     await expect(fetchArxivItems(interest, { fetcher, sleep })).resolves.toHaveLength(1)
     expect(sleep).toHaveBeenCalledWith(3_000)
+  })
+
+  it('uses exponential backoff when Retry-After is invalid', async () => {
+    const rateLimited = () =>
+      new Response(null, { status: 429, headers: { 'Retry-After': 'soon' } })
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockImplementationOnce(async () => rateLimited())
+      .mockImplementationOnce(async () => rateLimited())
+      .mockResolvedValueOnce(new Response(atomFeed))
+    const sleep = vi.fn().mockResolvedValue(undefined)
+
+    await expect(fetchArxivItems(interest, { fetcher, sleep })).resolves.toHaveLength(1)
+    expect(fetcher).toHaveBeenCalledTimes(3)
+    expect(sleep.mock.calls).toEqual([[3_000], [6_000]])
   })
 
   it('rejects an oversized arXiv response before parsing it', async () => {
