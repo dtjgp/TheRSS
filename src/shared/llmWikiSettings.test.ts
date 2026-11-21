@@ -32,9 +32,23 @@ describe('llmWikiSettings schemas', () => {
     ['bidi override format character', '/Users/alice/\u202ellm-wiki'],
     ['zero-width format character', '/Users/alice/\u200bllm-wiki'],
     ['overlong path', `/${'a'.repeat(1_000)}`],
-    ['space-padded overlong path', ` ${'/' + 'a'.repeat(999)} `]
+    ['space-padded overlong path', ` ${'/' + 'a'.repeat(999)} `],
+    ['trailing space exposed by slash', '/Users/alice/vault /'],
+    ['trailing space exposed by dot segment', '/Users/alice/vault /.']
   ])('rejects invalid vault path (%s)', (_label, candidate) => {
     expect(() => llmWikiVaultPathSchema.parse(candidate)).toThrow()
+  })
+
+  it('is strictly idempotent across accepted spellings', () => {
+    for (const candidate of [
+      ' /Users/alice/Obsidian/llm-wiki/ ',
+      '/Users//alice/./Obsidian///llm-wiki/.',
+      '/./',
+      '/Users/alice/My Vault/.'
+    ]) {
+      const once = llmWikiVaultPathSchema.parse(candidate)
+      expect(llmWikiVaultPathSchema.parse(once)).toBe(once)
+    }
   })
 
   it('validates structured diagnostics and folder-picker responses', () => {

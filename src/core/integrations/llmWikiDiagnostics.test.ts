@@ -197,7 +197,9 @@ describe('llm-wiki vault diagnostics', () => {
       'relative/../vault',
       `\t${existing}`,
       `${existing}\t`,
-      `${existing}/${'a'.repeat(1_005)}`
+      `${existing}/${'a'.repeat(1_005)}`,
+      `${existing} /.`,
+      `${existing} /`
     ]
     const lstatSpy = vi.fn((path: string) => lstat(path))
     for (const envPath of cases) {
@@ -245,6 +247,7 @@ describe('llm-wiki vault diagnostics', () => {
     const realVault = join(realBase, 'vault')
     await mkdir(join(realVault, 'raw/paper_records'), { recursive: true })
     await mkdir(join(realVault, 'Literature/Paper_Notes'), { recursive: true })
+    await mkdir(join(realVault, 'Literature/Digests/ArXiv_Daily'), { recursive: true })
     await writeFile(join(realVault, 'AGENTS.md'), '# fixture')
     await writeFile(join(realVault, '_schema.md'), '# fixture')
     const alias = join(parent, 'alias')
@@ -268,7 +271,9 @@ describe('llm-wiki vault diagnostics', () => {
       expect(ok.resolvedPath).toBe(realVault)
     }
 
-    // Operational readers enforce the exact same ancestor-symlink policy as diagnostics.
+    // Operational readers pass on the real vault, and reject the same vault behind a symlink ancestor.
+    const realDaily = new LlmWikiDaily({ vaultRoot: realVault, openExternal: vi.fn() })
+    expect((await realDaily.snapshot()).status).toBe('missing')
     const aliasedRoot = join(alias, 'vault')
     const library = new LlmWikiLibrary({ vaultRoot: aliasedRoot, openExternal: vi.fn() })
     expect((await library.status({ arxivId: '2610.00001' })).status).toBe('unavailable')

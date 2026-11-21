@@ -4,6 +4,14 @@ export const LLM_WIKI_VAULT_PATH_MAX_LENGTH = 1_000
 
 const HAS_UNSAFE_CHARACTER = /[\p{Cc}\p{Cf}]/u
 
+function normalizeAbsolutePosixPath(value: string): string {
+  const segments = value
+    .trim()
+    .split('/')
+    .filter((segment) => segment.length > 0 && segment !== '.')
+  return segments.length === 0 ? '/' : `/${segments.join('/')}`
+}
+
 function isSafeAbsoluteVaultPath(value: string): boolean {
   if (HAS_UNSAFE_CHARACTER.test(value)) return false
   if (value.length > LLM_WIKI_VAULT_PATH_MAX_LENGTH) return false
@@ -12,15 +20,10 @@ function isSafeAbsoluteVaultPath(value: string): boolean {
   // POSIX absolute path (macOS/Linux); reject relative paths and explicit parent traversal segments.
   if (!trimmed.startsWith('/')) return false
   const segments = trimmed.split('/')
-  return !segments.some((segment) => segment === '..')
-}
-
-function normalizeAbsolutePosixPath(value: string): string {
-  const segments = value
-    .trim()
-    .split('/')
-    .filter((segment) => segment.length > 0 && segment !== '.')
-  return segments.length === 0 ? '/' : `/${segments.join('/')}`
+  if (segments.some((segment) => segment === '..')) return false
+  // Reject spellings whose normalization exposes terminal whitespace so parsing is strictly idempotent.
+  const normalized = normalizeAbsolutePosixPath(trimmed)
+  return normalized === normalized.trim()
 }
 
 export const llmWikiVaultPathSchema = z
