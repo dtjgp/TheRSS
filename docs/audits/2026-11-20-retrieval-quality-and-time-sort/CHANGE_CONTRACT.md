@@ -72,3 +72,14 @@
 | Date       | Contract change                                                                                                                               | Evidence/reason                                                                                                                                                                            | Reviewer       |
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------- |
 | 2026-11-20 | Update `discoverPlanner.test.ts` and `e2e/desktop.spec.ts:707` expected prompt version from `semantic-discover-v2` to `semantic-discover-v3`. | Contract intentionally bumps `DISCOVER_PROMPT_VERSION` to `semantic-discover-v3` for multi-constraint `constraintGroups` planning; historical `v1`/`v2` records remain readable in SQLite. | `technical-pm` |
+
+## Evidence Closeout
+
+- Integrated branch: `feat/wave2-retrieval-quality-and-time-sort`
+- Cross-family independent QA: **Unanimously `APPROVED` in Round 3** (`qa-security-reviewer` Claude Opus 5.5 High for Shared + 2A + 2C; cross-family fallback Codex GPT-6.2-Sol High for 2B + integration). See `QA_ROUND1.md` and `QA_FINAL.md`.
+- Gates passed on final code (`72ee92a`):
+  - `npm run check`: 146/146 main test files (1,073 tests, 92.7% stmts / 84.77% branches / 95.87% funcs / 94.96% lines), 41/41 AppKit test files (234 tests), architecture `<= 800` lines, format, lint, typecheck, and Electron/native/MCP build.
+  - `npm run smoke:mcp`: pass.
+  - `npm run test:e2e`: 11/11 pass (`desktop.spec.ts` `semantic-discover-v3` assertion verified).
+  - `smoke:appkit`: `smoke-native-appkit.mjs` 17/17 workflow groups pass (`THERSS_NATIVE_DEFAULT_ONLY=1 THERSS_NATIVE_SCREENSHOTS=0`) and `smoke-appkit-controls.mjs` 20/20 groups pass.
+- Stop condition satisfied: ready for user-authorized push/PR review.
