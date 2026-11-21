@@ -38,9 +38,18 @@ import { llmWikiDailyOpenRequestSchema, llmWikiDailySnapshotSchema } from '../sh
 import type { LlmWikiLibrary } from '../core/integrations/llmWikiLibrary'
 import {
   llmWikiArxivIdSchema,
+  llmWikiBatchStatusRequestSchema,
+  llmWikiBatchStatusResponseSchema,
   llmWikiLibraryStatusSchema,
   llmWikiStatusRequestSchema
 } from '../shared/llmWikiLibrary'
+import {
+  llmWikiFolderChoiceSchema,
+  llmWikiVaultDiagnosticsSchema,
+  llmWikiVaultPathSchema,
+  type LlmWikiFolderChoice,
+  type LlmWikiVaultDiagnostics
+} from '../shared/llmWikiSettings'
 
 const itemId = z.string().trim().min(1).max(300)
 const source = z
@@ -62,7 +71,12 @@ export interface ApplicationServices {
   readonly analysis: AnalysisService
   readonly agents: LocalAgentService
   readonly promotion: LlmWikiPromotionService
-  readonly wiki: Pick<LlmWikiLibrary, 'status' | 'open'>
+  readonly wiki: Pick<LlmWikiLibrary, 'status' | 'open'> &
+    Partial<Pick<LlmWikiLibrary, 'statusBatch'>>
+  readonly wikiSettings?: {
+    get(): Promise<LlmWikiVaultDiagnostics>
+    save(vaultPath: string | null): Promise<LlmWikiVaultDiagnostics>
+  }
   readonly daily: Pick<LlmWikiDaily, 'snapshot' | 'open'>
   readonly credentials?: () => { githubToken?: string; huggingFaceToken?: string }
   readonly testProvider: (
@@ -76,6 +90,7 @@ export interface WindowContext {
   setDirty(value: boolean): void
   confirmDiscard(): Promise<boolean>
   confirmPromotion(): Promise<boolean>
+  chooseLlmWikiVaultFolder?(): Promise<LlmWikiFolderChoice>
   contextMenu(target: ContextMenuTarget): Promise<ContextMenuOutcome>
   accent(): SystemAccentName | null
 }
@@ -278,8 +293,32 @@ export class WindowApplication {
             await services.wiki.status(llmWikiStatusRequestSchema.parse(candidate))
           )
         ),
+      getLlmWikiStatuses: (candidate) =>
+        task(async () => {
+          const request = llmWikiBatchStatusRequestSchema.parse(candidate)
+          if (!services.wiki.statusBatch)
+            throw new Error('llm-wiki batch status service is unavailable')
+          return llmWikiBatchStatusResponseSchema.parse(await services.wiki.statusBatch(request))
+        }),
       openLlmWikiNote: (candidate) =>
         task(() => services.wiki.open(llmWikiArxivIdSchema.parse(candidate))),
+      getLlmWikiSettings: () =>
+        task(async () => {
+          if (!services.wikiSettings) throw new Error('llm-wiki settings service is unavailable')
+          return llmWikiVaultDiagnosticsSchema.parse(await services.wikiSettings.get())
+        }),
+      saveLlmWikiVaultPath: (candidate) =>
+        task(async () => {
+          const vaultPath = llmWikiVaultPathSchema.parse(candidate)
+          if (!services.wikiSettings) throw new Error('llm-wiki settings service is unavailable')
+          return llmWikiVaultDiagnosticsSchema.parse(await services.wikiSettings.save(vaultPath))
+        }),
+      chooseLlmWikiVaultFolder: () =>
+        task(async () => {
+          if (!context.chooseLlmWikiVaultFolder)
+            throw new Error('llm-wiki folder picker is unavailable')
+          return llmWikiFolderChoiceSchema.parse(await context.chooseLlmWikiVaultFolder())
+        }),
       getLlmWikiDaily: () =>
         task(async () => llmWikiDailySnapshotSchema.parse(await services.daily.snapshot())),
       openLlmWikiDaily: (candidate) =>

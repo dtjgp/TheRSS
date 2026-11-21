@@ -181,6 +181,7 @@ export class NativePresenter {
       agents,
       personalPrompt: personal?.prompt ?? ''
     })
+    for (const screen of Object.values(this.screens)) screen.llmWikiVaultChanged?.()
     this.redraw()
   }
   async navigate(route: Route): Promise<void> {

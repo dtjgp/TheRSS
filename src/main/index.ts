@@ -39,8 +39,14 @@ import {
 import { ResearchRepository } from '../core/storage/researchRepository'
 import { LlmWikiPromotionService } from '../core/integrations/llmWikiPromotionService'
 import { LlmWikiVaultAdapter } from '../core/integrations/llmWikiVaultAdapter'
+import {
+  defaultLlmWikiVaultPath,
+  diagnoseLlmWikiVault,
+  resolveLlmWikiVaultLocation
+} from '../core/integrations/llmWikiDiagnostics'
 import { LlmWikiDaily } from '../core/integrations/llmWikiDaily'
 import { LlmWikiLibrary } from '../core/integrations/llmWikiLibrary'
+import { llmWikiVaultPathSchema, type LlmWikiVaultDiagnostics } from '../shared/llmWikiSettings'
 import type { SystemAccentName } from '../shared/appearance'
 import {
   LLM_WIKI_PROMOTION_PREVIEW_VERSION,
@@ -436,6 +442,48 @@ app.whenReady().then(async () => {
     useE2eFixtures ? e2eAnalysis : undefined,
     localAgentService.analyze.bind(localAgentService)
   )
+  const defaultVaultPath = defaultLlmWikiVaultPath()
+  const resolveVaultRoot = (): string =>
+    resolveLlmWikiVaultLocation({
+      customPath: repository.getLlmWikiVaultPath(),
+      envPath: env.THERSS_LLM_WIKI_PATH,
+      defaultPath: defaultVaultPath
+    }).resolvedPath
+  const fixtureWikiDiagnostics = (customPath: string | null): LlmWikiVaultDiagnostics => {
+    const location = resolveLlmWikiVaultLocation({
+      customPath,
+      envPath: undefined,
+      defaultPath: '/fixture/llm-wiki'
+    })
+    return {
+      ...location,
+      status: 'ready',
+      checkedAt: new Date().toISOString(),
+      checks: [
+        {
+          id: 'vault-root',
+          label: 'Vault folder',
+          status: 'ok',
+          detail: 'Fixture vault folder is ready without accessing local files.',
+          remediation: null
+        },
+        {
+          id: 'required-files',
+          label: 'Vault rules files',
+          status: 'ok',
+          detail: 'AGENTS.md and _schema.md are present in the fixture.',
+          remediation: null
+        },
+        {
+          id: 'paper-directories',
+          label: 'Paper folders',
+          status: 'ok',
+          detail: 'raw/paper_records and Literature/Paper_Notes are present in the fixture.',
+          remediation: null
+        }
+      ]
+    }
+  }
   const promotionAdapter = useE2eFixtures
     ? {
         prepare: async (
@@ -498,8 +546,14 @@ app.whenReady().then(async () => {
         }),
         dispose: async () => undefined
       }
-    : new LlmWikiVaultAdapter(createLlmWikiPromotionRuntime())
+    : new LlmWikiVaultAdapter({ ...createLlmWikiPromotionRuntime(), resolveVaultRoot })
   const promotionService = new LlmWikiPromotionService(repository, promotionAdapter)
+  const wikiLibrary = useE2eFixtures
+    ? null
+    : new LlmWikiLibrary({
+        resolveVaultRoot,
+        openExternal: (url) => shell.openExternal(url)
+      })
   const applicationRuntime = new WindowApplicationRuntime(
     {
       repository,
@@ -521,9 +575,57 @@ app.whenReady().then(async () => {
               readStatus: 'unread',
               reason: null
             }),
+            statusBatch: async ({ arxivIds }) => {
+              const checkedAt = new Date().toISOString()
+              return {
+                checkedAt,
+                statuses: Object.fromEntries(
+                  arxivIds.map((arxivId) => [
+                    arxivId,
+                    {
+                      arxivId,
+                      status: 'recorded' as const,
+                      checkedAt,
+                      recordPath: 'raw/paper_records/Fixture.md',
+                      notePath: 'Literature/Paper_Notes/L2_Structured/Model_Compression/Fixture.md',
+                      level: 'L2' as const,
+                      readStatus: 'unread' as const,
+                      reason: null
+                    }
+                  ])
+                )
+              }
+            },
             open: async () => ({ opened: true })
           }
-        : new LlmWikiLibrary({ openExternal: (url) => shell.openExternal(url) }),
+        : wikiLibrary!,
+      wikiSettings: useE2eFixtures
+        ? {
+            get: async () => fixtureWikiDiagnostics(repository.getLlmWikiVaultPath()),
+            save: async (vaultPath) => {
+              const normalized = llmWikiVaultPathSchema.parse(vaultPath)
+              repository.saveLlmWikiVaultPath(normalized)
+              return fixtureWikiDiagnostics(normalized)
+            }
+          }
+        : {
+            get: () =>
+              diagnoseLlmWikiVault({
+                customPath: repository.getLlmWikiVaultPath(),
+                envPath: env.THERSS_LLM_WIKI_PATH,
+                defaultPath: defaultVaultPath
+              }),
+            save: async (vaultPath) => {
+              const normalized = llmWikiVaultPathSchema.parse(vaultPath)
+              repository.saveLlmWikiVaultPath(normalized)
+              wikiLibrary?.clearCache()
+              return diagnoseLlmWikiVault({
+                customPath: normalized,
+                envPath: env.THERSS_LLM_WIKI_PATH,
+                defaultPath: defaultVaultPath
+              })
+            }
+          },
       daily: useE2eFixtures
         ? {
             snapshot: async () => e2eLlmWikiDaily,
@@ -539,7 +641,10 @@ app.whenReady().then(async () => {
               return { opened: true }
             }
           }
-        : new LlmWikiDaily({ openExternal: (url) => shell.openExternal(url) }),
+        : new LlmWikiDaily({
+            resolveVaultRoot,
+            openExternal: (url) => shell.openExternal(url)
+          }),
       credentials: () => {
         const githubToken = githubTokenFromEnvironment(env)
         const huggingFaceToken = huggingFaceTokenFromEnvironment(env)

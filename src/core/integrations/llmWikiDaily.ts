@@ -1,6 +1,5 @@
 import { constants } from 'node:fs'
 import { lstat, open, realpath } from 'node:fs/promises'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import {
   llmWikiDailyOpenRequestSchema,
@@ -11,7 +10,7 @@ import {
 } from '../../shared/llmWikiDaily'
 import { llmWikiArxivId, llmWikiArxivIdSchema } from '../../shared/llmWikiLibrary'
 import { isSafeLlmWikiRelativePath } from '../../shared/llmWikiPromotion'
-import { assertSafePathChain } from './llmWikiVaultSupport'
+import { assertSafePathChain, vaultRootResolver } from './llmWikiVaultPaths'
 
 const DIGEST_DIRECTORY = 'Literature/Digests/ArXiv_Daily'
 const MAX_LOOKBACK_DAYS = 14
@@ -197,20 +196,18 @@ async function noteMatches(root: string, path: string, arxivId: string): Promise
 
 /** Read the dated shortlist from its existing llm-wiki owner. */
 export class LlmWikiDaily {
-  private readonly root: string
+  private readonly resolveRoot: () => string
   private readonly now: () => Date
 
   constructor(
     private readonly options: {
       vaultRoot?: string
+      resolveVaultRoot?: () => string
       openExternal: (url: string) => Promise<void>
       now?: () => Date
     }
   ) {
-    this.root =
-      options.vaultRoot ??
-      process.env.THERSS_LLM_WIKI_PATH ??
-      join(homedir(), 'Obsidian', 'llm-wiki')
+    this.resolveRoot = vaultRootResolver(options)
     this.now = options.now ?? (() => new Date())
   }
 
@@ -269,9 +266,10 @@ export class LlmWikiDaily {
   private async readLatest(
     requestedDate: string
   ): Promise<{ root: string; edition: DatedEdition | null }> {
-    const rootInfo = await lstat(this.root)
+    const configuredRoot = this.resolveRoot()
+    const rootInfo = await lstat(configuredRoot)
     if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) throw new Error('Unsafe vault root')
-    const root = await realpath(this.root)
+    const root = await realpath(configuredRoot)
     for (const path of ['AGENTS.md', '_schema.md']) await assertSafePathChain(root, path, 'file')
     await assertSafePathChain(root, DIGEST_DIRECTORY, 'directory')
     const dateCursor = new Date(`${requestedDate}T12:00:00Z`)

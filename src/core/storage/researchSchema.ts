@@ -4,6 +4,7 @@ import {
   DISCOVER_SOURCE_PREFERENCE_TABLE,
   initializeDiscoverSourcePreference
 } from './discoverSourcePreferenceStore'
+import { LLM_WIKI_SETTINGS_TABLE } from './llmWikiSettingsStore'
 
 /**
  * Creates and migrates the local research schema in place.
@@ -436,6 +437,7 @@ export function migrateResearchDatabase(database: Database.Database): void {
 
     // Additive: an older build ignores this table. Sessions never change an existing row.
     database.exec(DISCOVER_SOURCE_PREFERENCE_TABLE)
+    database.exec(LLM_WIKI_SETTINGS_TABLE)
     initializeDiscoverSourcePreference(database)
   })
   try {

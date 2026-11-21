@@ -176,6 +176,112 @@ describe('read-only llm-wiki library', () => {
       status: 'not-found'
     })
   })
+  it('resolves a batch from one scan and isolates per-paper failures', async () => {
+    const { root, service } = await fixture()
+    const scan = vi.spyOn(service as unknown as { readScan: () => Promise<unknown> }, 'readScan')
+    const noteOnly = '2610.00001'
+    const ambiguous = '2610.00002'
+    const missing = '2610.00003'
+    const conflict = '2610.00004'
+    const absent = '2610.00005'
+    const l1 = 'Literature/Paper_Notes/L1_Deep_Read/Edge/Lee_2026_Edge.md'
+    const other = 'Literature/Paper_Notes/L1_Deep_Read/Edge/Lee_2026_Other.md'
+    await put(root, record, `---\narxiv_id: ${id}\npaper_note: '${note}'\n---\n`)
+    await put(root, note, `---\narxiv_id: ${id}\nstatus: read\n---\n`)
+    for (const path of ['raw/paper_records/a.md', 'raw/paper_records/b.md'])
+      await put(root, path, `---\narxiv_id: ${ambiguous}\n---\n`)
+    await put(
+      root,
+      'raw/paper_records/m.md',
+      `---\narxiv_id: ${missing}\npaper_note: '${l1}'\n---\n`
+    )
+    await put(
+      root,
+      'raw/paper_records/c.md',
+      `---\narxiv_id: ${conflict}\npaper_note: '${other}'\n---\n`
+    )
+    await put(root, other, `---\narxiv_id: ${noteOnly}\n---\n`)
+    const result = await service.statusBatch({
+      arxivIds: [`${id}v3`, id, noteOnly, ambiguous, missing, conflict, absent]
+    })
+    expect(scan).toHaveBeenCalledOnce()
+    expect(Object.keys(result.statuses).sort()).toEqual(
+      [id, noteOnly, ambiguous, missing, conflict, absent].sort()
+    )
+    expect(result.statuses[id]).toMatchObject({
+      status: 'recorded',
+      level: 'L2',
+      readStatus: 'read'
+    })
+    expect(result.statuses[noteOnly]).toMatchObject({
+      status: 'recorded',
+      level: 'L1',
+      recordPath: null
+    })
+    expect(result.statuses[ambiguous]?.status).toBe('ambiguous')
+    expect(result.statuses[missing]?.status).toBe('note-missing')
+    expect(result.statuses[conflict]).toMatchObject({ status: 'unavailable', notePath: null })
+    expect(result.statuses[absent]?.status).toBe('not-found')
+    expect(result.checkedAt).toBe('2026-10-28T12:00:00.000Z')
+    await service.statusBatch({ arxivIds: [id] })
+    expect(scan).toHaveBeenCalledOnce()
+    await service.statusBatch({ arxivIds: [id], refresh: true })
+    expect(scan).toHaveBeenCalledTimes(2)
+  })
+  it('reports every batch item unavailable when the vault scan fails', async () => {
+    const { root } = await fixture()
+    const service = new LlmWikiLibrary({ vaultRoot: join(root, 'missing'), openExternal: vi.fn() })
+    const result = await service.statusBatch({ arxivIds: [id, '2610.00001'] })
+    expect(Object.values(result.statuses).map((status) => status.status)).toEqual([
+      'unavailable',
+      'unavailable'
+    ])
+    expect(JSON.stringify(result)).not.toContain(root)
+    await expect(service.statusBatch({ arxivIds: [] })).rejects.toThrow()
+    await expect(service.statusBatch({ arxivIds: ['../x'] })).rejects.toThrow()
+    const tooMany = Array.from(
+      { length: 201 },
+      (_, index) => `2610.${String(index).padStart(5, '0')}`
+    )
+    await expect(service.statusBatch({ arxivIds: tooMany })).rejects.toThrow()
+  })
+  it('follows a dynamic vault root ahead of the static root and invalidates the cache', async () => {
+    const first = await fixture()
+    const second = await fixture()
+    await put(first.root, record, `---\narxiv_id: ${id}\n---\n`)
+    let current = first.root
+    const service = new LlmWikiLibrary({
+      vaultRoot: second.root,
+      resolveVaultRoot: () => current,
+      openExternal: vi.fn(),
+      now: () => new Date('2026-10-28T12:00:00Z')
+    })
+    expect(await service.status({ arxivId: id })).toMatchObject({ status: 'recorded' })
+    current = second.root
+    expect(await service.status({ arxivId: id })).toMatchObject({ status: 'not-found' })
+    await put(second.root, record, `---\narxiv_id: ${id}\n---\n`)
+    expect(await service.status({ arxivId: id })).toMatchObject({ status: 'not-found' })
+    service.clearCache()
+    expect(await service.status({ arxivId: id })).toMatchObject({ status: 'recorded' })
+  })
+  it('does not let a scan started before clearCache repopulate the cache', async () => {
+    const { root, service } = await fixture()
+    let release = () => {}
+    const stale = new Promise<unknown>((resolve) => {
+      release = () =>
+        resolve({ root, entries: [], checkedAt: '2026-10-28T12:00:00.000Z', incomplete: false })
+    })
+    vi.spyOn(
+      service as unknown as { readScan: () => Promise<unknown> },
+      'readScan'
+    ).mockReturnValueOnce(stale)
+    const pending = service.status({ arxivId: id })
+    service.clearCache()
+    await put(root, record, `---\narxiv_id: ${id}\n---\n`)
+    release()
+    expect(await pending).toMatchObject({ status: 'not-found' })
+    expect(await service.status({ arxivId: id })).toMatchObject({ status: 'recorded' })
+  })
   it('does not claim absence or open a target when the scan exceeds its entry budget', async () => {
     const { root, service, open } = await fixture()
     for (let offset = 0; offset < 5_001; offset += 100) {

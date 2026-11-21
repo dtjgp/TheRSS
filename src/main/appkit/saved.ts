@@ -1,6 +1,8 @@
 import type { AnalysisRunner } from '../../shared/models'
 import type { DashboardItem } from '../../shared/api'
 import type { DiscoverySource } from '../../shared/discovery'
+import { llmWikiArxivId, type LlmWikiListFilter } from '../../shared/llmWikiLibrary'
+import { LLM_WIKI_LIST_FILTER_OPTIONS } from '../../shared/llmWikiListFilter'
 import { ACTIVE_TODAY_SOURCE_IDS, sourceDisplayName } from '../../shared/sourceIdentity'
 import { column, Controls, emptyState, row, type NativeContext, type NativeScreen } from './common'
 import type { NativeNode } from './presentation'
@@ -8,11 +10,14 @@ import { ResearchReader, type TriageHistory } from './reading'
 import { researchRowDrag, researchRowGlyph, researchSubtitle } from './researchMetadata'
 import { ReadingWorkspace } from './readingWorkspace'
 import { SavedSourceUpdateControls } from './savedSourceUpdate'
+import { WikiListState } from './wikiListState'
 
 export class SavedScreen implements NativeScreen {
   readonly reader: ResearchReader
   private readonly controls: Controls
+  private readonly wikiList: WikiListState
   private filter = 'all'
+  private wikiFilter: LlmWikiListFilter = 'all'
   private selected = ''
   private runner: AnalysisRunner = 'model-provider'
   private readonly workspace: ReadingWorkspace
@@ -23,6 +28,7 @@ export class SavedScreen implements NativeScreen {
     private readonly triage: TriageHistory
   ) {
     this.controls = new Controls(context)
+    this.wikiList = new WikiListState(context)
     this.reader = new ResearchReader(context, 'saved', triage)
     this.workspace = new ReadingWorkspace(context, 'saved', 'saved-items', 'saved-summary')
     this.sourceUpdate = new SavedSourceUpdateControls(context, (item, id) => {
@@ -31,17 +37,31 @@ export class SavedScreen implements NativeScreen {
   }
   llmWikiChanged(arxivId: string): void {
     this.reader.llmWikiChanged(arxivId)
+    this.wikiList.refreshOne(arxivId)
+  }
+  llmWikiVaultChanged(): void {
+    this.wikiList.invalidateAll()
+    const current = this.items().find((item) => item.id === this.selected)
+    const arxivId = current ? llmWikiArxivId(current) : null
+    if (arxivId) this.reader.llmWikiChanged(arxivId)
   }
   dispose(): void {
+    this.wikiList.dispose()
     this.reader.dispose()
     this.sourceUpdate.dispose()
   }
   openLocal(item: DashboardItem): () => void {
-    const previous = { selected: this.selected, filter: this.filter, localItem: this.localItem }
+    const previous = {
+      selected: this.selected,
+      filter: this.filter,
+      wikiFilter: this.wikiFilter,
+      localItem: this.localItem
+    }
     const restoreWorkspace = this.workspace.checkpoint()
     this.localItem = item
     this.selected = item.id
     this.filter = 'all'
+    this.wikiFilter = 'all'
     this.workspace.open()
     return () => {
       Object.assign(this, previous)
@@ -60,7 +80,12 @@ export class SavedScreen implements NativeScreen {
   render(): NativeNode {
     const b = this.controls
     const all = this.items()
-    const items = all.filter((item) => this.filter === 'all' || item.source === this.filter)
+    this.wikiList.sync(all)
+    const items = all.filter(
+      (item) =>
+        (this.filter === 'all' || item.source === this.filter) &&
+        this.wikiList.matches(item, this.wikiFilter)
+    )
     const selected = items.find((item) => item.id === this.selected) ?? items[0] ?? null
     this.selected = selected?.id ?? ''
     this.reader.runner = this.runner
@@ -89,6 +114,17 @@ export class SavedScreen implements NativeScreen {
                     this.context.redraw()
                   },
                   { width: 250 }
+                ),
+                b.select(
+                  'saved-wiki-filter',
+                  'llm-wiki filter',
+                  this.wikiFilter,
+                  LLM_WIKI_LIST_FILTER_OPTIONS,
+                  (value) => {
+                    this.wikiFilter = value as LlmWikiListFilter
+                    this.context.redraw()
+                  },
+                  { help: 'Filter saved items by local llm-wiki membership' }
                 )
               ]
             : []),
@@ -110,7 +146,10 @@ export class SavedScreen implements NativeScreen {
                     items.map((item) => ({
                       id: item.id,
                       title: item.title,
-                      subtitle: researchSubtitle(item, this.context.locale),
+                      subtitle: this.wikiList.subtitle(
+                        item,
+                        researchSubtitle(item, this.context.locale)
+                      ),
                       ...researchRowGlyph(item.kind),
                       ...researchRowDrag(item)
                     })),
@@ -137,18 +176,7 @@ export class SavedScreen implements NativeScreen {
             ]
           : [
               all.length
-                ? emptyState(
-                    'saved-empty',
-                    'star',
-                    `No items from ${sourceDisplayName(this.filter as DiscoverySource)}`,
-                    'No saved items from this source. Your other saved research is unchanged.',
-                    [
-                      b.button('saved-reset-filter', 'Show all Saved', () => {
-                        this.filter = 'all'
-                        this.workspace.back()
-                      })
-                    ]
-                  )
+                ? this.filteredEmpty()
                 : emptyState(
                     'saved-empty',
                     'star',
@@ -165,6 +193,29 @@ export class SavedScreen implements NativeScreen {
       { flex: 1 }
     )
   }
+
+  private filteredEmpty(): NativeNode {
+    const b = this.controls
+    const wikiPhrase = this.wikiFilter === 'collected' ? 'in llm-wiki' : 'outside llm-wiki'
+    const title =
+      this.wikiFilter === 'all'
+        ? `No items from ${sourceDisplayName(this.filter as DiscoverySource)}`
+        : this.filter === 'all'
+          ? `No saved items ${wikiPhrase}`
+          : `No items from ${sourceDisplayName(this.filter as DiscoverySource)} ${wikiPhrase}`
+    const message =
+      this.wikiFilter === 'all'
+        ? 'No saved items from this source. Your other saved research is unchanged.'
+        : 'No saved items match this filter. Your other saved research is unchanged.'
+    return emptyState('saved-empty', 'star', title, message, [
+      b.button('saved-reset-filter', 'Show all Saved', () => {
+        this.filter = 'all'
+        this.wikiFilter = 'all'
+        this.workspace.back()
+      })
+    ])
+  }
+
   private select(id: string): void {
     const item = this.items().find((item) => item.id === id)
     if (!item) return

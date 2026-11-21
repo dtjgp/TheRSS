@@ -44,6 +44,21 @@ afterEach(async () => {
 })
 
 describe('llm-wiki Daily Papers', () => {
+  it('reads a dynamic vault root at each snapshot ahead of the static root', async () => {
+    const { root } = await fixture()
+    await put(root, digestPath(date), digest())
+    let current = join(root, 'missing')
+    const service = new LlmWikiDaily({
+      vaultRoot: root,
+      resolveVaultRoot: () => current,
+      openExternal: vi.fn(),
+      now: () => new Date(2026, 10, 6, 12)
+    })
+    expect((await service.snapshot()).status).toBe('unavailable')
+    current = root
+    expect((await service.snapshot()).status).toBe('completed')
+  })
+
   it('projects the dated selection and opens the exact validated Obsidian targets', async () => {
     const { root, service, openExternal } = await fixture()
     await put(root, digestPath(date), digest())

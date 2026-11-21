@@ -135,6 +135,22 @@ afterEach(async () => {
 })
 
 describe('LlmWikiVaultAdapter', () => {
+  it('resolves a dynamic vault root at each preparation ahead of the static root', async () => {
+    const root = await makeVault(false)
+    const options = fixtureOptions(join(root, 'missing-static-root'))
+    const resolveVaultRoot = vi.fn(() => root)
+    const adapter = new LlmWikiVaultAdapter({ ...options, resolveVaultRoot })
+
+    const prepared = await adapter.prepare(paper, {
+      previewId: '11111111-1111-4111-8111-111111111111',
+      expiresAt: '2026-08-21T10:30:00.000Z'
+    })
+
+    expect(resolveVaultRoot).toHaveBeenCalledOnce()
+    expect(prepared.preview.blockers.join(' ')).toContain('writer scope is not registered')
+    expect(options.fetchPdf).not.toHaveBeenCalled()
+  })
+
   it('completes a fixture promotion and releases its lease through the reviewed real Python runtime', async () => {
     const root = await makeVault()
     const script = await readFile(resolve('tests/fixtures/llm-wiki/automation_runtime.py'))

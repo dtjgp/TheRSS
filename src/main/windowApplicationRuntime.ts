@@ -115,6 +115,16 @@ export class WindowApplicationRuntime {
         })
         return choice.response === 1
       },
+      chooseLlmWikiVaultFolder: async () => {
+        if (window.isDestroyed() || this.fixture) return { canceled: true, path: null }
+        const choice = await dialog.showOpenDialog(window, {
+          title: 'Choose llm-wiki Vault Folder',
+          properties: ['openDirectory']
+        })
+        const selected = choice.filePaths[0] ?? null
+        if (choice.canceled || !selected) return { canceled: true, path: null }
+        return { canceled: false, path: selected }
+      },
       contextMenu: (target) => contextMenu(window, target),
       accent: this.accent
     })
@@ -210,6 +220,16 @@ export class WindowApplicationRuntime {
     )
     ipcMain.handle(IPC_CHANNELS.saveDiscoverPersonalizationPrompt, (event, prompt) =>
       apiFor(event).saveDiscoverPersonalizationPrompt(prompt)
+    )
+    ipcMain.handle(IPC_CHANNELS.getLlmWikiStatuses, (event, candidate: unknown) =>
+      apiFor(event).getLlmWikiStatuses!(candidate as never)
+    )
+    ipcMain.handle(IPC_CHANNELS.getLlmWikiSettings, (event) => apiFor(event).getLlmWikiSettings!())
+    ipcMain.handle(IPC_CHANNELS.saveLlmWikiVaultPath, (event, candidate: unknown) =>
+      apiFor(event).saveLlmWikiVaultPath!(candidate as never)
+    )
+    ipcMain.handle(IPC_CHANNELS.chooseLlmWikiVaultFolder, (event) =>
+      apiFor(event).chooseLlmWikiVaultFolder!()
     )
     ipcMain.handle(IPC_CHANNELS.previewLlmWikiPromotion, (event, candidate: unknown) => {
       const input = llmWikiPromotionPreviewRequestSchema.parse(candidate)

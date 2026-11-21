@@ -18,6 +18,7 @@ import {
   type SettingsSection
 } from './common'
 import type { NativeNode, NativeSymbol } from './presentation'
+import { SettingsWikiPane } from './settingsWiki'
 
 type Draft = { name: string; protocol: ModelProtocol; baseUrl: string; model: string }
 type Field =
@@ -34,11 +35,13 @@ export const SETTINGS_SECTIONS: Readonly<
   Record<SettingsSection, { readonly title: string; readonly symbol: NativeSymbol }>
 > = {
   personal: { title: 'Personal Context', symbol: 'person.crop.circle' },
-  provider: { title: 'Model Provider', symbol: 'cpu' }
+  provider: { title: 'Model Provider', symbol: 'cpu' },
+  wiki: { title: 'Knowledge Base', symbol: 'square.stack' }
 }
 
 export class SettingsScreen implements NativeScreen {
   private readonly controls: Controls
+  private readonly wiki: SettingsWikiPane
   #section: SettingsSection = 'personal'
   private provider: ModelProviderSummary | null = null
   private draft: Draft = fromProvider(null)
@@ -60,6 +63,7 @@ export class SettingsScreen implements NativeScreen {
     private readonly options: { readonly changed?: () => void } = {}
   ) {
     this.controls = new Controls(context)
+    this.wiki = new SettingsWikiPane(context, { changed: () => this.options.changed?.() })
   }
 
   get section(): SettingsSection {
@@ -69,6 +73,7 @@ export class SettingsScreen implements NativeScreen {
   select(section: SettingsSection): void {
     if (section === this.#section) return
     this.#section = section
+    if (section === 'wiki') void this.wiki.ensureLoaded()
     this.context.redraw()
   }
 
@@ -78,7 +83,8 @@ export class SettingsScreen implements NativeScreen {
     try {
       const [provider, personal] = await Promise.all([
         this.context.api.getModelProvider(),
-        this.context.api.getDiscoverPersonalizationSettings()
+        this.context.api.getDiscoverPersonalizationSettings(),
+        this.wiki.load()
       ])
       if (this.disposed) return
       this.provider = provider
@@ -113,11 +119,17 @@ export class SettingsScreen implements NativeScreen {
   dispose(): void {
     this.disposed = true
     this.#secret = ''
+    this.wiki.dispose()
   }
 
   render(): NativeNode {
     const b = this.controls
-    const content = this.#section === 'personal' ? this.personal() : this.model()
+    const content =
+      this.#section === 'personal'
+        ? this.personal()
+        : this.#section === 'provider'
+          ? this.model()
+          : this.wiki.render()
     return column(
       'settings-page',
       [

@@ -42,10 +42,16 @@
   - Frozen shared contract (`technical-pm`): `src/shared/llmWikiLibrary.ts`, `src/shared/llmWikiListFilter.ts`, `src/shared/llmWikiListFilter.test.ts`, `src/shared/llmWikiSettings.ts`, `src/shared/llmWikiSettings.test.ts`, `src/shared/api.ts`, `src/shared/ipc.ts`
   - Slice 3A (`core-retrieval-storage`): `src/core/storage/llmWikiSettingsStore.ts`, `llmWikiSettingsStore.test.ts`, `researchSchema.ts`, `researchRepository.ts`, `researchRepository.test.ts`, `researchRepository.discover.test.ts`
   - Slice 3B (`ai-wiki-integration`): `src/core/integrations/llmWikiLibrary.ts`, `llmWikiLibrary.test.ts`, `llmWikiDiagnostics.ts`, `llmWikiDiagnostics.test.ts`, `llmWikiDaily.ts`, `llmWikiVaultAdapter.ts`, `llmWikiVaultSupport.ts`, `llmWikiVaultPaths.ts` (and existing integration tests)
-  - Slice 3C (`native-ui`): `src/main/appkit/common.ts`, `src/main/appkit/wikiListState.ts`, `src/main/appkit/wikiListFilter.test.ts`, `src/main/appkit/discover.ts`, `src/main/appkit/discoverToolbar.ts`, `src/main/appkit/saved.ts`, `src/main/appkit/settings.ts`, `src/main/appkit/settingsWiki.ts`, `src/main/appkit/settingsWiki.test.ts`, `src/main/appkit/testHarness.ts`
+  - Slice 3C (`native-ui`): `src/main/appkit/common.ts`, `src/main/appkit/presenter.ts`, `src/main/appkit/wikiListState.ts`, `src/main/appkit/wikiListFilter.test.ts`, `src/main/appkit/discover.ts`, `src/main/appkit/discoverToolbar.ts`, `src/main/appkit/saved.ts`, `src/main/appkit/settings.ts`, `src/main/appkit/settingsWiki.ts`, `src/main/appkit/settingsWiki.test.ts`, `src/main/appkit/settingsPresenter.test.ts`, `src/main/appkit/testSupport.ts`
 
 ## Frozen Acceptance Contract
 
 - RED verifier: Each specialist adds failing tests first for its slice (storage store + round-trip, batch status + diagnostics + dynamic root, native list badges/filters + Settings Knowledge Base pane) and confirms RED before implementing GREEN.
 - Full verifier: `npm run check`, `npm run smoke:mcp`, `npm run test:e2e`, `smoke:appkit`, and cross-family independent QA (`APPROVED` on all tracks).
 - Stop condition: All 3 slices + main/preload integration complete, full gates green, and cross-family QA returns unanimous `APPROVED`.
+
+### Acceptance-change log
+
+| Date       | Contract change                                                                                                                                                  | Evidence/reason                                                                                                                                                | Reviewer       |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| 2026-11-21 | Update `src/main/appkit/settingsPresenter.test.ts:37` and `scripts/smoke-native-appkit.mjs:970` Settings preference toolbar count from 2 to 3 (`settings-wiki`). | Contract intentionally adds the 3rd P1-6 `Knowledge Base` (`wiki`) pane to `SETTINGS_SECTIONS` in native Settings; `personal` and `provider` remain unchanged. | `technical-pm` |

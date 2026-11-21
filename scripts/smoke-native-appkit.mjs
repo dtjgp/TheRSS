@@ -968,7 +968,8 @@ try {
         opened.toolbar.items.map((item) => [item.id, item.label, item.hasImage]),
         [
           ['settings-personal', 'Personal Context', true],
-          ['settings-provider', 'Model Provider', true]
+          ['settings-provider', 'Model Provider', true],
+          ['settings-wiki', 'Knowledge Base', true]
         ]
       )
       assert(!find(opened.root, 'settings-tab'), 'Panes are toolbar items, not a pop-up')
