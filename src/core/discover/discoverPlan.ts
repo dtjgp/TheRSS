@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { DiscoverPlan } from '../../shared/discover'
+import { termsShareWholeCue } from '../ranking/termMatch'
 
 const MAX_PLAN_CHARACTERS = 20_000
 const MAX_TERM_LENGTH = 100
@@ -60,6 +61,19 @@ const constraintGroupSchema = z
   .max(MAX_CONSTRAINT_TERMS)
   .transform((terms) => [...new Set(terms)])
 
+function hasCrossGroupEquivalentTerm(groups: readonly (readonly string[])[]): boolean {
+  for (let leftIndex = 0; leftIndex < groups.length; leftIndex += 1) {
+    const leftGroup = groups[leftIndex] ?? []
+    for (let rightIndex = leftIndex + 1; rightIndex < groups.length; rightIndex += 1) {
+      const rightGroup = groups[rightIndex] ?? []
+      if (leftGroup.some((left) => rightGroup.some((right) => termsShareWholeCue(left, right)))) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
 const discoverPlanSchema = z
   .object({
     version: z.literal('discover-plan-v1'),
@@ -110,9 +124,7 @@ const discoverPlanSchema = z
       context.addIssue({ code: 'custom', message: 'GitHub query fan-out exceeds six queries' })
     }
 
-    // Terms are unique within a group, so any repeat here spans two distinct facets.
-    const constraintTerms = plan.constraintGroups?.flat() ?? []
-    if (new Set(constraintTerms).size !== constraintTerms.length) {
+    if (plan.constraintGroups && hasCrossGroupEquivalentTerm(plan.constraintGroups)) {
       context.addIssue({ code: 'custom', message: 'Constraint groups must not share a term' })
     }
   })

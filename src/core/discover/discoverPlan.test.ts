@@ -147,11 +147,34 @@ describe('parseDiscoverPlan', () => {
         ['carbon', 'energy'],
         ['Energy', 'deadline']
       ]
-    ]
+    ],
+    [
+      'separator-equivalent terms across groups',
+      [['deadline-aware scheduling'], ['deadline aware scheduling']]
+    ],
+    ['plural-equivalent terms across groups', [['llm'], ['llms']]],
+    ['es-plural-equivalent terms across groups', [['batches'], ['batch']]]
   ])('rejects constraint groups with %s', (_label, constraintGroups) => {
     expect(() => parseDiscoverPlan(JSON.stringify({ ...validPlan, constraintGroups }))).toThrow(
       'invalid search plan'
     )
+  })
+
+  it('keeps distinct multi-facet groups whose terms only share a subword', () => {
+    const parsed = parseDiscoverPlan(
+      JSON.stringify({
+        ...validPlan,
+        constraintGroups: [
+          ['energy', 'carbon footprint'],
+          ['energy efficiency', 'deadline-aware scheduling']
+        ]
+      })
+    )
+
+    expect(parsed.constraintGroups).toEqual([
+      ['energy', 'carbon footprint'],
+      ['energy efficiency', 'deadline-aware scheduling']
+    ])
   })
 
   it('round-trips an expanding-case constraint term within the length bound', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { includesWholeTerm } from './termMatch'
+import { includesWholeTerm, termsShareWholeCue } from './termMatch'
 
 describe('includesWholeTerm', () => {
   it.each([
@@ -41,5 +41,32 @@ describe('includesWholeTerm', () => {
     ['low rank', 'low-']
   ])('rejects %j against %j', (value, term) => {
     expect(includesWholeTerm(value, term)).toBe(false)
+  })
+})
+
+describe('termsShareWholeCue', () => {
+  it.each([
+    ['deadline-aware scheduling', 'deadline aware scheduling'],
+    ['low‐rank', 'low–rank'],
+    ['llm', 'llms'],
+    ['llms', 'llm'],
+    ['batch', 'batches'],
+    ['low-rank models', 'low rank model'],
+    ['Energy', 'energy'],
+    ['边缘计算', '边缘计算'],
+    ['基于LLM的推荐', '基于llm的推荐']
+  ])('treats %j and %j as the same whole cue', (left, right) => {
+    expect(termsShareWholeCue(left, right)).toBe(true)
+  })
+
+  it.each([
+    ['energy', 'energy efficiency'],
+    ['llm', 'llm pruning'],
+    ['边缘计算', '边缘'],
+    ['c++', 'c++s'],
+    ['edge', 'pruning'],
+    ['', 'llm']
+  ])('keeps %j and %j distinct', (left, right) => {
+    expect(termsShareWholeCue(left, right)).toBe(false)
   })
 })
