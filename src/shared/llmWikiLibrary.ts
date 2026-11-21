@@ -24,6 +24,27 @@ export const llmWikiLibraryStatusSchema = z
 export type LlmWikiStatusRequest = z.input<typeof llmWikiStatusRequestSchema>
 export type LlmWikiLibraryStatus = z.infer<typeof llmWikiLibraryStatusSchema>
 
+export const LLM_WIKI_BATCH_MAX_IDS = 200
+export const llmWikiBatchStatusRequestSchema = z
+  .object({
+    arxivIds: z
+      .array(llmWikiArxivIdSchema)
+      .min(1)
+      .max(LLM_WIKI_BATCH_MAX_IDS)
+      .transform((ids) => [...new Set(ids)]),
+    refresh: z.boolean().optional()
+  })
+  .strict()
+export const llmWikiBatchStatusResponseSchema = z
+  .object({
+    checkedAt: z.iso.datetime(),
+    statuses: z.record(llmWikiArxivIdSchema, llmWikiLibraryStatusSchema)
+  })
+  .strict()
+export type LlmWikiBatchStatusRequest = z.input<typeof llmWikiBatchStatusRequestSchema>
+export type LlmWikiBatchStatusResponse = z.infer<typeof llmWikiBatchStatusResponseSchema>
+export type LlmWikiListFilter = 'all' | 'collected' | 'uncollected'
+
 /** Derive identity from an official paper URL, never from its title or a guessed filename. */
 export function llmWikiArxivId(item: {
   source: string
