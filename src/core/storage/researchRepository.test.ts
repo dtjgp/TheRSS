@@ -248,14 +248,18 @@ describe('ResearchRepository', () => {
     repository.close()
   })
 
-  it('rejects v2 Discover provenance when its personalization flag is missing', () => {
+  it.each([
+    ['semantic-discover-v2', undefined],
+    ['semantic-discover-v3', undefined],
+    ['semantic-discover-v3', 'true']
+  ] as const)('rejects %s provenance with personalization flag %s', (promptVersion, flag) => {
     const database = new Database(':memory:')
     const repository = new ResearchRepository(database)
     repository.saveDiscoverSnapshot({
       ...discoverSnapshot(),
       provenance: {
         ...discoverSnapshot().provenance,
-        promptVersion: 'semantic-discover-v2',
+        promptVersion,
         personalizationApplied: true
       }
     })
@@ -264,7 +268,8 @@ describe('ResearchRepository', () => {
         providerId: 'local-agent:codex',
         providerName: 'Codex CLI',
         model: 'codex-cli',
-        promptVersion: 'semantic-discover-v2',
+        promptVersion,
+        personalizationApplied: flag,
         inputHash: 'a'.repeat(64),
         createdAt: '2026-08-16T10:00:00.000Z'
       }),
@@ -274,6 +279,22 @@ describe('ResearchRepository', () => {
     expect(() => repository.getLatestDiscoverSnapshot()).toThrow(
       'The local index contains invalid Discover provenance'
     )
+    repository.close()
+  })
+
+  it('defaults legacy v1 Discover provenance without a personalization flag to false', () => {
+    const database = new Database(':memory:')
+    const repository = new ResearchRepository(database)
+    const snapshot = discoverSnapshot()
+    repository.saveDiscoverSnapshot(snapshot)
+    database
+      .prepare('UPDATE discover_session SET provenance_json = ? WHERE id = ?')
+      .run(
+        JSON.stringify({ ...snapshot.provenance, personalizationApplied: undefined }),
+        snapshot.id
+      )
+
+    expect(repository.getLatestDiscoverSnapshot()).toEqual(snapshot)
     repository.close()
   })
 
@@ -530,6 +551,44 @@ describe('ResearchRepository', () => {
     expect(repository.listDashboardItems()).toEqual([])
     repository.close()
   })
+
+  it.each([
+    ['semantic-discover-v2', true],
+    ['semantic-discover-v3', false],
+    ['semantic-discover-v3', true]
+  ] as const)(
+    'round-trips %s with personalizationApplied=%s',
+    (promptVersion, personalizationApplied) => {
+      const repository = createRepository()
+      const snapshot = discoverSnapshot()
+      const isV3 = promptVersion === 'semantic-discover-v3'
+      const session: DiscoverSnapshot = {
+        ...snapshot,
+        plan: isV3
+          ? {
+              ...snapshot.plan,
+              constraintGroups: [
+                ['semantic communication'],
+                ['structured pruning', 'channel pruning']
+              ]
+            }
+          : snapshot.plan,
+        provenance: { ...snapshot.provenance, promptVersion, personalizationApplied },
+        items: isV3
+          ? snapshot.items.map((item) => ({
+              ...item,
+              reasons: [...item.reasons, 'Covers all 2 intent constraints']
+            }))
+          : snapshot.items
+      }
+
+      repository.saveDiscoverSnapshot(session)
+
+      expect(repository.getLatestDiscoverSnapshot()).toEqual(session)
+      expect(repository.getDiscoverSnapshot(session.id)).toEqual(session)
+      repository.close()
+    }
+  )
 
   it('keeps retired-source history recoverable but excludes it from Today', () => {
     const repository = createRepository()

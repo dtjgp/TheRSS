@@ -60,6 +60,158 @@ describe('rankDiscoveryItem', () => {
     )
   })
 
+  it('matches whole Latin terms and phrases, with CJK substring matching', () => {
+    const result = rankDiscoveryItem(
+      {
+        ...baseItem,
+        title: 'AI, C++ and 结构化通道剪枝',
+        summary: 'A detail about address-level carbon intensity estimates.'
+      },
+      {
+        ...profile,
+        arxiv: { ...profile.arxiv, keywords: ['ai', 'dr', 'ev', 'c++', '剪枝', 'carbon intensity'] }
+      },
+      new Date('2026-08-15T00:00:00Z')
+    )
+
+    expect(
+      result.reasons.filter(({ kind }) => kind === 'keyword').map(({ value }) => value)
+    ).toEqual(['ai', 'c++', '剪枝', 'carbon intensity'])
+  })
+
+  it('requires whole exclusions before excluding a result', () => {
+    const now = new Date('2026-08-15T00:00:00Z')
+    const exclusionProfile = {
+      ...profile,
+      arxiv: { ...profile.arxiv, excludeKeywords: ['ai', 'dr', 'ev', '剪枝'] }
+    }
+    for (const [summary, excluded] of [
+      ['A detail about address-level changes.', false],
+      ['Applications of DR.', true],
+      ['结构化通道剪枝', true]
+    ] as const) {
+      expect(rankDiscoveryItem({ ...baseItem, summary }, exclusionProfile, now).excluded).toBe(
+        excluded
+      )
+    }
+  })
+
+  it('ranks Structured Pruning of LLMs above Pruning for CNNs with both constraints', () => {
+    const now = new Date('2026-08-15T00:00:00Z')
+    const pruningProfile = {
+      ...profile,
+      arxiv: { ...profile.arxiv, keywords: ['pruning'] }
+    }
+    const options = { constraintGroups: [['llm'], ['pruning']] }
+    const direct = rankDiscoveryItem(
+      { ...baseItem, title: 'Structured Pruning of LLMs' },
+      pruningProfile,
+      now,
+      options
+    )
+    const partial = rankDiscoveryItem(
+      { ...baseItem, title: 'Pruning for CNNs' },
+      pruningProfile,
+      now,
+      options
+    )
+
+    expect(direct.score).toBeGreaterThan(partial.score)
+    expect(direct.reasons).toContainEqual(
+      expect.objectContaining({ kind: 'coverage', weight: 35, value: '2/2' })
+    )
+    expect(partial.reasons).toContainEqual(
+      expect.objectContaining({ kind: 'coverage', weight: -20, value: '1/2' })
+    )
+  })
+
+  it('uses plural, mixed-script and phrase matching for keywords and exclusions', () => {
+    const result = rankDiscoveryItem(
+      {
+        ...baseItem,
+        title: '基于LLMs的推荐系统',
+        summary: 'Reviews low-rank approaches in prior surveys.'
+      },
+      {
+        ...profile,
+        arxiv: { ...profile.arxiv, keywords: ['llm', 'low rank'], excludeKeywords: ['survey'] }
+      },
+      new Date('2026-08-15T00:00:00Z')
+    )
+
+    expect(result.reasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'keyword', field: 'title', value: 'llm' }),
+        expect.objectContaining({ kind: 'keyword', field: 'summary', value: 'low rank' }),
+        expect.objectContaining({ kind: 'exclusion', value: 'survey' })
+      ])
+    )
+    expect(result.excluded).toBe(true)
+    expect(result.score).toBe(0)
+  })
+
+  it('does not create phrase matches from the end of the title and start of the summary', () => {
+    const options = { constraintGroups: [['carbon intensity'], ['training']] }
+    const carbonProfile = {
+      ...profile,
+      arxiv: { ...profile.arxiv, excludeKeywords: ['carbon intensity'] }
+    }
+    const result = rankDiscoveryItem(
+      { ...baseItem, title: 'Training and carbon', summary: 'Intensity is the focus.' },
+      carbonProfile,
+      new Date('2026-08-15T00:00:00Z'),
+      options
+    )
+
+    expect(result.excluded).toBe(false)
+    expect(result.reasons).toContainEqual(
+      expect.objectContaining({ kind: 'coverage', weight: -20, value: '1/2' })
+    )
+  })
+
+  const coverageGroups = [['training'], ['carbon', 'emissions'], ['deadline']]
+
+  it.each([
+    ['training deadline', 'emissions', 35, 'Covers all 3 intent constraints'],
+    ['training and retraining', 'carbon emissions', 16, 'Covers 2 of 3 intent constraints'],
+    ['retraining', 'carbon emissions', -20, 'Partial match: 1 of 3 intent constraints'],
+    ['retraining', 'A general method', -35, 'Partial match: 0 of 3 intent constraints']
+  ])('scores constraint coverage for %s / %s', (title, summary, weight, label) => {
+    const item = { ...baseItem, title, summary }
+    const now = new Date('2026-08-15T00:00:00Z')
+    const baseline = rankDiscoveryItem(item, profile, now)
+    const ranked = rankDiscoveryItem(item, profile, now, { constraintGroups: coverageGroups })
+
+    expect(ranked.reasons.filter(({ kind }) => kind === 'coverage')).toEqual([
+      expect.objectContaining({ weight, label })
+    ])
+    expect(ranked.score).toBe(Math.max(0, baseline.score + weight))
+  })
+
+  it('applies no coverage adjustment below two facets and clamps excluded matches to zero', () => {
+    const item = { ...baseItem, summary: 'Pruning for edge deployment in medical imaging.' }
+    const now = new Date('2026-08-15T00:00:00Z')
+    const baseline = rankDiscoveryItem(item, profile, now)
+    expect(rankDiscoveryItem(item, profile, now, {})).toEqual(baseline)
+    expect(rankDiscoveryItem(item, profile, now, { constraintGroups: [] })).toEqual(baseline)
+    expect(rankDiscoveryItem(item, profile, now, { constraintGroups: [['edge']] })).toEqual(
+      baseline
+    )
+
+    const ranked = rankDiscoveryItem(item, profile, now, {
+      constraintGroups: [['edge'], ['pruning']]
+    })
+    expect(ranked.excluded).toBe(true)
+    expect(ranked.score).toBe(0)
+    expect(ranked.reasons).toContainEqual(
+      expect.objectContaining({
+        kind: 'coverage',
+        weight: 35,
+        label: 'Covers all 2 intent constraints'
+      })
+    )
+  })
+
   it('marks excluded content without mutating the input item', () => {
     const item = {
       ...baseItem,

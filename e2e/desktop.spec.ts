@@ -704,7 +704,7 @@ test('Discover-first search across every deployed source', async () => {
       await expect(page.getByText('Search complete')).toBeVisible()
       await page.getByRole('button', { name: /Search details/u }).click()
       await expect(page.getByLabel('Discover search details')).toContainText(
-        'semantic-discover-v2 · personal context applied'
+        'semantic-discover-v3 · personal context applied'
       )
       await capture(page, '05c-personalized-discover.png')
 
