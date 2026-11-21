@@ -269,7 +269,14 @@ describe('read-only llm-wiki library', () => {
     let release = () => {}
     const stale = new Promise<unknown>((resolve) => {
       release = () =>
-        resolve({ root, entries: [], checkedAt: '2026-10-28T12:00:00.000Z', incomplete: false })
+        resolve({
+          configuredRoot: root,
+          generation: 0,
+          root,
+          entries: [],
+          checkedAt: '2026-10-28T12:00:00.000Z',
+          incomplete: false
+        })
     })
     vi.spyOn(
       service as unknown as { readScan: () => Promise<unknown> },
@@ -281,6 +288,86 @@ describe('read-only llm-wiki library', () => {
     release()
     expect(await pending).toMatchObject({ status: 'not-found' })
     expect(await service.status({ arxivId: id })).toMatchObject({ status: 'recorded' })
+  })
+  it('aborts open if the vault changes concurrently instead of opening a path against the new root', async () => {
+    const first = await fixture()
+    const second = await fixture()
+    await put(first.root, record, `---\narxiv_id: ${id}\n---\n`)
+    let current = first.root
+    const open = vi.fn(async () => undefined)
+    const service = new LlmWikiLibrary({
+      resolveVaultRoot: () => current,
+      openExternal: open,
+      now: () => new Date('2026-10-28T12:00:00Z')
+    })
+    const originalReadScan = (
+      service as unknown as { readScan: (r: string, g: number) => Promise<unknown> }
+    ).readScan.bind(service)
+    let releaseFirst = () => {}
+    const holdFirst = new Promise<void>((resolve) => {
+      releaseFirst = resolve
+    })
+    vi.spyOn(
+      service as unknown as { readScan: (r: string, g: number) => Promise<unknown> },
+      'readScan'
+    ).mockImplementationOnce(async (configuredRoot, generation) => {
+      const result = await originalReadScan(configuredRoot, generation)
+      await holdFirst
+      return result
+    })
+    const openPromise = service.open(id)
+    await Promise.resolve()
+    current = second.root
+    service.clearCache()
+    expect(await service.status({ arxivId: id })).toMatchObject({ status: 'not-found' })
+    releaseFirst()
+    await expect(openPromise).rejects.toThrow('vault changed')
+    expect(open).not.toHaveBeenCalled()
+  })
+  it('invalidates an in-flight scan when the root switches on an empty cache', async () => {
+    const first = await fixture()
+    const second = await fixture()
+    await put(first.root, record, `---\narxiv_id: ${id}\n---\n`)
+    let current = first.root
+    const service = new LlmWikiLibrary({
+      resolveVaultRoot: () => current,
+      openExternal: vi.fn(),
+      now: () => new Date('2026-10-28T12:00:00Z')
+    })
+    const originalReadScan = (
+      service as unknown as { readScan: (r: string, g: number) => Promise<unknown> }
+    ).readScan.bind(service)
+    let releaseA = () => {}
+    let releaseB = () => {}
+    const holdA = new Promise<void>((resolve) => {
+      releaseA = resolve
+    })
+    const holdB = new Promise<void>((resolve) => {
+      releaseB = resolve
+    })
+    const spy = vi
+      .spyOn(
+        service as unknown as { readScan: (r: string, g: number) => Promise<unknown> },
+        'readScan'
+      )
+      .mockImplementationOnce(async (configuredRoot, generation) => {
+        await holdA
+        return originalReadScan(configuredRoot, generation)
+      })
+      .mockImplementationOnce(async (configuredRoot, generation) => {
+        await holdB
+        return originalReadScan(configuredRoot, generation)
+      })
+    const pendingA = service.status({ arxivId: id })
+    current = second.root
+    const pendingB1 = service.status({ arxivId: id })
+    releaseA()
+    expect(await pendingA).toMatchObject({ status: 'recorded' })
+    const pendingB2 = service.status({ arxivId: id })
+    releaseB()
+    expect(await pendingB1).toMatchObject({ status: 'not-found' })
+    expect(await pendingB2).toMatchObject({ status: 'not-found' })
+    expect(spy).toHaveBeenCalledTimes(2)
   })
   it('does not claim absence or open a target when the scan exceeds its entry budget', async () => {
     const { root, service, open } = await fixture()

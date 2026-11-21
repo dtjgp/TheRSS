@@ -176,7 +176,7 @@ export class SavedScreen implements NativeScreen {
             ]
           : [
               all.length
-                ? this.filteredEmpty()
+                ? this.filteredEmpty(all)
                 : emptyState(
                     'saved-empty',
                     'star',
@@ -194,8 +194,35 @@ export class SavedScreen implements NativeScreen {
     )
   }
 
-  private filteredEmpty(): NativeNode {
+  private filteredEmpty(all: readonly DashboardItem[]): NativeNode {
     const b = this.controls
+    const preWiki = this.filter === 'all' ? all : all.filter((item) => item.source === this.filter)
+    const wikiSummary = this.wikiList.summarize(preWiki)
+    const reset = [
+      b.button('saved-reset-filter', 'Show all Saved', () => {
+        this.filter = 'all'
+        this.wikiFilter = 'all'
+        this.workspace.back()
+      })
+    ]
+    if (this.wikiFilter !== 'all' && wikiSummary.pending > 0) {
+      return emptyState(
+        'saved-empty',
+        'star',
+        'Checking llm-wiki…',
+        'Checking whether your saved papers are recorded in your local llm-wiki vault.',
+        reset
+      )
+    }
+    if (this.wikiFilter !== 'all' && wikiSummary.unavailable > 0) {
+      return emptyState(
+        'saved-empty',
+        'star',
+        'llm-wiki is unavailable',
+        'Local llm-wiki status could not be read. Check Settings › Knowledge Base to verify the vault folder.',
+        reset
+      )
+    }
     const wikiPhrase = this.wikiFilter === 'collected' ? 'in llm-wiki' : 'outside llm-wiki'
     const title =
       this.wikiFilter === 'all'
@@ -207,13 +234,7 @@ export class SavedScreen implements NativeScreen {
       this.wikiFilter === 'all'
         ? 'No saved items from this source. Your other saved research is unchanged.'
         : 'No saved items match this filter. Your other saved research is unchanged.'
-    return emptyState('saved-empty', 'star', title, message, [
-      b.button('saved-reset-filter', 'Show all Saved', () => {
-        this.filter = 'all'
-        this.wikiFilter = 'all'
-        this.workspace.back()
-      })
-    ])
+    return emptyState('saved-empty', 'star', title, message, reset)
   }
 
   private select(id: string): void {

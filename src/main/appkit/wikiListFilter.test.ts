@@ -416,8 +416,171 @@ describe('AppKit I5 list-level llm-wiki badges and filters', () => {
       expect(h.find(JSON.parse(json).root, 'discover-results')?.rows?.[0]?.subtitle).toContain(
         'In llm-wiki · L1'
       )
+
+      // General Settings saves (personal/provider) do not force unnecessary vault rescans.
+      await presenter.settingsChanged('general')
+      await flushMicrotasks()
+      expect(getLlmWikiStatuses).toHaveBeenCalledTimes(2)
+
+      // Wiki Settings changes invalidate the list cache even if provider/agent reloads would fail.
+      await presenter.settingsChanged('wiki')
+      await flushMicrotasks()
+      expect(getLlmWikiStatuses).toHaveBeenCalledTimes(3)
     } finally {
       presenter.dispose()
     }
+  })
+
+  it('distinguishes pending and unavailable empty states under In llm-wiki filter in Discover and Saved', async () => {
+    let releaseDiscover = () => {}
+    const pendingBatch = new Promise<LlmWikiBatchStatusResponse>((resolve) => {
+      releaseDiscover = () =>
+        resolve(batchResponse([wikiStatus('2611.00001', { status: 'not-found' })]))
+    })
+    const discoverHarness = nativeHarness({
+      getLatestDiscover: vi.fn(async () => discoverSnapshotWithPapers()),
+      getLlmWikiStatuses: vi.fn(() => pendingBatch)
+    })
+    const discover = new DiscoverScreen(
+      discoverHarness.context,
+      new TriageHistory(discoverHarness.context)
+    )
+    await discover.load()
+    discoverHarness.render(discover)
+    await discoverHarness.act(discover, 'discover-wiki-filter', 'collected')
+    const discoverPending = discoverHarness.render(discover)
+    expect(discoverHarness.find(discoverPending, 'discover-empty-title')?.text).toBe(
+      'Checking llm-wiki…'
+    )
+    expect(discoverHarness.find(discoverPending, 'discover-show-all')).toBeDefined()
+    releaseDiscover()
+    discover.dispose()
+
+    const unavailableDiscoverHarness = nativeHarness({
+      getLatestDiscover: vi.fn(async () => discoverSnapshotWithPapers()),
+      getLlmWikiStatuses: vi.fn(async () => {
+        throw new Error('vault unreadable')
+      })
+    })
+    const unavailableDiscover = new DiscoverScreen(
+      unavailableDiscoverHarness.context,
+      new TriageHistory(unavailableDiscoverHarness.context)
+    )
+    await unavailableDiscover.load()
+    unavailableDiscoverHarness.render(unavailableDiscover)
+    await flushMicrotasks()
+    await unavailableDiscoverHarness.act(unavailableDiscover, 'discover-wiki-filter', 'collected')
+    const discoverUnavailable = unavailableDiscoverHarness.render(unavailableDiscover)
+    expect(unavailableDiscoverHarness.find(discoverUnavailable, 'discover-empty-title')?.text).toBe(
+      'llm-wiki is unavailable'
+    )
+    expect(unavailableDiscoverHarness.find(discoverUnavailable, 'discover-show-all')).toBeDefined()
+    unavailableDiscover.dispose()
+
+    const savedPaper = {
+      id: 'saved:1',
+      source: 'arxiv' as const,
+      kind: 'paper' as const,
+      title: 'Saved Paper',
+      summary: 'Summary.',
+      url: 'https://arxiv.org/abs/2611.00010',
+      publishedAt: '2026-11-18T10:00:00.000Z',
+      score: 90,
+      triageState: 'saved' as const,
+      reasons: ['match']
+    }
+    let releaseSaved = () => {}
+    const pendingSavedBatch = new Promise<LlmWikiBatchStatusResponse>((resolve) => {
+      releaseSaved = () =>
+        resolve(batchResponse([wikiStatus('2611.00010', { status: 'not-found' })]))
+    })
+    const savedPendingHarness = nativeHarness({
+      getLlmWikiStatuses: vi.fn(() => pendingSavedBatch)
+    })
+    savedPendingHarness.context.data.dashboard = {
+      ...savedPendingHarness.context.data.dashboard!,
+      savedItems: [savedPaper]
+    }
+    const savedPending = new SavedScreen(
+      savedPendingHarness.context,
+      new TriageHistory(savedPendingHarness.context)
+    )
+    savedPendingHarness.render(savedPending)
+    await savedPendingHarness.act(savedPending, 'saved-wiki-filter', 'collected')
+    expect(
+      savedPendingHarness.find(savedPendingHarness.render(savedPending), 'saved-empty-title')?.text
+    ).toBe('Checking llm-wiki…')
+    releaseSaved()
+    savedPending.dispose()
+
+    const savedUnavailableHarness = nativeHarness({
+      getLlmWikiStatuses: vi.fn(async () => {
+        throw new Error('vault missing')
+      })
+    })
+    savedUnavailableHarness.context.data.dashboard = {
+      ...savedUnavailableHarness.context.data.dashboard!,
+      savedItems: [savedPaper]
+    }
+    const savedUnavailable = new SavedScreen(
+      savedUnavailableHarness.context,
+      new TriageHistory(savedUnavailableHarness.context)
+    )
+    savedUnavailableHarness.render(savedUnavailable)
+    await flushMicrotasks()
+    await savedUnavailableHarness.act(savedUnavailable, 'saved-wiki-filter', 'collected')
+    expect(
+      savedUnavailableHarness.find(
+        savedUnavailableHarness.render(savedUnavailable),
+        'saved-empty-title'
+      )?.text
+    ).toBe('llm-wiki is unavailable')
+    savedUnavailable.dispose()
+  })
+
+  it('prevents an older slow batch response from overwriting a newer refreshOne status', async () => {
+    let releaseSlowBatch = () => {}
+    const slowBatch = new Promise<LlmWikiBatchStatusResponse>((resolve) => {
+      releaseSlowBatch = () =>
+        resolve(
+          batchResponse([
+            wikiStatus('2611.00001', { status: 'not-found' }),
+            wikiStatus('2611.00002', { status: 'not-found' }),
+            wikiStatus('2611.00003', { status: 'not-found' }),
+            wikiStatus('2611.00004', { status: 'not-found' })
+          ])
+        )
+    })
+    const getLlmWikiStatuses = vi
+      .fn<(request: LlmWikiBatchStatusRequest) => Promise<LlmWikiBatchStatusResponse>>()
+      .mockReturnValueOnce(slowBatch)
+      .mockResolvedValueOnce(
+        batchResponse([
+          wikiStatus('2611.00001', {
+            status: 'recorded',
+            recordPath: 'raw/paper_records/2611.00001.md',
+            notePath: 'Literature/Paper_Notes/L2_Structured/Edge/2611.00001.md',
+            level: 'L2'
+          })
+        ])
+      )
+    const h = nativeHarness({
+      getLatestDiscover: vi.fn(async () => discoverSnapshotWithPapers()),
+      getLlmWikiStatuses
+    })
+    const screen = new DiscoverScreen(h.context, new TriageHistory(h.context))
+    await screen.load()
+    h.render(screen)
+    screen.llmWikiChanged('2611.00001')
+    await flushMicrotasks()
+    expect(h.find(h.render(screen), 'discover-results')?.rows?.[0]?.subtitle).toContain(
+      'In llm-wiki · L2'
+    )
+    releaseSlowBatch()
+    await flushMicrotasks()
+    expect(h.find(h.render(screen), 'discover-results')?.rows?.[0]?.subtitle).toContain(
+      'In llm-wiki · L2'
+    )
+    screen.dispose()
   })
 })

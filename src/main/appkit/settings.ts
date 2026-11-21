@@ -15,6 +15,7 @@ import {
   scroll,
   type NativeContext,
   type NativeScreen,
+  type SettingsChangeScope,
   type SettingsSection
 } from './common'
 import type { NativeNode, NativeSymbol } from './presentation'
@@ -60,10 +61,10 @@ export class SettingsScreen implements NativeScreen {
   /** `changed` runs after settings are saved, so other windows can reload them. */
   constructor(
     private readonly context: NativeContext,
-    private readonly options: { readonly changed?: () => void } = {}
+    private readonly options: { readonly changed?: (scope?: SettingsChangeScope) => void } = {}
   ) {
     this.controls = new Controls(context)
-    this.wiki = new SettingsWikiPane(context, { changed: () => this.options.changed?.() })
+    this.wiki = new SettingsWikiPane(context, { changed: () => this.options.changed?.('wiki') })
   }
 
   get section(): SettingsSection {
@@ -391,7 +392,7 @@ export class SettingsScreen implements NativeScreen {
         ? 'Personal context saved for future Discover searches.'
         : 'Personal context cleared.'
       this.reportDirty()
-      this.options.changed?.()
+      this.options.changed?.('general')
     } catch {
       this.message = 'Personal context could not be saved.'
     } finally {
@@ -428,7 +429,7 @@ export class SettingsScreen implements NativeScreen {
       this.clearRevision++
       this.message = 'Provider saved. Any credential remains protected by the operating system.'
       this.reportDirty()
-      this.options.changed?.()
+      this.options.changed?.('general')
     } catch {
       this.message = 'Provider settings were rejected. Check the fields and credential rules.'
     } finally {
@@ -490,7 +491,7 @@ export class SettingsScreen implements NativeScreen {
       this.message = 'Protected credential cleared. Other unsaved fields are retained.'
       delete this.errors['provider-key']
       this.reportDirty()
-      this.options.changed?.()
+      this.options.changed?.('general')
     } catch {
       this.message = 'The protected credential could not be cleared.'
     } finally {

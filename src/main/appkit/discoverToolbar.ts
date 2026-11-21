@@ -134,17 +134,20 @@ export function discoverResultsToolbar(options: DiscoverToolbarOptions): NativeN
   ])
 }
 
+import type { WikiListSummary } from './wikiListState'
+
 export interface DiscoverEmptyOptions {
   readonly controls: Controls
   readonly snapshot: DiscoverSnapshot | null
   readonly filter: DiscoverKindFilter
   readonly timeRange: DiscoverTimeRange
   readonly wikiFilter: LlmWikiListFilter
+  readonly wikiSummary?: WikiListSummary
   readonly onShowAll: () => void
 }
 
 export function discoverEmptyState(options: DiscoverEmptyOptions): NativeNode {
-  const { controls: b, snapshot, filter, timeRange, wikiFilter } = options
+  const { controls: b, snapshot, filter, timeRange, wikiFilter, wikiSummary } = options
   if (!snapshot) {
     return emptyState(
       'discover-empty',
@@ -154,6 +157,24 @@ export function discoverEmptyState(options: DiscoverEmptyOptions): NativeNode {
     )
   }
   const filtered = filter !== 'all' || timeRange !== 'all' || wikiFilter !== 'all'
+  if (wikiFilter !== 'all' && wikiSummary && wikiSummary.pending > 0) {
+    return emptyState(
+      'discover-empty',
+      'sparkle.magnifyingglass',
+      'Checking llm-wiki…',
+      'Checking whether these papers are recorded in your local llm-wiki vault.',
+      [b.button('discover-show-all', 'Show all results', options.onShowAll)]
+    )
+  }
+  if (wikiFilter !== 'all' && wikiSummary && wikiSummary.unavailable > 0) {
+    return emptyState(
+      'discover-empty',
+      'sparkle.magnifyingglass',
+      'llm-wiki is unavailable',
+      'Local llm-wiki status could not be read. Check Settings › Knowledge Base to verify the vault folder.',
+      [b.button('discover-show-all', 'Show all results', options.onShowAll)]
+    )
+  }
   // An empty session keeps its outcome: failed and canceled are not "no results".
   const title = !filtered
     ? snapshot.status === 'failed'

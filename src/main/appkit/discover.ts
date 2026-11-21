@@ -201,11 +201,12 @@ export class DiscoverScreen implements NativeScreen {
       snapshot = this.snapshot
     if (snapshot) this.wikiList.sync(snapshot.items)
     // NSTableView creates row views lazily, so every filtered and sorted result is listed.
-    const visible = filterAndSortDiscoverItems(snapshot?.items ?? [], {
+    const preWikiVisible = filterAndSortDiscoverItems(snapshot?.items ?? [], {
       kind: this.filter,
       timeRange: this.timeRange,
       sortOrder: this.sortOrder
-    }).filter((item) => this.wikiList.matches(item, this.wikiFilter))
+    })
+    const visible = preWikiVisible.filter((item) => this.wikiList.matches(item, this.wikiFilter))
     const selected = visible.find((item) => item.id === this.selected) ?? visible[0] ?? null
     this.selected = selected?.id ?? ''
     this.reader.runner = this.runner
@@ -324,6 +325,7 @@ export class DiscoverScreen implements NativeScreen {
                 filter: this.filter,
                 timeRange: this.timeRange,
                 wikiFilter: this.wikiFilter,
+                wikiSummary: this.wikiList.summarize(preWikiVisible),
                 onShowAll: () => {
                   this.filter = 'all'
                   this.timeRange = 'all'

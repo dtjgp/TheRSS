@@ -161,12 +161,19 @@ export class NativePresenter {
     }
   }
   /** The Settings window saved changes: reload what Discover and reading depend on. */
-  async settingsChanged(): Promise<void> {
+  async settingsChanged(scope: 'all' | 'general' | 'wiki' = 'all'): Promise<void> {
     if (this.disposed) return
     // Startup may already have read the old values: reload once it is ready.
     if (!this.ready) {
       this.settingsReloadPending = true
       return
+    }
+    if (scope !== 'general') {
+      for (const screen of Object.values(this.screens)) screen.llmWikiVaultChanged?.()
+      if (scope === 'wiki') {
+        this.redraw()
+        return
+      }
     }
     const reload = ++this.settingsReload
     const [provider, agents, personal] = await Promise.all([
@@ -181,7 +188,6 @@ export class NativePresenter {
       agents,
       personalPrompt: personal?.prompt ?? ''
     })
-    for (const screen of Object.values(this.screens)) screen.llmWikiVaultChanged?.()
     this.redraw()
   }
   async navigate(route: Route): Promise<void> {

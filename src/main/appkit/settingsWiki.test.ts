@@ -153,7 +153,9 @@ describe('AppKit Settings Knowledge Base (P1-6)', () => {
     const getLlmWikiSettings = vi
       .fn<() => Promise<LlmWikiVaultDiagnostics>>()
       .mockResolvedValueOnce(initial)
+      .mockResolvedValueOnce(initial)
       .mockResolvedValueOnce(rechecked)
+      .mockResolvedValueOnce(initial)
     const chooseLlmWikiVaultFolder = vi
       .fn()
       .mockResolvedValueOnce({ canceled: true, path: null })
@@ -182,27 +184,39 @@ describe('AppKit Settings Knowledge Base (P1-6)', () => {
     expect(saveLlmWikiVaultPath).not.toHaveBeenCalled()
     expect(changed).not.toHaveBeenCalled()
 
-    // Confirmed folder picker saves path, updates diagnostics, enables Use default, and fires changed().
+    // Confirmed folder picker saves path, updates diagnostics, enables Use default, and fires changed('wiki').
     await h.act(screen, 'wiki-choose-folder')
     expect(saveLlmWikiVaultPath).toHaveBeenCalledWith('/Users/researcher/CustomVault')
     expect(changed).toHaveBeenCalledTimes(1)
+    expect(changed).toHaveBeenLastCalledWith('wiki')
     const afterChoose = h.render(screen)
     expect(h.find(afterChoose, 'wiki-status')?.text).toBe('Status: Ready · Custom folder')
     expect(h.find(afterChoose, 'wiki-use-default')?.enabled).toBe(true)
 
-    // Use default folder clears customPath and notifies changed().
+    // Use default folder clears customPath and notifies changed('wiki').
     await h.act(screen, 'wiki-use-default')
     expect(saveLlmWikiVaultPath).toHaveBeenLastCalledWith(null)
     expect(changed).toHaveBeenCalledTimes(2)
     expect(h.find(h.render(screen), 'wiki-use-default')?.enabled).toBe(false)
 
-    // Recheck vault reloads diagnostics without calling changed().
+    // Recheck vault with unchanged status/path does not trigger unnecessary changed() broadcasts.
     await h.act(screen, 'wiki-recheck')
     expect(getLlmWikiSettings).toHaveBeenCalledTimes(2)
     expect(changed).toHaveBeenCalledTimes(2)
+
+    // Recheck vault transitioning ready -> unavailable and unavailable -> ready notifies changed('wiki')
+    // so cached unavailable list badges recover when the user fixes the vault.
+    await h.act(screen, 'wiki-recheck')
+    expect(getLlmWikiSettings).toHaveBeenCalledTimes(3)
+    expect(changed).toHaveBeenCalledTimes(3)
+    expect(changed).toHaveBeenLastCalledWith('wiki')
     expect(h.find(h.render(screen), 'wiki-status')?.text).toBe(
       'Status: Unavailable · Default folder'
     )
+    await h.act(screen, 'wiki-recheck')
+    expect(getLlmWikiSettings).toHaveBeenCalledTimes(4)
+    expect(changed).toHaveBeenCalledTimes(4)
+    expect(h.find(h.render(screen), 'wiki-status')?.text).toBe('Status: Ready · Default folder')
     screen.dispose()
   })
 

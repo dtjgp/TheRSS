@@ -1,7 +1,7 @@
-import { mkdir, mkdtemp, readdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, mkdtemp, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   llmWikiVaultDiagnosticsSchema,
   type LlmWikiVaultDiagnostics
@@ -9,7 +9,8 @@ import {
 import {
   defaultLlmWikiVaultPath,
   diagnoseLlmWikiVault,
-  resolveLlmWikiVaultLocation
+  resolveLlmWikiVaultLocation,
+  resolveOperationalLlmWikiVaultRoot
 } from './llmWikiDiagnostics'
 
 const roots: string[] = []
@@ -18,7 +19,7 @@ const now = () => new Date('2026-11-21T12:00:00.000Z')
 async function vault(
   options: { files?: readonly string[]; directories?: readonly string[] } = {}
 ): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'therss-diagnostics-'))
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'therss-diagnostics-')))
   roots.push(root)
   for (const directory of options.directories ?? ['raw/paper_records', 'Literature/Paper_Notes'])
     await mkdir(join(root, directory), { recursive: true })
@@ -188,18 +189,89 @@ describe('llm-wiki vault diagnostics', () => {
     expect(check(withoutSaved, 'env-override')).toBeUndefined()
   })
 
-  it('does not inspect an unsafe environment path', async () => {
+  it('does not inspect an unsafe, tab-padded, or overlong environment path', async () => {
+    const existing = await vault()
+    const cases = [
+      'relative/../vault',
+      `\t${existing}`,
+      `${existing}\t`,
+      `${existing}/${'a'.repeat(1_005)}`
+    ]
+    const lstatSpy = vi.fn((path: string) => lstat(path))
+    for (const envPath of cases) {
+      const diagnostics = await diagnoseLlmWikiVault({
+        customPath: null,
+        envPath,
+        now,
+        fs: { lstat: lstatSpy, realpath }
+      })
+      expect(diagnostics).toMatchObject({ origin: 'env', status: 'unavailable' })
+      expect(check(diagnostics, 'vault-root')).toMatchObject({
+        status: 'error',
+        detail: expect.stringContaining('absolute'),
+        remediation: expect.stringContaining('THERSS_LLM_WIKI_PATH')
+      })
+      expect(() =>
+        resolveOperationalLlmWikiVaultRoot({
+          customPath: existing,
+          envPath,
+          defaultPath: '/vaults/default'
+        })
+      ).toThrow('THERSS_LLM_WIKI_PATH')
+    }
+    expect(lstatSpy).not.toHaveBeenCalled()
+    expect(
+      resolveOperationalLlmWikiVaultRoot({
+        customPath: existing,
+        envPath: '   ',
+        defaultPath: '/vaults/default'
+      })
+    ).toBe(existing)
+    expect(
+      resolveOperationalLlmWikiVaultRoot({
+        customPath: null,
+        envPath: existing,
+        defaultPath: '/vaults/default'
+      })
+    ).toBe(existing)
+  })
+
+  it('rejects an ancestor symlink in the configured vault path without inspecting inside', async () => {
+    const parent = await realpath(await mkdtemp(join(tmpdir(), 'therss-diag-parent-')))
+    roots.push(parent)
+    const realBase = join(parent, 'real')
+    const realVault = join(realBase, 'vault')
+    await mkdir(join(realVault, 'raw/paper_records'), { recursive: true })
+    await mkdir(join(realVault, 'Literature/Paper_Notes'), { recursive: true })
+    await writeFile(join(realVault, 'AGENTS.md'), '# fixture')
+    await writeFile(join(realVault, '_schema.md'), '# fixture')
+    const alias = join(parent, 'alias')
+    await symlink(realBase, alias)
+
     const diagnostics = await diagnoseLlmWikiVault({
-      customPath: null,
-      envPath: 'relative/../vault',
+      customPath: join(alias, 'vault'),
+      envPath: undefined,
       now
     })
+    expect(diagnostics.status).toBe('unavailable')
+    expect(diagnostics.checks.map((item) => item.id)).toEqual(['vault-root'])
+    expect(check(diagnostics, 'vault-root')?.detail).toContain('symbolic link')
+  })
 
-    expect(diagnostics).toMatchObject({ origin: 'env', status: 'unavailable' })
-    expect(check(diagnostics, 'vault-root')).toMatchObject({
-      status: 'error',
-      detail: expect.stringContaining('absolute'),
-      remediation: expect.stringContaining('THERSS_LLM_WIKI_PATH')
+  it('returns structured unavailable when realpath fails after lstat succeeds', async () => {
+    const root = await vault()
+    const diagnostics = await diagnoseLlmWikiVault({
+      customPath: root,
+      envPath: undefined,
+      now,
+      fs: {
+        lstat: (path: string) => lstat(path),
+        realpath: async () => {
+          throw Object.assign(new Error('vanished'), { code: 'ENOENT' })
+        }
+      }
     })
+    expect(diagnostics.status).toBe('unavailable')
+    expect(check(diagnostics, 'vault-root')?.detail).toContain('does not exist')
   })
 })

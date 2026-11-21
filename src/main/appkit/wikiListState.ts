@@ -32,6 +32,12 @@ function unavailableStatus(
   }
 }
 
+export interface WikiListSummary {
+  readonly eligible: number
+  readonly pending: number
+  readonly unavailable: number
+}
+
 /**
  * Bounded list-level llm-wiki status cache for Discover and Saved tables.
  * Fetches missing arXiv paper statuses in a single batch per list and degrades
@@ -40,6 +46,8 @@ function unavailableStatus(
 export class WikiListState {
   private readonly statuses = new Map<string, LlmWikiLibraryStatus>()
   private readonly inFlight = new Set<string>()
+  private readonly idSeq = new Map<string, number>()
+  private nextSeq = 0
   private generation = 0
   private forceNextRefresh = false
   private disposed = false
@@ -75,8 +83,25 @@ export class WikiListState {
     this.generation++
     this.statuses.clear()
     this.inFlight.clear()
+    this.idSeq.clear()
     this.forceNextRefresh = true
     if (!this.disposed) this.context.redraw()
+  }
+
+  summarize(items: readonly WikiListItemLike[]): WikiListSummary {
+    if (!this.context.api.getLlmWikiStatuses) return { eligible: 0, pending: 0, unavailable: 0 }
+    let eligible = 0
+    let pending = 0
+    let unavailable = 0
+    for (const item of items) {
+      const arxivId = llmWikiArxivId(item)
+      if (!arxivId) continue
+      eligible += 1
+      const observed = this.statuses.get(arxivId)
+      if (!observed) pending += 1
+      else if (observed.status === 'unavailable') unavailable += 1
+    }
+    return { eligible, pending, unavailable }
   }
 
   badge(item: WikiListItemLike): string | null {
@@ -103,19 +128,26 @@ export class WikiListState {
     this.disposed = true
     this.generation++
     this.inFlight.clear()
+    this.idSeq.clear()
   }
 
   private async fetchBatch(arxivIds: readonly string[], refresh: boolean): Promise<void> {
     const getStatuses = this.context.api.getLlmWikiStatuses
     if (this.disposed || !getStatuses || !arxivIds.length) return
     const generation = this.generation
-    for (const id of arxivIds) this.inFlight.add(id)
+    const seq = ++this.nextSeq
+    for (const id of arxivIds) {
+      this.inFlight.add(id)
+      this.idSeq.set(id, seq)
+    }
     try {
       const response = llmWikiBatchStatusResponseSchema.parse(
         await getStatuses({ arxivIds: [...arxivIds], refresh })
       )
       if (this.disposed || generation !== this.generation) return
+      let changed = false
       for (const id of arxivIds) {
+        if (this.idSeq.get(id) !== seq) continue
         this.inFlight.delete(id)
         this.statuses.set(
           id,
@@ -126,17 +158,21 @@ export class WikiListState {
               'Status omitted from llm-wiki batch response.'
             )
         )
+        changed = true
       }
-      this.context.redraw()
+      if (changed) this.context.redraw()
     } catch (error) {
       if (this.disposed || generation !== this.generation) return
       const checkedAt = new Date().toISOString()
       const reason = readableError(error, 'llm-wiki status could not be checked.')
+      let changed = false
       for (const id of arxivIds) {
+        if (this.idSeq.get(id) !== seq) continue
         this.inFlight.delete(id)
         this.statuses.set(id, unavailableStatus(id, checkedAt, reason))
+        changed = true
       }
-      this.context.redraw()
+      if (changed) this.context.redraw()
     }
   }
 }

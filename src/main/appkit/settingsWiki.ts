@@ -70,10 +70,19 @@ export class SettingsWikiPane {
     this.message = ''
     this.context.redraw()
     try {
+      const previous = this.diagnostics
       const diagnostics = llmWikiVaultDiagnosticsSchema.parse(await getSettings())
       if (!this.disposed && version === this.version) {
         this.diagnostics = diagnostics
         this.loaded = true
+        if (
+          force &&
+          (!previous ||
+            previous.status !== diagnostics.status ||
+            previous.resolvedPath !== diagnostics.resolvedPath)
+        ) {
+          this.options.changed?.()
+        }
       }
     } catch (error) {
       if (!this.disposed && version === this.version) {

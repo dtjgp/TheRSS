@@ -21,6 +21,13 @@ export interface LlmWikiVaultLocation {
   readonly defaultPath: string
 }
 
+export interface LlmWikiDiagnosticsFs {
+  readonly lstat: (
+    path: string
+  ) => Promise<{ isSymbolicLink(): boolean; isDirectory(): boolean; isFile(): boolean }>
+  readonly realpath: (path: string) => Promise<string>
+}
+
 export interface LlmWikiDiagnosticsOptions {
   /** Saved custom folder, or null when the user has not chosen one. */
   readonly customPath: string | null
@@ -28,12 +35,74 @@ export interface LlmWikiDiagnosticsOptions {
   readonly envPath: string | undefined
   readonly defaultPath?: string
   readonly now?: () => Date
+  readonly fs?: LlmWikiDiagnosticsFs
 }
+
+const DEFAULT_FS: LlmWikiDiagnosticsFs = { lstat, realpath }
 
 type PathState = 'ok' | 'missing' | 'symlink' | 'wrong-type' | 'unreadable'
 
 export function defaultLlmWikiVaultPath(): string {
   return join(homedir(), 'Obsidian', 'llm-wiki')
+}
+
+const UNSAFE_DISPLAY_CHARACTERS = /[\p{Cc}\p{Cf}]/gu
+
+interface ResolvedVaultState {
+  readonly location: LlmWikiVaultLocation
+  readonly operationalPath: string | null
+}
+
+function boundedDisplayEnvPath(raw: string): string {
+  const cleaned = raw.replace(UNSAFE_DISPLAY_CHARACTERS, '').trim()
+  return cleaned.slice(0, LLM_WIKI_VAULT_PATH_MAX_LENGTH) || '[invalid THERSS_LLM_WIKI_PATH]'
+}
+
+function resolveVaultState(input: {
+  readonly customPath: string | null | undefined
+  readonly envPath: string | undefined
+  readonly defaultPath: string
+}): ResolvedVaultState {
+  const customPath = llmWikiVaultPathSchema.parse(input.customPath ?? null)
+  const rawEnv = input.envPath
+  if (rawEnv !== undefined && rawEnv.trim().length > 0) {
+    const parsedEnv = llmWikiVaultPathSchema.safeParse(rawEnv)
+    if (parsedEnv.success && parsedEnv.data !== null) {
+      return {
+        location: {
+          resolvedPath: parsedEnv.data,
+          origin: 'env',
+          customPath,
+          envOverridePath: parsedEnv.data,
+          defaultPath: input.defaultPath
+        },
+        operationalPath: parsedEnv.data
+      }
+    }
+    const display = boundedDisplayEnvPath(rawEnv)
+    return {
+      location: {
+        resolvedPath: display,
+        origin: 'env',
+        customPath,
+        envOverridePath: display,
+        defaultPath: input.defaultPath
+      },
+      operationalPath: null
+    }
+  }
+  const base = { customPath, envOverridePath: null, defaultPath: input.defaultPath }
+  if (customPath) {
+    return {
+      location: { ...base, resolvedPath: customPath, origin: 'custom' },
+      operationalPath: customPath
+    }
+  }
+  const parsedDefault = llmWikiVaultPathSchema.safeParse(input.defaultPath)
+  return {
+    location: { ...base, resolvedPath: input.defaultPath, origin: 'default' },
+    operationalPath: parsedDefault.success ? parsedDefault.data : null
+  }
 }
 
 /** Precedence: a non-blank THERSS_LLM_WIKI_PATH, then the saved custom folder, then the default. */
@@ -42,13 +111,24 @@ export function resolveLlmWikiVaultLocation(input: {
   readonly envPath: string | undefined
   readonly defaultPath: string
 }): LlmWikiVaultLocation {
-  const customPath = llmWikiVaultPathSchema.parse(input.customPath ?? null)
-  const envPath = input.envPath?.trim()
-  const envOverridePath = envPath ? envPath.slice(0, LLM_WIKI_VAULT_PATH_MAX_LENGTH) : null
-  const base = { customPath, envOverridePath, defaultPath: input.defaultPath }
-  if (envOverridePath) return { ...base, resolvedPath: envOverridePath, origin: 'env' }
-  if (customPath) return { ...base, resolvedPath: customPath, origin: 'custom' }
-  return { ...base, resolvedPath: input.defaultPath, origin: 'default' }
+  return resolveVaultState(input).location
+}
+
+/** Fail-closed operational root resolver for Library, Daily, and Promotion services. */
+export function resolveOperationalLlmWikiVaultRoot(input: {
+  readonly customPath: string | null | undefined
+  readonly envPath: string | undefined
+  readonly defaultPath: string
+}): string {
+  const { location, operationalPath } = resolveVaultState(input)
+  if (!operationalPath) {
+    throw new Error(
+      location.origin === 'env'
+        ? 'THERSS_LLM_WIKI_PATH is not a safe absolute folder path.'
+        : 'The configured llm-wiki vault path is not a safe absolute folder path.'
+    )
+  }
+  return operationalPath
 }
 
 function errorCode(error: unknown): string | null {
@@ -59,13 +139,14 @@ function errorCode(error: unknown): string | null {
 async function inspectPath(
   root: string,
   relativePath: string,
-  expected: 'file' | 'directory'
+  expected: 'file' | 'directory',
+  fsOps: LlmWikiDiagnosticsFs
 ): Promise<PathState> {
   const parts = relativePath.split('/')
   for (let index = 0; index < parts.length; index += 1) {
     let info
     try {
-      info = await lstat(join(root, ...parts.slice(0, index + 1)))
+      info = await fsOps.lstat(join(root, ...parts.slice(0, index + 1)))
     } catch (error) {
       return errorCode(error) === 'ENOENT' ? 'missing' : 'unreadable'
     }
@@ -99,7 +180,9 @@ function rootRemediation(origin: LlmWikiVaultOrigin): string {
 }
 
 async function checkRoot(
-  location: LlmWikiVaultLocation
+  location: LlmWikiVaultLocation,
+  operationalPath: string | null,
+  fsOps: LlmWikiDiagnosticsFs
 ): Promise<{ check: LlmWikiDiagnosticCheck; realRoot: string | null }> {
   const fail = (detail: string, remediation = rootRemediation(location.origin)) => ({
     check: {
@@ -111,27 +194,54 @@ async function checkRoot(
     },
     realRoot: null
   })
-  if (
-    location.origin === 'env' &&
-    !llmWikiVaultPathSchema.safeParse(location.resolvedPath).success
-  ) {
-    return fail('THERSS_LLM_WIKI_PATH is not a safe absolute folder path. TheRSS did not open it.')
+  if (!operationalPath) {
+    return fail(
+      location.origin === 'env'
+        ? 'THERSS_LLM_WIKI_PATH is not a safe absolute folder path. TheRSS did not open it.'
+        : 'The configured vault path is not a safe absolute folder path. TheRSS did not open it.'
+    )
   }
-  let info
+  const parts = operationalPath.split('/').filter(Boolean)
+  const prefixes =
+    parts.length === 0 ? ['/'] : parts.map((_, index) => `/${parts.slice(0, index + 1).join('/')}`)
+  for (let index = 0; index < prefixes.length; index += 1) {
+    const prefix = prefixes[index]!
+    let info
+    try {
+      info = await fsOps.lstat(prefix)
+    } catch (error) {
+      return errorCode(error) === 'ENOENT'
+        ? fail('The vault folder does not exist.')
+        : fail('The vault folder cannot be read.', 'Check the folder permissions, then recheck.')
+    }
+    if (info.isSymbolicLink()) {
+      return fail(
+        'The vault folder path contains a symbolic link. TheRSS does not follow vault symlinks.',
+        'Choose the real vault folder instead of the link.'
+      )
+    }
+    if (!info.isDirectory()) {
+      return fail(
+        index === prefixes.length - 1
+          ? 'The vault path is not a folder.'
+          : 'The vault folder path is not a valid directory.'
+      )
+    }
+  }
+  let realRoot: string
   try {
-    info = await lstat(location.resolvedPath)
+    realRoot = await fsOps.realpath(operationalPath)
   } catch (error) {
     return errorCode(error) === 'ENOENT'
       ? fail('The vault folder does not exist.')
       : fail('The vault folder cannot be read.', 'Check the folder permissions, then recheck.')
   }
-  if (info.isSymbolicLink()) {
+  if (realRoot !== operationalPath) {
     return fail(
-      'The vault folder is a symbolic link. TheRSS does not follow vault symlinks.',
+      'The vault folder path contains a symbolic link. TheRSS does not follow vault symlinks.',
       'Choose the real vault folder instead of the link.'
     )
   }
-  if (!info.isDirectory()) return fail('The vault path is not a folder.')
   return {
     check: {
       id: 'vault-root',
@@ -140,7 +250,7 @@ async function checkRoot(
       detail: 'The folder exists and is a regular directory.',
       remediation: null
     },
-    realRoot: await realpath(location.resolvedPath)
+    realRoot: operationalPath
   }
 }
 
@@ -148,10 +258,11 @@ async function checkGroup(
   root: string,
   paths: readonly string[],
   expected: 'file' | 'directory',
-  text: { id: string; label: string; ok: string; remediation: string }
+  text: { id: string; label: string; ok: string; remediation: string },
+  fsOps: LlmWikiDiagnosticsFs
 ): Promise<LlmWikiDiagnosticCheck> {
   const states = await Promise.all(
-    paths.map(async (path) => [path, await inspectPath(root, path, expected)] as const)
+    paths.map(async (path) => [path, await inspectPath(root, path, expected, fsOps)] as const)
   )
   const problems = describeProblems(states)
   return {
@@ -168,7 +279,8 @@ export async function diagnoseLlmWikiVault(
   options: LlmWikiDiagnosticsOptions
 ): Promise<LlmWikiVaultDiagnostics> {
   const now = options.now ?? (() => new Date())
-  const location = resolveLlmWikiVaultLocation({
+  const fsOps = options.fs ?? DEFAULT_FS
+  const { location, operationalPath } = resolveVaultState({
     customPath: options.customPath,
     envPath: options.envPath,
     defaultPath: options.defaultPath ?? defaultLlmWikiVaultPath()
@@ -183,24 +295,36 @@ export async function diagnoseLlmWikiVault(
       remediation: 'Unset THERSS_LLM_WIKI_PATH and restart TheRSS to use the saved folder.'
     })
   }
-  const { check: rootCheck, realRoot } = await checkRoot(location)
+  const { check: rootCheck, realRoot } = await checkRoot(location, operationalPath, fsOps)
   checks.unshift(rootCheck)
   if (realRoot) {
     checks.push(
-      await checkGroup(realRoot, REQUIRED_FILES, 'file', {
-        id: 'required-files',
-        label: 'Vault rules files',
-        ok: 'AGENTS.md and _schema.md are present.',
-        remediation:
-          'Choose the llm-wiki vault folder that contains AGENTS.md and _schema.md. TheRSS does not create them.'
-      }),
-      await checkGroup(realRoot, PAPER_DIRECTORIES, 'directory', {
-        id: 'paper-directories',
-        label: 'Paper folders',
-        ok: 'raw/paper_records and Literature/Paper_Notes are present.',
-        remediation:
-          'Create the missing folders in the vault, or choose the vault that contains them. TheRSS does not create them.'
-      })
+      await checkGroup(
+        realRoot,
+        REQUIRED_FILES,
+        'file',
+        {
+          id: 'required-files',
+          label: 'Vault rules files',
+          ok: 'AGENTS.md and _schema.md are present.',
+          remediation:
+            'Choose the llm-wiki vault folder that contains AGENTS.md and _schema.md. TheRSS does not create them.'
+        },
+        fsOps
+      ),
+      await checkGroup(
+        realRoot,
+        PAPER_DIRECTORIES,
+        'directory',
+        {
+          id: 'paper-directories',
+          label: 'Paper folders',
+          ok: 'raw/paper_records and Literature/Paper_Notes are present.',
+          remediation:
+            'Create the missing folders in the vault, or choose the vault that contains them. TheRSS does not create them.'
+        },
+        fsOps
+      )
     )
   }
   const status = !realRoot

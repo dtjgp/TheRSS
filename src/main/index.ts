@@ -42,7 +42,8 @@ import { LlmWikiVaultAdapter } from '../core/integrations/llmWikiVaultAdapter'
 import {
   defaultLlmWikiVaultPath,
   diagnoseLlmWikiVault,
-  resolveLlmWikiVaultLocation
+  resolveLlmWikiVaultLocation,
+  resolveOperationalLlmWikiVaultRoot
 } from '../core/integrations/llmWikiDiagnostics'
 import { LlmWikiDaily } from '../core/integrations/llmWikiDaily'
 import { LlmWikiLibrary } from '../core/integrations/llmWikiLibrary'
@@ -444,11 +445,11 @@ app.whenReady().then(async () => {
   )
   const defaultVaultPath = defaultLlmWikiVaultPath()
   const resolveVaultRoot = (): string =>
-    resolveLlmWikiVaultLocation({
+    resolveOperationalLlmWikiVaultRoot({
       customPath: repository.getLlmWikiVaultPath(),
       envPath: env.THERSS_LLM_WIKI_PATH,
       defaultPath: defaultVaultPath
-    }).resolvedPath
+    })
   const fixtureWikiDiagnostics = (customPath: string | null): LlmWikiVaultDiagnostics => {
     const location = resolveLlmWikiVaultLocation({
       customPath,
@@ -609,12 +610,14 @@ app.whenReady().then(async () => {
             }
           }
         : {
-            get: () =>
-              diagnoseLlmWikiVault({
+            get: () => {
+              wikiLibrary?.clearCache()
+              return diagnoseLlmWikiVault({
                 customPath: repository.getLlmWikiVaultPath(),
                 envPath: env.THERSS_LLM_WIKI_PATH,
                 defaultPath: defaultVaultPath
-              }),
+              })
+            },
             save: async (vaultPath) => {
               const normalized = llmWikiVaultPathSchema.parse(vaultPath)
               repository.saveLlmWikiVaultPath(normalized)

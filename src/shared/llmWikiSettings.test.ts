@@ -22,9 +22,13 @@ describe('llmWikiSettings schemas', () => {
     ['parent traversal', '/Users/alice/../etc'],
     ['blank string', '   '],
     ['leading tab control', '\t/Users/alice/llm-wiki'],
+    ['trailing tab control', '/Users/alice/llm-wiki\t'],
     ['embedded NUL control', '/Users/alice/\u0000llm-wiki'],
     ['C1 control character', '/Users/alice/\u0085llm-wiki'],
-    ['overlong path', `/${'a'.repeat(1_000)}`]
+    ['bidi override format character', '/Users/alice/\u202ellm-wiki'],
+    ['zero-width format character', '/Users/alice/\u200bllm-wiki'],
+    ['overlong path', `/${'a'.repeat(1_000)}`],
+    ['space-padded overlong path', ` ${'/' + 'a'.repeat(999)} `]
   ])('rejects invalid vault path (%s)', (_label, candidate) => {
     expect(() => llmWikiVaultPathSchema.parse(candidate)).toThrow()
   })

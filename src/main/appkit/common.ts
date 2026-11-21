@@ -18,6 +18,7 @@ import type { LocalResearchTarget } from '../../shared/localResearch'
 export type Route = 'discover' | 'saved' | 'analytics' | 'sources'
 /** A pane of the separate Settings window. */
 export type SettingsSection = 'personal' | 'provider' | 'wiki'
+export type SettingsChangeScope = 'all' | 'general' | 'wiki'
 export const recordViewId = (prefix: string, id: string): string =>
   `${prefix}:${createHash('sha256').update(id).digest('hex').slice(0, 16)}`
 export interface NativeData {

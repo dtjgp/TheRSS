@@ -21,6 +21,7 @@ const NOTE_PREFIX = /^Literature\/Paper_Notes\/(?:L1_Deep_Read|L2_Structured)\/.
 type Entry = { id: string; path: string; fields: Record<string, string | null>; note: boolean }
 type Scan = {
   configuredRoot: string
+  generation: number
   root: string
   entries: Entry[]
   checkedAt: string
@@ -142,7 +143,8 @@ export class LlmWikiLibrary {
   private readonly resolveRoot: () => string
   private readonly now: () => Date
   private cached: Scan | undefined
-  private pending: { configuredRoot: string; promise: Promise<Scan> } | undefined
+  private pending:
+    { configuredRoot: string; generation: number; promise: Promise<Scan> } | undefined
   private generation = 0
   constructor(
     private readonly options: {
@@ -190,15 +192,25 @@ export class LlmWikiLibrary {
   }
   async open(candidate: string): Promise<{ opened: true }> {
     const arxivId = llmWikiArxivIdSchema.parse(candidate)
-    const status = await this.status({ arxivId, refresh: true })
+    let scan: Scan
+    try {
+      scan = await this.scan(true)
+    } catch {
+      throw new Error(UNAVAILABLE_REASON)
+    }
+    const status = await resolveStatus(scan, arxivId)
     if (status.status !== 'recorded')
       throw new Error(status.reason ?? `The llm-wiki record is ${status.status}.`)
     const path = status.notePath ?? status.recordPath
-    if (!path || !this.cached) throw new Error('No llm-wiki paper note or record is available.')
-    await assertSafePathChain(this.cached.root, path, 'file')
+    if (!path) throw new Error('No llm-wiki paper note or record is available.')
+    if (scan.generation !== this.generation || this.resolveRoot() !== scan.configuredRoot)
+      throw new Error('The llm-wiki vault changed. Try opening the note again.')
+    await assertSafePathChain(scan.root, path, 'file')
+    if (scan.generation !== this.generation || this.resolveRoot() !== scan.configuredRoot)
+      throw new Error('The llm-wiki vault changed. Try opening the note again.')
     const url = new URL('obsidian://open')
     // The exact validated absolute path disambiguates two vaults with the same name.
-    url.searchParams.set('path', join(this.cached.root, path))
+    url.searchParams.set('path', join(scan.root, path))
     try {
       await this.options.openExternal(url.toString())
     } catch {
@@ -208,16 +220,21 @@ export class LlmWikiLibrary {
   }
   private async scan(refresh: boolean): Promise<Scan> {
     const configuredRoot = this.resolveRoot()
-    if (this.cached && this.cached.configuredRoot !== configuredRoot) this.clearCache()
+    if (
+      (this.cached && this.cached.configuredRoot !== configuredRoot) ||
+      (this.pending && this.pending.configuredRoot !== configuredRoot)
+    )
+      this.clearCache()
     if (
       !refresh &&
       this.cached &&
       this.now().getTime() - Date.parse(this.cached.checkedAt) < 30_000
     )
       return this.cached
-    if (!this.pending || this.pending.configuredRoot !== configuredRoot) {
-      const promise = this.readScan(configuredRoot)
-      const pending = { configuredRoot, promise }
+    if (!this.pending) {
+      const generation = this.generation
+      const promise = this.readScan(configuredRoot, generation)
+      const pending = { configuredRoot, generation, promise }
       this.pending = pending
       void promise
         .finally(() => {
@@ -225,12 +242,13 @@ export class LlmWikiLibrary {
         })
         .catch(() => undefined)
     }
-    const generation = this.generation
-    const scan = await this.pending.promise
-    if (generation === this.generation) this.cached = scan
+    const active = this.pending
+    const scan = await active.promise
+    if (active.generation === this.generation && scan.configuredRoot === configuredRoot)
+      this.cached = scan
     return scan
   }
-  private async readScan(configuredRoot: string): Promise<Scan> {
+  private async readScan(configuredRoot: string, generation: number): Promise<Scan> {
     const rootInfo = await lstat(configuredRoot)
     if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) throw new Error('Unsafe vault root')
     const root = await realpath(configuredRoot)
@@ -269,6 +287,13 @@ export class LlmWikiLibrary {
         })
       )
     }
-    return { configuredRoot, root, entries, checkedAt: this.now().toISOString(), incomplete }
+    return {
+      configuredRoot,
+      generation,
+      root,
+      entries,
+      checkedAt: this.now().toISOString(),
+      incomplete
+    }
   }
 }

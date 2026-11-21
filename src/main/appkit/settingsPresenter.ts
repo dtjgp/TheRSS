@@ -1,5 +1,10 @@
 import type { TheRSSApi } from '../../shared/api'
-import { column, type NativeContext, type SettingsSection } from './common'
+import {
+  column,
+  type NativeContext,
+  type SettingsChangeScope,
+  type SettingsSection
+} from './common'
 import { NativeModals } from './modals'
 import { NativePresentation, type NativeAnnouncement, type NativeToolbar } from './presentation'
 import { SETTINGS_SECTIONS, SettingsScreen } from './settings'
@@ -8,8 +13,8 @@ export interface NativeSettingsPort {
   readonly locale?: string
   present(scene: string): void
   openExternal(url: string): void
-  /** Settings were saved: other windows reload provider, personal context and agents. */
-  changed(): void
+  /** Settings were saved: other windows reload provider, personal context, agents, or vault state. */
+  changed(scope?: SettingsChangeScope): void
 }
 
 const sections = Object.keys(SETTINGS_SECTIONS) as SettingsSection[]
@@ -65,7 +70,7 @@ export class NativeSettingsPresenter {
       setWidth: () => undefined
     }
     this.modals = new NativeModals(this.context)
-    this.screen = new SettingsScreen(this.context, { changed: () => port.changed() })
+    this.screen = new SettingsScreen(this.context, { changed: (scope) => port.changed(scope) })
   }
 
   async start(): Promise<void> {

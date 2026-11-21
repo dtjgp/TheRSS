@@ -726,4 +726,30 @@ describe('LlmWikiVaultAdapter', () => {
     })
     expect(missingSection.preview.blockers.join(' ')).toContain('incomplete llm-wiki paper note')
   })
+
+  it('confirms against the previewed vault root even if the resolver changes or throws afterwards', async () => {
+    const vaultA = await makeVault()
+    const vaultB = await makeVault()
+    let activeRoot: string | null = vaultA
+    const options = fixtureOptions(vaultB)
+    const adapter = new LlmWikiVaultAdapter({
+      ...options,
+      resolveVaultRoot: () => {
+        if (!activeRoot) throw new Error('Invalid THERSS_LLM_WIKI_PATH')
+        return activeRoot
+      }
+    })
+    const prepared = await adapter.prepare(paper, {
+      previewId: '33333333-3333-4333-8333-333333333333',
+      expiresAt: '2026-08-21T10:30:00.000Z'
+    })
+    expect(prepared.preview.ready).toBe(true)
+
+    // Switch resolver to a throwing state after preview: confirm still writes only to vaultA.
+    activeRoot = null
+    const receipt = await adapter.confirm(prepared)
+    expect(receipt.status).toBe('completed')
+    expect(await readFile(join(vaultA, receipt.notePath!), 'utf8')).toContain('2608.00001')
+    await expect(readFile(join(vaultB, receipt.notePath!), 'utf8')).rejects.toThrow()
+  })
 })

@@ -61,7 +61,10 @@ export class LlmWikiVaultAdapter implements LlmWikiPromotionAdapter {
   }
 
   confirm(prepared: PreparedLlmWikiPromotion): Promise<LlmWikiPromotionReceipt> {
-    return confirmLlmWikiPromotion(this.#currentRuntime(), prepared)
+    return confirmLlmWikiPromotion(
+      { ...this.#runtime, vaultRoot: handleFrom(prepared).vaultRoot },
+      prepared
+    )
   }
 
   #currentRuntime(): LlmWikiVaultRuntime {

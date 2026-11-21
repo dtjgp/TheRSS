@@ -2,12 +2,13 @@ import { z } from 'zod'
 
 export const LLM_WIKI_VAULT_PATH_MAX_LENGTH = 1_000
 
-const HAS_CONTROL_CHARACTER = /\p{Cc}/u
+const HAS_UNSAFE_CHARACTER = /[\p{Cc}\p{Cf}]/u
 
 function isSafeAbsoluteVaultPath(value: string): boolean {
-  if (HAS_CONTROL_CHARACTER.test(value)) return false
+  if (HAS_UNSAFE_CHARACTER.test(value)) return false
+  if (value.length > LLM_WIKI_VAULT_PATH_MAX_LENGTH) return false
   const trimmed = value.trim()
-  if (!trimmed || trimmed.length > LLM_WIKI_VAULT_PATH_MAX_LENGTH) return false
+  if (!trimmed) return false
   // POSIX absolute path (macOS/Linux); reject relative paths and explicit parent traversal segments.
   if (!trimmed.startsWith('/')) return false
   const segments = trimmed.split('/')
