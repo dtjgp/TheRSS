@@ -6,12 +6,14 @@ import {
   llmWikiVaultDiagnosticsSchema,
   type LlmWikiVaultDiagnostics
 } from '../../shared/llmWikiSettings'
+import { LlmWikiDaily } from './llmWikiDaily'
 import {
   defaultLlmWikiVaultPath,
   diagnoseLlmWikiVault,
   resolveLlmWikiVaultLocation,
   resolveOperationalLlmWikiVaultRoot
 } from './llmWikiDiagnostics'
+import { LlmWikiLibrary } from './llmWikiLibrary'
 
 const roots: string[] = []
 const now = () => new Date('2026-11-21T12:00:00.000Z')
@@ -256,6 +258,22 @@ describe('llm-wiki vault diagnostics', () => {
     expect(diagnostics.status).toBe('unavailable')
     expect(diagnostics.checks.map((item) => item.id)).toEqual(['vault-root'])
     expect(check(diagnostics, 'vault-root')?.detail).toContain('symbolic link')
+
+    // Dot and repeated-separator spellings of the real regular directory normalize cleanly and pass.
+    const dotted = `${realBase}/./vault//.`
+    const repeated = `${realBase}///vault//`
+    for (const variant of [dotted, repeated]) {
+      const ok = await diagnoseLlmWikiVault({ customPath: variant, envPath: undefined, now })
+      expect(ok.status).toBe('ready')
+      expect(ok.resolvedPath).toBe(realVault)
+    }
+
+    // Operational readers enforce the exact same ancestor-symlink policy as diagnostics.
+    const aliasedRoot = join(alias, 'vault')
+    const library = new LlmWikiLibrary({ vaultRoot: aliasedRoot, openExternal: vi.fn() })
+    expect((await library.status({ arxivId: '2610.00001' })).status).toBe('unavailable')
+    const daily = new LlmWikiDaily({ vaultRoot: aliasedRoot, openExternal: vi.fn() })
+    expect((await daily.snapshot()).status).toBe('unavailable')
   })
 
   it('returns structured unavailable when realpath fails after lstat succeeds', async () => {

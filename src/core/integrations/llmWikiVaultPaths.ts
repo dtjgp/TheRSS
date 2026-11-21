@@ -4,6 +4,7 @@ import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import type { DiscoveryItem } from '../../shared/discovery'
 import type { LlmWikiPromotionLevel } from '../../shared/llmWikiPromotion'
+import { llmWikiVaultPathSchema } from '../../shared/llmWikiSettings'
 import type { PreparedLlmWikiPromotion } from './llmWikiPromotionService'
 import {
   AUTOMATION_ID,
@@ -76,6 +77,78 @@ export function assertInsideRoot(root: string, path: string): void {
 export async function readRegularFile(root: string, relativePath: string): Promise<string> {
   await assertSafePathChain(root, relativePath, 'file')
   return readFile(join(root, relativePath), 'utf8')
+}
+
+export interface VaultRootFs {
+  readonly lstat: (
+    path: string
+  ) => Promise<{ isSymbolicLink(): boolean; isDirectory(): boolean; isFile(): boolean }>
+  readonly realpath: (path: string) => Promise<string>
+}
+
+export type VaultRootValidationFailure =
+  'invalid-path' | 'missing' | 'unreadable' | 'symlink' | 'not-directory' | 'parent-not-directory'
+
+export type VaultRootValidation =
+  | { readonly ok: true; readonly root: string }
+  | { readonly ok: false; readonly reason: VaultRootValidationFailure }
+
+const DEFAULT_VAULT_ROOT_FS: VaultRootFs = { lstat, realpath }
+
+function fsErrorCode(error: unknown): string | null {
+  return error && typeof error === 'object' && 'code' in error ? String(error.code) : null
+}
+
+/**
+ * Single validated-root policy shared by diagnostics, Library, Daily, and Promotion preflight.
+ * Rejects unsafe syntax, checks every ancestor component with lstat (no symlinks), and verifies
+ * realpath matches the lexically normalized path.
+ */
+export async function validateSafeVaultRoot(
+  configuredRoot: string,
+  fsOps: VaultRootFs = DEFAULT_VAULT_ROOT_FS
+): Promise<VaultRootValidation> {
+  const parsed = llmWikiVaultPathSchema.safeParse(configuredRoot)
+  if (!parsed.success || !parsed.data) return { ok: false, reason: 'invalid-path' }
+  const normalized = parsed.data
+  const parts = normalized.split('/').filter(Boolean)
+  const prefixes =
+    parts.length === 0 ? ['/'] : parts.map((_, index) => `/${parts.slice(0, index + 1).join('/')}`)
+  for (let index = 0; index < prefixes.length; index += 1) {
+    let info
+    try {
+      info = await fsOps.lstat(prefixes[index]!)
+    } catch (error) {
+      return { ok: false, reason: fsErrorCode(error) === 'ENOENT' ? 'missing' : 'unreadable' }
+    }
+    if (info.isSymbolicLink()) return { ok: false, reason: 'symlink' }
+    if (!info.isDirectory()) {
+      return {
+        ok: false,
+        reason: index === prefixes.length - 1 ? 'not-directory' : 'parent-not-directory'
+      }
+    }
+  }
+  let realRoot: string
+  try {
+    realRoot = await fsOps.realpath(normalized)
+  } catch (error) {
+    return { ok: false, reason: fsErrorCode(error) === 'ENOENT' ? 'missing' : 'unreadable' }
+  }
+  if (realRoot !== normalized) return { ok: false, reason: 'symlink' }
+  return { ok: true, root: normalized }
+}
+
+/** Operational helper that throws when the configured vault root violates the shared policy. */
+export async function assertSafeVaultRoot(
+  configuredRoot: string,
+  fsOps: VaultRootFs = DEFAULT_VAULT_ROOT_FS
+): Promise<string> {
+  const result = await validateSafeVaultRoot(configuredRoot, fsOps)
+  if (!result.ok) {
+    throw new Error(`Unsafe llm-wiki vault root (${result.reason})`)
+  }
+  return result.root
 }
 
 export async function assertSafePathChain(
@@ -174,15 +247,7 @@ export async function preflightVault(
   configuredRoot: string,
   trustedRuntimeHash: string
 ): Promise<VaultPreflight> {
-  const configuredInfo = await lstat(configuredRoot)
-  if (!configuredInfo.isDirectory() || configuredInfo.isSymbolicLink()) {
-    throw new Error('The configured llm-wiki root is not a regular directory')
-  }
-  const root = await realpath(configuredRoot)
-  const rootInfo = await lstat(root)
-  if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) {
-    throw new Error('The configured llm-wiki root is not a regular directory')
-  }
+  const root = await assertSafeVaultRoot(configuredRoot)
   const entries = await Promise.all(
     REQUIRED_FILES.map(async (path) => [path, await readRegularFile(root, path)] as const)
   )

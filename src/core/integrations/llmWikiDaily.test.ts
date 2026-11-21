@@ -25,7 +25,7 @@ async function put(root: string, path: string, content: string) {
 }
 
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), 'therss-daily-'))
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'therss-daily-')))
   roots.push(root)
   await put(root, 'AGENTS.md', '# Rules')
   await put(root, '_schema.md', '# Schema')

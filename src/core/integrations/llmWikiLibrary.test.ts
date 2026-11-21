@@ -13,7 +13,7 @@ async function put(root: string, path: string, content: string) {
   await writeFile(join(root, path), content)
 }
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), 'therss-library-'))
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'therss-library-')))
   roots.push(root)
   for (const path of ['raw/paper_records', 'Literature/Paper_Notes'])
     await mkdir(join(root, path), { recursive: true })

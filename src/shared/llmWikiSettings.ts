@@ -15,10 +15,18 @@ function isSafeAbsoluteVaultPath(value: string): boolean {
   return !segments.some((segment) => segment === '..')
 }
 
+function normalizeAbsolutePosixPath(value: string): string {
+  const segments = value
+    .trim()
+    .split('/')
+    .filter((segment) => segment.length > 0 && segment !== '.')
+  return segments.length === 0 ? '/' : `/${segments.join('/')}`
+}
+
 export const llmWikiVaultPathSchema = z
   .string()
   .refine(isSafeAbsoluteVaultPath, 'Vault folder must be a valid absolute path')
-  .transform((value) => value.trim().replace(/\/+$/u, '') || '/')
+  .transform(normalizeAbsolutePosixPath)
   .nullable()
 
 export const llmWikiVaultPathInputSchema = z

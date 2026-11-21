@@ -1,5 +1,5 @@
 import { constants } from 'node:fs'
-import { lstat, open, readdir, realpath } from 'node:fs/promises'
+import { open, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   llmWikiArxivIdSchema,
@@ -13,7 +13,7 @@ import {
   type LlmWikiStatusRequest
 } from '../../shared/llmWikiLibrary'
 import { isSafeLlmWikiRelativePath } from '../../shared/llmWikiPromotion'
-import { assertSafePathChain, vaultRootResolver } from './llmWikiVaultPaths'
+import { assertSafePathChain, assertSafeVaultRoot, vaultRootResolver } from './llmWikiVaultPaths'
 
 const MAX_FILES = 5_000
 const HEADER_BYTES = 16_384
@@ -249,9 +249,7 @@ export class LlmWikiLibrary {
     return scan
   }
   private async readScan(configuredRoot: string, generation: number): Promise<Scan> {
-    const rootInfo = await lstat(configuredRoot)
-    if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) throw new Error('Unsafe vault root')
-    const root = await realpath(configuredRoot)
+    const root = await assertSafeVaultRoot(configuredRoot)
     for (const path of ['AGENTS.md', '_schema.md']) await assertSafePathChain(root, path, 'file')
     const paths: { path: string; note: boolean }[] = []
     let incomplete = false

@@ -11,6 +11,7 @@ import type { LlmWikiListFilter } from '../../shared/llmWikiLibrary'
 import { LLM_WIKI_LIST_FILTER_OPTIONS } from '../../shared/llmWikiListFilter'
 import { Controls, emptyState, label, row } from './common'
 import type { NativeNode, NativeOption } from './presentation'
+import type { WikiListSummary } from './wikiListState'
 
 const KIND_NAMES: Record<Exclude<DiscoverKindFilter, 'all'>, string> = {
   paper: 'papers',
@@ -133,8 +134,6 @@ export function discoverResultsToolbar(options: DiscoverToolbarOptions): NativeN
       : [])
   ])
 }
-
-import type { WikiListSummary } from './wikiListState'
 
 export interface DiscoverEmptyOptions {
   readonly controls: Controls

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -46,7 +46,7 @@ const requiredFileContents: Readonly<Record<string, string>> = {
 const PAPER_INDEX = 'Literature/Paper_Notes/Paper_Notes_Index.md'
 
 async function makeVault(registerScope = true): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'therss-vault-adapter-test-'))
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'therss-vault-adapter-test-')))
   roots.push(root)
   const runtimeConfig = JSON.stringify({
     schema_version: 1,
@@ -751,5 +751,22 @@ describe('LlmWikiVaultAdapter', () => {
     expect(receipt.status).toBe('completed')
     expect(await readFile(join(vaultA, receipt.notePath!), 'utf8')).toContain('2608.00001')
     await expect(readFile(join(vaultB, receipt.notePath!), 'utf8')).rejects.toThrow()
+  })
+
+  it('rejects a configured vault root behind a symlink ancestor during prepare', async () => {
+    const parent = await realpath(await mkdtemp(join(tmpdir(), 'therss-vault-alias-')))
+    roots.push(parent)
+    const realVault = await makeVault()
+    const alias = join(parent, 'alias')
+    await symlink(dirname(realVault), alias)
+    const aliasedVault = join(alias, realVault.split('/').at(-1)!)
+    const options = fixtureOptions(aliasedVault)
+    const adapter = new LlmWikiVaultAdapter(options)
+    const prepared = await adapter.prepare(paper, {
+      previewId: '44444444-4444-4444-8444-444444444444',
+      expiresAt: '2026-08-21T10:30:00.000Z'
+    })
+    expect(prepared.preview.ready).toBe(false)
+    expect(options.runCodex).not.toHaveBeenCalled()
   })
 })

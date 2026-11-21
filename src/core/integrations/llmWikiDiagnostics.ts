@@ -9,6 +9,7 @@ import {
   type LlmWikiVaultDiagnostics,
   type LlmWikiVaultOrigin
 } from '../../shared/llmWikiSettings'
+import { validateSafeVaultRoot, type VaultRootFs } from './llmWikiVaultPaths'
 
 const REQUIRED_FILES = ['AGENTS.md', '_schema.md'] as const
 const PAPER_DIRECTORIES = ['raw/paper_records', 'Literature/Paper_Notes'] as const
@@ -21,12 +22,7 @@ export interface LlmWikiVaultLocation {
   readonly defaultPath: string
 }
 
-export interface LlmWikiDiagnosticsFs {
-  readonly lstat: (
-    path: string
-  ) => Promise<{ isSymbolicLink(): boolean; isDirectory(): boolean; isFile(): boolean }>
-  readonly realpath: (path: string) => Promise<string>
-}
+export type LlmWikiDiagnosticsFs = VaultRootFs
 
 export interface LlmWikiDiagnosticsOptions {
   /** Saved custom folder, or null when the user has not chosen one. */
@@ -201,45 +197,29 @@ async function checkRoot(
         : 'The configured vault path is not a safe absolute folder path. TheRSS did not open it.'
     )
   }
-  const parts = operationalPath.split('/').filter(Boolean)
-  const prefixes =
-    parts.length === 0 ? ['/'] : parts.map((_, index) => `/${parts.slice(0, index + 1).join('/')}`)
-  for (let index = 0; index < prefixes.length; index += 1) {
-    const prefix = prefixes[index]!
-    let info
-    try {
-      info = await fsOps.lstat(prefix)
-    } catch (error) {
-      return errorCode(error) === 'ENOENT'
-        ? fail('The vault folder does not exist.')
-        : fail('The vault folder cannot be read.', 'Check the folder permissions, then recheck.')
+  const validated = await validateSafeVaultRoot(operationalPath, fsOps)
+  if (!validated.ok) {
+    if (validated.reason === 'invalid-path') {
+      return fail(
+        location.origin === 'env'
+          ? 'THERSS_LLM_WIKI_PATH is not a safe absolute folder path. TheRSS did not open it.'
+          : 'The configured vault path is not a safe absolute folder path. TheRSS did not open it.'
+      )
     }
-    if (info.isSymbolicLink()) {
+    if (validated.reason === 'missing') return fail('The vault folder does not exist.')
+    if (validated.reason === 'unreadable') {
+      return fail('The vault folder cannot be read.', 'Check the folder permissions, then recheck.')
+    }
+    if (validated.reason === 'symlink') {
       return fail(
         'The vault folder path contains a symbolic link. TheRSS does not follow vault symlinks.',
         'Choose the real vault folder instead of the link.'
       )
     }
-    if (!info.isDirectory()) {
-      return fail(
-        index === prefixes.length - 1
-          ? 'The vault path is not a folder.'
-          : 'The vault folder path is not a valid directory.'
-      )
-    }
-  }
-  let realRoot: string
-  try {
-    realRoot = await fsOps.realpath(operationalPath)
-  } catch (error) {
-    return errorCode(error) === 'ENOENT'
-      ? fail('The vault folder does not exist.')
-      : fail('The vault folder cannot be read.', 'Check the folder permissions, then recheck.')
-  }
-  if (realRoot !== operationalPath) {
     return fail(
-      'The vault folder path contains a symbolic link. TheRSS does not follow vault symlinks.',
-      'Choose the real vault folder instead of the link.'
+      validated.reason === 'not-directory'
+        ? 'The vault path is not a folder.'
+        : 'The vault folder path is not a valid directory.'
     )
   }
   return {
@@ -250,7 +230,7 @@ async function checkRoot(
       detail: 'The folder exists and is a regular directory.',
       remediation: null
     },
-    realRoot: operationalPath
+    realRoot: validated.root
   }
 }
 

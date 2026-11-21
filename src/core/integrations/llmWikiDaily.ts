@@ -1,5 +1,5 @@
 import { constants } from 'node:fs'
-import { lstat, open, realpath } from 'node:fs/promises'
+import { open } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   llmWikiDailyOpenRequestSchema,
@@ -10,7 +10,7 @@ import {
 } from '../../shared/llmWikiDaily'
 import { llmWikiArxivId, llmWikiArxivIdSchema } from '../../shared/llmWikiLibrary'
 import { isSafeLlmWikiRelativePath } from '../../shared/llmWikiPromotion'
-import { assertSafePathChain, vaultRootResolver } from './llmWikiVaultPaths'
+import { assertSafePathChain, assertSafeVaultRoot, vaultRootResolver } from './llmWikiVaultPaths'
 
 const DIGEST_DIRECTORY = 'Literature/Digests/ArXiv_Daily'
 const MAX_LOOKBACK_DAYS = 14
@@ -267,9 +267,7 @@ export class LlmWikiDaily {
     requestedDate: string
   ): Promise<{ root: string; edition: DatedEdition | null }> {
     const configuredRoot = this.resolveRoot()
-    const rootInfo = await lstat(configuredRoot)
-    if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) throw new Error('Unsafe vault root')
-    const root = await realpath(configuredRoot)
+    const root = await assertSafeVaultRoot(configuredRoot)
     for (const path of ['AGENTS.md', '_schema.md']) await assertSafePathChain(root, path, 'file')
     await assertSafePathChain(root, DIGEST_DIRECTORY, 'directory')
     const dateCursor = new Date(`${requestedDate}T12:00:00Z`)

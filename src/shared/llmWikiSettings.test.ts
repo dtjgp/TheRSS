@@ -7,11 +7,15 @@ import {
 } from './llmWikiSettings'
 
 describe('llmWikiSettings schemas', () => {
-  it('accepts valid absolute paths, normalizes trailing slashes, and allows null reset', () => {
+  it('accepts valid absolute paths, normalizes trailing slashes, dots, and repeated slashes, and allows null reset', () => {
     expect(llmWikiVaultPathSchema.parse('/Users/alice/Obsidian/llm-wiki/')).toBe(
       '/Users/alice/Obsidian/llm-wiki'
     )
+    expect(llmWikiVaultPathSchema.parse('/Users//alice/./Obsidian///llm-wiki/.')).toBe(
+      '/Users/alice/Obsidian/llm-wiki'
+    )
     expect(llmWikiVaultPathSchema.parse('/')).toBe('/')
+    expect(llmWikiVaultPathSchema.parse('/./')).toBe('/')
     expect(llmWikiVaultPathSchema.parse(null)).toBeNull()
     expect(llmWikiVaultPathInputSchema.parse({ vaultPath: null })).toEqual({ vaultPath: null })
   })
