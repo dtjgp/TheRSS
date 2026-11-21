@@ -45,6 +45,21 @@ function termList(
     .transform((values) => uniqueValues(values, options.lowercase ?? false))
 }
 
+// Constraint terms reject any raw Unicode control character before trimming, use
+// locale-independent lowercasing, and bound length after normalization so a
+// persisted plan always re-parses (for example, U+0130 lowercases to 2 code units).
+const constraintTermSchema = z
+  .string()
+  .refine((value) => !/\p{Cc}/u.test(value))
+  .transform((value) => value.trim().toLowerCase())
+  .pipe(z.string().min(1).max(MAX_TERM_LENGTH))
+
+const constraintGroupSchema = z
+  .array(constraintTermSchema)
+  .min(1)
+  .max(MAX_CONSTRAINT_TERMS)
+  .transform((terms) => [...new Set(terms)])
+
 const discoverPlanSchema = z
   .object({
     version: z.literal('discover-plan-v1'),
@@ -71,7 +86,7 @@ const discoverPlanSchema = z
       })
       .strict(),
     constraintGroups: z
-      .array(termList(MAX_CONSTRAINT_TERMS, { lowercase: true }).pipe(z.array(z.string()).min(1)))
+      .array(constraintGroupSchema)
       .min(1)
       .max(MAX_CONSTRAINT_GROUPS)
       .exactOptional(),
@@ -93,6 +108,12 @@ const discoverPlanSchema = z
       plan.github.keywords.length + plan.github.topics.length + plan.github.languages.length
     if (githubQueries > 6) {
       context.addIssue({ code: 'custom', message: 'GitHub query fan-out exceeds six queries' })
+    }
+
+    // Terms are unique within a group, so any repeat here spans two distinct facets.
+    const constraintTerms = plan.constraintGroups?.flat() ?? []
+    if (new Set(constraintTerms).size !== constraintTerms.length) {
+      context.addIssue({ code: 'custom', message: 'Constraint groups must not share a term' })
     }
   })
 

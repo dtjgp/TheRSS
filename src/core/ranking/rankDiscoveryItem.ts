@@ -1,34 +1,27 @@
 import type { InterestProfile } from '../interests/interestProfile'
 import type { DiscoveryItem, MatchReason, RankedDiscoveryItem } from '../../shared/discovery'
 import { hasPublicationMonthOnly } from '../../shared/sourceDate'
+import { includesWholeTerm } from './termMatch'
 
 const TITLE_KEYWORD_WEIGHT = 30
 const SUMMARY_KEYWORD_WEIGHT = 12
 const CATEGORY_WEIGHT = 18
 const TOPIC_WEIGHT = 18
 const LANGUAGE_WEIGHT = 10
-const CJK_SCRIPT_PATTERN =
-  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u
 
-function includesWholeTerm(value: string, term: string): boolean {
-  const trimmed = term.trim()
-  if (!trimmed) return false
-  if (CJK_SCRIPT_PATTERN.test(trimmed)) {
-    return value.toLocaleLowerCase().includes(trimmed.toLocaleLowerCase())
-  }
-  const literal = trimmed.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-  return new RegExp(`(^|[^\\p{L}\\p{N}])${literal}(?=$|[^\\p{L}\\p{N}])`, 'iu').test(value)
+function itemIncludesTerm(item: DiscoveryItem, term: string): boolean {
+  return includesWholeTerm(item.title, term) || includesWholeTerm(item.summary, term)
 }
 
 function coverageReason(
-  text: string,
+  item: DiscoveryItem,
   groups: readonly (readonly string[])[] | undefined
 ): MatchReason | null {
   if (!groups || groups.length < 2) return null
 
   const total = groups.length
   const matched = groups.filter((group) =>
-    group.some((term) => includesWholeTerm(text, term))
+    group.some((term) => itemIncludesTerm(item, term))
   ).length
   const coverage = { kind: 'coverage' as const, value: `${matched}/${total}` }
   if (matched === total) {
@@ -102,9 +95,8 @@ export function rankDiscoveryItem(
   now: Date,
   options?: RankDiscoveryItemOptions
 ): RankedDiscoveryItem {
-  const searchText = `${item.title}\n${item.summary}`
   const exclusionReasons = profile.arxiv.excludeKeywords.flatMap((keyword) =>
-    includesWholeTerm(searchText, keyword)
+    itemIncludesTerm(item, keyword)
       ? [
           {
             kind: 'exclusion' as const,
@@ -194,7 +186,7 @@ export function rankDiscoveryItem(
       : []
 
   const optionalReasons = [
-    coverageReason(searchText, options?.constraintGroups),
+    coverageReason(item, options?.constraintGroups),
     recencyReason(item, now),
     popularityReason(item)
   ].filter((reason): reason is MatchReason => reason !== null)

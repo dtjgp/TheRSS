@@ -135,11 +135,43 @@ describe('parseDiscoverPlan', () => {
     ['a blank term', [['energy', '   ']]],
     ['a control character', [['energy\u0007cost']]],
     ['an overlong term', [['x'.repeat(101)]]],
-    ['a non-array group', ['energy']]
+    ['a non-array group', ['energy']],
+    ['a leading tab', [['\tenergy']]],
+    ['a trailing newline', [['energy\n']]],
+    ['a C1 control character', [['energy\u0085cost']]],
+    ['a term over 100 code units after lowercasing', [['İ'.repeat(100)]]],
+    ['one term shared by two groups', [['Energy'], ['energy']]],
+    [
+      'one term shared inside larger groups',
+      [
+        ['carbon', 'energy'],
+        ['Energy', 'deadline']
+      ]
+    ]
   ])('rejects constraint groups with %s', (_label, constraintGroups) => {
     expect(() => parseDiscoverPlan(JSON.stringify({ ...validPlan, constraintGroups }))).toThrow(
       'invalid search plan'
     )
+  })
+
+  it('round-trips an expanding-case constraint term within the length bound', () => {
+    const parsed = parseDiscoverPlan(
+      JSON.stringify({ ...validPlan, constraintGroups: [['İ'.repeat(50)], ['edge']] })
+    )
+
+    expect(parsed.constraintGroups?.[0]).toEqual(['i̇'.repeat(50)])
+    expect(parseDiscoverPlan(JSON.stringify(parsed))).toEqual(parsed)
+  })
+
+  it('keeps trimming edge whitespace controls in legacy plan fields', () => {
+    const parsed = parseDiscoverPlan(
+      JSON.stringify({
+        ...validPlan,
+        arxiv: { ...validPlan.arxiv, keywords: ['\tStructured Pruning\n'] }
+      })
+    )
+
+    expect(parsed.arxiv.keywords).toEqual(['structured pruning'])
   })
 
   it('bounds invalid output errors without echoing model content', () => {

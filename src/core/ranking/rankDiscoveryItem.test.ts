@@ -96,6 +96,79 @@ describe('rankDiscoveryItem', () => {
     }
   })
 
+  it('ranks Structured Pruning of LLMs above Pruning for CNNs with both constraints', () => {
+    const now = new Date('2026-08-15T00:00:00Z')
+    const pruningProfile = {
+      ...profile,
+      arxiv: { ...profile.arxiv, keywords: ['pruning'] }
+    }
+    const options = { constraintGroups: [['llm'], ['pruning']] }
+    const direct = rankDiscoveryItem(
+      { ...baseItem, title: 'Structured Pruning of LLMs' },
+      pruningProfile,
+      now,
+      options
+    )
+    const partial = rankDiscoveryItem(
+      { ...baseItem, title: 'Pruning for CNNs' },
+      pruningProfile,
+      now,
+      options
+    )
+
+    expect(direct.score).toBeGreaterThan(partial.score)
+    expect(direct.reasons).toContainEqual(
+      expect.objectContaining({ kind: 'coverage', weight: 35, value: '2/2' })
+    )
+    expect(partial.reasons).toContainEqual(
+      expect.objectContaining({ kind: 'coverage', weight: -20, value: '1/2' })
+    )
+  })
+
+  it('uses plural, mixed-script and phrase matching for keywords and exclusions', () => {
+    const result = rankDiscoveryItem(
+      {
+        ...baseItem,
+        title: '基于LLMs的推荐系统',
+        summary: 'Reviews low-rank approaches in prior surveys.'
+      },
+      {
+        ...profile,
+        arxiv: { ...profile.arxiv, keywords: ['llm', 'low rank'], excludeKeywords: ['survey'] }
+      },
+      new Date('2026-08-15T00:00:00Z')
+    )
+
+    expect(result.reasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'keyword', field: 'title', value: 'llm' }),
+        expect.objectContaining({ kind: 'keyword', field: 'summary', value: 'low rank' }),
+        expect.objectContaining({ kind: 'exclusion', value: 'survey' })
+      ])
+    )
+    expect(result.excluded).toBe(true)
+    expect(result.score).toBe(0)
+  })
+
+  it('does not create phrase matches from the end of the title and start of the summary', () => {
+    const options = { constraintGroups: [['carbon intensity'], ['training']] }
+    const carbonProfile = {
+      ...profile,
+      arxiv: { ...profile.arxiv, excludeKeywords: ['carbon intensity'] }
+    }
+    const result = rankDiscoveryItem(
+      { ...baseItem, title: 'Training and carbon', summary: 'Intensity is the focus.' },
+      carbonProfile,
+      new Date('2026-08-15T00:00:00Z'),
+      options
+    )
+
+    expect(result.excluded).toBe(false)
+    expect(result.reasons).toContainEqual(
+      expect.objectContaining({ kind: 'coverage', weight: -20, value: '1/2' })
+    )
+  })
+
   const coverageGroups = [['training'], ['carbon', 'emissions'], ['deadline']]
 
   it.each([
