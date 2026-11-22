@@ -56,3 +56,18 @@
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
 | 2026-11-21 | Update `src/main/appkit/settingsPresenter.test.ts:37` and `scripts/smoke-native-appkit.mjs:970` Settings preference toolbar count from 2 to 3 (`settings-wiki`).                       | Contract intentionally adds the 3rd P1-6 `Knowledge Base` (`wiki`) pane to `SETTINGS_SECTIONS` in native Settings; `personal` and `provider` remain unchanged.                               | `technical-pm`                          |
 | 2026-11-21 | Update `src/main/appkit/settingsWiki.test.ts` Recheck vault assertion so `changed('wiki')` fires when `diagnostics.status` or `resolvedPath` changes (and stays quiet when unchanged). | QA Round 1 finding M2: cached `'unavailable'` list badges must recover when the user fixes a broken vault and clicks Recheck vault, while unchanged rechecks avoid unnecessary list rescans. | `technical-pm` / `qa-security-reviewer` |
+
+## Evidence Closeout
+
+- **Final QA Report**: [QA_FINAL.md](QA_FINAL.md) — Unanimous **APPROVED** across Track A (`qa-security-reviewer`, Claude Opus 5.5 High) and Track B (`release-devops` cross-family fallback, Codex GPT-6.2-Sol High).
+- **Verified Local Gates**:
+  - `npm run check`: PASS (architecture `<= 800` lines, Prettier, ESLint, `tsc --noEmit`, full coverage `>= 80%`, AppKit tests, `electron-vite` + native AppKit/Glass + MCP builds).
+  - `npm run smoke:mcp`: PASS (`list_today_items`, `get_item`, `get_analysis_context`).
+  - `THERSS_NATIVE_DEFAULT_ONLY=1 THERSS_NATIVE_SCREENSHOTS=0 node scripts/smoke-native-appkit.mjs`: 17/17 PASS (including 3-item Settings preference toolbar, `settings-wiki` Knowledge Base pane fit & controls, and `saved-wiki-filter`).
+  - `node scripts/smoke-appkit-controls.mjs`: 20/20 PASS.
+  - `npm run test:e2e`: 11/11 PASS.
+- **Hotspot Split Outcomes**:
+  - `src/core/storage/researchRepository.test.ts`: 800 → 421 lines (+ `researchRepository.discover.test.ts`: 423 lines; all 23 original tests preserved verbatim).
+  - `src/core/storage/researchRepository.ts`: 714 → 648 lines.
+  - `src/core/integrations/llmWikiVaultSupport.ts`: 736 → 453 lines (+ `llmWikiVaultPaths.ts`: 393 lines; all prior public exports preserved).
+- **Remaining Boundaries**: Human physical-keyboard/VoiceOver acceptance, real-paper promotion (`P0-1`), Wave 4 pure-refactor splits (`native/appkit/node.mm`, `src/renderer/src/App.tsx`), `P1-3` repo/news Inbox promotion, and signed/notarized macOS distribution remain outside Wave 3 scope.
