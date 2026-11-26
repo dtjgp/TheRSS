@@ -306,6 +306,7 @@ async function createWindow(
   if (nativeUi) {
     keepNativeWindowTitle(window)
     await window.loadFile(join(__dirname, '../renderer/native-host.html'))
+    if (window.isDestroyed()) return window
     await attachAppKit(window, application, {
       openRecord: (record) => {
         void openRecordWindow(record, applicationRuntime, window).catch(() => undefined)
@@ -314,6 +315,7 @@ async function createWindow(
         void openSettingsWindow(applicationRuntime, useE2eFixtures, section).catch(() => undefined)
       }
     })
+    if (window.isDestroyed()) return window
     if (restoredState.maximized) window.maximize()
     window.show()
   } else if (process.env.ELECTRON_RENDERER_URL) {
@@ -745,11 +747,17 @@ app.whenReady().then(async () => {
     })()
   })
 
+  let pendingMainWindow: Promise<BrowserWindow> | null = null
   app.on('activate', () => {
     // Record and Settings windows alone do not replace the main window.
-    if (auxiliary.needsMainWindow(BrowserWindow.getAllWindows())) {
-      void createWindow(useE2eFixtures, applicationRuntime)
-    }
+    if (pendingMainWindow || !auxiliary.needsMainWindow(BrowserWindow.getAllWindows())) return
+    const creation = createWindow(useE2eFixtures, applicationRuntime)
+    pendingMainWindow = creation
+    void creation
+      .catch(() => undefined)
+      .finally(() => {
+        if (pendingMainWindow === creation) pendingMainWindow = null
+      })
   })
 })
 

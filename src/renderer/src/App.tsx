@@ -1,25 +1,22 @@
 import { useNativeGlass } from './useNativeGlass'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type {
-  CSSProperties,
-  KeyboardEvent as ReactKeyboardEvent,
-  PointerEvent as ReactPointerEvent
-} from 'react'
+import type { CSSProperties } from 'react'
 import { BarChart3, Compass, Library, Settings, Star } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { DashboardSnapshot, TheRSSApi, TriageState } from '../../shared/api'
 import type { AnalysisArtifact, AnalysisRunner, LocalAgentStatus } from '../../shared/models'
 import { DiscoverView } from './DiscoverView'
 import { DataAnalyticsView } from './DataAnalyticsView'
-import { SignalWorkspace } from './SignalWorkspace'
 import { useSystemAccent } from './useSystemAccent'
 import { SourceCatalogView } from './SourceCatalogView'
 import { SettingsView } from './SettingsView'
 import { AppTopbar } from './AppTopbar'
 import type { AppView } from './AppTopbar'
 import type { DiscoverySource } from '../../shared/discovery'
-import { ACTIVE_TODAY_SOURCE_IDS, sourceDisplayName } from '../../shared/sourceIdentity'
+import { sourceDisplayName } from '../../shared/sourceIdentity'
 import { LocalSearchPanel } from './LocalSearchPanel'
+import { SavedSignalsView } from './SavedSignalsView'
+import { SIDEBAR_MIN_WIDTH, useSidebarResize } from './useSidebarResize'
 
 interface AppProps {
   readonly api: TheRSSApi
@@ -42,53 +39,6 @@ const secondaryNavigationItems: readonly NavigationItem[] = [
   { view: 'sources', index: '04', label: 'Sources', icon: Library }
 ]
 
-const SIDEBAR_WIDTH_STORAGE_KEY = 'therss.sidebar-width'
-const SIDEBAR_MIN_WIDTH = 184
-const SIDEBAR_MAX_WIDTH = 360
-const SIDEBAR_KEYBOARD_STEP = 8
-const SIDEBAR_CONSTRAINED_VIEWPORT_WIDTH = 760
-const MAIN_CONTENT_MIN_WIDTH = 640
-
-interface SidebarResizeDrag {
-  readonly pointerId: number
-  readonly startX: number
-  readonly startWidth: number
-  readonly startPreferredWidth: number
-}
-
-function clampSidebarWidth(width: number): number {
-  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(width)))
-}
-
-function defaultSidebarWidth(viewportWidth: number): number {
-  if (viewportWidth <= 920) return SIDEBAR_MIN_WIDTH
-  if (viewportWidth <= 1120) return 196
-  return 224
-}
-
-function maximumSidebarWidth(viewportWidth: number): number {
-  return clampSidebarWidth(viewportWidth - MAIN_CONTENT_MIN_WIDTH)
-}
-
-function readSidebarWidth(): number {
-  try {
-    const storedWidth = Number(window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY))
-    return Number.isFinite(storedWidth) && storedWidth > 0
-      ? clampSidebarWidth(storedWidth)
-      : defaultSidebarWidth(window.innerWidth)
-  } catch {
-    return defaultSidebarWidth(window.innerWidth)
-  }
-}
-
-function persistSidebarWidth(width: number): void {
-  try {
-    window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(width))
-  } catch {
-    // Resizing remains available when renderer storage is unavailable.
-  }
-}
-
 interface LastTriageAction {
   readonly id: string
   readonly title: string
@@ -101,13 +51,21 @@ export function App({ api }: AppProps) {
   const [dashboard, setDashboard] = useState<DashboardSnapshot | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<AppView>('discover')
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const [preferredSidebarWidth, setPreferredSidebarWidth] = useState(readSidebarWidth)
-  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth)
-  const [isSidebarResizing, setIsSidebarResizing] = useState(false)
   const mainRef = useRef<HTMLElement>(null)
-  const preferredSidebarWidthRef = useRef(preferredSidebarWidth)
-  const sidebarResizeDragRef = useRef<SidebarResizeDrag | null>(null)
+  const {
+    sidebarWidth,
+    sidebarMaximumWidth,
+    isSidebarConstrained,
+    isSidebarEffectivelyCollapsed,
+    isSidebarResizing,
+    toggleSidebar,
+    toggleSidebarIfUnconstrained,
+    startSidebarResize,
+    moveSidebarResize,
+    finishSidebarResize,
+    cancelSidebarResize,
+    resizeSidebarWithKeyboard
+  } = useSidebarResize()
   const [sourceFilter, setSourceFilter] = useState<'all' | DiscoverySource>('all')
   const [sourceAttentionOnly, setSourceAttentionOnly] = useState(false)
   const [analysisRunner, setAnalysisRunner] = useState<AnalysisRunner>('model-provider')
@@ -153,15 +111,6 @@ export function App({ api }: AppProps) {
   const visibleItems = viewItems.filter(
     (item) => sourceFilter === 'all' || item.source === sourceFilter
   )
-  const viewCounts = {
-    arxiv: viewItems.filter((item) => item.source === 'arxiv').length,
-    github: viewItems.filter((item) => item.source === 'github').length,
-    other: viewItems.filter((item) => item.source !== 'arxiv' && item.source !== 'github').length,
-    unread: viewItems.filter((item) => item.triageState === 'new').length
-  }
-  const additionalSources = ACTIVE_TODAY_SOURCE_IDS.filter(
-    (source) => source !== 'arxiv' && source !== 'github'
-  )
   const savedFilterLabel =
     sourceFilter === 'all'
       ? 'All sources'
@@ -170,96 +119,6 @@ export function App({ api }: AppProps) {
         : sourceFilter === 'github'
           ? 'GitHub only'
           : sourceDisplayName(sourceFilter)
-  const sidebarMaximumWidth = maximumSidebarWidth(viewportWidth)
-  const sidebarWidth = Math.min(preferredSidebarWidth, sidebarMaximumWidth)
-  const isSidebarConstrained = viewportWidth <= SIDEBAR_CONSTRAINED_VIEWPORT_WIDTH
-  const isSidebarEffectivelyCollapsed = isSidebarCollapsed || isSidebarConstrained
-
-  const updateSidebarWidth = useCallback(
-    (width: number, persist: boolean) => {
-      const maximumWidth = maximumSidebarWidth(viewportWidth)
-      const currentPreferredWidth = preferredSidebarWidthRef.current
-      const currentWidth = Math.min(currentPreferredWidth, maximumWidth)
-      const nextWidth = Math.min(clampSidebarWidth(width), maximumWidth)
-      if (nextWidth === currentWidth && currentPreferredWidth !== currentWidth) return
-      preferredSidebarWidthRef.current = nextWidth
-      setPreferredSidebarWidth(nextWidth)
-      if (persist) persistSidebarWidth(nextWidth)
-    },
-    [viewportWidth]
-  )
-
-  const startSidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (isSidebarEffectivelyCollapsed || event.button !== 0) return
-    event.preventDefault()
-    event.currentTarget.setPointerCapture?.(event.pointerId)
-    sidebarResizeDragRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startWidth: sidebarWidth,
-      startPreferredWidth: preferredSidebarWidthRef.current
-    }
-    setIsSidebarResizing(true)
-  }
-
-  const moveSidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = sidebarResizeDragRef.current
-    if (!drag || drag.pointerId !== event.pointerId) return
-    event.preventDefault()
-    updateSidebarWidth(drag.startWidth + event.clientX - drag.startX, false)
-  }
-
-  const finishSidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = sidebarResizeDragRef.current
-    if (!drag || drag.pointerId !== event.pointerId) return
-    event.preventDefault()
-    const finalWidth = Math.min(
-      clampSidebarWidth(drag.startWidth + event.clientX - drag.startX),
-      maximumSidebarWidth(viewportWidth)
-    )
-    if (finalWidth === drag.startWidth && drag.startPreferredWidth !== drag.startWidth) {
-      preferredSidebarWidthRef.current = drag.startPreferredWidth
-      setPreferredSidebarWidth(drag.startPreferredWidth)
-    } else {
-      updateSidebarWidth(finalWidth, true)
-    }
-    sidebarResizeDragRef.current = null
-    setIsSidebarResizing(false)
-    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
-  }
-
-  const cancelSidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = sidebarResizeDragRef.current
-    if (!drag || drag.pointerId !== event.pointerId) return
-    event.preventDefault()
-    preferredSidebarWidthRef.current = drag.startPreferredWidth
-    setPreferredSidebarWidth(drag.startPreferredWidth)
-    sidebarResizeDragRef.current = null
-    setIsSidebarResizing(false)
-    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
-  }
-
-  const resizeSidebarWithKeyboard = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    let nextWidth: number | null = null
-    const step = event.shiftKey ? SIDEBAR_KEYBOARD_STEP * 4 : SIDEBAR_KEYBOARD_STEP
-    if (event.key === 'ArrowLeft') nextWidth = sidebarWidth - step
-    if (event.key === 'ArrowRight') nextWidth = sidebarWidth + step
-    if (event.key === 'Home') nextWidth = SIDEBAR_MIN_WIDTH
-    if (event.key === 'End') nextWidth = SIDEBAR_MAX_WIDTH
-    if (nextWidth === null) return
-    event.preventDefault()
-    updateSidebarWidth(nextWidth, true)
-  }
-
-  useEffect(() => {
-    const handleWindowResize = () => setViewportWidth(window.innerWidth)
-    window.addEventListener('resize', handleWindowResize)
-    return () => window.removeEventListener('resize', handleWindowResize)
-  }, [])
 
   useEffect(() => {
     let isActive = true
@@ -423,7 +282,7 @@ export function App({ api }: AppProps) {
             void navigate('sources')
             return
           case 'toggle-sidebar':
-            if (!isSidebarConstrained) setIsSidebarCollapsed((current) => !current)
+            toggleSidebarIfUnconstrained()
             return
           case 'undo-triage':
             void undoLastTriage()
@@ -452,9 +311,9 @@ export function App({ api }: AppProps) {
       analyzeItem,
       api,
       dashboard,
-      isSidebarConstrained,
       navigate,
       selectedSignalId,
+      toggleSidebarIfUnconstrained,
       undoLastTriage,
       updateTriage
     ]
@@ -552,7 +411,7 @@ export function App({ api }: AppProps) {
           date={dashboard?.date ?? null}
           isSidebarCollapsed={isSidebarEffectivelyCollapsed}
           isSidebarConstrained={isSidebarConstrained}
-          onToggleSidebar={() => setIsSidebarCollapsed((current) => !current)}
+          onToggleSidebar={toggleSidebar}
           savedCount={viewItems.length}
           savedFilterLabel={savedFilterLabel}
           settingsDirty={settingsDirty}
@@ -590,140 +449,23 @@ export function App({ api }: AppProps) {
           />
         )}
         {dashboard && activeView === 'saved' && (
-          <section className="today-view">
-            <div className="today-view__heading">
-              <div>
-                <p className="eyebrow">RESEARCH SHELF</p>
-                <h1>Saved research signals</h1>
-              </div>
-              <div className="signal-counts" aria-label="Inbox counts">
-                <span>
-                  <strong>{viewCounts.arxiv}</strong> papers
-                </span>
-                <span>
-                  <strong>{viewCounts.github}</strong> repos
-                </span>
-                <span>
-                  <strong>{viewCounts.other}</strong> other
-                </span>
-                <span>
-                  <strong>{viewCounts.unread}</strong> unread
-                </span>
-              </div>
-            </div>
-
-            <div className="inbox-toolbar">
-              <div className="inbox-toolbar__sources">
-                <div
-                  className="source-filters"
-                  role="group"
-                  aria-label="Filter saved signals by source"
-                >
-                  <button
-                    type="button"
-                    aria-label="Show all sources"
-                    aria-pressed={sourceFilter === 'all'}
-                    onClick={() => setSourceFilter('all')}
-                  >
-                    All
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Show arXiv only"
-                    aria-pressed={sourceFilter === 'arxiv'}
-                    onClick={() => setSourceFilter('arxiv')}
-                  >
-                    arXiv
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Show GitHub only"
-                    aria-pressed={sourceFilter === 'github'}
-                    onClick={() => setSourceFilter('github')}
-                  >
-                    GitHub
-                  </button>
-                  <select
-                    aria-label="Show another source"
-                    value={
-                      sourceFilter !== 'all' &&
-                      sourceFilter !== 'arxiv' &&
-                      sourceFilter !== 'github'
-                        ? sourceFilter
-                        : ''
-                    }
-                    onChange={(event) => {
-                      if (event.target.value) setSourceFilter(event.target.value as DiscoverySource)
-                    }}
-                  >
-                    <option value="">More sources</option>
-                    {additionalSources.map((source) => (
-                      <option key={source} value={source}>
-                        {sourceDisplayName(source)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <label className="analysis-runner-control">
-                <span>Analyze with</span>
-                <select
-                  aria-label="Analysis runner"
-                  value={analysisRunner}
-                  onChange={(event) => setAnalysisRunner(event.target.value as AnalysisRunner)}
-                >
-                  <option value="model-provider">Model provider</option>
-                  {localAgents.map((agent) => (
-                    <option key={agent.runner} value={agent.runner} disabled={!agent.available}>
-                      {agent.label}
-                      {agent.available ? '' : ' (not detected)'}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            {viewItems.length === 0 ? (
-              <div className="quiet-state">
-                <span>0 SIGNALS</span>
-                <h2>No saved signals yet.</h2>
-                <p>Save a Discover result and it will appear here.</p>
-              </div>
-            ) : (
-              <div className="today-stage today-stage--single">
-                {visibleItems.length === 0 ? (
-                  <div className="quiet-state quiet-state--filtered">
-                    <span>0 MATCHES</span>
-                    <h2>No signals from this source.</h2>
-                    <p>Choose another source to see saved records.</p>
-                  </div>
-                ) : (
-                  <SignalWorkspace
-                    api={api}
-                    items={visibleItems}
-                    analysis={analysis}
-                    analyzingItemId={analyzingItemId}
-                    selectedItemId={selectedSignalId}
-                    onTriage={updateTriage}
-                    onAnalyze={analyzeItem}
-                    onSelectionChange={setSelectedSignalId}
-                    onSourceUpdated={(result) => {
-                      const updated = result.item
-                      setDashboard(
-                        updated?.triageState === 'saved' &&
-                          !result.dashboard.savedItems.some((item) => item.id === updated.id)
-                          ? {
-                              ...result.dashboard,
-                              savedItems: [updated, ...result.dashboard.savedItems]
-                            }
-                          : result.dashboard
-                      )
-                    }}
-                  />
-                )}
-              </div>
-            )}
-          </section>
+          <SavedSignalsView
+            api={api}
+            viewItems={viewItems}
+            visibleItems={visibleItems}
+            sourceFilter={sourceFilter}
+            onSourceFilterChange={setSourceFilter}
+            analysisRunner={analysisRunner}
+            onAnalysisRunnerChange={setAnalysisRunner}
+            localAgents={localAgents}
+            analysis={analysis}
+            analyzingItemId={analyzingItemId}
+            selectedSignalId={selectedSignalId}
+            onTriage={updateTriage}
+            onAnalyze={analyzeItem}
+            onSelectionChange={setSelectedSignalId}
+            onDashboardChange={setDashboard}
+          />
         )}
         {lastTriageAction && isTriageToastVisible && (
           <div className="triage-toast" role="status">

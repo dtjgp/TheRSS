@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { readNativePreferences, writeNativePreferences } from './preferences'
 
 describe('native UI preferences', () => {
@@ -46,6 +46,56 @@ describe('native UI preferences', () => {
     const path = join(await mkdtemp(join(tmpdir(), 'therss-native-prefs-')), 'ui.json')
     await writeFile(path, 'not json')
     expect(await readNativePreferences(path, { sidebar: '99999', discover: '-20' })).toEqual({
+      version: 1,
+      sidebar: 224,
+      discover: 320,
+      saved: 320,
+      collapsed: false,
+      zoom: 1
+    })
+  })
+  it('skips the lazy legacy reader when a valid preferences file already exists', async () => {
+    const path = join(await mkdtemp(join(tmpdir(), 'therss-native-prefs-')), 'ui.json')
+    const saved = {
+      version: 1 as const,
+      sidebar: 248,
+      discover: 350,
+      saved: 320,
+      collapsed: false,
+      zoom: 1
+    }
+    await writeNativePreferences(path, saved)
+    const readLegacy = vi.fn(async () => ({ sidebar: '300' }))
+    expect(await readNativePreferences(path, readLegacy)).toEqual(saved)
+    expect(readLegacy).not.toHaveBeenCalled()
+  })
+  it('migrates from a lazy legacy reader when missing and recovers from rejection or timeout', async () => {
+    const missing = join(await mkdtemp(join(tmpdir(), 'therss-native-prefs-')), 'ui.json')
+    const readLegacy = vi.fn(async () => ({ sidebar: '264', discover: '380' }))
+    expect(await readNativePreferences(missing, readLegacy)).toEqual({
+      version: 1,
+      sidebar: 264,
+      discover: 380,
+      saved: 320,
+      collapsed: false,
+      zoom: 1
+    })
+    expect(readLegacy).toHaveBeenCalledTimes(1)
+
+    const rejecting = vi.fn(async () => {
+      throw new Error('renderer detached')
+    })
+    expect(await readNativePreferences(missing, rejecting)).toEqual({
+      version: 1,
+      sidebar: 224,
+      discover: 320,
+      saved: 320,
+      collapsed: false,
+      zoom: 1
+    })
+
+    const stalled = vi.fn(() => new Promise<Record<string, string | null>>(() => undefined))
+    expect(await readNativePreferences(missing, stalled, { legacyTimeoutMs: 25 })).toEqual({
       version: 1,
       sidebar: 224,
       discover: 320,
