@@ -1,22 +1,32 @@
 import { constants } from 'node:fs'
-import { lstat, open, readdir, realpath } from 'node:fs/promises'
-import { homedir } from 'node:os'
+import { open, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   llmWikiArxivIdSchema,
+  llmWikiBatchStatusRequestSchema,
+  llmWikiBatchStatusResponseSchema,
   llmWikiLibraryStatusSchema,
   llmWikiStatusRequestSchema,
+  type LlmWikiBatchStatusRequest,
+  type LlmWikiBatchStatusResponse,
   type LlmWikiLibraryStatus,
   type LlmWikiStatusRequest
 } from '../../shared/llmWikiLibrary'
 import { isSafeLlmWikiRelativePath } from '../../shared/llmWikiPromotion'
-import { assertSafePathChain } from './llmWikiVaultSupport'
+import { assertSafePathChain, assertSafeVaultRoot, vaultRootResolver } from './llmWikiVaultPaths'
 
 const MAX_FILES = 5_000
 const HEADER_BYTES = 16_384
 const NOTE_PREFIX = /^Literature\/Paper_Notes\/(?:L1_Deep_Read|L2_Structured)\/.+\.md$/u
 type Entry = { id: string; path: string; fields: Record<string, string | null>; note: boolean }
-type Scan = { root: string; entries: Entry[]; checkedAt: string; incomplete: boolean }
+type Scan = {
+  configuredRoot: string
+  generation: number
+  root: string
+  entries: Entry[]
+  checkedAt: string
+  incomplete: boolean
+}
 
 function scalar(value: string): string | null {
   const trimmed = value.trim()
@@ -60,104 +70,147 @@ function linkedNote(value: string): string {
   return withExtension
 }
 
+const UNAVAILABLE_REASON =
+  'llm-wiki paper metadata is unavailable or unsafe. Recheck the local vault.'
+
+function emptyStatus(arxivId: string, checkedAt: string): LlmWikiLibraryStatus {
+  return {
+    arxivId,
+    status: 'unavailable',
+    checkedAt,
+    recordPath: null,
+    notePath: null,
+    level: null,
+    readStatus: null,
+    reason: UNAVAILABLE_REASON
+  }
+}
+
+/** Resolve one arXiv ID against an existing scan; per-paper failures stay isolated. */
+async function resolveStatus(scan: Scan, arxivId: string): Promise<LlmWikiLibraryStatus> {
+  const base: LlmWikiLibraryStatus = { ...emptyStatus(arxivId, scan.checkedAt), reason: null }
+  try {
+    const matching = scan.entries.filter((entry) => entry.id === arxivId)
+    const records = matching.filter((entry) => !entry.note)
+    const notes = matching.filter((entry) => entry.note)
+    if (records.length > 1 || notes.length > 1)
+      return {
+        ...base,
+        status: 'ambiguous',
+        reason: 'Multiple llm-wiki records match this arXiv ID.'
+      }
+    const record = records[0]
+    const explicit = record?.fields.paper_note
+    const notePath = explicit ? linkedNote(explicit) : (notes[0]?.path ?? null)
+    if (!record && !notePath)
+      return {
+        ...base,
+        status: scan.incomplete ? 'unavailable' : 'not-found',
+        reason: scan.incomplete
+          ? 'Some paper metadata could not be checked. Recheck the local vault.'
+          : null
+      }
+    base.recordPath = record?.path ?? null
+    base.notePath = notePath
+    if (notePath) {
+      let fields: Record<string, string | null>
+      try {
+        fields = await header(scan.root, notePath)
+      } catch (error) {
+        if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')
+          return {
+            ...base,
+            status: 'note-missing',
+            reason: 'The linked paper note is missing. TheRSS has not changed it.'
+          }
+        throw error
+      }
+      const noteId = fields.arxiv_id ? llmWikiArxivIdSchema.parse(fields.arxiv_id) : null
+      if (noteId && noteId !== arxivId) throw new Error('Conflicting note identity')
+      base.level = notePath.includes('/L1_Deep_Read/') ? 'L1' : 'L2'
+      base.readStatus = ['unread', 'reading', 'read'].includes(fields.status ?? '')
+        ? (fields.status as LlmWikiLibraryStatus['readStatus'])
+        : null
+    }
+    return llmWikiLibraryStatusSchema.parse({ ...base, status: 'recorded' })
+  } catch {
+    return emptyStatus(arxivId, scan.checkedAt)
+  }
+}
+
 /** Read-only, bounded metadata cache. It neither indexes note bodies nor owns durable vault state. */
 export class LlmWikiLibrary {
-  private readonly root: string
+  private readonly resolveRoot: () => string
   private readonly now: () => Date
   private cached: Scan | undefined
-  private pending: Promise<Scan> | undefined
+  private pending:
+    { configuredRoot: string; generation: number; promise: Promise<Scan> } | undefined
+  private generation = 0
   constructor(
     private readonly options: {
       vaultRoot?: string
+      resolveVaultRoot?: () => string
       openExternal: (url: string) => Promise<void>
       now?: () => Date
     }
   ) {
-    this.root =
-      options.vaultRoot ??
-      process.env.THERSS_LLM_WIKI_PATH ??
-      join(homedir(), 'Obsidian', 'llm-wiki')
+    this.resolveRoot = vaultRootResolver(options)
     this.now = options.now ?? (() => new Date())
   }
   async status(candidate: LlmWikiStatusRequest): Promise<LlmWikiLibraryStatus> {
     const request = llmWikiStatusRequestSchema.parse(candidate)
-    const base: LlmWikiLibraryStatus = {
-      arxivId: request.arxivId,
-      status: 'unavailable',
-      checkedAt: this.now().toISOString(),
-      recordPath: null,
-      notePath: null,
-      level: null,
-      readStatus: null,
-      reason: null
-    }
+    let scan: Scan
     try {
-      const scan = await this.scan(request.refresh ?? false)
-      base.checkedAt = scan.checkedAt
-      const matching = scan.entries.filter((entry) => entry.id === request.arxivId)
-      const records = matching.filter((entry) => !entry.note)
-      const notes = matching.filter((entry) => entry.note)
-      if (records.length > 1 || notes.length > 1)
-        return {
-          ...base,
-          status: 'ambiguous',
-          reason: 'Multiple llm-wiki records match this arXiv ID.'
-        }
-      const record = records[0]
-      const explicit = record?.fields.paper_note
-      const notePath = explicit ? linkedNote(explicit) : (notes[0]?.path ?? null)
-      if (!record && !notePath)
-        return {
-          ...base,
-          status: scan.incomplete ? 'unavailable' : 'not-found',
-          reason: scan.incomplete
-            ? 'Some paper metadata could not be checked. Recheck the local vault.'
-            : null
-        }
-      base.recordPath = record?.path ?? null
-      base.notePath = notePath
-      if (notePath) {
-        let fields: Record<string, string | null>
-        try {
-          fields = await header(scan.root, notePath)
-        } catch (error) {
-          if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')
-            return {
-              ...base,
-              status: 'note-missing',
-              reason: 'The linked paper note is missing. TheRSS has not changed it.'
-            }
-          throw error
-        }
-        const noteId = fields.arxiv_id ? llmWikiArxivIdSchema.parse(fields.arxiv_id) : null
-        if (noteId && noteId !== request.arxivId) throw new Error('Conflicting note identity')
-        base.level = notePath.includes('/L1_Deep_Read/') ? 'L1' : 'L2'
-        base.readStatus = ['unread', 'reading', 'read'].includes(fields.status ?? '')
-          ? (fields.status as LlmWikiLibraryStatus['readStatus'])
-          : null
-      }
-      return llmWikiLibraryStatusSchema.parse({ ...base, status: 'recorded' })
+      scan = await this.scan(request.refresh ?? false)
     } catch {
-      return {
-        ...base,
-        status: 'unavailable',
-        recordPath: null,
-        notePath: null,
-        reason: 'llm-wiki paper metadata is unavailable or unsafe. Recheck the local vault.'
-      }
+      return emptyStatus(request.arxivId, this.now().toISOString())
     }
+    return resolveStatus(scan, request.arxivId)
+  }
+  /** Resolve up to LLM_WIKI_BATCH_MAX_IDS papers from at most one vault scan. */
+  async statusBatch(candidate: LlmWikiBatchStatusRequest): Promise<LlmWikiBatchStatusResponse> {
+    const request = llmWikiBatchStatusRequestSchema.parse(candidate)
+    let scan: Scan | undefined
+    try {
+      scan = await this.scan(request.refresh ?? false)
+    } catch {
+      scan = undefined
+    }
+    const checkedAt = scan?.checkedAt ?? this.now().toISOString()
+    const statuses: Record<string, LlmWikiLibraryStatus> = {}
+    for (const arxivId of request.arxivIds)
+      statuses[arxivId] = scan
+        ? await resolveStatus(scan, arxivId)
+        : emptyStatus(arxivId, checkedAt)
+    return llmWikiBatchStatusResponseSchema.parse({ checkedAt, statuses })
+  }
+  /** Drop observed vault state, including a scan that is still running. */
+  clearCache(): void {
+    this.cached = undefined
+    this.pending = undefined
+    this.generation += 1
   }
   async open(candidate: string): Promise<{ opened: true }> {
     const arxivId = llmWikiArxivIdSchema.parse(candidate)
-    const status = await this.status({ arxivId, refresh: true })
+    let scan: Scan
+    try {
+      scan = await this.scan(true)
+    } catch {
+      throw new Error(UNAVAILABLE_REASON)
+    }
+    const status = await resolveStatus(scan, arxivId)
     if (status.status !== 'recorded')
       throw new Error(status.reason ?? `The llm-wiki record is ${status.status}.`)
     const path = status.notePath ?? status.recordPath
-    if (!path || !this.cached) throw new Error('No llm-wiki paper note or record is available.')
-    await assertSafePathChain(this.cached.root, path, 'file')
+    if (!path) throw new Error('No llm-wiki paper note or record is available.')
+    if (scan.generation !== this.generation || this.resolveRoot() !== scan.configuredRoot)
+      throw new Error('The llm-wiki vault changed. Try opening the note again.')
+    await assertSafePathChain(scan.root, path, 'file')
+    if (scan.generation !== this.generation || this.resolveRoot() !== scan.configuredRoot)
+      throw new Error('The llm-wiki vault changed. Try opening the note again.')
     const url = new URL('obsidian://open')
     // The exact validated absolute path disambiguates two vaults with the same name.
-    url.searchParams.set('path', join(this.cached.root, path))
+    url.searchParams.set('path', join(scan.root, path))
     try {
       await this.options.openExternal(url.toString())
     } catch {
@@ -166,6 +219,12 @@ export class LlmWikiLibrary {
     return { opened: true }
   }
   private async scan(refresh: boolean): Promise<Scan> {
+    const configuredRoot = this.resolveRoot()
+    if (
+      (this.cached && this.cached.configuredRoot !== configuredRoot) ||
+      (this.pending && this.pending.configuredRoot !== configuredRoot)
+    )
+      this.clearCache()
     if (
       !refresh &&
       this.cached &&
@@ -173,20 +232,24 @@ export class LlmWikiLibrary {
     )
       return this.cached
     if (!this.pending) {
-      this.pending = this.readScan()
-      void this.pending
+      const generation = this.generation
+      const promise = this.readScan(configuredRoot, generation)
+      const pending = { configuredRoot, generation, promise }
+      this.pending = pending
+      void promise
         .finally(() => {
-          this.pending = undefined
+          if (this.pending === pending) this.pending = undefined
         })
         .catch(() => undefined)
     }
-    this.cached = await this.pending
-    return this.cached
+    const active = this.pending
+    const scan = await active.promise
+    if (active.generation === this.generation && scan.configuredRoot === configuredRoot)
+      this.cached = scan
+    return scan
   }
-  private async readScan(): Promise<Scan> {
-    const rootInfo = await lstat(this.root)
-    if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) throw new Error('Unsafe vault root')
-    const root = await realpath(this.root)
+  private async readScan(configuredRoot: string, generation: number): Promise<Scan> {
+    const root = await assertSafeVaultRoot(configuredRoot)
     for (const path of ['AGENTS.md', '_schema.md']) await assertSafePathChain(root, path, 'file')
     const paths: { path: string; note: boolean }[] = []
     let incomplete = false
@@ -222,6 +285,13 @@ export class LlmWikiLibrary {
         })
       )
     }
-    return { root, entries, checkedAt: this.now().toISOString(), incomplete }
+    return {
+      configuredRoot,
+      generation,
+      root,
+      entries,
+      checkedAt: this.now().toISOString(),
+      incomplete
+    }
   }
 }

@@ -1,16 +1,21 @@
 import { randomUUID } from 'node:crypto'
-import { formatDisplayDate } from '../../shared/sourceDate'
 import {
   DISCOVER_SOURCE_IDS,
   type DiscoverRunProgress,
   type DiscoverSnapshot,
-  type DiscoverSource
+  type DiscoverSortOrder,
+  type DiscoverSource,
+  type DiscoverTimeRange
 } from '../../shared/discover'
+import {
+  filterAndSortDiscoverItems,
+  type DiscoverKindFilter
+} from '../../shared/discoverViewFilter'
+import { llmWikiArxivId, type LlmWikiListFilter } from '../../shared/llmWikiLibrary'
 import type { AnalysisRunner } from '../../shared/models'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
 import {
   column,
-  emptyState,
   Controls,
   label,
   readableError,
@@ -32,47 +37,31 @@ import { DailyPapersScreen } from './dailyPapers'
 import { ReadingWorkspace } from './readingWorkspace'
 import { DiscoverSourceScope } from './discoverSourceScope'
 import {
+  DISCOVER_STATUS_TITLES,
+  discoverEmptyState,
+  discoverResultCount,
+  discoverResultsToolbar
+} from './discoverToolbar'
+import { WikiListState } from './wikiListState'
+import {
   describeDiscoverRun,
   discoverOutcomeLabel,
   discoverResultCountLabel
 } from '../../shared/discoverRunProgress'
 
-type Filter = 'all' | 'paper' | 'repository' | 'other'
-const KIND_NAMES: Record<Exclude<Filter, 'all'>, string> = {
-  paper: 'papers',
-  repository: 'repositories',
-  other: 'other results'
-}
-
-const statusTitles: Record<DiscoverSnapshot['status'], string> = {
-  completed: 'Complete',
-  partial: 'Partial results',
-  no_results: 'No results',
-  failed: 'Search failed',
-  canceled: 'Canceled'
-}
-
-/** Plain-language session outcome derived only from persisted per-source outcomes. */
-function resultStatus(snapshot: DiscoverSnapshot, locale: string): string {
-  const searched = DISCOVER_SOURCE_IDS.map((source) => snapshot.sourceOutcomes[source]).filter(
-    (outcome): outcome is DiscoverSnapshot['sourceOutcomes'][DiscoverSource] =>
-      !!outcome && outcome.status !== 'not_searched'
-  )
-  const complete = searched.filter(
-    (outcome) => outcome.status === 'healthy' || outcome.status === 'no_results'
-  ).length
-  return `${statusTitles[snapshot.status]} · ${complete} of ${searched.length} sources succeeded · ${formatDisplayDate(snapshot.createdAt, locale)}`
-}
-
 export class DiscoverScreen implements NativeScreen {
   readonly reader: ResearchReader
   private readonly controls: Controls
+  private readonly wikiList: WikiListState
   private readonly unsubscribe: () => void
   private query = ''
   private runner: AnalysisRunner = 'model-provider'
   private readonly sourceScope: DiscoverSourceScope
   private snapshot: DiscoverSnapshot | null = null
-  private filter: Filter = 'all'
+  private filter: DiscoverKindFilter = 'all'
+  private timeRange: DiscoverTimeRange = 'all'
+  private sortOrder: DiscoverSortOrder = 'relevance'
+  private wikiFilter: LlmWikiListFilter = 'all'
   private selected = ''
   private activeRun: string | null = null
   private canceling = false
@@ -91,6 +80,7 @@ export class DiscoverScreen implements NativeScreen {
     private readonly triage: TriageHistory
   ) {
     this.controls = new Controls(context)
+    this.wikiList = new WikiListState(context)
     this.sourceScope = new DiscoverSourceScope(context, () => !!this.activeRun)
     this.dailyPapers = new DailyPapersScreen(context)
     this.reader = new ResearchReader(context, 'discover', triage)
@@ -133,11 +123,19 @@ export class DiscoverScreen implements NativeScreen {
   }
   llmWikiChanged(arxivId: string): void {
     this.reader.llmWikiChanged(arxivId)
+    this.wikiList.refreshOne(arxivId)
+  }
+  llmWikiVaultChanged(): void {
+    this.wikiList.invalidateAll()
+    const current = this.snapshot?.items.find((item) => item.id === this.selected)
+    const arxivId = current ? llmWikiArxivId(current) : null
+    if (arxivId) this.reader.llmWikiChanged(arxivId)
   }
   dispose(): void {
     this.disposed = true
     this.version++
     this.unsubscribe()
+    this.wikiList.dispose()
     this.sourceScope.dispose()
     this.dailyPapers.leave()
     this.reader.dispose()
@@ -158,6 +156,9 @@ export class DiscoverScreen implements NativeScreen {
       query: this.query,
       runner: this.runner,
       filter: this.filter,
+      timeRange: this.timeRange,
+      sortOrder: this.sortOrder,
+      wikiFilter: this.wikiFilter,
       selected: this.selected,
       message: this.message,
       progress: this.progress,
@@ -171,6 +172,9 @@ export class DiscoverScreen implements NativeScreen {
     this.runner = snapshot.runner
     // The opened session keeps its own source outcomes; the next search's sources stay as chosen.
     this.filter = 'all'
+    this.timeRange = 'all'
+    this.sortOrder = 'relevance'
+    this.wikiFilter = 'all'
     this.selected = itemId
     this.sourceScope.close()
     this.message = ''
@@ -195,16 +199,14 @@ export class DiscoverScreen implements NativeScreen {
     const b = this.controls,
       busy = !!this.activeRun,
       snapshot = this.snapshot
-    const filtered =
-      snapshot?.items.filter(
-        (item) =>
-          this.filter === 'all' ||
-          (this.filter === 'other'
-            ? item.kind !== 'paper' && item.kind !== 'repository'
-            : item.kind === this.filter)
-      ) ?? []
-    // NSTableView creates row views lazily, so every filtered result is listed.
-    const visible = filtered
+    if (snapshot) this.wikiList.sync(snapshot.items)
+    // NSTableView creates row views lazily, so every filtered and sorted result is listed.
+    const preWikiVisible = filterAndSortDiscoverItems(snapshot?.items ?? [], {
+      kind: this.filter,
+      timeRange: this.timeRange,
+      sortOrder: this.sortOrder
+    })
+    const visible = preWikiVisible.filter((item) => this.wikiList.matches(item, this.wikiFilter))
     const selected = visible.find((item) => item.id === this.selected) ?? visible[0] ?? null
     this.selected = selected?.id ?? ''
     this.reader.runner = this.runner
@@ -225,44 +227,36 @@ export class DiscoverScreen implements NativeScreen {
           : []),
         ...(snapshot && !this.workspace.focused
           ? [
-              row('discover-results-toolbar', [
-                b.segmented(
-                  'discover-kind',
-                  'Result kind',
-                  this.filter,
-                  [
-                    { id: 'all', title: `All (${snapshot.items.length})` },
-                    { id: 'paper', title: `Papers (${snapshot.counts.byKind.paper})` },
-                    {
-                      id: 'repository',
-                      title: `Repositories (${snapshot.counts.byKind.repository})`
-                    },
-                    {
-                      id: 'other',
-                      title: `Other (${snapshot.items.filter((item) => item.kind !== 'paper' && item.kind !== 'repository').length})`
-                    }
-                  ],
-                  (filter) => {
-                    this.filter = filter as Filter
-                    this.selected = ''
-                    this.context.redraw()
-                  }
-                ),
-                label('discover-result-status', resultStatus(snapshot, this.context.locale), {
-                  flex: 1
-                }),
-                b.button('discover-details', 'Search details', () => this.details()),
-                ...(retryable.length
-                  ? [
-                      b.button(
-                        'discover-retry',
-                        `Retry ${retryable.length} incomplete`,
-                        () => this.search(true),
-                        !busy
-                      )
-                    ]
-                  : [])
-              ])
+              discoverResultsToolbar({
+                controls: b,
+                snapshot,
+                locale: this.context.locale,
+                filter: this.filter,
+                timeRange: this.timeRange,
+                sortOrder: this.sortOrder,
+                wikiFilter: this.wikiFilter,
+                retryCount: retryable.length,
+                busy,
+                onFilter: (filter) => {
+                  this.filter = filter
+                  this.selected = ''
+                  this.context.redraw()
+                },
+                onTimeRange: (timeRange) => {
+                  this.timeRange = timeRange
+                  this.context.redraw()
+                },
+                onSort: (sortOrder) => {
+                  this.sortOrder = sortOrder
+                  this.context.redraw()
+                },
+                onWikiFilter: (wikiFilter) => {
+                  this.wikiFilter = wikiFilter
+                  this.context.redraw()
+                },
+                onDetails: () => this.details(),
+                onRetry: () => this.search(true)
+              })
             ]
           : []),
         ...(visible.length ? this.workspace.navigation() : []),
@@ -285,7 +279,10 @@ export class DiscoverScreen implements NativeScreen {
                           return {
                             id: item.id,
                             title: item.title,
-                            subtitle: researchSubtitle(item, this.context.locale),
+                            subtitle: this.wikiList.subtitle(
+                              item,
+                              researchSubtitle(item, this.context.locale)
+                            ),
                             ...researchRowGlyph(item.kind),
                             ...researchRowDrag(item),
                             ...(saved ? { saved: true } : {})
@@ -311,7 +308,7 @@ export class DiscoverScreen implements NativeScreen {
                       ),
                       label(
                         'discover-pagination',
-                        `${visible.length} ${visible.length === 1 ? 'result' : 'results'}`,
+                        discoverResultCount(visible.length, snapshot!.items.length),
                         { weight: 'secondary' }
                       )
                     ],
@@ -322,35 +319,21 @@ export class DiscoverScreen implements NativeScreen {
               )
             ]
           : [
-              snapshot
-                ? emptyState(
-                    'discover-empty',
-                    'sparkle.magnifyingglass',
-                    // An empty session keeps its outcome: failed and canceled are not "no results".
-                    this.filter !== 'all'
-                      ? `No ${KIND_NAMES[this.filter]} in this session`
-                      : snapshot.status === 'failed'
-                        ? 'Search failed'
-                        : snapshot.status === 'canceled'
-                          ? 'Search canceled'
-                          : 'No results',
-                    'No results match this view. Source outcomes remain available in Search details.',
-                    this.filter === 'all'
-                      ? []
-                      : [
-                          b.button('discover-show-all', 'Show all results', () => {
-                            this.filter = 'all'
-                            this.selected = ''
-                            this.context.redraw()
-                          })
-                        ]
-                  )
-                : emptyState(
-                    'discover-empty',
-                    'sparkle.magnifyingglass',
-                    'Start a research search',
-                    'Search research sources and keep the results on this Mac.'
-                  )
+              discoverEmptyState({
+                controls: b,
+                snapshot,
+                filter: this.filter,
+                timeRange: this.timeRange,
+                wikiFilter: this.wikiFilter,
+                wikiSummary: this.wikiList.summarize(preWikiVisible),
+                onShowAll: () => {
+                  this.filter = 'all'
+                  this.timeRange = 'all'
+                  this.wikiFilter = 'all'
+                  this.selected = ''
+                  this.context.redraw()
+                }
+              })
             ])
       ],
       { flex: 1, gap: 8 }
@@ -602,6 +585,9 @@ export class DiscoverScreen implements NativeScreen {
       }
       this.loaded = true
       this.filter = 'all'
+      this.timeRange = 'all'
+      this.sortOrder = 'relevance'
+      this.wikiFilter = 'all'
       this.selected = ''
       if (result.status === 'canceled')
         this.message = 'Search canceled. Completed source results were preserved.'
@@ -661,7 +647,7 @@ export class DiscoverScreen implements NativeScreen {
     })
     this.context.showDocument(
       'Search details',
-      `# Search outcome\n\n${statusTitles[s.status]}\nRecorded: ${s.createdAt}\n\n${s.intent}\n\n## Search plan\n\n${s.plan.intentSummary}\n\n${s.plan.rationale}\n\n${plan
+      `# Search outcome\n\n${DISCOVER_STATUS_TITLES[s.status]}\nRecorded: ${s.createdAt}\n\n${s.intent}\n\n## Search plan\n\n${s.plan.intentSummary}\n\n${s.plan.rationale}\n\n${plan
         .filter(([, values]) => values.length)
         .map(([title, values]) => `${title}: ${values.join(', ')}`)
         .join(

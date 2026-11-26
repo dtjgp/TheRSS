@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { rm } from 'node:fs/promises'
-import { homedir, tmpdir } from 'node:os'
-import { basename, isAbsolute, join, relative, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
+import { basename, isAbsolute, relative, resolve } from 'node:path'
 import type { DiscoveryItem } from '../../shared/discovery'
 import type { LlmWikiPromotionReceipt } from '../../shared/llmWikiPromotion'
 import type { LlmWikiPromotionAdapter, PreparedLlmWikiPromotion } from './llmWikiPromotionService'
 import { confirmLlmWikiPromotion } from './llmWikiVaultConfirm'
+import { vaultRootResolver } from './llmWikiVaultPaths'
 import { prepareLlmWikiPromotion } from './llmWikiVaultPrepare'
 import {
   appendPromotionEntry,
@@ -30,14 +31,16 @@ export {
 } from './llmWikiVaultTypes'
 
 export class LlmWikiVaultAdapter implements LlmWikiPromotionAdapter {
-  readonly #runtime: LlmWikiVaultRuntime
+  readonly #runtime: Omit<LlmWikiVaultRuntime, 'vaultRoot'>
+  readonly #resolveVaultRoot: () => string
 
-  constructor(options: LlmWikiVaultAdapterOptions) {
+  /**
+   * `resolveVaultRoot` is read when a runtime is needed. Confirmation writes only to the root
+   * recorded in the previewed handle, so a later folder change cannot redirect a confirmed write.
+   */
+  constructor(options: LlmWikiVaultAdapterOptions & { readonly resolveVaultRoot?: () => string }) {
+    this.#resolveVaultRoot = vaultRootResolver(options)
     this.#runtime = {
-      vaultRoot:
-        options.vaultRoot ??
-        process.env.THERSS_LLM_WIKI_PATH ??
-        join(homedir(), 'Obsidian', 'llm-wiki'),
       tempRoot: options.tempRoot ?? tmpdir(),
       trustedRuntimeHash: options.trustedRuntimeHash ?? TRUSTED_AUTOMATION_RUNTIME_SHA256,
       now: options.now ?? (() => new Date()),
@@ -54,11 +57,18 @@ export class LlmWikiVaultAdapter implements LlmWikiPromotionAdapter {
     item: DiscoveryItem,
     context: { readonly previewId: string; readonly expiresAt: string }
   ): Promise<PreparedLlmWikiPromotion> {
-    return prepareLlmWikiPromotion(this.#runtime, item, context)
+    return prepareLlmWikiPromotion(this.#currentRuntime(), item, context)
   }
 
   confirm(prepared: PreparedLlmWikiPromotion): Promise<LlmWikiPromotionReceipt> {
-    return confirmLlmWikiPromotion(this.#runtime, prepared)
+    return confirmLlmWikiPromotion(
+      { ...this.#runtime, vaultRoot: handleFrom(prepared).vaultRoot },
+      prepared
+    )
+  }
+
+  #currentRuntime(): LlmWikiVaultRuntime {
+    return { ...this.#runtime, vaultRoot: this.#resolveVaultRoot() }
   }
 
   async dispose(prepared: PreparedLlmWikiPromotion): Promise<void> {

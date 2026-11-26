@@ -17,6 +17,7 @@ import {
 import type { ArxivInterest, GitHubInterest, InterestProfile } from '../interests/interestProfile'
 import { classifySourceBatch, sourceRejectionDetail } from '../sources/catalog/sourceBatchStatus'
 import { rankDiscoveryItem } from '../ranking/rankDiscoveryItem'
+import { includesWholeTerm } from '../ranking/termMatch'
 import { fetchArxivItems } from '../sources/arxiv/arxivClient'
 import {
   fetchConfiguredSourceBatch,
@@ -77,8 +78,6 @@ interface SourceJob {
 }
 
 const SAVED_LOOKUP_BATCH_SIZE = 100
-const CJK_SCRIPT_PATTERN =
-  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u
 
 function profileFromPlan(plan: DiscoverPlan): InterestProfile {
   return {
@@ -158,21 +157,6 @@ function titleKey(value: string): string | null {
     .replaceAll(/[^\p{L}\p{N}]+/gu, ' ')
     .trim()
   return normalized.length >= 24 ? normalized : null
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-}
-
-function includesWholeTerm(value: string, term: string): boolean {
-  const trimmed = term.trim()
-  if (!trimmed) return false
-  if (CJK_SCRIPT_PATTERN.test(trimmed)) {
-    return value.toLocaleLowerCase().includes(trimmed.toLocaleLowerCase())
-  }
-  return new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRegExp(trimmed)}(?=$|[^\\p{L}\\p{N}])`, 'iu').test(
-    value
-  )
 }
 
 function hasSemanticMatch(ranked: RankedDiscoveryItem): boolean {
@@ -438,6 +422,7 @@ export class DiscoverService {
     options: DiscoverOptions
   ): Promise<RankedDiscoveryItem[]> {
     const profile = profileFromPlan(plan)
+    const rankOptions = plan.constraintGroups ? { constraintGroups: plan.constraintGroups } : {}
     const rankedSourceItems: RankedDiscoveryItem[] = []
     let completedSources = 0
     const report = (source: DiscoverSource, outcome: DiscoverSourceOutcome) => {
@@ -472,7 +457,7 @@ export class DiscoverService {
         let outcome: DiscoverSourceOutcome
         if (result.status === 'fulfilled') {
           const ranked = newestByIdentity(result.value.items)
-            .map((item) => rankDiscoveryItem(item, profile, now))
+            .map((item) => rankDiscoveryItem(item, profile, now, rankOptions))
             .filter(
               (candidate) => !candidate.excluded && (!job.browseOnly || hasSemanticMatch(candidate))
             )

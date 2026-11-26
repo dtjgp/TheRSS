@@ -138,6 +138,80 @@ describe('shared application contract parity', () => {
     expect(f.repository.materializeDiscoverResultForLlmWikiPromotion).not.toHaveBeenCalled()
     await app.shutdown()
   })
+  it('validates batch llm-wiki status, vault settings, and folder picker requests fail-closed', async () => {
+    const f = fixture()
+    const batchStatus = {
+      arxivId: '2610.11302',
+      status: 'recorded' as const,
+      checkedAt: '2026-10-28T12:00:00Z',
+      recordPath: 'raw/paper_records/Paper.md',
+      notePath: null,
+      level: 'L2' as const,
+      readStatus: 'unread' as const,
+      reason: null
+    }
+    const batchResponse = {
+      checkedAt: '2026-10-28T12:00:00Z',
+      statuses: { '2610.11302': batchStatus }
+    }
+    const diagnostics = {
+      resolvedPath: '/Users/demo/llm-wiki',
+      origin: 'custom' as const,
+      customPath: '/Users/demo/llm-wiki',
+      defaultPath: '/Users/demo/Obsidian/llm-wiki',
+      envOverridePath: null,
+      status: 'ready' as const,
+      checkedAt: '2026-10-28T12:00:00Z',
+      checks: [
+        {
+          id: 'vault-root',
+          label: 'Vault folder',
+          status: 'ok' as const,
+          detail: 'Ready.',
+          remediation: null
+        }
+      ]
+    }
+    const wiki = {
+      status: vi.fn(async () => batchStatus),
+      statusBatch: vi.fn(async () => batchResponse),
+      open: vi.fn(async () => ({ opened: true as const }))
+    }
+    const wikiSettings = {
+      get: vi.fn(async () => diagnostics),
+      save: vi.fn(async () => diagnostics)
+    }
+    const chooseLlmWikiVaultFolder = vi.fn(async () => ({
+      canceled: false,
+      path: '/Users/demo/llm-wiki/'
+    }))
+    const app = new WindowApplication(
+      { ...f.services, wiki, wikiSettings },
+      { ...f.context, chooseLlmWikiVaultFolder }
+    )
+    expect(await app.api.getLlmWikiStatuses!({ arxivIds: ['2610.11302v2', '2610.11302'] })).toEqual(
+      batchResponse
+    )
+    expect(wiki.statusBatch).toHaveBeenCalledWith({ arxivIds: ['2610.11302'] })
+    await expect(app.api.getLlmWikiStatuses!({ arxivIds: [] })).rejects.toThrow()
+    await expect(
+      app.api.getLlmWikiStatuses!({ arxivIds: ['2610.11302'], extra: true } as never)
+    ).rejects.toThrow()
+    expect(await app.api.getLlmWikiSettings!()).toEqual(diagnostics)
+    expect(await app.api.saveLlmWikiVaultPath!('/Users/demo/llm-wiki/')).toEqual(diagnostics)
+    expect(wikiSettings.save).toHaveBeenCalledWith('/Users/demo/llm-wiki')
+    expect(await app.api.saveLlmWikiVaultPath!(null)).toEqual(diagnostics)
+    expect(wikiSettings.save).toHaveBeenLastCalledWith(null)
+    for (const invalid of ['relative/vault', '/Users/demo/../escape', '/tmp/bad\u0000path', '']) {
+      await expect(app.api.saveLlmWikiVaultPath!(invalid)).rejects.toThrow()
+    }
+    expect(wikiSettings.save).toHaveBeenCalledTimes(2)
+    expect(await app.api.chooseLlmWikiVaultFolder!()).toEqual({
+      canceled: false,
+      path: '/Users/demo/llm-wiki'
+    })
+    await app.shutdown()
+  })
   it('exposes only typed daily snapshots and opens a paper by date and arXiv ID', async () => {
     const f = fixture()
     const snapshot = {

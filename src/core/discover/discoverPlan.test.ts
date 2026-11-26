@@ -100,6 +100,103 @@ describe('parseDiscoverPlan', () => {
     ).toThrow('invalid search plan')
   })
 
+  it('keeps legacy plans without constraint groups unchanged', () => {
+    const parsed = parseDiscoverPlan(JSON.stringify(validPlan))
+
+    expect(parsed).not.toHaveProperty('constraintGroups')
+  })
+
+  it('normalizes bounded constraint groups into lowercase deduplicated facets', () => {
+    const parsed = parseDiscoverPlan(
+      JSON.stringify({
+        ...validPlan,
+        constraintGroups: [
+          [' Training Energy ', 'carbon footprint', 'training energy'],
+          ['Deadline-Aware Scheduling', 'job deadline'],
+          ['gpu cluster'],
+          ['a', 'b', 'c', 'd']
+        ]
+      })
+    )
+
+    expect(parsed.constraintGroups).toEqual([
+      ['training energy', 'carbon footprint'],
+      ['deadline-aware scheduling', 'job deadline'],
+      ['gpu cluster'],
+      ['a', 'b', 'c', 'd']
+    ])
+  })
+
+  it.each([
+    ['no groups', []],
+    ['more than four groups', [['a'], ['b'], ['c'], ['d'], ['e']]],
+    ['an empty group', [['energy'], []]],
+    ['more than four terms in a group', [['a', 'b', 'c', 'd', 'e']]],
+    ['a blank term', [['energy', '   ']]],
+    ['a control character', [['energy\u0007cost']]],
+    ['an overlong term', [['x'.repeat(101)]]],
+    ['a non-array group', ['energy']],
+    ['a leading tab', [['\tenergy']]],
+    ['a trailing newline', [['energy\n']]],
+    ['a C1 control character', [['energy\u0085cost']]],
+    ['a term over 100 code units after lowercasing', [['İ'.repeat(100)]]],
+    ['one term shared by two groups', [['Energy'], ['energy']]],
+    [
+      'one term shared inside larger groups',
+      [
+        ['carbon', 'energy'],
+        ['Energy', 'deadline']
+      ]
+    ],
+    [
+      'separator-equivalent terms across groups',
+      [['deadline-aware scheduling'], ['deadline aware scheduling']]
+    ],
+    ['plural-equivalent terms across groups', [['llm'], ['llms']]],
+    ['es-plural-equivalent terms across groups', [['batches'], ['batch']]]
+  ])('rejects constraint groups with %s', (_label, constraintGroups) => {
+    expect(() => parseDiscoverPlan(JSON.stringify({ ...validPlan, constraintGroups }))).toThrow(
+      'invalid search plan'
+    )
+  })
+
+  it('keeps distinct multi-facet groups whose terms only share a subword', () => {
+    const parsed = parseDiscoverPlan(
+      JSON.stringify({
+        ...validPlan,
+        constraintGroups: [
+          ['energy', 'carbon footprint'],
+          ['energy efficiency', 'deadline-aware scheduling']
+        ]
+      })
+    )
+
+    expect(parsed.constraintGroups).toEqual([
+      ['energy', 'carbon footprint'],
+      ['energy efficiency', 'deadline-aware scheduling']
+    ])
+  })
+
+  it('round-trips an expanding-case constraint term within the length bound', () => {
+    const parsed = parseDiscoverPlan(
+      JSON.stringify({ ...validPlan, constraintGroups: [['İ'.repeat(50)], ['edge']] })
+    )
+
+    expect(parsed.constraintGroups?.[0]).toEqual(['i̇'.repeat(50)])
+    expect(parseDiscoverPlan(JSON.stringify(parsed))).toEqual(parsed)
+  })
+
+  it('keeps trimming edge whitespace controls in legacy plan fields', () => {
+    const parsed = parseDiscoverPlan(
+      JSON.stringify({
+        ...validPlan,
+        arxiv: { ...validPlan.arxiv, keywords: ['\tStructured Pruning\n'] }
+      })
+    )
+
+    expect(parsed.arxiv.keywords).toEqual(['structured pruning'])
+  })
+
   it('bounds invalid output errors without echoing model content', () => {
     const secretLikeText = 'private-token-value'
     let message = ''

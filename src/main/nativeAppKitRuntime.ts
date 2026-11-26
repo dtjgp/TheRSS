@@ -5,7 +5,7 @@ import { app, type BrowserWindow, shell } from 'electron'
 import { NativePresenter } from './appkit/presenter'
 import { NativeRecordPresenter } from './appkit/recordPresenter'
 import { NativeSettingsPresenter } from './appkit/settingsPresenter'
-import type { NativeRecord, SettingsSection } from './appkit/common'
+import type { NativeRecord, SettingsChangeScope, SettingsSection } from './appkit/common'
 import { readNativePreferences, writeNativePreferences } from './appkit/preferences'
 import type { WindowApplication } from './windowApplication'
 import { isSafeExternalUrl } from './windowApplicationRuntime'
@@ -27,7 +27,7 @@ interface WindowPresenter {
   flushPreferences(): Promise<void>
   start(): Promise<void>
   /** The main window reloads settings saved in the Settings window. */
-  settingsChanged?(): Promise<void>
+  settingsChanged?(scope?: SettingsChangeScope): Promise<void>
   /** The Settings window shows one pane. */
   select?(section: SettingsSection): void
 }
@@ -137,9 +137,9 @@ export async function attachSettingsAppKit(
     openExternal: (url) => {
       if (isSafeExternalUrl(url)) void shell.openExternal(url)
     },
-    changed: () => {
+    changed: (scope) => {
       for (const [other, session] of sessions)
-        if (other !== window) void session.presenter.settingsChanged?.().catch(() => undefined)
+        if (other !== window) void session.presenter.settingsChanged?.(scope).catch(() => undefined)
     }
   })
   if (section) presenter.select(section)

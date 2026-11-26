@@ -26,7 +26,13 @@ import type { DiscoveryItemKind, DiscoverySource } from './discovery'
 import type { LlmWikiPromotionPreview, LlmWikiPromotionReceipt } from './llmWikiPromotion'
 import type { LocalSearchResponse, LocalSearchScope } from './localSearch'
 import type { LocalResearchRecord, LocalResearchTarget } from './localResearch'
-import type { LlmWikiLibraryStatus, LlmWikiStatusRequest } from './llmWikiLibrary'
+import type {
+  LlmWikiBatchStatusRequest,
+  LlmWikiBatchStatusResponse,
+  LlmWikiLibraryStatus,
+  LlmWikiStatusRequest
+} from './llmWikiLibrary'
+import type { LlmWikiFolderChoice, LlmWikiVaultDiagnostics } from './llmWikiSettings'
 import type { LlmWikiDailyOpenRequest, LlmWikiDailySnapshot } from './llmWikiDaily'
 import type {
   SavedSourceUpdateCandidate,
@@ -155,7 +161,11 @@ export interface TheRSSApi {
   cancelLlmWikiPromotion(previewId: string): Promise<LlmWikiPromotionReceipt>
   getLatestLlmWikiPromotion(itemId: string): Promise<LlmWikiPromotionReceipt | null>
   getLlmWikiStatus(request: LlmWikiStatusRequest): Promise<LlmWikiLibraryStatus>
+  getLlmWikiStatuses?(request: LlmWikiBatchStatusRequest): Promise<LlmWikiBatchStatusResponse>
   openLlmWikiNote(arxivId: string): Promise<{ opened: true }>
+  getLlmWikiSettings?(): Promise<LlmWikiVaultDiagnostics>
+  saveLlmWikiVaultPath?(vaultPath: string | null): Promise<LlmWikiVaultDiagnostics>
+  chooseLlmWikiVaultFolder?(): Promise<LlmWikiFolderChoice>
   getLlmWikiDaily(): Promise<LlmWikiDailySnapshot>
   openLlmWikiDaily(request: LlmWikiDailyOpenRequest): Promise<{ opened: true }>
 }

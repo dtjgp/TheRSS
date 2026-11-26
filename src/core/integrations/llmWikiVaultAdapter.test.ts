@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -46,7 +46,7 @@ const requiredFileContents: Readonly<Record<string, string>> = {
 const PAPER_INDEX = 'Literature/Paper_Notes/Paper_Notes_Index.md'
 
 async function makeVault(registerScope = true): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'therss-vault-adapter-test-'))
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'therss-vault-adapter-test-')))
   roots.push(root)
   const runtimeConfig = JSON.stringify({
     schema_version: 1,
@@ -135,6 +135,22 @@ afterEach(async () => {
 })
 
 describe('LlmWikiVaultAdapter', () => {
+  it('resolves a dynamic vault root at each preparation ahead of the static root', async () => {
+    const root = await makeVault(false)
+    const options = fixtureOptions(join(root, 'missing-static-root'))
+    const resolveVaultRoot = vi.fn(() => root)
+    const adapter = new LlmWikiVaultAdapter({ ...options, resolveVaultRoot })
+
+    const prepared = await adapter.prepare(paper, {
+      previewId: '11111111-1111-4111-8111-111111111111',
+      expiresAt: '2026-08-21T10:30:00.000Z'
+    })
+
+    expect(resolveVaultRoot).toHaveBeenCalledOnce()
+    expect(prepared.preview.blockers.join(' ')).toContain('writer scope is not registered')
+    expect(options.fetchPdf).not.toHaveBeenCalled()
+  })
+
   it('completes a fixture promotion and releases its lease through the reviewed real Python runtime', async () => {
     const root = await makeVault()
     const script = await readFile(resolve('tests/fixtures/llm-wiki/automation_runtime.py'))
@@ -709,5 +725,48 @@ describe('LlmWikiVaultAdapter', () => {
       expiresAt: '2026-08-21T10:30:00.000Z'
     })
     expect(missingSection.preview.blockers.join(' ')).toContain('incomplete llm-wiki paper note')
+  })
+
+  it('confirms against the previewed vault root even if the resolver changes or throws afterwards', async () => {
+    const vaultA = await makeVault()
+    const vaultB = await makeVault()
+    let activeRoot: string | null = vaultA
+    const options = fixtureOptions(vaultB)
+    const adapter = new LlmWikiVaultAdapter({
+      ...options,
+      resolveVaultRoot: () => {
+        if (!activeRoot) throw new Error('Invalid THERSS_LLM_WIKI_PATH')
+        return activeRoot
+      }
+    })
+    const prepared = await adapter.prepare(paper, {
+      previewId: '33333333-3333-4333-8333-333333333333',
+      expiresAt: '2026-08-21T10:30:00.000Z'
+    })
+    expect(prepared.preview.ready).toBe(true)
+
+    // Switch resolver to a throwing state after preview: confirm still writes only to vaultA.
+    activeRoot = null
+    const receipt = await adapter.confirm(prepared)
+    expect(receipt.status).toBe('completed')
+    expect(await readFile(join(vaultA, receipt.notePath!), 'utf8')).toContain('2608.00001')
+    await expect(readFile(join(vaultB, receipt.notePath!), 'utf8')).rejects.toThrow()
+  })
+
+  it('rejects a configured vault root behind a symlink ancestor during prepare', async () => {
+    const parent = await realpath(await mkdtemp(join(tmpdir(), 'therss-vault-alias-')))
+    roots.push(parent)
+    const realVault = await makeVault()
+    const alias = join(parent, 'alias')
+    await symlink(dirname(realVault), alias)
+    const aliasedVault = join(alias, realVault.split('/').at(-1)!)
+    const options = fixtureOptions(aliasedVault)
+    const adapter = new LlmWikiVaultAdapter(options)
+    const prepared = await adapter.prepare(paper, {
+      previewId: '44444444-4444-4444-8444-444444444444',
+      expiresAt: '2026-08-21T10:30:00.000Z'
+    })
+    expect(prepared.preview.ready).toBe(false)
+    expect(options.runCodex).not.toHaveBeenCalled()
   })
 })

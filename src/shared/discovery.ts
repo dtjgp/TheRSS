@@ -25,7 +25,14 @@ export interface DiscoveryItem {
 }
 
 export type MatchReasonKind =
-  'keyword' | 'category' | 'topic' | 'language' | 'recency' | 'popularity' | 'exclusion'
+  | 'keyword'
+  | 'category'
+  | 'topic'
+  | 'language'
+  | 'coverage'
+  | 'recency'
+  | 'popularity'
+  | 'exclusion'
 
 export interface MatchReason {
   readonly kind: MatchReasonKind

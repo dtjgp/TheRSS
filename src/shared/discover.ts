@@ -29,6 +29,9 @@ export type DiscoverRunner = z.infer<typeof discoverRunnerSchema>
 export type DiscoverSource = z.infer<typeof discoverSourceSchema>
 export type DiscoverSearchRequest = z.infer<typeof discoverSearchRequestSchema>
 
+export type DiscoverTimeRange = 'all' | '7d' | '30d'
+export type DiscoverSortOrder = 'relevance' | 'newest'
+
 export interface DiscoverPlan {
   readonly version: 'discover-plan-v1'
   readonly intentSummary: string
@@ -42,6 +45,7 @@ export interface DiscoverPlan {
     readonly topics: readonly string[]
     readonly languages: readonly string[]
   }
+  readonly constraintGroups?: readonly (readonly string[])[]
   readonly rationale: string
 }
 
@@ -49,7 +53,7 @@ export interface DiscoverPlannerProvenance {
   readonly providerId: string
   readonly providerName: string
   readonly model: string
-  readonly promptVersion: 'semantic-discover-v1' | 'semantic-discover-v2'
+  readonly promptVersion: 'semantic-discover-v1' | 'semantic-discover-v2' | 'semantic-discover-v3'
   readonly personalizationApplied: boolean
   readonly inputHash: string
   readonly createdAt: string

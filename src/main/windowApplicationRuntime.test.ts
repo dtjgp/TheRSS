@@ -8,6 +8,7 @@ const f = vi.hoisted(() => ({
   events: new Map<string, (...args: unknown[]) => unknown>(),
   owners: new Map<unknown, unknown>(),
   choice: vi.fn(async () => ({ response: 0 })),
+  openDialog: vi.fn(async () => ({ canceled: true, filePaths: [] as string[] })),
   open: vi.fn(),
   copy: vi.fn(),
   menuPick: '',
@@ -21,7 +22,7 @@ vi.mock('electron', () => ({
     on: (channel: string, handler: (...args: unknown[]) => unknown) =>
       f.events.set(channel, handler)
   },
-  dialog: { showMessageBox: f.choice },
+  dialog: { showMessageBox: f.choice, showOpenDialog: f.openDialog },
   shell: { openExternal: f.open },
   clipboard: { writeText: f.copy },
   Menu: {
@@ -58,7 +59,34 @@ function fixture() {
   }
   const services = {
     repository: { getDashboardSnapshot: () => ({ date: 'fixture' }) },
-    promotion
+    promotion,
+    wiki: {
+      status: vi.fn(),
+      statusBatch: vi.fn(async () => ({ checkedAt: '2026-10-28T12:00:00Z', statuses: {} })),
+      open: vi.fn()
+    },
+    wikiSettings: {
+      get: vi.fn(async () => ({
+        resolvedPath: '/Users/demo/llm-wiki',
+        origin: 'default',
+        customPath: null,
+        defaultPath: '/Users/demo/llm-wiki',
+        envOverridePath: null,
+        status: 'ready',
+        checkedAt: '2026-10-28T12:00:00Z',
+        checks: []
+      })),
+      save: vi.fn(async (vaultPath: string | null) => ({
+        resolvedPath: vaultPath ?? '/Users/demo/llm-wiki',
+        origin: vaultPath ? 'custom' : 'default',
+        customPath: vaultPath,
+        defaultPath: '/Users/demo/llm-wiki',
+        envOverridePath: null,
+        status: 'ready',
+        checkedAt: '2026-10-28T12:00:00Z',
+        checks: []
+      }))
+    }
   } as unknown as ApplicationServices
   const runtime = new WindowApplicationRuntime(services, () => 'blue', false)
   const session = runtime.bind(window)
@@ -174,5 +202,43 @@ describe('native and compatibility window runtime', () => {
     expect(() => x.runtime.bind(x.window)).toThrow('shutting down')
     expect(isSafeExternalUrl('broken')).toBe(false)
     expect(isSafeExternalUrl('https://arxiv.org')).toBe(true)
+  })
+
+  it('registers llm-wiki batch status, settings, and read-only folder picker IPC handlers', async () => {
+    const x = fixture()
+    expect(
+      await f.handles.get(IPC_CHANNELS.getLlmWikiStatuses)!(x.event, { arxivIds: ['2610.00001'] })
+    ).toEqual({ checkedAt: '2026-10-28T12:00:00Z', statuses: {} })
+    expect(await f.handles.get(IPC_CHANNELS.getLlmWikiSettings)!(x.event)).toMatchObject({
+      origin: 'default',
+      status: 'ready'
+    })
+    expect(
+      await f.handles.get(IPC_CHANNELS.saveLlmWikiVaultPath)!(x.event, '/Users/demo/custom-wiki')
+    ).toMatchObject({
+      origin: 'custom',
+      customPath: '/Users/demo/custom-wiki'
+    })
+    await expect(
+      f.handles.get(IPC_CHANNELS.saveLlmWikiVaultPath)!(x.event, '../escape')
+    ).rejects.toThrow()
+    f.openDialog.mockResolvedValueOnce({ canceled: true, filePaths: [] })
+    expect(await f.handles.get(IPC_CHANNELS.chooseLlmWikiVaultFolder)!(x.event)).toEqual({
+      canceled: true,
+      path: null
+    })
+    f.openDialog.mockResolvedValueOnce({ canceled: false, filePaths: ['/Users/demo/vault'] })
+    expect(await f.handles.get(IPC_CHANNELS.chooseLlmWikiVaultFolder)!(x.event)).toEqual({
+      canceled: false,
+      path: '/Users/demo/vault'
+    })
+    expect(f.openDialog).toHaveBeenLastCalledWith(
+      x.window,
+      expect.objectContaining({ properties: ['openDirectory'] })
+    )
+    expect(() =>
+      f.handles.get(IPC_CHANNELS.chooseLlmWikiVaultFolder)!({ ...x.event, senderFrame: {} })
+    ).toThrow('Untrusted')
+    await x.runtime.shutdown()
   })
 })
