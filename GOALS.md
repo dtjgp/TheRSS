@@ -1,19 +1,19 @@
 # TheRSS Goals
 
-## Current stage: Wave 2 (`8cba8e4`, PR #106) & Wave 3 (`I5` badges/filters, `P1-6` Knowledge Base Settings, hotspot splits)
+## Current stage: Wave 3 (`29ad069`, PR #107), PR #105 (`2d1b89d`), & Wave 4A structural health
 
 Since the 2026-11-12 consolidated baseline (`692f9e4`), the following work has shipped:
 
 - **PR #102 (`b51a927`) & PR #104 (`bea65c4`)**: Hardened arXiv `429`/timeout resilience (`RequestPacer`, `arxivClient`, `smoke-sources`) and staggered weekly source-health CI.
-- **PR #103 (`42b19c9`)**: Updated Electron to `45.3.0` and 10 dev-dependency patches.
+- **PR #103 (`42b19c9`) & PR #105 (`2d1b89d`)**: Updated Electron to `45.3.0`, 10 dev-dependency patches, and 3 production minor/patch dependencies (`better-sqlite3`, `fast-xml-parser`, `lucide-react`).
 - **PR #106 (`8cba8e4`, Wave 2)**: Delivered multi-constraint Discover ranking (`semantic-discover-v3`), native AppKit I3 time-range/newest-sort controls, and opt-in live `semantic-discover-v3` evaluation (6/6 live runs passed with zero arXiv 429s; [Wave 2 QA](docs/audits/2026-11-20-retrieval-quality-and-time-sort/QA_FINAL.md)).
-- **Wave 3 (current PR)**: Delivered I5 list-level `llm-wiki` badges & filters (`Discover` & `Saved` via single bounded batch read), P1-6 native **Knowledge Base** Settings pane (vault folder picker, `env > custom > default` resolution, unified ancestor-symlink-safe root policy, read-only diagnostics with remediation hints), and hotspot splits for `researchRepository.test.ts`, `researchRepository.ts`, and `llmWikiVaultSupport.ts` ([Wave 3 contract](docs/audits/2026-11-21-wave3-wiki-badges-vault-settings/CHANGE_CONTRACT.md), [Wave 3 QA](docs/audits/2026-11-21-wave3-wiki-badges-vault-settings/QA_FINAL.md)).
+- **PR #107 (`29ad069`, Wave 3)**: Delivered I5 list-level `llm-wiki` badges & filters (`Discover` & `Saved` via single bounded batch read), P1-6 native **Knowledge Base** Settings pane (vault folder picker, `env > custom > default` resolution, unified ancestor-symlink-safe root policy, read-only diagnostics with remediation hints), hotspot splits (`researchRepository.test.ts`, `researchRepository.ts`, `llmWikiVaultSupport.ts`), and native window-split reconciliation hardening ([Wave 3 contract](docs/audits/2026-11-21-wave3-wiki-badges-vault-settings/CHANGE_CONTRACT.md), [Wave 3 QA](docs/audits/2026-11-21-wave3-wiki-badges-vault-settings/QA_FINAL.md)).
+- **Wave 4A (current PR)**: Split `native/appkit/node.mm` (1,219L → `nodeInternal.h` 58L, `nodeControls.mm` 182L, `node.mm` 427L, `nodeLayout.mm` 285L, `nodeInteraction.mm` 304L) and `src/renderer/src/App.tsx` (746L → `App.tsx` 488L, `useSidebarResize.ts` 175L, `SavedSignalsView.tsx` 183L), and hardened native window recreation (`readNativePreferences` lazy/bounded legacy migration skipping unnecessary renderer `executeJavaScript` when `native-ui.json` exists, plus concurrent `activate` window-creation guard; [Wave 4A contract](docs/audits/2026-11-26-wave4a-structural-health/CHANGE_CONTRACT.md)).
 
-Next, in order (Wave 4 & human acceptance):
+Next, in order (Wave 4B & human acceptance):
 
-1. **Structural health (pure refactors)**: Split oversized/near-800-line hotspots (`native/appkit/node.mm` ~1,207L, `src/renderer/src/App.tsx` ~746L) and isolate the native smoke group-14 window-recreation hang root cause.
-2. **P1 workflow continuations**: `P1-3` repo/news Inbox promotion (requires explicit vault writer governance scope) and versioned Daily Papers contract.
-3. **Human acceptance & later distribution**: Complete human physical-keyboard/VoiceOver acceptance and one real-paper promotion (`P0-1`); Apple Developer signing/notarization remains a later release gate.
+1. **P1 workflow continuations**: Versioned Daily Papers contract with `llm-wiki`, and `P1-3` repo/news Inbox promotion (requires explicit vault writer governance scope).
+2. **Human acceptance & later distribution**: Complete human physical-keyboard/VoiceOver acceptance and one real-paper promotion (`P0-1`); Apple Developer signing/notarization remains a later release gate.
 
 ## Previous stage: Consolidated `main` (`692f9e4`, PRs #87–#99) & multi-agent workflow
 

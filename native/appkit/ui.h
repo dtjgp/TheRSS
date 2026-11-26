@@ -139,19 +139,25 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 @property(nonatomic) BOOL revealSelection;
 - (instancetype)initWithHost:(TRHost *)host spec:(NSDictionary *)spec;
 - (void)update:(NSDictionary *)spec;
+- (TRNode *)find:(NSString *)identifier;
+- (NSSplitView *)splitView;
+- (void)updateMaterial;
+@end
+
+@interface TRNode (Layout)
 - (CGFloat)heightForWidth:(CGFloat)width;
 /** A scroll node's document height for a content width: its children stacked, each clamped to its maxWidth. */
 - (CGFloat)scrollContentHeightForWidth:(CGFloat)contentWidth;
 - (CGFloat)preferredWidth;
-- (TRNode *)find:(NSString *)identifier;
-- (NSSplitView *)splitView;
 - (void)reconcileWindowSplit;
+@end
+
+@interface TRNode (Interaction)
 - (void)trigger:(id)sender;
 - (void)activateRow;
 - (void)openRowWindow:(id)sender;
 - (void)contextRow;
 - (void)editChanged;
-- (void)updateMaterial;
 - (NSDictionary *)inspect;
 @end
 

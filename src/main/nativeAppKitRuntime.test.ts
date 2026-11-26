@@ -125,9 +125,15 @@ describe('AppKit runtime wiring', () => {
   it('migrates only known preferences and keeps input callbacks in the main process', async () => {
     const w = windowFixture()
     await attachAppKit(w.window, { api: {} } as WindowApplication)
-    expect(f.read).toHaveBeenCalledWith('/private/tmp/fixture-native-user-data/native-ui.json', {
-      sidebar: '245'
-    })
+    expect(f.read).toHaveBeenCalledWith(
+      '/private/tmp/fixture-native-user-data/native-ui.json',
+      expect.any(Function)
+    )
+    expect(w.window.webContents.executeJavaScript).not.toHaveBeenCalled()
+    const readLegacy = (f.read.mock.calls as unknown[][])[0]?.[1] as () => Promise<unknown>
+    expect(await readLegacy()).toEqual({ sidebar: '245' })
+    vi.mocked(w.window.isDestroyed).mockReturnValueOnce(true)
+    expect(await readLegacy()).toEqual({})
     const [handle, event, secret] = f.bridge.attach.mock.calls[0]!
     event('{"action":"fixture"}')
     secret('{"action":"fixture-secret"}')

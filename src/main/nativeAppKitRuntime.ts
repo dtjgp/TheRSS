@@ -74,12 +74,18 @@ export async function attachAppKit(
   const handle = window.getNativeWindowHandle()
   const path = join(app.getPath('userData'), 'native-ui.json')
   await drainNativePreferences()
-  // Only these three former preferences are migrated. The page has no scripts or UI.
-  const legacy = await window.webContents.executeJavaScript(
-    `(() => { try { return { sidebar: localStorage.getItem('therss.sidebar-width'), discover: localStorage.getItem('therss.discover-list-width'), saved: localStorage.getItem('therss.saved-list-width') } } catch { return {} } })()`
-  )
-  const preferences = await readNativePreferences(path, legacy)
+  // Only these three former preferences are migrated when native-ui.json is absent.
+  // Skipping executeJavaScript when the file already exists avoids unnecessary renderer IPC
+  // during window recreation and keeps first-launch migration bounded.
+  const preferences = await readNativePreferences(path, async () => {
+    if (window.isDestroyed()) return {}
+    return (await window.webContents.executeJavaScript(
+      `(() => { try { return { sidebar: localStorage.getItem('therss.sidebar-width'), discover: localStorage.getItem('therss.discover-list-width'), saved: localStorage.getItem('therss.saved-list-width') } } catch { return {} } })()`
+    )) as Readonly<Partial<Record<'sidebar' | 'discover' | 'saved', string | null>>>
+  })
+  if (window.isDestroyed()) return
   await writeNativePreferences(path, preferences).catch(() => undefined)
+  if (window.isDestroyed()) return
   const presenter = new NativePresenter(application.api, {
     preferences,
     locale: displayLocale(),

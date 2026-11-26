@@ -23,9 +23,39 @@ export const defaultNativePreferences: NativePreferences = {
 }
 const pendingByPath = new Map<string, Promise<void>>()
 
+export type LegacyNativePreferences = Readonly<
+  Partial<Record<'sidebar' | 'discover' | 'saved', string | null>>
+>
+export type LegacyNativePreferencesSource =
+  LegacyNativePreferences | (() => Promise<LegacyNativePreferences>)
+
+const DEFAULT_LEGACY_READ_TIMEOUT_MS = 2_000
+
+async function resolveLegacyPreferences(
+  source: LegacyNativePreferencesSource,
+  timeoutMs: number
+): Promise<LegacyNativePreferences> {
+  if (typeof source !== 'function') return source
+  let timer: ReturnType<typeof setTimeout> | null = null
+  try {
+    return await Promise.race([
+      Promise.resolve()
+        .then(() => source())
+        .catch(() => ({}) as LegacyNativePreferences),
+      new Promise<LegacyNativePreferences>((resolve) => {
+        timer = setTimeout(() => resolve({}), timeoutMs)
+        timer.unref?.()
+      })
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
 export async function readNativePreferences(
   path: string,
-  legacy: Readonly<Partial<Record<'sidebar' | 'discover' | 'saved', string | null>>> = {}
+  legacy: LegacyNativePreferencesSource = {},
+  options: { readonly legacyTimeoutMs?: number } = {}
 ): Promise<NativePreferences> {
   await pendingByPath.get(path)?.catch(() => undefined)
   try {
@@ -34,8 +64,12 @@ export async function readNativePreferences(
   } catch {
     /* Missing/corrupt UI preferences never prevent opening the research index. */
   }
+  const resolvedLegacy = await resolveLegacyPreferences(
+    legacy,
+    options.legacyTimeoutMs ?? DEFAULT_LEGACY_READ_TIMEOUT_MS
+  )
   const width = (key: 'sidebar' | 'discover' | 'saved', min: number, max: number) => {
-    const value = Number(legacy[key])
+    const value = Number(resolvedLegacy[key])
     return Number.isFinite(value) && value >= min && value <= max
       ? value
       : defaultNativePreferences[key]
