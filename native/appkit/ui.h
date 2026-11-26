@@ -132,6 +132,7 @@ struct TREvent { std::string json; bool secret; bool delivered = false; __weak T
 /** Inspection only: width events the split has emitted (preference writes). */
 @property(nonatomic) NSUInteger widthEvents;
 @property(nonatomic) CGFloat reconcileAttempt;
+@property(nonatomic) NSUInteger reconcileRetries;
 /** Fixture only: the link a Share button would have handed to the sharing picker. */
 @property(nonatomic, copy) NSString *sharedURL;
 @property(nonatomic) BOOL resetScrollAfterLayout;

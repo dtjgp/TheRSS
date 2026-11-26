@@ -614,7 +614,7 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
             sidebarItem.collapsed = node.splitTarget; [node.splitController.view layoutSubtreeIfNeeded];
           }
           // A finished show or hide earns a fresh attempt to restore the saved width.
-          node.reconcileAttempt = 0; [node reconcileWindowSplit];
+          node.reconcileAttempt = 0; node.reconcileRetries = 0; [node reconcileWindowSplit];
         }];
       } else { ++self.splitAnimation; self.animatingSplit = NO; sidebarItem.collapsed = collapsed; }
     }
@@ -1015,26 +1015,38 @@ static CGFloat TRNumber(NSDictionary *spec, NSString *key, CGFloat fallback) { r
   if (!self.lastWidth && split.bounds.size.width > 0) self.lastWidth = desired;
   // A settled layout ends this attempt. A later constraints pass or a return from a narrow
   // window must be able to restore the same target again at the same window width.
-  if (fabs(actual - desired) <= 0.5) { self.reconcileAttempt = 0; return; }
-  // One attempt per unresolved split width and target: when the window cannot fit the target,
-  // AppKit keeps its own width and the next layout must not schedule the same move again.
+  if (fabs(actual - desired) <= 0.5) { self.reconcileAttempt = 0; self.reconcileRetries = 0; return; }
+  // Bounded attempts per unresolved split width and target: a narrow window where AppKit keeps
+  // its minimum width stops quickly without looping, while a widening resize can recover from a
+  // transient constraints pass.
   CGFloat attempt = split.bounds.size.width * 4096 + desired;
-  if (room > 0 && fabs(actual - desired) > 0.5 && !self.reconcilePending && attempt != self.reconcileAttempt) {
-    self.reconcilePending = YES; self.reconcileAttempt = attempt;
+  if (attempt != self.reconcileAttempt) { self.reconcileAttempt = attempt; self.reconcileRetries = 0; }
+  if (room > 0 && fabs(actual - desired) > 0.5 && !self.reconcilePending && self.reconcileRetries < 3) {
+    self.reconcilePending = YES; self.reconcileRetries++;
     __weak TRNode *weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
-      TRNode *node = weakSelf; if (!node) return;
+      TRNode *node = weakSelf; if (!node || node.host.disposed) return;
       node.reconcilePending = NO;
-      if (!node.splitController || node.splitController.splitViewItems.firstObject.collapsed) return;
+      if (!node.splitController || node.animatingSplit || [node.spec[@"compactPane"] isEqual:@"detail"] || node.splitController.splitViewItems.firstObject.collapsed) return;
+      // Flush pending controller layout before reading split bounds and moving the divider.
+      node.applying = YES;
+      [node.splitController.view layoutSubtreeIfNeeded];
       // Re-read the target: the window or preference may have changed since scheduling.
       NSSplitView *current = node.splitController.splitView;
       CGFloat space = current.bounds.size.width - TRNumber(node.spec,@"minContentWidth",200) - current.dividerThickness;
       CGFloat target = MAX(TRNumber(node.spec,@"minWidth",180), MIN(node.preferredSplit, space));
-      node.lastWidth = target; node.applying = YES;
-      [current setPosition:target ofDividerAtIndex:0]; [current layoutSubtreeIfNeeded];
+      node.lastWidth = target;
+      [current setPosition:target ofDividerAtIndex:0]; [node.splitController.view layoutSubtreeIfNeeded];
       node.applying = NO;
+      CGFloat updated = current.arrangedSubviews.firstObject.frame.size.width;
       // The controller need not issue another viewDidLayout after a successful move.
-      if (fabs(current.arrangedSubviews.firstObject.frame.size.width - target) <= 0.5) node.reconcileAttempt = 0;
+      if (fabs(updated - target) <= 0.5) { node.reconcileAttempt = 0; node.reconcileRetries = 0; }
+      else if (updated < target - 0.5 && space >= target && node.reconcileRetries < 3) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 30 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+          TRNode *retry = weakSelf; if (!retry || retry.host.disposed) return;
+          [retry reconcileWindowSplit];
+        });
+      }
     });
   }
 }

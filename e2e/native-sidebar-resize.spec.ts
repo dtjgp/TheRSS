@@ -28,10 +28,13 @@ async function sidebar(
           JSON.stringify({ id: 'native-workspace', action: request.action, value: request.width })
         )
       const state = JSON.parse(binding.inspect(handle)) as {
-        root: { widthEvents: number }
-        toolbar: { sidebarDivider: number }
+        root?: { widthEvents?: number } | null
+        toolbar?: { sidebarDivider?: number } | null
       }
-      return { divider: state.toolbar.sidebarDivider, widthEvents: state.root.widthEvents }
+      return {
+        divider: state.toolbar?.sidebarDivider ?? 0,
+        widthEvents: state.root?.widthEvents ?? 0
+      }
     },
     { action, width }
   )

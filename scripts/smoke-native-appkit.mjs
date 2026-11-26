@@ -1538,8 +1538,11 @@ try {
     await application.evaluate(() =>
       globalThis.__nativeWindow.setBounds({ width: 1360, height: 880 })
     )
-    await delay(150)
-    const widened = sidebarFits(await inspect(), 248)
+    let widened = sidebarFits(await inspect(), 248)
+    for (let attempt = 0; attempt < 40 && !widened.ok; attempt++) {
+      await delay(50)
+      widened = sidebarFits(await inspect(), 248)
+    }
     assert(widened.ok, `Widening restores the saved sidebar width: ${JSON.stringify(widened)}`)
     assert.equal(
       JSON.parse(await readFile(join(profile, 'native-ui.json'), 'utf8')).sidebar,
