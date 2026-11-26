@@ -159,7 +159,12 @@ const api: TheRSSApi = {
   getLlmWikiDaily: () => ipcRenderer.invoke(IPC_CHANNELS.getLlmWikiDaily),
   openLlmWikiDaily: (request) => ipcRenderer.invoke(IPC_CHANNELS.openLlmWikiDaily, request),
   getLlmWikiStatus: (request) => ipcRenderer.invoke(IPC_CHANNELS.getLlmWikiStatus, request),
-  openLlmWikiNote: (arxivId) => ipcRenderer.invoke(IPC_CHANNELS.openLlmWikiNote, arxivId)
+  getLlmWikiStatuses: (request) => ipcRenderer.invoke(IPC_CHANNELS.getLlmWikiStatuses, request),
+  openLlmWikiNote: (arxivId) => ipcRenderer.invoke(IPC_CHANNELS.openLlmWikiNote, arxivId),
+  getLlmWikiSettings: () => ipcRenderer.invoke(IPC_CHANNELS.getLlmWikiSettings),
+  saveLlmWikiVaultPath: (vaultPath) =>
+    ipcRenderer.invoke(IPC_CHANNELS.saveLlmWikiVaultPath, vaultPath),
+  chooseLlmWikiVaultFolder: () => ipcRenderer.invoke(IPC_CHANNELS.chooseLlmWikiVaultFolder)
 }
 
 contextBridge.exposeInMainWorld('therss', api)

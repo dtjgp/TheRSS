@@ -15,8 +15,7 @@ import type {
   SourceHealth,
   TriageState
 } from '../../shared/api'
-import type { ModelProviderSummary } from '../../shared/models'
-import type { AnalysisArtifact } from '../../shared/models'
+import type { AnalysisArtifact, ModelProviderSummary } from '../../shared/models'
 import {
   discoverPersonalizationPromptSchema,
   type DiscoverPersonalizationSettings
@@ -26,47 +25,25 @@ import { publicationIntervalEnd } from '../../shared/sourceDate'
 import { readSourceHealthDetails, type SourceRunRow } from './sourceHealthStore'
 import { buildAnalyticsSnapshot } from './analyticsRepository'
 import { migrateResearchDatabase } from './researchSchema'
-import {
-  clearModelProviderCredential,
-  getModelProvider,
-  replaceModelProviderCredential,
-  saveModelProvider,
-  type StoredModelProvider
-} from './modelProviderStore'
-import {
-  getAnalysisArtifact as readAnalysisArtifact,
-  getLatestAnalysis,
-  getLatestLlmWikiPromotionReceipt,
-  reconcileInterruptedLlmWikiPromotions,
-  saveAnalysis,
-  saveLlmWikiPromotionReceipt
-} from './analysisArtifactStore'
+import { readLlmWikiVaultPath, saveLlmWikiVaultPath } from './llmWikiSettingsStore'
+import * as modelProviders from './modelProviderStore'
+import type { StoredModelProvider } from './modelProviderStore'
+import * as analysisArtifacts from './analysisArtifactStore'
 import { parseStringList } from './rowParsers'
 import { searchLocal as searchPersistedLocal } from './localSearchStore'
 import type { LocalSearchResponse, LocalSearchScope } from '../../shared/localSearch'
 import type { DiscoverSourcePreference } from '../../shared/discoverSourcePreference'
-import {
-  readDiscoverSourcePreference,
-  saveDiscoverSourcePreference as saveStoredDiscoverSourcePreference
-} from './discoverSourcePreferenceStore'
+import * as discoverSourcePreferences from './discoverSourcePreferenceStore'
 import {
   savedSourceUpdateRequestSchema,
   type SavedSourceUpdateRequest
 } from '../../shared/savedSourceUpdate'
 import { getSavedSourceUpdate, applySavedSourceUpdate } from './savedSourceUpdateStore'
-import {
-  getLatestDiscoverSnapshot as readLatestDiscoverSnapshot,
-  getDiscoverSnapshot as readDiscoverSnapshot,
-  materializeDiscoverResultForAnalysis as materializeResultForAnalysis,
-  materializeDiscoverResultForLlmWikiPromotion as materializeResultForLlmWikiPromotion,
-  saveDiscoverResult as savePersistedDiscoverResult,
-  saveDiscoverSnapshot as savePersistedDiscoverSnapshot
-} from './discoverSnapshotStore'
-
-// Re-exported so consumers keep importing the storage facade rather than its internals.
-export type { StoredModelProvider } from './modelProviderStore'
+import * as discoverSnapshots from './discoverSnapshotStore'
 import { ACTIVE_TODAY_SOURCE_IDS, isDiscoverySource } from '../../shared/sourceIdentity'
 import type { LlmWikiPromotionReceipt } from '../../shared/llmWikiPromotion'
+
+export type { StoredModelProvider }
 
 const TRIAGE_STATES = new Set<TriageState>(['new', 'viewed', 'saved', 'dismissed'])
 type PersistedSourceHealth = Exclude<SourceHealth, 'no_results'>
@@ -91,25 +68,33 @@ interface DashboardRow {
   reasons_json: string
 }
 
-interface SourceContentRow extends DashboardRow {
-  updated_at: string
-}
+type SourceContentRow = DashboardRow & { updated_at: string }
 
-interface DiscoveryRecordRow {
-  id: string
-  source: DiscoverySource
-  item_kind: DiscoveryItemKind
+type DiscoveryRecordRow = Omit<SourceContentRow, 'score' | 'triage_state' | 'reasons_json'> & {
   external_id: string
-  title: string
-  summary: string
-  url: string
-  published_at: string
-  updated_at: string
   authors_json: string
   categories_json: string
   topics_json: string
   language: string | null
   stars: number | null
+}
+
+const DASHBOARD_COLUMNS =
+  'id, source, item_kind, title, summary, url, published_at, score, triage_state, reasons_json'
+
+function dashboardItem(row: DashboardRow): DashboardItem {
+  return {
+    id: row.id,
+    source: row.source,
+    kind: row.item_kind,
+    title: row.title,
+    summary: row.summary,
+    url: row.url,
+    publishedAt: row.published_at,
+    score: row.score,
+    triageState: row.triage_state,
+    reasons: parseStringList(row.reasons_json)
+  }
 }
 
 export class ResearchRepository {
@@ -160,18 +145,22 @@ export class ResearchRepository {
 
   getDiscoverPersonalizationSettings(): DiscoverPersonalizationSettings | null {
     const row = this.#database
-      .prepare(
-        `SELECT prompt, updated_at
-         FROM discover_personalization WHERE singleton_id = 1`
-      )
+      .prepare('SELECT prompt, updated_at FROM discover_personalization WHERE singleton_id = 1')
       .get() as { prompt: string; updated_at: string } | undefined
 
-    return row
-      ? {
-          prompt: discoverPersonalizationPromptSchema.parse(row.prompt),
-          updatedAt: row.updated_at
-        }
-      : null
+    if (!row) return null
+    return {
+      prompt: discoverPersonalizationPromptSchema.parse(row.prompt),
+      updatedAt: row.updated_at
+    }
+  }
+
+  getLlmWikiVaultPath(): string | null {
+    return readLlmWikiVaultPath(this.#database)
+  }
+
+  saveLlmWikiVaultPath(vaultPath: string | null): string | null {
+    return saveLlmWikiVaultPath(this.#database, vaultPath)
   }
 
   #upsertRankedItems(
@@ -285,8 +274,7 @@ export class ResearchRepository {
     const sourcePlaceholders = ACTIVE_TODAY_SOURCE_IDS.map(() => '?').join(', ')
     const rows = this.#database
       .prepare(
-        `SELECT id, source, item_kind, title, summary, url, published_at, score,
-                triage_state, reasons_json
+        `SELECT ${DASHBOARD_COLUMNS}
          FROM discovery_item
          WHERE in_daily_inbox = 1
            AND source IN (${sourcePlaceholders})
@@ -297,18 +285,7 @@ export class ResearchRepository {
       )
       .all(...ACTIVE_TODAY_SOURCE_IDS, limit) as DashboardRow[]
 
-    return rows.map((row) => ({
-      id: row.id,
-      source: row.source,
-      kind: row.item_kind,
-      title: row.title,
-      summary: row.summary,
-      url: row.url,
-      publishedAt: row.published_at,
-      score: row.score,
-      triageState: row.triage_state,
-      reasons: parseStringList(row.reasons_json)
-    }))
+    return rows.map(dashboardItem)
   }
 
   listSavedItems(limit = 100): DashboardItem[] {
@@ -318,8 +295,7 @@ export class ResearchRepository {
 
     const rows = this.#database
       .prepare(
-        `SELECT id, source, item_kind, title, summary, url, published_at, score,
-                triage_state, reasons_json
+        `SELECT ${DASHBOARD_COLUMNS}
          FROM discovery_item
          WHERE excluded = 0 AND triage_state = 'saved'
          ORDER BY triage_updated_at DESC, score DESC, id ASC
@@ -327,18 +303,7 @@ export class ResearchRepository {
       )
       .all(limit) as DashboardRow[]
 
-    return rows.map((row) => ({
-      id: row.id,
-      source: row.source,
-      kind: row.item_kind,
-      title: row.title,
-      summary: row.summary,
-      url: row.url,
-      publishedAt: row.published_at,
-      score: row.score,
-      triageState: row.triage_state,
-      reasons: parseStringList(row.reasons_json)
-    }))
+    return rows.map(dashboardItem)
   }
 
   getSourceContentSnapshot(source: DiscoverySource, now = new Date()): SourceContentSnapshot {
@@ -370,8 +335,7 @@ export class ResearchRepository {
         : '(published_at >= ? OR updated_at >= ?)'
     const rows = this.#database
       .prepare(
-        `SELECT id, source, item_kind, title, summary, url, published_at, updated_at, score,
-                triage_state, reasons_json
+        `SELECT ${DASHBOARD_COLUMNS}, updated_at
          FROM discovery_item
          WHERE source = ? AND excluded = 0 AND ${datePredicate}
          ORDER BY CASE WHEN updated_at > published_at THEN updated_at ELSE published_at END DESC,
@@ -407,19 +371,7 @@ export class ResearchRepository {
               publishedAt: row.published_at
             }) >= start.getTime()
         )
-        .map((row) => ({
-          id: row.id,
-          source: row.source,
-          kind: row.item_kind,
-          title: row.title,
-          summary: row.summary,
-          url: row.url,
-          publishedAt: row.published_at,
-          updatedAt: row.updated_at,
-          score: row.score,
-          triageState: row.triage_state,
-          reasons: parseStringList(row.reasons_json)
-        }))
+        .map((row) => ({ ...dashboardItem(row), updatedAt: row.updated_at }))
     }
   }
 
@@ -438,27 +390,10 @@ export class ResearchRepository {
 
   getDiscoveryItem(id: string): DashboardItem | null {
     const row = this.#database
-      .prepare(
-        `SELECT id, source, item_kind, title, summary, url, published_at, score,
-                triage_state, reasons_json
-         FROM discovery_item WHERE id = ?`
-      )
+      .prepare(`SELECT ${DASHBOARD_COLUMNS} FROM discovery_item WHERE id = ?`)
       .get(id) as DashboardRow | undefined
 
-    return row
-      ? {
-          id: row.id,
-          source: row.source,
-          kind: row.item_kind,
-          title: row.title,
-          summary: row.summary,
-          url: row.url,
-          publishedAt: row.published_at,
-          score: row.score,
-          triageState: row.triage_state,
-          reasons: parseStringList(row.reasons_json)
-        }
-      : null
+    return row ? dashboardItem(row) : null
   }
 
   getSavedSourceUpdate(id: string) {
@@ -507,23 +442,27 @@ export class ResearchRepository {
   }
 
   saveDiscoverSnapshot(snapshot: DiscoverSnapshot): void {
-    savePersistedDiscoverSnapshot(this.#database, snapshot)
+    discoverSnapshots.saveDiscoverSnapshot(this.#database, snapshot)
   }
 
   getLatestDiscoverSnapshot(): DiscoverSnapshot | null {
-    return readLatestDiscoverSnapshot(this.#database)
+    return discoverSnapshots.getLatestDiscoverSnapshot(this.#database)
   }
   getDiscoverSnapshot(id: string): DiscoverSnapshot | null {
-    return readDiscoverSnapshot(this.#database, id)
+    return discoverSnapshots.getDiscoverSnapshot(this.#database, id)
   }
 
   getDiscoverSourcePreference(): DiscoverSourcePreference {
-    return readDiscoverSourcePreference(this.#database)
+    return discoverSourcePreferences.readDiscoverSourcePreference(this.#database)
   }
 
   /** Validates 1–22 unique current sources; an invalid request writes nothing. */
   saveDiscoverSourcePreference(sources: unknown, updatedAt?: string): DiscoverSourcePreference {
-    return saveStoredDiscoverSourcePreference(this.#database, sources, updatedAt)
+    return discoverSourcePreferences.saveDiscoverSourcePreference(
+      this.#database,
+      sources,
+      updatedAt
+    )
   }
 
   searchLocal(query: string, scope?: LocalSearchScope): LocalSearchResponse {
@@ -535,7 +474,7 @@ export class ResearchRepository {
     itemId: string,
     updatedAt = new Date().toISOString()
   ): void {
-    savePersistedDiscoverResult(this.#database, sessionId, itemId, updatedAt)
+    discoverSnapshots.saveDiscoverResult(this.#database, sessionId, itemId, updatedAt)
   }
 
   materializeDiscoverResultForAnalysis(
@@ -543,7 +482,12 @@ export class ResearchRepository {
     itemId: string,
     updatedAt = new Date().toISOString()
   ): void {
-    materializeResultForAnalysis(this.#database, sessionId, itemId, updatedAt)
+    discoverSnapshots.materializeDiscoverResultForAnalysis(
+      this.#database,
+      sessionId,
+      itemId,
+      updatedAt
+    )
   }
 
   materializeDiscoverResultForLlmWikiPromotion(
@@ -551,7 +495,12 @@ export class ResearchRepository {
     itemId: string,
     updatedAt = new Date().toISOString()
   ): void {
-    materializeResultForLlmWikiPromotion(this.#database, sessionId, itemId, updatedAt)
+    discoverSnapshots.materializeDiscoverResultForLlmWikiPromotion(
+      this.#database,
+      sessionId,
+      itemId,
+      updatedAt
+    )
   }
 
   recordSourceRun(
@@ -563,9 +512,7 @@ export class ResearchRepository {
     recordSearchEvent = true
   ): void {
     if (!isDiscoverySource(source)) throw new Error(`Unsupported discovery source: ${source}`)
-    if (!SOURCE_HEALTH.has(status)) {
-      throw new Error(`Unsupported source health: ${status}`)
-    }
+    if (!SOURCE_HEALTH.has(status)) throw new Error(`Unsupported source health: ${status}`)
     if (resultCount !== null && (!Number.isInteger(resultCount) || resultCount < 0)) {
       throw new Error('Source result count must be a non-negative integer')
     }
@@ -603,49 +550,46 @@ export class ResearchRepository {
     profile: Omit<ModelProviderSummary, 'hasCredential'>,
     secretCiphertext: Buffer | undefined
   ): StoredModelProvider {
-    return saveModelProvider(this.#database, profile, secretCiphertext)
+    return modelProviders.saveModelProvider(this.#database, profile, secretCiphertext)
   }
 
-  getModelProvider(id = 'default'): StoredModelProvider | null {
-    return getModelProvider(this.#database, id)
+  getModelProvider(id?: string): StoredModelProvider | null {
+    return modelProviders.getModelProvider(this.#database, id)
   }
 
-  clearModelProviderCredential(
-    id = 'default',
-    updatedAt = new Date().toISOString()
-  ): StoredModelProvider {
-    return clearModelProviderCredential(this.#database, id, updatedAt)
+  clearModelProviderCredential(id?: string, updatedAt?: string): StoredModelProvider {
+    return modelProviders.clearModelProviderCredential(this.#database, id, updatedAt)
   }
 
   replaceModelProviderCredential(id: string, expected: Buffer, replacement: Buffer): boolean {
-    return replaceModelProviderCredential(this.#database, id, expected, replacement)
+    return modelProviders.replaceModelProviderCredential(this.#database, id, expected, replacement)
   }
 
   saveAnalysis(
     artifact: AnalysisArtifact,
     usage: { readonly inputTokens: number | null; readonly outputTokens: number | null }
   ): void {
-    saveAnalysis(this.#database, artifact, usage)
+    analysisArtifacts.saveAnalysis(this.#database, artifact, usage)
   }
 
   saveLlmWikiPromotionReceipt(receipt: LlmWikiPromotionReceipt): void {
-    saveLlmWikiPromotionReceipt(this.#database, receipt)
+    analysisArtifacts.saveLlmWikiPromotionReceipt(this.#database, receipt)
   }
 
   getLatestLlmWikiPromotionReceipt(itemId: string): LlmWikiPromotionReceipt | null {
-    return getLatestLlmWikiPromotionReceipt(this.#database, itemId)
+    return analysisArtifacts.getLatestLlmWikiPromotionReceipt(this.#database, itemId)
   }
 
-  reconcileInterruptedLlmWikiPromotions(completedAt = new Date().toISOString()): number {
-    return reconcileInterruptedLlmWikiPromotions(this.#database, completedAt)
+  reconcileInterruptedLlmWikiPromotions(completedAt?: string): number {
+    return analysisArtifacts.reconcileInterruptedLlmWikiPromotions(this.#database, completedAt)
   }
 
   getLatestAnalysis(itemId: string): AnalysisArtifact | null {
-    return getLatestAnalysis(this.#database, itemId)
+    return analysisArtifacts.getLatestAnalysis(this.#database, itemId)
   }
 
   getAnalysisArtifact(analysisId: string): AnalysisArtifact | null {
-    return readAnalysisArtifact(this.#database, analysisId)
+    return analysisArtifacts.getAnalysisArtifact(this.#database, analysisId)
   }
 
   getDashboardSnapshot(now = new Date()): DashboardSnapshot {
@@ -662,43 +606,33 @@ export class ResearchRepository {
     const configuredSources = new Set<DiscoverySource>(
       ACTIVE_TODAY_SOURCE_IDS.filter((source) => source !== 'arxiv' && source !== 'github')
     )
-    if (profile && profile.arxiv.categories.length + profile.arxiv.keywords.length > 0) {
-      configuredSources.add('arxiv')
-    }
-    if (
-      profile &&
-      profile.github.keywords.length +
-        profile.github.topics.length +
-        profile.github.languages.length >
-        0
-    ) {
+    const arxiv = profile?.arxiv
+    const github = profile?.github
+    if (arxiv && (arxiv.categories.length || arxiv.keywords.length)) configuredSources.add('arxiv')
+    if (github && (github.keywords.length || github.topics.length || github.languages.length)) {
       configuredSources.add('github')
     }
-    const completedRuns = [...configuredSources].map((source) =>
-      sourceRuns.find((run) => run.source === source)
-    )
-    const refreshTimes = completedRuns.every(
-      (run) => run && run.status !== 'idle' && run.status !== 'refreshing'
-    )
-      ? completedRuns.map((run) => run!.completed_at).sort()
-      : []
+    const refreshTimes = [...configuredSources].map((source) => {
+      const run = sourceRuns.find((entry) => entry.source === source)
+      return run && run.status !== 'idle' && run.status !== 'refreshing' ? run.completed_at : null
+    })
+    const lastRefreshAt = refreshTimes.includes(null) ? null : (refreshTimes.sort().at(-1) ?? null)
+    const countBySource = (source: DiscoverySource) =>
+      items.filter((item) => item.source === source).length
     const bySource = Object.fromEntries(
-      ACTIVE_TODAY_SOURCE_IDS.map((source) => [
-        source,
-        items.filter((item) => item.source === source).length
-      ])
+      ACTIVE_TODAY_SOURCE_IDS.map((source) => [source, countBySource(source)])
     ) as NonNullable<DashboardSnapshot['counts']['bySource']>
 
     return {
       date: localDateKey(now),
       profileName: profile?.name ?? null,
-      lastRefreshAt: refreshTimes.at(-1) ?? null,
+      lastRefreshAt,
       sourceHealth,
       sourceHealthDetails,
       counts: {
         total: items.length,
-        arxiv: items.filter((item) => item.source === 'arxiv').length,
-        github: items.filter((item) => item.source === 'github').length,
+        arxiv: countBySource('arxiv'),
+        github: countBySource('github'),
         other: items.filter((item) => item.source !== 'arxiv' && item.source !== 'github').length,
         bySource,
         unread: items.filter((item) => item.triageState === 'new').length

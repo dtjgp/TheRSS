@@ -36,7 +36,8 @@ describe('Settings window', () => {
     })
     expect(parsed.toolbar.items.map((item) => [item.id, item.title, item.symbol])).toEqual([
       ['settings-personal', 'Personal Context', 'person.crop.circle'],
-      ['settings-provider', 'Model Provider', 'cpu']
+      ['settings-provider', 'Model Provider', 'cpu'],
+      ['settings-wiki', 'Knowledge Base', 'square.stack']
     ])
     expect(h.find(parsed.root, 'personal-form')).toBeDefined()
     expect(h.find(parsed.root, 'settings-tab')).toBeUndefined()

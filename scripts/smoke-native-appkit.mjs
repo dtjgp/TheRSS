@@ -946,6 +946,7 @@ try {
     await click('saved-reset-filter')
     await wait('saved-items')
     await act('saved-source-filter', 'choose', 'github')
+    assert.equal(find(await inspect().then((s) => s.root), 'saved-wiki-filter')?.selected, 'all')
     await act('saved-runner', 'choose', 'codex')
     await click('saved-analyze')
     const saved = await wait('saved-analysis')
@@ -968,7 +969,8 @@ try {
         opened.toolbar.items.map((item) => [item.id, item.label, item.hasImage]),
         [
           ['settings-personal', 'Personal Context', true],
-          ['settings-provider', 'Model Provider', true]
+          ['settings-provider', 'Model Provider', true],
+          ['settings-wiki', 'Knowledge Base', true]
         ]
       )
       assert(!find(opened.root, 'settings-tab'), 'Panes are toolbar items, not a pop-up')
@@ -1018,6 +1020,11 @@ try {
       await click('settings-provider')
       const provider = await paneFits('Model Provider', 'provider-form')
       assert(find(provider.root, 'agent-status-claude'), 'Local agents are part of the fitted pane')
+      top = await keepsTop(top)
+      await click('settings-wiki')
+      const wiki = await paneFits('Knowledge Base', 'wiki-form')
+      assert.match(find(wiki.root, 'wiki-status').text, /Status: Ready/)
+      assert(find(wiki.root, 'wiki-recheck')?.enabled, 'Knowledge Base Recheck button is enabled')
       top = await keepsTop(top)
       await click('settings-personal')
       await paneFits('Personal Context', 'personal-form')
@@ -1531,8 +1538,11 @@ try {
     await application.evaluate(() =>
       globalThis.__nativeWindow.setBounds({ width: 1360, height: 880 })
     )
-    await delay(150)
-    const widened = sidebarFits(await inspect(), 248)
+    let widened = sidebarFits(await inspect(), 248)
+    for (let attempt = 0; attempt < 40 && !widened.ok; attempt++) {
+      await delay(50)
+      widened = sidebarFits(await inspect(), 248)
+    }
     assert(widened.ok, `Widening restores the saved sidebar width: ${JSON.stringify(widened)}`)
     assert.equal(
       JSON.parse(await readFile(join(profile, 'native-ui.json'), 'utf8')).sidebar,

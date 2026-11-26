@@ -11,6 +11,7 @@ import {
   filterAndSortDiscoverItems,
   type DiscoverKindFilter
 } from '../../shared/discoverViewFilter'
+import { llmWikiArxivId, type LlmWikiListFilter } from '../../shared/llmWikiLibrary'
 import type { AnalysisRunner } from '../../shared/models'
 import { sourceDisplayName } from '../../shared/sourceIdentity'
 import {
@@ -41,6 +42,7 @@ import {
   discoverResultCount,
   discoverResultsToolbar
 } from './discoverToolbar'
+import { WikiListState } from './wikiListState'
 import {
   describeDiscoverRun,
   discoverOutcomeLabel,
@@ -50,6 +52,7 @@ import {
 export class DiscoverScreen implements NativeScreen {
   readonly reader: ResearchReader
   private readonly controls: Controls
+  private readonly wikiList: WikiListState
   private readonly unsubscribe: () => void
   private query = ''
   private runner: AnalysisRunner = 'model-provider'
@@ -58,6 +61,7 @@ export class DiscoverScreen implements NativeScreen {
   private filter: DiscoverKindFilter = 'all'
   private timeRange: DiscoverTimeRange = 'all'
   private sortOrder: DiscoverSortOrder = 'relevance'
+  private wikiFilter: LlmWikiListFilter = 'all'
   private selected = ''
   private activeRun: string | null = null
   private canceling = false
@@ -76,6 +80,7 @@ export class DiscoverScreen implements NativeScreen {
     private readonly triage: TriageHistory
   ) {
     this.controls = new Controls(context)
+    this.wikiList = new WikiListState(context)
     this.sourceScope = new DiscoverSourceScope(context, () => !!this.activeRun)
     this.dailyPapers = new DailyPapersScreen(context)
     this.reader = new ResearchReader(context, 'discover', triage)
@@ -118,11 +123,19 @@ export class DiscoverScreen implements NativeScreen {
   }
   llmWikiChanged(arxivId: string): void {
     this.reader.llmWikiChanged(arxivId)
+    this.wikiList.refreshOne(arxivId)
+  }
+  llmWikiVaultChanged(): void {
+    this.wikiList.invalidateAll()
+    const current = this.snapshot?.items.find((item) => item.id === this.selected)
+    const arxivId = current ? llmWikiArxivId(current) : null
+    if (arxivId) this.reader.llmWikiChanged(arxivId)
   }
   dispose(): void {
     this.disposed = true
     this.version++
     this.unsubscribe()
+    this.wikiList.dispose()
     this.sourceScope.dispose()
     this.dailyPapers.leave()
     this.reader.dispose()
@@ -145,6 +158,7 @@ export class DiscoverScreen implements NativeScreen {
       filter: this.filter,
       timeRange: this.timeRange,
       sortOrder: this.sortOrder,
+      wikiFilter: this.wikiFilter,
       selected: this.selected,
       message: this.message,
       progress: this.progress,
@@ -160,6 +174,7 @@ export class DiscoverScreen implements NativeScreen {
     this.filter = 'all'
     this.timeRange = 'all'
     this.sortOrder = 'relevance'
+    this.wikiFilter = 'all'
     this.selected = itemId
     this.sourceScope.close()
     this.message = ''
@@ -184,12 +199,14 @@ export class DiscoverScreen implements NativeScreen {
     const b = this.controls,
       busy = !!this.activeRun,
       snapshot = this.snapshot
+    if (snapshot) this.wikiList.sync(snapshot.items)
     // NSTableView creates row views lazily, so every filtered and sorted result is listed.
-    const visible = filterAndSortDiscoverItems(snapshot?.items ?? [], {
+    const preWikiVisible = filterAndSortDiscoverItems(snapshot?.items ?? [], {
       kind: this.filter,
       timeRange: this.timeRange,
       sortOrder: this.sortOrder
     })
+    const visible = preWikiVisible.filter((item) => this.wikiList.matches(item, this.wikiFilter))
     const selected = visible.find((item) => item.id === this.selected) ?? visible[0] ?? null
     this.selected = selected?.id ?? ''
     this.reader.runner = this.runner
@@ -217,6 +234,7 @@ export class DiscoverScreen implements NativeScreen {
                 filter: this.filter,
                 timeRange: this.timeRange,
                 sortOrder: this.sortOrder,
+                wikiFilter: this.wikiFilter,
                 retryCount: retryable.length,
                 busy,
                 onFilter: (filter) => {
@@ -230,6 +248,10 @@ export class DiscoverScreen implements NativeScreen {
                 },
                 onSort: (sortOrder) => {
                   this.sortOrder = sortOrder
+                  this.context.redraw()
+                },
+                onWikiFilter: (wikiFilter) => {
+                  this.wikiFilter = wikiFilter
                   this.context.redraw()
                 },
                 onDetails: () => this.details(),
@@ -257,7 +279,10 @@ export class DiscoverScreen implements NativeScreen {
                           return {
                             id: item.id,
                             title: item.title,
-                            subtitle: researchSubtitle(item, this.context.locale),
+                            subtitle: this.wikiList.subtitle(
+                              item,
+                              researchSubtitle(item, this.context.locale)
+                            ),
                             ...researchRowGlyph(item.kind),
                             ...researchRowDrag(item),
                             ...(saved ? { saved: true } : {})
@@ -299,9 +324,12 @@ export class DiscoverScreen implements NativeScreen {
                 snapshot,
                 filter: this.filter,
                 timeRange: this.timeRange,
+                wikiFilter: this.wikiFilter,
+                wikiSummary: this.wikiList.summarize(preWikiVisible),
                 onShowAll: () => {
                   this.filter = 'all'
                   this.timeRange = 'all'
+                  this.wikiFilter = 'all'
                   this.selected = ''
                   this.context.redraw()
                 }
@@ -559,6 +587,7 @@ export class DiscoverScreen implements NativeScreen {
       this.filter = 'all'
       this.timeRange = 'all'
       this.sortOrder = 'relevance'
+      this.wikiFilter = 'all'
       this.selected = ''
       if (result.status === 'canceled')
         this.message = 'Search canceled. Completed source results were preserved.'

@@ -7,8 +7,11 @@ import {
   type DiscoverTimeRange
 } from '../../shared/discover'
 import type { DiscoverKindFilter } from '../../shared/discoverViewFilter'
+import type { LlmWikiListFilter } from '../../shared/llmWikiLibrary'
+import { LLM_WIKI_LIST_FILTER_OPTIONS } from '../../shared/llmWikiListFilter'
 import { Controls, emptyState, label, row } from './common'
 import type { NativeNode, NativeOption } from './presentation'
+import type { WikiListSummary } from './wikiListState'
 
 const KIND_NAMES: Record<Exclude<DiscoverKindFilter, 'all'>, string> = {
   paper: 'papers',
@@ -64,11 +67,13 @@ export interface DiscoverToolbarOptions {
   readonly filter: DiscoverKindFilter
   readonly timeRange: DiscoverTimeRange
   readonly sortOrder: DiscoverSortOrder
+  readonly wikiFilter: LlmWikiListFilter
   readonly retryCount: number
   readonly busy: boolean
   readonly onFilter: (filter: DiscoverKindFilter) => void
   readonly onTimeRange: (timeRange: DiscoverTimeRange) => void
   readonly onSort: (sortOrder: DiscoverSortOrder) => void
+  readonly onWikiFilter: (filter: LlmWikiListFilter) => void
   readonly onDetails: () => void
   readonly onRetry: () => void | Promise<void>
 }
@@ -99,6 +104,14 @@ export function discoverResultsToolbar(options: DiscoverToolbarOptions): NativeN
       (value) => options.onTimeRange(value as DiscoverTimeRange),
       { help: 'Filter results by publication or update date' }
     ),
+    b.select(
+      'discover-wiki-filter',
+      'llm-wiki filter',
+      options.wikiFilter,
+      LLM_WIKI_LIST_FILTER_OPTIONS,
+      (value) => options.onWikiFilter(value as LlmWikiListFilter),
+      { help: 'Filter results by local llm-wiki membership' }
+    ),
     b.segmented(
       'discover-sort',
       'Sort results',
@@ -127,11 +140,13 @@ export interface DiscoverEmptyOptions {
   readonly snapshot: DiscoverSnapshot | null
   readonly filter: DiscoverKindFilter
   readonly timeRange: DiscoverTimeRange
+  readonly wikiFilter: LlmWikiListFilter
+  readonly wikiSummary?: WikiListSummary
   readonly onShowAll: () => void
 }
 
 export function discoverEmptyState(options: DiscoverEmptyOptions): NativeNode {
-  const { controls: b, snapshot, filter, timeRange } = options
+  const { controls: b, snapshot, filter, timeRange, wikiFilter, wikiSummary } = options
   if (!snapshot) {
     return emptyState(
       'discover-empty',
@@ -140,19 +155,39 @@ export function discoverEmptyState(options: DiscoverEmptyOptions): NativeNode {
       'Search research sources and keep the results on this Mac.'
     )
   }
-  const filtered = filter !== 'all' || timeRange !== 'all'
+  const filtered = filter !== 'all' || timeRange !== 'all' || wikiFilter !== 'all'
+  if (wikiFilter !== 'all' && wikiSummary && wikiSummary.pending > 0) {
+    return emptyState(
+      'discover-empty',
+      'sparkle.magnifyingglass',
+      'Checking llm-wiki…',
+      'Checking whether these papers are recorded in your local llm-wiki vault.',
+      [b.button('discover-show-all', 'Show all results', options.onShowAll)]
+    )
+  }
+  if (wikiFilter !== 'all' && wikiSummary && wikiSummary.unavailable > 0) {
+    return emptyState(
+      'discover-empty',
+      'sparkle.magnifyingglass',
+      'llm-wiki is unavailable',
+      'Local llm-wiki status could not be read. Check Settings › Knowledge Base to verify the vault folder.',
+      [b.button('discover-show-all', 'Show all results', options.onShowAll)]
+    )
+  }
   // An empty session keeps its outcome: failed and canceled are not "no results".
-  const title = filtered
-    ? filter !== 'all' && timeRange !== 'all'
-      ? `No ${KIND_NAMES[filter]} in ${TIME_RANGE_NAMES[timeRange]}`
-      : filter !== 'all'
-        ? `No ${KIND_NAMES[filter]} in this session`
-        : `No results in ${TIME_RANGE_NAMES[timeRange as Exclude<DiscoverTimeRange, 'all'>]}`
-    : snapshot.status === 'failed'
+  const title = !filtered
+    ? snapshot.status === 'failed'
       ? 'Search failed'
       : snapshot.status === 'canceled'
         ? 'Search canceled'
         : 'No results'
+    : wikiFilter !== 'all'
+      ? `No ${filter !== 'all' ? KIND_NAMES[filter] : 'results'} ${wikiFilter === 'collected' ? 'in llm-wiki' : 'outside llm-wiki'}${timeRange !== 'all' ? ` in ${TIME_RANGE_NAMES[timeRange]}` : ''}`
+      : filter !== 'all' && timeRange !== 'all'
+        ? `No ${KIND_NAMES[filter]} in ${TIME_RANGE_NAMES[timeRange]}`
+        : filter !== 'all'
+          ? `No ${KIND_NAMES[filter]} in this session`
+          : `No results in ${TIME_RANGE_NAMES[timeRange as Exclude<DiscoverTimeRange, 'all'>]}`
   return emptyState(
     'discover-empty',
     'sparkle.magnifyingglass',

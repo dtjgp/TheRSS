@@ -1,6 +1,21 @@
 # TheRSS Goals
 
-## Current stage: Consolidated `main` (`692f9e4`, PRs #87–#99) & multi-agent workflow
+## Current stage: Wave 2 (`8cba8e4`, PR #106) & Wave 3 (`I5` badges/filters, `P1-6` Knowledge Base Settings, hotspot splits)
+
+Since the 2026-11-12 consolidated baseline (`692f9e4`), the following work has shipped:
+
+- **PR #102 (`b51a927`) & PR #104 (`bea65c4`)**: Hardened arXiv `429`/timeout resilience (`RequestPacer`, `arxivClient`, `smoke-sources`) and staggered weekly source-health CI.
+- **PR #103 (`42b19c9`)**: Updated Electron to `45.3.0` and 10 dev-dependency patches.
+- **PR #106 (`8cba8e4`, Wave 2)**: Delivered multi-constraint Discover ranking (`semantic-discover-v3`), native AppKit I3 time-range/newest-sort controls, and opt-in live `semantic-discover-v3` evaluation (6/6 live runs passed with zero arXiv 429s; [Wave 2 QA](docs/audits/2026-11-20-retrieval-quality-and-time-sort/QA_FINAL.md)).
+- **Wave 3 (current PR)**: Delivered I5 list-level `llm-wiki` badges & filters (`Discover` & `Saved` via single bounded batch read), P1-6 native **Knowledge Base** Settings pane (vault folder picker, `env > custom > default` resolution, unified ancestor-symlink-safe root policy, read-only diagnostics with remediation hints), and hotspot splits for `researchRepository.test.ts`, `researchRepository.ts`, and `llmWikiVaultSupport.ts` ([Wave 3 contract](docs/audits/2026-11-21-wave3-wiki-badges-vault-settings/CHANGE_CONTRACT.md), [Wave 3 QA](docs/audits/2026-11-21-wave3-wiki-badges-vault-settings/QA_FINAL.md)).
+
+Next, in order (Wave 4 & human acceptance):
+
+1. **Structural health (pure refactors)**: Split oversized/near-800-line hotspots (`native/appkit/node.mm` ~1,207L, `src/renderer/src/App.tsx` ~746L) and isolate the native smoke group-14 window-recreation hang root cause.
+2. **P1 workflow continuations**: `P1-3` repo/news Inbox promotion (requires explicit vault writer governance scope) and versioned Daily Papers contract.
+3. **Human acceptance & later distribution**: Complete human physical-keyboard/VoiceOver acceptance and one real-paper promotion (`P0-1`); Apple Developer signing/notarization remains a later release gate.
+
+## Previous stage: Consolidated `main` (`692f9e4`, PRs #87–#99) & multi-agent workflow
 
 Since the 2026-11-05 Electron 45 / llm-wiki baseline, the following work has merged to `main`:
 
@@ -9,13 +24,6 @@ Since the 2026-11-05 Electron 45 / llm-wiki baseline, the following work has mer
 - **PRs #94–#97 (`5b08902`..`b1ea922`)**: Aligned llm-wiki promotion with the 2026-11-09 vault layout, per-promotion log headings, reading queue placement, and removal of `index.md` writes.
 - **PR #98 (`f79e7c9`)**: Fixed NCPSD issue-number-only listings to report explicit `no_results`.
 - **PR #99 (`692f9e4`)**: Consolidated My sources defaults, per-search source drafts, Daily Papers empty-state explanations (I2), native local-search wording (I1), SQL-level local-search scopes & truthful truncation (I4), and native sidebar width restoration ([consolidated report](docs/audits/2026-11-12-main-update/REPORT.md)).
-
-Next, in order:
-
-1. **Source & repo hygiene**: Fix open Issue #89 (arXiv `429` rate-limit and timeout bursts in `RequestPacer`/`arxivClient`/`smoke-sources`), triage Dependabot PRs #100/#101 and moderate audit advisories, and reconcile stale local branches.
-2. **P0-1 real-world acceptance** ([follow-up list](docs/audits/2026-10-28-llm-wiki-status/PRIORITIES.md)): Check real search quality on user research questions, promote one real paper through the existing preview/confirmation flow, and update the installed app upon user approval.
-3. **Retrieval quality & P1 workflow gaps**: Improve complex-constraint Discover retrieval quality ([quality baseline](docs/audits/2026-09-07-source-quality/REPORT.md)), then deliver P1 items (I3 time range & newest sort, I5 list-level llm-wiki collected badges/filters, P1-6 vault settings/diagnostics, P1-3 repo/news Inbox promotion, versioned Daily Papers contract).
-4. **Structural health & deferred stability**: Split oversized/near-800-line hotspots (`native/appkit/node.mm`, `App.tsx`, `llmWikiVaultSupport.ts`, `researchRepository.ts`), isolate the native smoke group-14 window-recreation hang root cause, and complete human physical-keyboard/VoiceOver acceptance.
 
 ## Previous stage: llm-wiki handoff and Electron 45 on `main` (2026-11-05)
 
