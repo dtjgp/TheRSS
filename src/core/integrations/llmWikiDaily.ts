@@ -2,6 +2,7 @@ import { constants } from 'node:fs'
 import { open } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
+  llmWikiDailyExportV1Schema,
   llmWikiDailyOpenRequestSchema,
   llmWikiDailySnapshotSchema,
   type LlmWikiDailyOpenRequest,
@@ -25,6 +26,7 @@ type DatedEdition = {
   date: string
   selected: number
   scanned: number | null
+  contractSource: 'json-v1' | 'markdown-legacy'
   papers: DatedPaper[]
 }
 
@@ -36,6 +38,10 @@ function localCalendarDate(now: Date): string {
 
 function digestPath(date: string): string {
   return `${DIGEST_DIRECTORY}/ArXiv_Daily_${date}.md`
+}
+
+function exportPath(date: string): string {
+  return `${DIGEST_DIRECTORY}/ArXiv_Daily_${date}.json`
 }
 
 function isMissing(error: unknown): boolean {
@@ -180,6 +186,45 @@ function parseEdition(content: string, date: string): DatedEdition {
     date,
     selected,
     scanned,
+    contractSource: 'markdown-legacy',
+    papers
+  }
+}
+
+function safeNotePath(candidate: string | null | undefined): string | null {
+  if (!candidate) return null
+  const normalized = candidate.endsWith('.md') ? candidate : `${candidate}.md`
+  return NOTE_PREFIX.test(normalized) && isSafeLlmWikiRelativePath(normalized) ? normalized : null
+}
+
+function parseJsonEdition(content: string, date: string): DatedEdition {
+  const parsed = llmWikiDailyExportV1Schema.parse(JSON.parse(content))
+  if (parsed.date !== date) {
+    throw new Error('Versioned daily export does not match its expected date')
+  }
+  if (parsed.digestPath && parsed.digestPath !== digestPath(date)) {
+    throw new Error('Versioned daily export references an unexpected digest path')
+  }
+  const papers: DatedPaper[] = parsed.papers.map((entry) => {
+    const title = plainText(entry.title, 1000)
+    if (!title) throw new Error('Daily paper title is empty after sanitization')
+    return {
+      arxivId: entry.arxivId,
+      title,
+      priority: entry.priority,
+      score: entry.score,
+      reason: entry.reason ? plainText(entry.reason, 800) || null : null,
+      notePath: safeNotePath(entry.notePath)
+    }
+  })
+  papers.sort((left, right) => PRIORITY_ORDER[left.priority] - PRIORITY_ORDER[right.priority])
+  return {
+    status:
+      parsed.runStatus === 'completed' && parsed.selected === 0 ? 'no-results' : parsed.runStatus,
+    date,
+    selected: parsed.selected,
+    scanned: parsed.scannedScope ? null : parsed.scanned,
+    contractSource: 'json-v1',
     papers
   }
 }
@@ -248,7 +293,9 @@ export class LlmWikiDaily {
         }
         target = join(root, note)
       } else {
-        target = join(root, digestPath(edition.date))
+        const digest = digestPath(edition.date)
+        await assertSafePathChain(root, digest, 'file')
+        target = join(root, digest)
       }
     } catch {
       throw new Error('Daily edition or paper note is unavailable. Reload the shortlist.')
@@ -273,6 +320,12 @@ export class LlmWikiDaily {
     const dateCursor = new Date(`${requestedDate}T12:00:00Z`)
     for (let offset = 0; offset <= MAX_LOOKBACK_DAYS; offset += 1) {
       const date = dateCursor.toISOString().slice(0, 10)
+      try {
+        const jsonContent = await readBounded(root, exportPath(date), DIGEST_BYTES, true)
+        return { root, edition: parseJsonEdition(jsonContent, date) }
+      } catch (error) {
+        if (!isMissing(error)) throw error
+      }
       let content: string
       try {
         content = await readBounded(root, digestPath(date), DIGEST_BYTES, true)

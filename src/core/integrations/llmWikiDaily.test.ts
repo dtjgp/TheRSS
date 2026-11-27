@@ -255,4 +255,142 @@ describe('llm-wiki Daily Papers', () => {
     openExternal.mockRejectedValueOnce(new Error(root))
     await expect(service.open({ date })).rejects.toThrow('Obsidian could not be opened')
   })
+
+  it('prefers the versioned JSON v1 daily export ahead of Markdown and opens verified targets', async () => {
+    const { root, service, openExternal } = await fixture()
+    const exportPath = `Literature/Digests/ArXiv_Daily/ArXiv_Daily_${date}.json`
+    await put(root, digestPath(date), 'legacy markdown that would fail if preferred')
+    await put(root, note, `---\ntype: paper-note\narxiv_id: '${id}'\n---\nprivate body`)
+    await put(
+      root,
+      exportPath,
+      JSON.stringify({
+        schemaVersion: 1,
+        source: 'arxiv',
+        date,
+        runStatus: 'completed',
+        selected: 2,
+        scanned: 720,
+        digestPath: digestPath(date),
+        papers: [
+          {
+            arxivId: '2611.10001',
+            title: 'Adjacent\u0007 Paper',
+            priority: 'adjacent',
+            score: 7,
+            reason: 'Adjacent <b>angle</b>.',
+            notePath: 'Literature/Paper_Notes/L2_Structured/../escape.md'
+          },
+          {
+            arxivId: id,
+            title: 'Hardware-Guided Model Compression',
+            priority: 'direct',
+            score: 10,
+            reason: 'Match deployment constraints.',
+            notePath: note
+          }
+        ]
+      })
+    )
+    const snapshot = await service.snapshot()
+    expect(snapshot).toMatchObject({
+      requestedDate: date,
+      status: 'completed',
+      edition: {
+        date,
+        selected: 2,
+        scanned: 720,
+        contractSource: 'json-v1',
+        papers: [
+          {
+            arxivId: id,
+            title: 'Hardware-Guided Model Compression',
+            priority: 'direct',
+            score: 10,
+            reason: 'Match deployment constraints.',
+            canOpenNote: true
+          },
+          {
+            arxivId: '2611.10001',
+            title: 'Adjacent Paper',
+            priority: 'adjacent',
+            score: 7,
+            reason: 'Adjacent angle.',
+            canOpenNote: false
+          }
+        ]
+      }
+    })
+    expect(await service.open({ date, arxivId: id })).toEqual({ opened: true })
+    expect(await service.open({ date })).toEqual({ opened: true })
+    expect(openExternal).toHaveBeenCalledTimes(2)
+  })
+
+  it('fails closed on invalid JSON v1 exports without silently falling back to Markdown or older days', async () => {
+    const { root, service } = await fixture()
+    const exportPath = `Literature/Digests/ArXiv_Daily/ArXiv_Daily_${date}.json`
+    await put(root, digestPath(date), digest())
+    await put(root, digestPath('2026-11-05'), digest('2026-11-05'))
+
+    const badCases = [
+      JSON.stringify({
+        schemaVersion: 2,
+        source: 'arxiv',
+        date,
+        runStatus: 'completed',
+        selected: 0,
+        scanned: 10,
+        papers: []
+      }),
+      JSON.stringify({
+        schemaVersion: 1,
+        source: 'arxiv',
+        date: '2026-11-05',
+        runStatus: 'completed',
+        selected: 0,
+        scanned: 10,
+        papers: []
+      }),
+      JSON.stringify({
+        schemaVersion: 1,
+        source: 'arxiv',
+        date,
+        runStatus: 'completed',
+        selected: 0,
+        scanned: 10,
+        digestPath: 'AGENTS.md',
+        papers: []
+      }),
+      '{not valid json'
+    ]
+    for (const payload of badCases) {
+      await put(root, exportPath, payload)
+      expect(await service.snapshot()).toMatchObject({ status: 'unavailable', edition: null })
+    }
+  })
+
+  it('masks scanned counts when JSON v1 sets scannedScope and rejects opening a missing sibling Markdown digest', async () => {
+    const { root, service, openExternal } = await fixture()
+    const exportPath = `Literature/Digests/ArXiv_Daily/ArXiv_Daily_${date}.json`
+    await put(
+      root,
+      exportPath,
+      JSON.stringify({
+        schemaVersion: 1,
+        source: 'arxiv',
+        date,
+        runStatus: 'partial',
+        selected: 0,
+        scanned: 609,
+        scannedScope: 'prior-day-snapshot',
+        papers: []
+      })
+    )
+    expect(await service.snapshot()).toMatchObject({
+      status: 'partial',
+      edition: { date, selected: 0, scanned: null, contractSource: 'json-v1', papers: [] }
+    })
+    await expect(service.open({ date })).rejects.toThrow('unavailable')
+    expect(openExternal).not.toHaveBeenCalled()
+  })
 })

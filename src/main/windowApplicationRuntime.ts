@@ -12,6 +12,10 @@ import {
   llmWikiPromotionPreviewRequestSchema,
   llmWikiPromotionConfirmRequestSchema
 } from '../shared/llmWikiPromotion'
+import {
+  llmWikiInboxPreviewRequestSchema,
+  llmWikiInboxConfirmRequestSchema
+} from '../shared/llmWikiInbox'
 import { WindowApplication, type ApplicationServices } from './windowApplication'
 
 export const dirtySettingsWindows = new WeakSet<Electron.WebContents>()
@@ -108,6 +112,22 @@ export class WindowApplicationRuntime {
           message: 'Write the previewed paper artifacts to your local llm-wiki vault?',
           detail:
             'TheRSS will create the verified PDF, paper record, analysis note, backlinks, indexes, log entry, and audit record shown in the preview.',
+          buttons: ['Cancel', 'Write to llm-wiki'],
+          cancelId: 0,
+          defaultId: 0,
+          noLink: true
+        })
+        return choice.response === 1
+      },
+      confirmInboxCapture: async () => {
+        if (window.isDestroyed()) return false
+        if (this.fixture) return true
+        const choice = await dialog.showMessageBox(window, {
+          type: 'question',
+          title: 'Confirm llm-wiki Inbox write',
+          message: 'Write the previewed item metadata to your local llm-wiki Inbox?',
+          detail:
+            'TheRSS will create the unprocessed Inbox note, append log.md, and write the audit record shown in the preview.',
           buttons: ['Cancel', 'Write to llm-wiki'],
           cancelId: 0,
           defaultId: 0,
@@ -240,5 +260,17 @@ export class WindowApplicationRuntime {
         apiFor(event)[method](llmWikiPromotionConfirmRequestSchema.parse(candidate).previewId)
       )
     }
+    ipcMain.handle(IPC_CHANNELS.previewLlmWikiInboxCapture, (event, candidate: unknown) => {
+      const input = llmWikiInboxPreviewRequestSchema.parse(candidate)
+      return apiFor(event).previewLlmWikiInboxCapture!(input.itemId, input.sessionId)
+    })
+    for (const method of ['confirmLlmWikiInboxCapture', 'cancelLlmWikiInboxCapture'] as const) {
+      ipcMain.handle(IPC_CHANNELS[method], (event, candidate: unknown) =>
+        apiFor(event)[method]!(llmWikiInboxConfirmRequestSchema.parse(candidate).previewId)
+      )
+    }
+    ipcMain.handle(IPC_CHANNELS.getLatestLlmWikiInboxCapture, (event, id: unknown) =>
+      apiFor(event).getLatestLlmWikiInboxCapture!(id as string)
+    )
   }
 }

@@ -1,5 +1,42 @@
 import { z } from 'zod'
 import { llmWikiArxivIdSchema } from './llmWikiLibrary'
+import { llmWikiRelativePathSchema } from './llmWikiPromotion'
+
+export const LLM_WIKI_DAILY_EXPORT_SCHEMA_VERSION = 1 as const
+
+const exportPaperSchema = z
+  .object({
+    arxivId: llmWikiArxivIdSchema,
+    title: z.string().trim().min(1).max(1000),
+    priority: z.enum(['direct', 'adjacent', 'weak', 'unclassified']),
+    score: z.number().int().min(0).max(10).nullable(),
+    reason: z.string().trim().min(1).max(800).nullable(),
+    notePath: z.string().max(512).nullable().optional()
+  })
+  .strict()
+
+export const llmWikiDailyExportV1Schema = z
+  .object({
+    schemaVersion: z.literal(LLM_WIKI_DAILY_EXPORT_SCHEMA_VERSION),
+    source: z.literal('arxiv'),
+    date: z.iso.date(),
+    runStatus: z.enum(['completed', 'partial', 'no-source']),
+    selected: z.number().int().min(0).max(100),
+    scanned: z.number().int().nonnegative().max(1_000_000).nullable(),
+    scannedScope: z.string().trim().min(1).max(200).nullable().optional(),
+    digestPath: llmWikiRelativePathSchema.optional(),
+    papers: z.array(exportPaperSchema).max(100)
+  })
+  .strict()
+  .refine(
+    ({ papers, selected, runStatus }) =>
+      papers.length === selected &&
+      new Set(papers.map(({ arxivId }) => arxivId)).size === selected &&
+      (runStatus !== 'no-source' || selected === 0),
+    'The versioned daily export must match its recorded selection count and status'
+  )
+
+export type LlmWikiDailyExportV1 = z.infer<typeof llmWikiDailyExportV1Schema>
 
 const paperSchema = z
   .object({
@@ -17,6 +54,7 @@ const editionSchema = z
     date: z.iso.date(),
     selected: z.number().int().min(0).max(100),
     scanned: z.number().int().nonnegative().max(1_000_000).nullable(),
+    contractSource: z.enum(['json-v1', 'markdown-legacy']).optional(),
     papers: z.array(paperSchema).max(100)
   })
   .strict()

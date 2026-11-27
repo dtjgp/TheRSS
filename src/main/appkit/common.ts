@@ -50,6 +50,7 @@ export interface NativeContext {
   openExternal(url: string): void
   showDocument(title: string, content: string): void
   promote(itemId: string, sessionId?: string): Promise<void>
+  captureToInbox?(itemId: string, sessionId?: string): Promise<void>
   openRecord(record: NativeRecord): void
   /** Opens the Settings window (native route), optionally on one pane. */
   openSettings(section?: SettingsSection): void

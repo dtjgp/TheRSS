@@ -21,7 +21,6 @@ import {
 import { attachNativeGlass } from './nativeGlassRuntime'
 import { join } from 'node:path'
 import { env } from 'node:process'
-import { randomUUID } from 'node:crypto'
 import Database from 'better-sqlite3'
 import { app, BrowserWindow, Menu, safeStorage, screen, shell, systemPreferences } from 'electron'
 import { resolveSystemAccentName } from '../core/appearance/systemAccent'
@@ -37,23 +36,18 @@ import {
   type SecretCipher
 } from '../core/models/providerService'
 import { ResearchRepository } from '../core/storage/researchRepository'
+import { LlmWikiInboxStore } from '../core/storage/llmWikiInboxStore'
 import { LlmWikiPromotionService } from '../core/integrations/llmWikiPromotionService'
-import { LlmWikiVaultAdapter } from '../core/integrations/llmWikiVaultAdapter'
+import { LlmWikiInboxService } from '../core/integrations/llmWikiInboxService'
 import {
   defaultLlmWikiVaultPath,
   diagnoseLlmWikiVault,
-  resolveLlmWikiVaultLocation,
   resolveOperationalLlmWikiVaultRoot
 } from '../core/integrations/llmWikiDiagnostics'
 import { LlmWikiDaily } from '../core/integrations/llmWikiDaily'
 import { LlmWikiLibrary } from '../core/integrations/llmWikiLibrary'
-import { llmWikiVaultPathSchema, type LlmWikiVaultDiagnostics } from '../shared/llmWikiSettings'
+import { llmWikiVaultPathSchema } from '../shared/llmWikiSettings'
 import type { SystemAccentName } from '../shared/appearance'
-import {
-  LLM_WIKI_PROMOTION_PREVIEW_VERSION,
-  LLM_WIKI_PROMOTION_PROMPT_VERSION,
-  LLM_WIKI_PROMOTION_RECEIPT_VERSION
-} from '../shared/llmWikiPromotion'
 import { createApplicationMenuTemplate } from './applicationMenu'
 import {
   createE2eDiscoverFetchers,
@@ -65,7 +59,7 @@ import {
   waitForE2eDiscoverStage
 } from './e2eFixtures'
 import { githubTokenFromEnvironment, huggingFaceTokenFromEnvironment } from './sourceCredentials'
-import { createLlmWikiPromotionRuntime } from './llmWikiPromotionRuntime'
+import { buildFixtureWikiDiagnostics, createLlmWikiAdapters } from './llmWikiRuntimeWiring'
 import { readWindowState, writeWindowState, type WindowBounds } from './windowState'
 
 /** Electron 45 deprecates the synchronous safeStorage calls; the async calls also decrypt their ciphertext. */
@@ -353,6 +347,8 @@ app.whenReady().then(async () => {
   const database = new Database(join(app.getPath('userData'), 'therss.sqlite'))
   const repository = new ResearchRepository(database)
   repository.reconcileInterruptedLlmWikiPromotions()
+  const inboxStore = new LlmWikiInboxStore(database)
+  inboxStore.reconcileInterruptedReceipts()
   const useE2eFixtures = env.THERSS_E2E_FIXTURES === '1'
   const delayE2eDiscover = useE2eFixtures && env.THERSS_E2E_DISCOVER_DELAY === '1'
   const discoveryService = new DiscoveryService(
@@ -452,105 +448,19 @@ app.whenReady().then(async () => {
       envPath: env.THERSS_LLM_WIKI_PATH,
       defaultPath: defaultVaultPath
     })
-  const fixtureWikiDiagnostics = (customPath: string | null): LlmWikiVaultDiagnostics => {
-    const location = resolveLlmWikiVaultLocation({
-      customPath,
-      envPath: undefined,
-      defaultPath: '/fixture/llm-wiki'
-    })
-    return {
-      ...location,
-      status: 'ready',
-      checkedAt: new Date().toISOString(),
-      checks: [
-        {
-          id: 'vault-root',
-          label: 'Vault folder',
-          status: 'ok',
-          detail: 'Fixture vault folder is ready without accessing local files.',
-          remediation: null
-        },
-        {
-          id: 'required-files',
-          label: 'Vault rules files',
-          status: 'ok',
-          detail: 'AGENTS.md and _schema.md are present in the fixture.',
-          remediation: null
-        },
-        {
-          id: 'paper-directories',
-          label: 'Paper folders',
-          status: 'ok',
-          detail: 'raw/paper_records and Literature/Paper_Notes are present in the fixture.',
-          remediation: null
-        }
-      ]
-    }
-  }
-  const promotionAdapter = useE2eFixtures
-    ? {
-        prepare: async (
-          item: Parameters<LlmWikiVaultAdapter['prepare']>[0],
-          context: Parameters<LlmWikiVaultAdapter['prepare']>[1]
-        ) => {
-          const base = 'Fixture et al. - 2026 - Deterministic promotion fixture'
-          const paths = [
-            `raw/papers/${base}.pdf`,
-            `raw/paper_records/${base}.md`,
-            'Literature/Paper_Notes/L2_Structured/Model_Compression/Fixture_2026_DeterministicPromotion.md',
-            'Topics/Edge_AI/Model_Compression/Structured_Pruning.md',
-            'Literature/Paper_Notes/Paper_Notes_Index.md',
-            'log.md',
-            'Automation_Conversations/2026-08-21__therss-paper-promotion__fixture.md'
-          ]
-          return {
-            preview: {
-              version: LLM_WIKI_PROMOTION_PREVIEW_VERSION,
-              previewId: context.previewId,
-              itemId: item.id,
-              arxivId: item.externalId.replace(/v\d+$/u, ''),
-              title: item.title,
-              ready: true,
-              vaultLabel: 'llm-wiki' as const,
-              level: 'L2' as const,
-              routingRationale: 'Deterministic Electron fixture route.',
-              intendedPaths: paths,
-              pdf: { pageCount: 12, byteSize: 120_000, sha256: 'd'.repeat(64) },
-              evidenceBoundary: 'Fixture only; no real vault write or network call occurred.',
-              blockers: [],
-              sourceHash: '0'.repeat(64),
-              contractHash: 'e'.repeat(64),
-              expiresAt: context.expiresAt
-            },
-            opaqueHandle: { fixture: true }
-          }
-        },
-        confirm: async (prepared: Parameters<LlmWikiVaultAdapter['confirm']>[0]) => ({
-          version: LLM_WIKI_PROMOTION_RECEIPT_VERSION,
-          id: `e2e:${randomUUID()}`,
-          itemId: prepared.preview.itemId,
-          arxivId: prepared.preview.arxivId,
-          status: 'completed' as const,
-          runner: 'codex' as const,
-          promptVersion: LLM_WIKI_PROMOTION_PROMPT_VERSION,
-          sourceHash: prepared.preview.sourceHash,
-          contractHash: prepared.preview.contractHash,
-          evidenceTier: 'full-text-verified' as const,
-          summary: 'Deterministic fixture promotion completed without writing the real vault.',
-          createdPaths: prepared.preview.intendedPaths.slice(0, 3),
-          updatedPaths: prepared.preview.intendedPaths.slice(3, -1),
-          pdfPath: prepared.preview.intendedPaths[0] ?? null,
-          sidecarPath: prepared.preview.intendedPaths[1] ?? null,
-          notePath: prepared.preview.intendedPaths[2] ?? null,
-          auditPath: prepared.preview.intendedPaths.at(-1) ?? null,
-          blockers: [],
-          startedAt: new Date().toISOString(),
-          completedAt: new Date().toISOString()
-        }),
-        dispose: async () => undefined
-      }
-    : new LlmWikiVaultAdapter({ ...createLlmWikiPromotionRuntime(), resolveVaultRoot })
+  const { promotionAdapter, inboxAdapter } = createLlmWikiAdapters({
+    useE2eFixtures,
+    resolveVaultRoot
+  })
   const promotionService = new LlmWikiPromotionService(repository, promotionAdapter)
+  const inboxService = new LlmWikiInboxService(
+    {
+      getDiscoveryRecord: (itemId) => repository.getDiscoveryRecord(itemId),
+      saveReceipt: (receipt) => inboxStore.saveReceipt(receipt),
+      getLatestReceipt: (itemId) => inboxStore.getLatestReceipt(itemId)
+    },
+    inboxAdapter
+  )
   const wikiLibrary = useE2eFixtures
     ? null
     : new LlmWikiLibrary({
@@ -566,6 +476,7 @@ app.whenReady().then(async () => {
       analysis: analysisService,
       agents: localAgentService,
       promotion: promotionService,
+      inboxCapture: inboxService,
       wiki: useE2eFixtures
         ? {
             status: async ({ arxivId }) => ({
@@ -604,11 +515,11 @@ app.whenReady().then(async () => {
         : wikiLibrary!,
       wikiSettings: useE2eFixtures
         ? {
-            get: async () => fixtureWikiDiagnostics(repository.getLlmWikiVaultPath()),
+            get: async () => buildFixtureWikiDiagnostics(repository.getLlmWikiVaultPath()),
             save: async (vaultPath) => {
               const normalized = llmWikiVaultPathSchema.parse(vaultPath)
               repository.saveLlmWikiVaultPath(normalized)
-              return fixtureWikiDiagnostics(normalized)
+              return buildFixtureWikiDiagnostics(normalized)
             }
           }
         : {
@@ -740,6 +651,7 @@ app.whenReady().then(async () => {
       await drainNativePreferences()
       await applicationRuntime.shutdown()
       await promotionService.disposeAll()
+      await inboxService.disposeAll()
       repository.close()
       shutdownCompleted = true
       // Leave the prevented Cocoa key/menu quit before issuing the final quit.

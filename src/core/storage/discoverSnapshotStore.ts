@@ -405,3 +405,16 @@ export function materializeDiscoverResultForLlmWikiPromotion(
   }
   upsertDiscoverResult(database, row, 'viewed', false, updatedAt)
 }
+
+export function materializeDiscoverResultForLlmWikiInboxCapture(
+  database: Database.Database,
+  sessionId: string,
+  itemId: string,
+  updatedAt: string
+): void {
+  const row = getDiscoverResult(database, sessionId, itemId)
+  if (row.item_kind === 'paper') {
+    throw new Error('llm-wiki Inbox capture is available only for non-paper results')
+  }
+  upsertDiscoverResult(database, row, 'viewed', false, updatedAt)
+}

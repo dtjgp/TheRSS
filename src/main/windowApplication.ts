@@ -8,6 +8,7 @@ import type { ProviderService } from '../core/models/providerService'
 import type { AnalysisService } from '../core/analysis/analysisService'
 import type { LocalAgentService } from '../core/agents/localAgentService'
 import type { LlmWikiPromotionService } from '../core/integrations/llmWikiPromotionService'
+import type { LlmWikiInboxService } from '../core/integrations/llmWikiInboxService'
 import type { TheRSSApi } from '../shared/api'
 import type { SystemAccentName } from '../shared/appearance'
 import type { AppCommand } from '../shared/ipc'
@@ -32,6 +33,10 @@ import {
   llmWikiPromotionConfirmRequestSchema,
   llmWikiPromotionPreviewRequestSchema
 } from '../shared/llmWikiPromotion'
+import {
+  llmWikiInboxConfirmRequestSchema,
+  llmWikiInboxPreviewRequestSchema
+} from '../shared/llmWikiInbox'
 import type { ProviderConnectionResult } from '../shared/models'
 import type { LlmWikiDaily } from '../core/integrations/llmWikiDaily'
 import { llmWikiDailyOpenRequestSchema, llmWikiDailySnapshotSchema } from '../shared/llmWikiDaily'
@@ -71,6 +76,7 @@ export interface ApplicationServices {
   readonly analysis: AnalysisService
   readonly agents: LocalAgentService
   readonly promotion: LlmWikiPromotionService
+  readonly inboxCapture?: LlmWikiInboxService
   readonly wiki: Pick<LlmWikiLibrary, 'status' | 'open'> &
     Partial<Pick<LlmWikiLibrary, 'statusBatch'>>
   readonly wikiSettings?: {
@@ -90,6 +96,7 @@ export interface WindowContext {
   setDirty(value: boolean): void
   confirmDiscard(): Promise<boolean>
   confirmPromotion(): Promise<boolean>
+  confirmInboxCapture?(): Promise<boolean>
   chooseLlmWikiVaultFolder?(): Promise<LlmWikiFolderChoice>
   contextMenu(target: ContextMenuTarget): Promise<ContextMenuOutcome>
   accent(): SystemAccentName | null
@@ -287,6 +294,43 @@ export class WindowApplication {
           )
         ),
       getLatestLlmWikiPromotion: (id) => task(() => promotion.getLatest(itemId.parse(id))),
+      previewLlmWikiInboxCapture: (id, sessionId) =>
+        task(() => {
+          if (!services.inboxCapture)
+            throw new Error('llm-wiki Inbox capture service is unavailable')
+          const input = llmWikiInboxPreviewRequestSchema.parse({ itemId: id, sessionId })
+          if (input.sessionId)
+            repository.materializeDiscoverResultForLlmWikiInboxCapture(
+              input.sessionId,
+              input.itemId
+            )
+          return services.inboxCapture.preview(input.itemId, context.ownerId)
+        }),
+      confirmLlmWikiInboxCapture: (id) =>
+        task(async () => {
+          if (!services.inboxCapture)
+            throw new Error('llm-wiki Inbox capture service is unavailable')
+          const { previewId } = llmWikiInboxConfirmRequestSchema.parse({ previewId: id })
+          const confirm = context.confirmInboxCapture ?? context.confirmPromotion
+          if (!(await confirm()) || !context.isAvailable())
+            return services.inboxCapture.cancel(previewId, context.ownerId)
+          return services.inboxCapture.confirm(previewId, context.ownerId)
+        }),
+      cancelLlmWikiInboxCapture: (id) =>
+        task(() => {
+          if (!services.inboxCapture)
+            throw new Error('llm-wiki Inbox capture service is unavailable')
+          return services.inboxCapture.cancel(
+            llmWikiInboxConfirmRequestSchema.parse({ previewId: id }).previewId,
+            context.ownerId
+          )
+        }),
+      getLatestLlmWikiInboxCapture: (id) =>
+        task(() => {
+          if (!services.inboxCapture)
+            throw new Error('llm-wiki Inbox capture service is unavailable')
+          return services.inboxCapture.getLatest(itemId.parse(id))
+        }),
       getLlmWikiStatus: (candidate) =>
         task(async () =>
           llmWikiLibraryStatusSchema.parse(
@@ -341,6 +385,7 @@ export class WindowApplication {
     this.accentListeners.clear()
     await Promise.allSettled([...this.pending])
     await this.services.promotion.disposeOwner(this.context.ownerId)
+    await this.services.inboxCapture?.disposeOwner(this.context.ownerId)
   }
 
   private subscribe<T>(
