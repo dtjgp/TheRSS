@@ -199,13 +199,12 @@ Non-paper Inbox capture remains a separate governed branch:
 
 ## Implementation status
 
-Waves 1 through 4C are implemented on `main` ahead of the `v0.5.0` unsigned pre-release, building on
-the `v0.4.0` baseline (<https://github.com/dtjgp/TheRSS/releases/tag/v0.4.0>) with Electron 45.3.0,
-`semantic-discover-v3` ranking and time-range/sort controls, list-level `llm-wiki` badges/filters,
-Settings Knowledge Base vault configuration and diagnostics, Daily Papers JSON v1 contract ingestion
-with Markdown fallback, confirmation-gated non-paper Inbox capture (`P1-3`), and structural hotspot
-modularization. Current delivery evidence and next steps are tracked in `GOALS.md` and
-`docs/audits/`.
+The `v0.5.0` unsigned pre-release (<https://github.com/dtjgp/TheRSS/releases/tag/v0.5.0>) builds on
+the `v0.4.0` baseline with Electron 45.3.0, `semantic-discover-v3` ranking and time-range/sort
+controls, list-level `llm-wiki` badges/filters, Settings Knowledge Base vault configuration and
+diagnostics, Daily Papers JSON v1 contract ingestion with Markdown fallback, confirmation-gated
+non-paper Inbox capture (`P1-3`), and structural hotspot modularization. Current delivery evidence
+and next steps are tracked in `GOALS.md` and `docs/audits/2026-11-27-v0.5.0-prerelease/REPORT.md`.
 
 ## macOS presentation
 

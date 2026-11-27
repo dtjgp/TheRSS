@@ -11,6 +11,68 @@ valid Developer ID, signing, and notarization.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-27
+
+Unsigned arm64/macOS 26+ pre-release. See the
+[release notes](docs/audits/2026-11-27-v0.5.0-prerelease/RELEASE_NOTES.md).
+
+### Added
+
+- **Discover Daily Papers** connected to the local `llm-wiki` Daily ArXiv Scan shortlist (#90),
+  now supporting versioned JSON v1 export ingestion (`ArXiv_Daily_<date>.json`, strict Zod
+  validation & fail-closed on corruption) with smooth fallback to legacy Markdown digests
+  (`ArXiv_Daily_<date>.md`) (#109).
+- **Discover multi-constraint ranking (`semantic-discover-v3`)** and native AppKit I3 time-range /
+  newest-first sort controls (#106).
+- **`llm-wiki` read-only status & Obsidian handoff**: reader-level membership check + post-promotion
+  auto-recheck (#85), Discover & Saved list-level `llm-wiki` badges & filters via single bounded
+  batch read (#107), and native **Settings › Knowledge Base** pane with vault folder picker,
+  `env > custom > default` resolution, ancestor-symlink-safe root policy, and read-only diagnostics
+  with remediation hints (#107).
+- **Confirmation-gated non-paper `llm-wiki` Inbox capture (`P1-3`)** (#109): preview/confirm flow
+  for GitHub repos, Hugging Face models/datasets, and research articles into `llm-wiki/Inbox/` with
+  fail-closed `Automation_Runtime_Scopes.json` verification (`therss-inbox-capture`), atomic `wx`
+  writes, `metadata-only` evidence boundary, `log.md` + `Automation_Conversations/` audit records,
+  and additive SQLite receipt storage (`llm_wiki_inbox_receipt`).
+- **My sources defaults & per-search source drafts**, SQL-level local search scopes with truthful
+  truncation reporting, Daily Papers empty-state explanations, and native sidebar width restoration
+  (#99).
+- **Promoted paper notes** added to the `llm-wiki` reading queue (#96), with write-set preview
+  surfaced first in the promotion sheet (#79).
+
+### Changed
+
+- Upgraded to **Electron 45.3.0** with async `safeStorage` (#84, #103), `electron-vite` 6.0.0, and
+  current production & dev dependencies (`better-sqlite3`, `fast-xml-parser`, `lucide-react`,
+  `@modelcontextprotocol/sdk`, Playwright, ESLint, Prettier, TypeScript-ESLint) (#71, #80, #100,
+  #103, #105).
+- Aligned `llm-wiki` paper promotion with the 2026-11-09 vault layout, per-promotion `log.md`
+  headings, and removal of deprecated `index.md` writes (#94, #95, #97).
+- Modularized structural hotspots: split `native/appkit/node.mm`, `src/renderer/src/App.tsx`,
+  `src/core/storage/researchRepository.ts`, `researchRepository.test.ts`, `llmWikiVaultSupport.ts`,
+  and extracted `src/main/llmWikiRuntimeWiring.ts` (#107, #108, #109).
+- Staggered scheduled `Source Health` CI to weekly off-hours with widened retry bounds (#104).
+- Bounded each native smoke group with explicit hang diagnostics (#75).
+
+### Fixed
+
+- Hardened arXiv `429`/timeout resilience in `RequestPacer`, `arxivClient`, and `smoke-sources`
+  (#102).
+- Hardened native window recreation (`readNativePreferences` lazy/bounded legacy migration skipping
+  unnecessary renderer `executeJavaScript` when `native-ui.json` exists, destroyed-window guards,
+  and concurrent `activate` window-creation guard) (#108) and native sidebar split reconciliation
+  (#107).
+- Reported NCPSD issue-number-only listings as explicit `no_results` (#98).
+- Staged local beta replacement inside a hidden temporary directory (#78) and rendered confirmation
+  alerts without warning icons (#76).
+
+### Security
+
+- Closed Electron 45 async `safeStorage` residual risks: automatic re-encryption on key rotation
+  (`shouldReEncrypt`) and ordered credential-clear persistence (#87).
+- Unified ancestor-symlink-safe vault root enforcement across all `llm-wiki` readers, diagnostics,
+  paper promotion, and Inbox capture (#107, #109).
+
 ## [0.4.0] - 2026-10-27
 
 Unsigned arm64/macOS 26+ pre-release. See the
@@ -142,7 +204,8 @@ and first GitHub publication (milestones M1–M4).
 - CI workflow covering format, lint, type check, tests, coverage, build, and dependency audit.
   (`409cdef`)
 
-[Unreleased]: https://github.com/dtjgp/TheRSS/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/dtjgp/TheRSS/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/dtjgp/TheRSS/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/dtjgp/TheRSS/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/dtjgp/TheRSS/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/dtjgp/TheRSS/compare/v0.1.0...v0.2.0
