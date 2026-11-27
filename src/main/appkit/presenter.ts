@@ -101,6 +101,7 @@ export class NativePresenter {
       openSheet: (sheet) => void this.modals.openSheet(sheet),
       closeSheet: () => void this.modals.close(),
       promote: (itemId, sessionId) => this.modals.openPromotion(itemId, sessionId),
+      captureToInbox: (itemId, sessionId) => this.modals.openInboxCapture(itemId, sessionId),
       openRecord: (record) => port.openRecord?.(record),
       openSettings: (section) => port.openSettings?.(section),
       width: (key) => this.preferences[key],

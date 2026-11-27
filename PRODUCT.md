@@ -22,8 +22,14 @@ provenance without copying secrets.
 - Eligible arXiv papers expose a separate, confirmation-gated llm-wiki promotion. Its preview shows
   the live vault, L1/L2 route, verified PDF facts, evidence boundary, and exact intended paths before
   Electron main may write anything.
+- Eligible non-paper items (GitHub repositories, Hugging Face models/datasets, and research articles)
+  expose a separate, confirmation-gated llm-wiki Inbox capture (`Inbox/TheRSS_*.md`). Its preview
+  verifies the `therss-inbox-capture` governance scope in `Automation_Runtime_Scopes.json`, shows
+  exact intended paths and a `metadata-only` evidence boundary, and writes only after native OS
+  confirmation under an active `automation_runtime.py` lease.
 - The Discover and Saved paper readers show the last checked llm-wiki membership state from bounded local
-  paper metadata. It distinguishes record-only, linked note, missing note, ambiguous identity,
+  paper metadata, and Discover/Saved result lists surface bounded batch-read `llm-wiki` status badges
+  and filters. Membership distinguishes record-only, linked note, missing note, ambiguous identity,
   unavailable and no matching record. Recheck refreshes the observation, and a confirmed promotion
   write rechecks the affected main-window reader. Open in Obsidian resolves
   and validates the existing note or paper record again in main. No note-body indexing or vault
@@ -61,8 +67,9 @@ freshness from a verified empty result. Public signing and distribution remain s
    sources for this search start from the stored default (My sources) and can be changed for one
    search with Apply to this search, which never changes the default; a stored session never
    replaces them. Search still requires an explicit Search action. The user can inspect the
-   executed plan and each source outcome, and filter the persisted result session by record type
-   without rerunning the model or adapters. The research question remains directly editable after
+   executed plan and each source outcome, filter the persisted result session by record type or
+   `llm-wiki` membership state, and apply time-range or newest-first sorting without rerunning the
+   model or adapters. The research question remains directly editable after
    a search, with unsubmitted changes distinguished from the current result session. Source selection
    is summarized until requested; after a
    run, ranked records occupy a resizable list-detail workspace with compact scan rows, roving
@@ -70,18 +77,23 @@ freshness from a verified empty result. Public signing and distribution remain s
    plan/provenance/source-outcome inspector below it. Every selected result has a reversible
    outline/filled Saved star; paper records additionally expose a user-initiated L1 analysis action
    without implicitly saving the paper. arXiv papers also expose the separately confirmed llm-wiki
-   promotion action. An active run exposes a three-stage Plan query -> Search selected sources ->
+   promotion action, while non-paper records expose the separately confirmed llm-wiki Inbox capture
+   action. An active run exposes a three-stage Plan query -> Search selected sources ->
    Assemble session pipeline with native source progress and the latest completed-source outcome;
    the terminal Search details summary retains the source and record counts. A run can be canceled
    without waiting for a hanging source and can retry only failed, partial, or canceled sources from
    the persisted plan without invoking the planner again.
 2. **Saved** — one persisted shelf for explicitly retained research signals from every active
-   source. A selected saved arXiv paper can enter the same llm-wiki preview/confirmation workflow.
+   source, with list-level `llm-wiki` status badges and filters. A selected saved arXiv paper can
+   enter the same llm-wiki preview/confirmation workflow, and a selected non-paper item can enter
+   the confirmation-gated llm-wiki Inbox capture workflow.
    An explicit update can adopt a newer local Discover snapshot for the same record, preserving
    Saved time and immutable analysis history. It performs no network or model call; changed
    source content makes prior analysis stale.
-3. **Settings** — two focused panes for Personal Prompt and one model provider profile, plus local
-   Codex/Claude availability. On the native route Settings is a separate window (Command-comma),
+3. **Settings** — three focused panes for Personal Prompt, one model provider profile (plus local
+   Codex/Claude availability), and Knowledge Base (configured `llm-wiki` vault folder with
+   `env > custom > default` precedence, ancestor-symlink-safe root validation, and read-only vault
+   diagnostics with remediation hints). On the native route Settings is a separate window (Command-comma),
    not a sidebar workspace: a preference toolbar selects the pane, unsaved edits are confirmed
    before the window closes, and a save there updates the workspace window. Provider drafts can be tested explicitly before saving; connection
    results are classified without returning credentials, and a saved credential can be replaced or
@@ -111,7 +123,10 @@ freshness from a verified empty result. Public signing and distribution remain s
    matches than it lists.
 
 **Daily Papers** is a secondary view in Discover on both desktop routes. It reads the existing
-llm-wiki Daily ArXiv Scan shortlist on demand. It shows the requested date, the displayed edition,
+llm-wiki Daily ArXiv Scan shortlist on demand, preferring the versioned JSON v1 export
+(`ArXiv_Daily_<date>.json`, strictly schema-validated and fail-closed on corruption) and smoothly
+falling back to the legacy Markdown digest (`ArXiv_Daily_<date>.md`) when no JSON export exists.
+It shows the requested date, the displayed edition,
 the scan outcome, and the reported selection and screening counts. A previous edition is explicitly
 dated. Paper rows retain the scan's reading priority and any recorded reason. An edition without
 papers, a missing or unreadable edition, and a failed read each have a short explanation from the
@@ -133,6 +148,10 @@ navigation surfaces or implicit launch actions.
 Paper promotion remains a separate branch:
 
 `eligible_arxiv_paper -> preview_ready -> confirmed -> completed | partial | blocked | no-change | no-source | failed`
+
+Non-paper Inbox capture remains a separate governed branch:
+
+`eligible_non_paper_item -> preview_ready -> confirmed -> completed | partial | blocked | skipped`
 
 ## Non-goals for the initial release
 
@@ -180,10 +199,13 @@ Paper promotion remains a separate branch:
 
 ## Implementation status
 
-The `v0.4.0` unsigned pre-release is published at <https://github.com/dtjgp/TheRSS/releases/tag/v0.4.0>,
-with subsequent Electron 45, llm-wiki, Daily Papers, My sources, and local-search scope updates merged
-on `main` (`692f9e4`). Current delivery evidence and next steps are tracked in `GOALS.md`,
-`task_plan.md`, and `docs/audits/2026-11-12-main-update/REPORT.md`.
+Waves 1 through 4C are implemented on `main` ahead of the `v0.5.0` unsigned pre-release, building on
+the `v0.4.0` baseline (<https://github.com/dtjgp/TheRSS/releases/tag/v0.4.0>) with Electron 45.3.0,
+`semantic-discover-v3` ranking and time-range/sort controls, list-level `llm-wiki` badges/filters,
+Settings Knowledge Base vault configuration and diagnostics, Daily Papers JSON v1 contract ingestion
+with Markdown fallback, confirmation-gated non-paper Inbox capture (`P1-3`), and structural hotspot
+modularization. Current delivery evidence and next steps are tracked in `GOALS.md` and
+`docs/audits/`.
 
 ## macOS presentation
 

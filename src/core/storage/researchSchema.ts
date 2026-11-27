@@ -4,6 +4,7 @@ import {
   DISCOVER_SOURCE_PREFERENCE_TABLE,
   initializeDiscoverSourcePreference
 } from './discoverSourcePreferenceStore'
+import { LLM_WIKI_INBOX_RECEIPT_TABLE } from './llmWikiInboxStore'
 import { LLM_WIKI_SETTINGS_TABLE } from './llmWikiSettingsStore'
 
 /**
@@ -435,9 +436,10 @@ export function migrateResearchDatabase(database: Database.Database): void {
       DROP TABLE IF EXISTS sync_local_state;
     `)
 
-    // Additive: an older build ignores this table. Sessions never change an existing row.
+    // Additive: an older build ignores these tables. Sessions never change an existing row.
     database.exec(DISCOVER_SOURCE_PREFERENCE_TABLE)
     database.exec(LLM_WIKI_SETTINGS_TABLE)
+    database.exec(LLM_WIKI_INBOX_RECEIPT_TABLE)
     initializeDiscoverSourcePreference(database)
   })
   try {

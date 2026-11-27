@@ -503,6 +503,19 @@ export class ResearchRepository {
     )
   }
 
+  materializeDiscoverResultForLlmWikiInboxCapture(
+    sessionId: string,
+    itemId: string,
+    updatedAt = new Date().toISOString()
+  ): void {
+    discoverSnapshots.materializeDiscoverResultForLlmWikiInboxCapture(
+      this.#database,
+      sessionId,
+      itemId,
+      updatedAt
+    )
+  }
+
   recordSourceRun(
     source: DiscoverySource,
     status: PersistedSourceHealth,

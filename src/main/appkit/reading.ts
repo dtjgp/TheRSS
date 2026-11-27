@@ -316,6 +316,17 @@ export class ResearchReader implements NativeScreen {
                     `${key}:promote`
                   )
                 ]
+              : []),
+            ...(!readOnly && item.kind !== 'paper' && this.context.captureToInbox
+              ? [
+                  b.button(
+                    `${prefix}-inbox-capture`,
+                    'Preview llm-wiki Inbox capture',
+                    () => this.context.captureToInbox!(item.id, this.sessionId),
+                    true,
+                    `${key}:inbox-capture`
+                  )
+                ]
               : [])
           ]),
           ...(this.metadataExpanded

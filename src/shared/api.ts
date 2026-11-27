@@ -24,6 +24,7 @@ import type { SystemAccentName } from './appearance'
 import type { ContextMenuOutcome, ContextMenuTarget } from './contextMenu'
 import type { DiscoveryItemKind, DiscoverySource } from './discovery'
 import type { LlmWikiPromotionPreview, LlmWikiPromotionReceipt } from './llmWikiPromotion'
+import type { LlmWikiInboxPreview, LlmWikiInboxReceipt } from './llmWikiInbox'
 import type { LocalSearchResponse, LocalSearchScope } from './localSearch'
 import type { LocalResearchRecord, LocalResearchTarget } from './localResearch'
 import type {
@@ -160,6 +161,10 @@ export interface TheRSSApi {
   confirmLlmWikiPromotion(previewId: string): Promise<LlmWikiPromotionReceipt>
   cancelLlmWikiPromotion(previewId: string): Promise<LlmWikiPromotionReceipt>
   getLatestLlmWikiPromotion(itemId: string): Promise<LlmWikiPromotionReceipt | null>
+  previewLlmWikiInboxCapture?(itemId: string, sessionId?: string): Promise<LlmWikiInboxPreview>
+  confirmLlmWikiInboxCapture?(previewId: string): Promise<LlmWikiInboxReceipt>
+  cancelLlmWikiInboxCapture?(previewId: string): Promise<LlmWikiInboxReceipt>
+  getLatestLlmWikiInboxCapture?(itemId: string): Promise<LlmWikiInboxReceipt | null>
   getLlmWikiStatus(request: LlmWikiStatusRequest): Promise<LlmWikiLibraryStatus>
   getLlmWikiStatuses?(request: LlmWikiBatchStatusRequest): Promise<LlmWikiBatchStatusResponse>
   openLlmWikiNote(arxivId: string): Promise<{ opened: true }>

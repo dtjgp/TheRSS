@@ -3,6 +3,7 @@ import type {
   LlmWikiPromotionReceipt,
   LlmWikiPromotionStatus
 } from '../../shared/llmWikiPromotion'
+import type { LlmWikiInboxPreview, LlmWikiInboxReceipt } from '../../shared/llmWikiInbox'
 import {
   column,
   Controls,
@@ -14,6 +15,7 @@ import {
   type NativeContext,
   type NativeSheet
 } from './common'
+import { renderInboxPreviewSections, renderInboxReceiptSection } from './inboxModal'
 import type { NativeNode } from './presentation'
 
 /** Receipt status phrase, and whether the outcome needs the user's attention. */
@@ -30,7 +32,7 @@ const RECEIPT_STATUS: Record<LlmWikiPromotionStatus, readonly [string, boolean]>
 
 export class NativeModals {
   private readonly controls: Controls
-  private kind: 'promotion' | 'document' | 'sheet' | null = null
+  private kind: 'promotion' | 'inbox' | 'document' | 'sheet' | null = null
   private sheet: NativeSheet | null = null
   private version = 0
   private busy = false
@@ -40,6 +42,8 @@ export class NativeModals {
   private sessionId: string | undefined
   private preview: LlmWikiPromotionPreview | null = null
   private receipt: LlmWikiPromotionReceipt | null = null
+  private inboxPreview: LlmWikiInboxPreview | null = null
+  private inboxReceipt: LlmWikiInboxReceipt | null = null
   private consumed = false
   // The final confirmation is a standard macOS alert. It waits until the window's current
   // sheet ends, so the preview sheet steps aside until the confirmation and write finish.
@@ -58,14 +62,17 @@ export class NativeModals {
     return this.kind !== null
   }
   get blocksNavigation(): boolean {
-    return (this.kind === 'promotion' && this.busy) || (this.kind === 'sheet' && !!this.sheet?.busy)
+    return (
+      ((this.kind === 'promotion' || this.kind === 'inbox') && this.busy) ||
+      (this.kind === 'sheet' && !!this.sheet?.busy)
+    )
   }
   /** Local search would hide a promotion or a busy sheet, whose result must stay visible. */
   get canOpenSearch(): boolean {
-    return this.kind !== 'promotion' && !this.blocksNavigation
+    return this.kind !== 'promotion' && this.kind !== 'inbox' && !this.blocksNavigation
   }
   openDocument(title: string, content: string): void {
-    if (this.kind === 'promotion' || this.blocksNavigation) return
+    if (this.kind === 'promotion' || this.kind === 'inbox' || this.blocksNavigation) return
     this.version++
     this.kind = 'document'
     this.document = { title, content }
@@ -95,6 +102,8 @@ export class NativeModals {
     if (this.blocksNavigation) return
     if (this.kind === 'promotion' && this.preview?.previewId && !this.consumed)
       await this.cancelPromotion()
+    if (this.kind === 'inbox' && this.inboxPreview?.previewId && !this.consumed)
+      await this.cancelInboxCapture()
     const sheet = this.kind === 'sheet' ? this.sheet : null
     this.version++
     this.kind = null
@@ -133,6 +142,44 @@ export class NativeModals {
     }
   }
 
+  async openInboxCapture(itemId: string, sessionId?: string): Promise<void> {
+    if (this.blocksNavigation) return
+    await this.close()
+    this.kind = 'inbox'
+    this.itemId = itemId
+    this.sessionId = sessionId
+    this.preview = null
+    this.receipt = null
+    this.inboxPreview = null
+    this.inboxReceipt = null
+    this.consumed = false
+    this.message = ''
+    this.busy = true
+    const version = ++this.version
+    this.context.redraw()
+    try {
+      if (
+        !this.context.api.previewLlmWikiInboxCapture ||
+        !this.context.api.getLatestLlmWikiInboxCapture
+      ) {
+        throw new Error('llm-wiki Inbox capture is unavailable.')
+      }
+      this.inboxReceipt = await this.context.api
+        .getLatestLlmWikiInboxCapture(itemId)
+        .catch(() => null)
+      const preview = await this.context.api.previewLlmWikiInboxCapture(itemId, sessionId)
+      if (!this.disposed && version === this.version) this.inboxPreview = preview
+    } catch (error) {
+      if (!this.disposed && version === this.version) this.message = readableError(error)
+    } finally {
+      if (version === this.version) {
+        this.busy = false
+        this.focus = 'modal-close'
+        this.context.redraw()
+      }
+    }
+  }
+
   render(): NativeNode | undefined {
     if (!this.kind || this.confirming) return undefined
     const b = this.controls
@@ -148,11 +195,19 @@ export class NativeModals {
         )
       })
     }
-    const title = this.kind === 'promotion' ? 'Promote paper to llm-wiki' : this.document.title
+    const title =
+      this.kind === 'promotion'
+        ? 'Promote paper to llm-wiki'
+        : this.kind === 'inbox'
+          ? 'Capture item to llm-wiki Inbox'
+          : this.document.title
     const closeAction = this.context.presentation.action(
       `modal-close:${this.kind}:${this.version}`,
       () => this.close()
     )
+    const hasPendingPreview =
+      (this.kind === 'promotion' && this.preview?.previewId && !this.consumed) ||
+      (this.kind === 'inbox' && this.inboxPreview?.previewId && !this.consumed)
     return column(
       `modal-${this.kind}`,
       [
@@ -160,34 +215,42 @@ export class NativeModals {
         ...(this.message ? [label('modal-message', this.message)] : []),
         ...(this.kind === 'promotion'
           ? this.promotionContent()
-          : [
-              scroll(
-                'document-modal-scroll',
-                column(
-                  'document-modal-body',
-                  [b.rich('document-modal-content', this.document.content)],
-                  { padding: 4 }
+          : this.kind === 'inbox'
+            ? this.inboxContent()
+            : [
+                scroll(
+                  'document-modal-scroll',
+                  column(
+                    'document-modal-body',
+                    [b.rich('document-modal-content', this.document.content)],
+                    { padding: 4 }
+                  )
                 )
-              )
-            ]),
+              ]),
         // macOS sheet order: actions sit at the trailing edge with the primary action last.
         row('modal-footer', [
           label('modal-footer-spacer', '', { flex: 1 }),
-          ...(this.kind === 'promotion' ? this.promotionSecondaryActions() : []),
+          ...(this.kind === 'promotion'
+            ? this.promotionSecondaryActions()
+            : this.kind === 'inbox'
+              ? this.inboxSecondaryActions()
+              : []),
           {
             ...b.button(
               'modal-close',
-              this.kind === 'promotion' && this.preview?.previewId && !this.consumed
-                ? 'Cancel preview'
-                : 'Close',
+              hasPendingPreview ? 'Cancel preview' : 'Close',
               () => this.close(),
               !this.blocksNavigation,
               `modal-close:${this.kind}:${this.version}`
             ),
-            // Return closes read-only documents only; the promotion sheet guards a vault write.
+            // Return closes read-only documents only; write sheets guard a vault write.
             ...(this.kind === 'document' ? { shortcut: 'return' as const } : {})
           },
-          ...(this.kind === 'promotion' ? this.promotionPrimaryAction() : [])
+          ...(this.kind === 'promotion'
+            ? this.promotionPrimaryAction()
+            : this.kind === 'inbox'
+              ? this.inboxPrimaryAction()
+              : [])
         ])
       ],
       { title, padding: 22, flex: 1, context: closeAction }
@@ -368,6 +431,104 @@ export class NativeModals {
       this.context.notify(readableError(error), 'error')
     } finally {
       this.preview = null
+      this.busy = false
+      this.context.redraw()
+    }
+  }
+  private inboxContent(): NativeNode[] {
+    const preview = this.inboxPreview,
+      receipt = this.inboxReceipt
+    const text = this.consumed
+      ? 'Completing the selected operation…'
+      : 'Preparing the Inbox write preview…'
+    return [
+      ...(this.busy
+        ? [
+            row('inbox-capture-progress-row', [
+              { id: 'inbox-capture-progress-indicator', kind: 'progress', title: text },
+              label('inbox-capture-progress', text, { weight: 'secondary', flex: 1 })
+            ])
+          ]
+        : []),
+      scroll(
+        'inbox-capture-scroll',
+        column(
+          'inbox-capture-document',
+          [
+            ...(preview ? renderInboxPreviewSections(this.controls, preview) : []),
+            ...(receipt ? renderInboxReceiptSection(this.controls, receipt, !!preview) : [])
+          ],
+          { padding: 4, gap: 12 }
+        )
+      )
+    ]
+  }
+  private inboxSecondaryActions(): NativeNode[] {
+    const preview = this.inboxPreview
+    return !this.busy && (!preview || this.consumed || !preview.ready)
+      ? [
+          this.controls.button('inbox-capture-new-preview', 'Create a new preview', () =>
+            this.openInboxCapture(this.itemId, this.sessionId)
+          )
+        ]
+      : []
+  }
+  private inboxPrimaryAction(): NativeNode[] {
+    const preview = this.inboxPreview
+    return preview?.ready && preview.previewId && !this.consumed
+      ? [
+          {
+            ...this.controls.button(
+              'inbox-capture-confirm',
+              'Write to llm-wiki…',
+              () => this.confirmInboxCapture(),
+              !this.busy,
+              `inbox-capture-confirm:${preview.previewId}`
+            ),
+            emphasis: 'primary'
+          }
+        ]
+      : []
+  }
+  private async confirmInboxCapture(): Promise<void> {
+    const id = this.inboxPreview?.previewId
+    if (
+      !id ||
+      !this.inboxPreview?.ready ||
+      this.consumed ||
+      this.busy ||
+      !this.context.api.confirmLlmWikiInboxCapture
+    )
+      return
+    this.consumed = true
+    this.busy = true
+    this.confirming = true
+    this.message = ''
+    this.context.redraw()
+    try {
+      this.inboxReceipt = await this.context.api.confirmLlmWikiInboxCapture(id)
+    } catch (error) {
+      this.message = readableError(error)
+    } finally {
+      this.inboxPreview = null
+      this.busy = false
+      this.confirming = false
+      this.focus = 'modal-close'
+      this.context.redraw()
+    }
+  }
+  private async cancelInboxCapture(): Promise<void> {
+    const id = this.inboxPreview?.previewId
+    if (!id || this.consumed || this.busy || !this.context.api.cancelLlmWikiInboxCapture) return
+    this.consumed = true
+    this.busy = true
+    this.context.redraw()
+    try {
+      this.inboxReceipt = await this.context.api.cancelLlmWikiInboxCapture(id)
+    } catch (error) {
+      this.context.notify(readableError(error), 'error')
+    } finally {
+      this.inboxPreview = null
       this.busy = false
       this.context.redraw()
     }
