@@ -19,10 +19,17 @@
 - ZIP 由 `ditto -c -k --keepParent` 生成并由 `ditto -x -k` 解压复核，解压后 bundle 内容哈希与源包完全一致。
 - 隔离资料 `npm run smoke:package`：Web 启动与 17 组原生工作流全部通过（待合入后最终确认）。
 
-## 发布方法
+## 合并后打包、公开发布与本机安装（2026-11-27）
 
-合并后，在合并提交上重新执行 `npm ci` 和 `npm run package:mac`，确认重建包与候选 bundle 内容哈希一致，随后生成发布用 `TheRSS-0.5.0-macos-arm64-unsigned.zip`、`release-manifest.json` 和 `SHA256SUMS.txt`。待 `main` CI（`quality` 与 `desktop`）全部通过后公开为 `v0.5.0` pre-release，下载全部资产核对 `shasum -a 256 -c SHA256SUMS.txt`，最后在干净 `main` 上执行 `npm run update:local` 更新本机 `~/Applications/TheRSS Dev.app`。
+- PR #110 以 `57ce5585775d271e8d16415c6ca30aace15e71b2` 合入 `main`；PR CI（run `45997830353`）与 `main` CI（[run 45999366729](https://github.com/dtjgp/TheRSS/actions/runs/45999366729)）的 `quality`（3m26s）与 `desktop`（5m45s，含 E2E、打包与 `smoke:package`）均全部通过。
+- 在 `57ce5585775d271e8d16415c6ca30aace15e71b2` 上重新执行 `npm ci && npm run package:mac`，生成最终规范构建：
+  - `app.asar` SHA-256：`aebeeced9486188d5a0e2adeb333855a28a668bd08ae7ce1e84852f6e5fb8351`
+  - bundle 内容哈希（666 个条目、14 个全包内符号链接）：`4eefe36a00ce30dca8b807a523ac016cdb025959b901ac9c444a5d5631d3bb17`
+  - `TheRSS-0.5.0-macos-arm64-unsigned.zip`（142,067,854 B）SHA-256：`afb7dd39905b3f496df686b54791d890925c0e34cf312dd5f22907b02d1bf0ac`
+  - `release-manifest.json` SHA-256：`c9a25345d2a89cfcef2285a8390d8cc1663815eb1987157b581b15b30ac9a4f1`
+- [`v0.5.0`](https://github.com/dtjgp/TheRSS/releases/tag/v0.5.0) 于 `2026-11-27T12:41:47Z` 公开为 pre-release（未标记为 Latest），标签指向 `57ce5585775d271e8d16415c6ca30aace15e71b2`。下载全部三个资产后，`shasum -a 256 -c SHA256SUMS.txt` 全部返回 `OK`。
+- 本机安装：在干净 `main` 上运行 `npm run update:local`，将 `~/Applications/TheRSS Dev.app` 原子更新至 `0.5.0`，保留旧应用备份 `TheRSS Dev.backup-2026-11-27T12-43-02-650Z.app`、SQLite 备份 `therss-2026-11-27T12-43-02-650Z.sqlite` 与安装回执 `install-2026-11-27T12-43-02-650Z.json`。
 
 ## 边界
 
-未进行 Developer ID 签名、公证、Gatekeeper 分发验证或同身份自动升级验收；未修改用户真实 `/Users/dtjgp/Obsidian/llm-wiki` 知识库（`therss-inbox-capture` 保持 fail-closed 直到用户显式注册治理权限）。物理键鼠/VoiceOver 人工走查与真实论文推送实测（`P0-1`）仍作为独立的人工验收项保留。
+未进行 Developer ID 签名、公证、Gatekeeper 分发验证或同身份自动升级验收。物理键鼠/VoiceOver 人工走查与真实论文写入实测（`P0-1`）仍由用户按需发起；`v0.5.0` 发布后已在独立跟进 PR 中加固 `scripts/smoke-native-appkit.mjs` 侧栏动画采样逻辑以避免 GitHub macOS VM 上偶发的 `inspect()` 主线程争抢。
