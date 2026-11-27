@@ -614,23 +614,26 @@ try {
     const preferenceBefore = await savedWidth()
     const widthEvents = async () => find((await inspect()).root, 'native-workspace').widthEvents
     const eventsBefore = await widthEvents()
-    const sample = async (done) => {
+    const sample = async (done, intervalMs = 40, initialDelayMs = 0) => {
+      if (initialDelayMs > 0) await delay(initialDelayMs)
       const samples = []
       for (let attempt = 0; attempt < 80; attempt++) {
         samples.push(await sidebarState())
         if (done(samples.at(-1))) break
-        await delay(10)
+        await delay(intervalMs)
       }
       return samples
     }
     // The instant path neither completes an animator group nor draws a frame between the start
-    // and end widths. A loaded CI runner can draw no intermediate frame in one 0.2 s slide (one
-    // observed run), so a cycle without frames repeats, at most three times.
+    // and end widths. Native splitViewDidResizeSubviews already records every drawn frame into
+    // animationWidths, so let the ~0.25 s slide run undisturbed before polling completion rather
+    // than hammering full-tree inspect() every 10 ms (which can starve frames on loaded CI VMs).
+    // Repeat up to five settled cycles until both directions have recorded intermediate widths.
     const workspace = async () => find((await inspect()).root, 'native-workspace')
     const toggle = async (done) => {
       const completedBefore = (await workspace()).animationsCompleted
       await click('sidebar-toggle')
-      const samples = await sample(done)
+      const samples = await sample(done, 40, 260)
       const state = await workspace()
       return {
         samples,
@@ -641,10 +644,12 @@ try {
     await act('native-workspace', 'animations', true)
     const cycles = []
     let hiding, showing
-    for (let cycle = 0; cycle < 3; cycle++) {
+    for (let cycle = 0; cycle < 5; cycle++) {
+      if (cycle > 0) await delay(100)
       const hide = await toggle((state) => state.divider === 0 && !state.animating)
       assert(hide.animated, 'Hiding the sidebar runs the animated path')
       assert.equal(hide.samples.at(-1).divider, 0)
+      await delay(60)
       const show = await toggle(
         (state) => Math.abs(state.divider - widthBefore) <= 1 && !state.animating
       )
@@ -656,7 +661,12 @@ try {
       cycles.push({ hideSteps: hide.steps, showSteps: show.steps })
       hiding = hide.samples
       showing = show.samples
-      if (hide.steps >= 1 && show.steps >= 1) break
+      if (
+        cycles.some((entry) => entry.hideSteps >= 1) &&
+        cycles.some((entry) => entry.showSteps >= 1)
+      ) {
+        break
+      }
     }
     assert(
       cycles.some((cycle) => cycle.hideSteps >= 1),
